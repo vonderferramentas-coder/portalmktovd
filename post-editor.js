@@ -102,11 +102,13 @@ var CATALOG_THUMB_WIDTH=160;
 var CATALOG_PRODUCT_WIDTH=1600;
 function productImageUrl(code,width){var digits=normalizeCode(code);if(!digits)return'';return'product-image.php?code='+encodeURIComponent(digits)+'&v=4'+(width?'&w='+width:'')}
 function localProductImageUrl(code,width){var digits=normalizeCode(code);if(!digits)return'';return'http://127.0.0.1:8765/product-image?code='+encodeURIComponent(digits)+'&v=4'+(width?'&w='+width:'')}
-// o helper local só existe na máquina de quem está editando (rodado pelo "Abrir
-// Calendario.cmd"); num site publicado (GitHub Pages etc.) chamar 127.0.0.1 faz o Chrome
-// pedir a permissão de "Acessar dispositivos na rede local" pro visitante à toa, então só
-// tentamos esse endereço quando a própria página está sendo servida localmente
-var IS_LOCAL_HOST=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+// o helper local (rodado pelo "Abrir Calendario.cmd") é sempre tentado como fallback, mesmo
+// no site publicado (GitHub Pages, que não executa o PHP do proxy) — sem ele o recorte
+// automático simplesmente não tinha nenhuma origem que funcionasse por lá. Só faz efeito em
+// quem estiver com o auxiliar local rodando (loadExportSafeImage já ignora o resto quando a
+// conexão é recusada, caindo no aviso "envie a foto manualmente"); pra quem não tiver, o
+// Chrome pode pedir a permissão de "Acessar dispositivos na rede local" — aceito como troca
+// deliberada em favor do recorte automático funcionar direto do link publicado.
 function itemImageUrls(item,width){
  var codes=catalogCodes(item),code=codes[0]&&codes[0].code,direct=(item&&(item.imageUrl||item.image||item.photo))||'',urls=[];
  // Em file:// o PHP da pasta não é executado. O helper local devolve a foto com CORS;
@@ -115,7 +117,7 @@ function itemImageUrls(item,width){
  // responder — e nunca será desenhada se contaminar o canvas.
  if(CATALOG_PHOTO_SLUG==='vonder'&&code){
   if(location.protocol==='file:')urls.push(localProductImageUrl(code,width));else urls.push(productImageUrl(code,width));
-  if(IS_LOCAL_HOST)urls.push(localProductImageUrl(code,width))
+  urls.push(localProductImageUrl(code,width))
  }
  if(direct)urls.push(direct);
  return urls.filter(function(url,index){return url&&urls.indexOf(url)===index})
