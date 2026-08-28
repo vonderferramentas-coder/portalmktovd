@@ -1,0 +1,7 @@
+<!doctype html><html><body>
+<script>
+fetch('http://127.0.0.1:8934/', {method:'POST', body:'hello-world-test'})
+  .then(function(r){ document.title = 'OK-' + r.status; })
+  .catch(function(e){ document.title = 'ERR-' + e.message; });
+</script>
+</body></html>
