@@ -1,0 +1,22 @@
+# Ferramentas locais (Claude Code / agentes) — não faz parte do site
+.agents/
+.claude/
+
+# Lixo do Windows
+Thumbs.db
+desktop.ini
+
+# Biblioteca local de logos-fonte (EPS/SVG brutos, ~2GB, não usada pelo site em produção)
+post-editor-assets/brands/
+
+# Temporários e dados locais que não devem ir pro repositório
+tmp/
+*.sqlite
+*.sqlite-journal
+*.db
+
+# Segredos — nunca commitar
+.env
+.env.*
+*.key
+*.pem

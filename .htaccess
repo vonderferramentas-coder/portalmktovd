@@ -1,0 +1,6 @@
+# Impede que o arquivo do banco (data.sqlite, criado automaticamente pelo api.php)
+# seja baixado diretamente pelo navegador. Só tem efeito em servidor Apache — se o
+# X:\web for servido por IIS, peça pra alguém aplicar a mesma restrição via web.config.
+<FilesMatch "\.sqlite$">
+    Require all denied
+</FilesMatch>

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Central de Inteligência — Calendário de Postagens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;0,900;1,300;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="portal-shell">
+    <!-- Menu do portal (navegação entre ferramentas + seletor de marca), montado por portal-shell.js -->
+    <aside class="portal-sidebar" id="portalSidebar"></aside>
+    <div class="portal-main">
+  <div class="container">
+
+    <div class="page-header">
+      <div>
+        <h1>Central de Inteligência</h1>
+        <p class="page-subtitle">A memória criativa da marca: constrói, a partir de artes, carrosséis, legendas e briefings já aprovados de cada editoria, uma inteligência própria e fixa — usada depois para orientar (e validar) as próximas publicações.</p>
+      </div>
+      <div class="page-header-actions">
+        <span id="syncStatus" class="sync-status" title="Estado da sincronização com o servidor"></span>
+      </div>
+    </div>
+
+    <!-- 1. Biblioteca de Editorias -->
+    <div class="card" style="margin-bottom:16px">
+      <h3 class="fg-label" style="margin:0 0 12px">Biblioteca de Editorias</h3>
+      <div class="bg-section-desc" style="margin-bottom:10px">Selecione uma editoria para enviar referências, criar a inteligência da editoria (DNA) e testar publicações. As editorias são as mesmas cadastradas em Configurações, no Calendário de Postagens.</div>
+      <div id="editoriaLibraryGrid" class="intel-editoria-grid"></div>
+    </div>
+
+    <!-- Workspace da editoria selecionada: base de conhecimento + referências utilizadas (2), DNA (3) e validação (4) -->
+    <div class="card bg-layout-card">
+      <div id="intelWorkspaceEmpty" class="bg-empty" style="padding:40px 16px;text-align:center">Selecione uma editoria acima para configurar a base de conhecimento.</div>
+
+      <div id="intelWorkspaceBody" style="display:none">
+        <div class="intel-workspace-header">
+          <h2 id="intelWorkspaceTitle" class="intel-workspace-title"></h2>
+          <span id="intelWorkspaceStatus" class="intel-status-pill"></span>
+        </div>
+
+        <div class="bg-layout">
+          <div class="settings-sidebar" role="tablist">
+            <button type="button" class="settings-nav-btn active" data-panel="intelPanelTraining">Base de conhecimento da editoria</button>
+            <button type="button" class="settings-nav-btn" data-panel="intelPanelDna">DNA da editoria</button>
+            <button type="button" class="settings-nav-btn" data-panel="intelPanelTest">Testar publicação</button>
+          </div>
+
+          <div class="settings-content">
+
+            <!-- 2. Base de conhecimento da editoria -->
+            <div class="settings-panel active" id="intelPanelTraining">
+
+              <div class="form-group">
+                <h3 class="fg-label">Nova peça de referência</h3>
+                <div class="bg-section-desc">Monte uma peça completa — rede social, briefing de como foi pedida ao design, as artes por formato e a legenda publicada — para a IA entender o processo inteiro: como foi solicitada, como foi concebida e como foi publicada.</div>
+
+                <div class="intel-piece-step">
+                  <div class="intel-piece-step-label">1. Rede social</div>
+                  <select id="intelPieceNetwork"></select>
+                </div>
+
+                <div class="intel-piece-step">
+                  <div class="intel-piece-step-label">2. Briefing — como você pediu essa peça para o design</div>
+                  <textarea id="intelPieceBriefing" rows="3" placeholder="Ex: Preciso de uma arte destacando a garantia de 2 anos da furadeira XPTO, tom direto, com CTA para o link na bio..."></textarea>
+                </div>
+
+                <div class="intel-piece-step">
+                  <div class="intel-piece-step-label">3. Artes por formato <span class="intel-piece-step-optional">(opcional — envie só os formatos que tiver; mais de um arquivo no mesmo formato = carrossel)</span></div>
+                  <div id="intelPieceFormats"></div>
+                </div>
+
+                <div class="intel-piece-step">
+                  <div class="intel-piece-step-label">4. Legenda publicada</div>
+                  <textarea id="intelPieceCaption" rows="3" placeholder="Cole aqui o texto que foi publicado junto com essa peça..."></textarea>
+                </div>
+
+                <div style="display:flex;justify-content:flex-end;margin-top:14px">
+                  <button type="button" id="intelPieceAdd" class="btn">+ Adicionar peça de referência</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <h3 class="fg-label">Peças já adicionadas</h3>
+                <div id="intelPiecesList"></div>
+              </div>
+
+              <!-- Histórico de geração do DNA (a visão ao vivo das peças fica dentro de "Artes por formato", em cada slot) -->
+              <div id="intelRefsEmpty" class="bg-empty">Nenhuma inteligência criada ainda — o histórico de atualização aparece aqui depois que a inteligência da editoria for gerada.</div>
+              <div id="intelRefsContent" style="display:none">
+                <div class="form-group">
+                  <h3 class="fg-label">Histórico de atualização</h3>
+                  <div style="font-size:11.5px;color:var(--text-faint);margin-bottom:14px" id="intelRefsMeta"></div>
+                  <div id="intelRefsHistory" class="bg-list"></div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <h3 class="fg-label">Orientações adicionais para esta editoria</h3>
+                <div class="bg-section-desc">Opcional. Instruções, restrições de tom ou contexto de produtos/campanhas que a IA deve considerar ao criar a inteligência desta editoria.</div>
+                <textarea id="intelInstructionsNotes" rows="3" placeholder="Ex: Sempre citar a garantia de 1 ano; evitar emojis; linha Profissional é o foco deste trimestre..."></textarea>
+              </div>
+
+              <div style="display:flex;justify-content:flex-end;gap:12px;align-items:center;flex-wrap:wrap">
+                <div id="intelAnalyzeHint" style="font-size:11.5px;color:var(--text-faint)"></div>
+                <button type="button" id="intelAnalyzeBtn" class="btn">Criar inteligência da editoria</button>
+              </div>
+
+            </div>
+
+            <!-- 3. DNA da Editoria -->
+            <div class="settings-panel" id="intelPanelDna">
+              <div id="intelDnaEmpty" class="bg-empty">Inteligência ainda não criada. Vá em "Base de conhecimento da editoria", envie referências e clique em "Criar inteligência da editoria".</div>
+              <div id="intelDnaContent" style="display:none">
+                <div style="font-size:11.5px;color:var(--text-faint);margin:-4px 0 14px" id="intelDnaMeta"></div>
+                <div id="intelDnaUserInstructions" class="bg-inline-warning" style="display:none;margin-bottom:14px"></div>
+
+                <div class="form-group">
+                  <h3 class="fg-label">Como essa editoria funciona</h3>
+                  <div class="bg-quick-insert-label" style="margin-bottom:6px">Objetivo identificado</div>
+                  <div id="intelDnaObjective" style="font-size:15px;font-weight:700;line-height:1.45;margin-bottom:12px"></div>
+                  <div class="bg-quick-insert-row"><span class="bg-quick-insert-label">Público identificado</span><span id="intelDnaAudience"></span></div>
+                </div>
+
+                <div class="form-group">
+                  <h3 class="fg-label">Como a marca comunica</h3>
+                  <div class="bg-quick-insert-row"><span class="bg-quick-insert-label">Tom de voz</span><span id="intelDnaTone"></span></div>
+                  <div class="bg-quick-insert-row" style="margin-top:8px"><span class="bg-quick-insert-label">Linguagem utilizada</span><span id="intelDnaLanguage"></span></div>
+                </div>
+
+                <div class="form-group">
+                  <h3 class="fg-label">Padrões visuais identificados</h3>
+                  <div class="bg-quick-insert-row"><span class="bg-quick-insert-label">Como os produtos são apresentados</span><span id="intelDnaPresentation"></span></div>
+                  <div class="bg-quick-insert-row" style="margin-top:8px"><span class="bg-quick-insert-label">Estilo das imagens</span><span id="intelDnaVisualStyle"></span></div>
+                  <div class="bg-quick-insert-row" style="margin-top:8px"><span class="bg-quick-insert-label">Composição predominante</span><span id="intelDnaComposition"></span></div>
+                  <div class="bg-quick-insert-row" style="margin-top:8px"><span class="bg-quick-insert-label">Elementos recorrentes</span><span id="intelDnaRecurringVisual"></span></div>
+                  <div class="bg-quick-insert-row" style="margin-top:8px"><span class="bg-quick-insert-label">Hierarquia das informações</span><span id="intelDnaHierarchy"></span></div>
+                </div>
+
+                <div class="form-group">
+                  <h3 class="fg-label">Padrões de conteúdo identificados</h3>
+                  <div class="bg-quick-insert-row" style="margin-bottom:6px"><span class="bg-quick-insert-label">Estrutura dos textos</span><span id="intelDnaTextStructureConf"></span></div>
+                  <ol id="intelDnaTextStructure" class="intel-rule-list intel-rule-list--ordered" style="margin-bottom:14px"></ol>
+                  <div class="bg-quick-insert-row"><span class="bg-quick-insert-label">Tipos de abertura</span><span id="intelDnaOpeningTypes"></span></div>
+                  <div class="bg-quick-insert-row" style="margin-top:8px"><span class="bg-quick-insert-label">Formatos de CTA</span><span id="intelDnaCtaFormats"></span></div>
+                </div>
+
+                <div class="form-group">
+                  <h3 class="fg-label">Modelos recomendados</h3>
+                  <div class="bg-section-desc" style="margin-bottom:10px">Padrões reutilizáveis identificados nas legendas desta editoria — use como ponto de partida para novos textos.</div>
+                  <div id="intelDnaContentModels" class="bg-list"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Validação inteligente -->
+            <div class="settings-panel" id="intelPanelTest">
+              <div class="form-group">
+                <h3 class="fg-label">Testar uma publicação</h3>
+                <div class="bg-section-desc">Cole um rascunho de título/legenda para ver o quanto ele adere ao DNA já identificado desta editoria.</div>
+                <label>Título</label>
+                <input type="text" id="intelTestTitle" placeholder="Título da publicação" />
+                <label class="field-gap">Texto/legenda</label>
+                <textarea id="intelTestCaption" rows="6" placeholder="Cole aqui o texto da publicação a validar"></textarea>
+                <div style="display:flex;justify-content:flex-end;margin-top:10px"><button type="button" id="intelTestBtn" class="btn">Analisar publicação</button></div>
+              </div>
+              <div id="intelTestResult"></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+    </div>
+  </div>
+
+  <!-- Visualização ampliada de uma arte/vídeo enviado como referência -->
+  <div id="intelLightbox" class="intel-lightbox-backdrop" style="display:none">
+    <div class="intel-lightbox-box">
+      <button type="button" id="intelLightboxClose" class="intel-lightbox-close" aria-label="Fechar">&times;</button>
+      <div id="intelLightboxContent"></div>
+    </div>
+  </div>
+
+  <script src="sync-backend.js"></script>
+  <script src="portal-shell.js"></script>
+  <script src="intelligence-data.js"></script>
+  <script src="intelligence-center.js"></script>
+</body>
+</html>
