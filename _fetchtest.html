@@ -1,8 +1,0 @@
-<!doctype html><html><body style="font-size:30px;font-family:monospace">
-<div id="out">pending...</div>
-<script>
-fetch('http://127.0.0.1:8934/', {method:'POST', body:'hello-world-test'})
-  .then(function(r){ document.getElementById('out').textContent = 'OK-' + r.status; })
-  .catch(function(e){ document.getElementById('out').textContent = 'ERR-' + e.message; });
-</script>
-</body></html>
