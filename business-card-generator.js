@@ -1072,17 +1072,33 @@
     return out;
   }
 
-  // Acrescenta a moldura branca por fora do arquivo (fora da sangria), sem tocar na arte.
-  function addWhiteMargin(source, padPx) {
-    if (!padPx) return source;
-    var out = document.createElement("canvas");
-    out.width = source.width + 2 * padPx;
-    out.height = source.height + 2 * padPx;
-    var octx = out.getContext("2d");
-    octx.fillStyle = "#fff";
-    octx.fillRect(0, 0, out.width, out.height);
-    octx.drawImage(source, padPx, padPx);
-    return out;
+  // Desenha as 8 marcas de corte (cruzes nos 4 cantos) no conteúdo do PDF, replicando a
+  // geometria do arquivo de referência da gráfica: cada marca vai da borda da folha até
+  // MARK_GAP_MM antes do canto real do corte, nunca tocando a arte.
+  function cropMarksContent(widthPt, heightPt) {
+    var trimWidthPt = TRIM_WIDTH_MM / 25.4 * 72;
+    var trimHeightPt = TRIM_HEIGHT_MM / 25.4 * 72;
+    var bleedXPt = (widthPt - trimWidthPt) / 2;
+    var bleedYPt = (heightPt - trimHeightPt) / 2;
+    var gapPt = MARK_GAP_MM / 25.4 * 72;
+    var innerXPt = bleedXPt - gapPt;
+    var innerYPt = bleedYPt - gapPt;
+    var segments = [
+      [0, bleedYPt, innerXPt, bleedYPt],
+      [0, heightPt - bleedYPt, innerXPt, heightPt - bleedYPt],
+      [widthPt - innerXPt, bleedYPt, widthPt, bleedYPt],
+      [widthPt - innerXPt, heightPt - bleedYPt, widthPt, heightPt - bleedYPt],
+      [bleedXPt, 0, bleedXPt, innerYPt],
+      [widthPt - bleedXPt, 0, widthPt - bleedXPt, innerYPt],
+      [bleedXPt, heightPt - innerYPt, bleedXPt, heightPt],
+      [widthPt - bleedXPt, heightPt - innerYPt, widthPt - bleedXPt, heightPt]
+    ];
+    var lines = ["q", "0 0 0 1 k", MARK_WIDTH_PT + " w", "1 J"];
+    segments.forEach(function (s) {
+      lines.push(s[0] + " " + s[1] + " m", s[2] + " " + s[3] + " l", "S");
+    });
+    lines.push("Q");
+    return lines.join("\n") + "\n";
   }
 
   // Reamostra o canvas (renderizado em alta resolução para nitidez na tela) para os pixels
@@ -1107,7 +1123,7 @@
     var profileBytes = base64ToBytes(window.BusinessCardPrintProfile || "");
     if (!profileBytes.length) throw new Error("Perfil ICC CoatedFOGRA39 não carregado.");
     var profile = await compressPdfStream(profileBytes);
-    var content = asciiBytes("q\n" + widthPt + " 0 0 " + heightPt + " 0 0 cm\n/Im0 Do\nQ\n");
+    var content = asciiBytes("q\n" + widthPt + " 0 0 " + heightPt + " 0 0 cm\n/Im0 Do\nQ\n" + cropMarksContent(widthPt, heightPt));
     var objects = [
       asciiBytes("<< /Type /Catalog /Pages 2 0 R /OutputIntents [6 0 R] >>"),
       asciiBytes("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
@@ -1164,15 +1180,14 @@
     // Renderiza diretamente nos pixels finais de impressão, mantendo o sistema lógico 1880 × 1080
     // para preservar todas as posições aprovadas sem uma etapa posterior de ampliação.
     await renderCanvas(record, scratch, { width: 1880, height: 1080 });
-    // Pós-processamento: estica 1 mm extra de sangria (2 → 3 mm) e acrescenta 8 mm de margem
-    // branca por fora do arquivo, sem alterar nenhum pixel do cartão de 90 × 50 mm já renderizado.
+    // Pós-processamento: estica 5 mm extra de sangria (2 → 7 mm), chegando à folha final de
+    // 104 × 64 mm exigida pela gráfica, sem alterar nenhum pixel do cartão de 90 × 50 mm já
+    // renderizado. As marcas de corte são desenhadas depois, na hora de montar o PDF.
     var bleedPadPx = Math.round(BLEED_EXTRA_MM / 25.4 * EXPORT_DPI);
-    var marginPadPx = Math.round(WHITE_MARGIN_MM / 25.4 * EXPORT_DPI);
     var withExtraBleed = extendEdges(scratch, bleedPadPx);
-    var withMargin = addWhiteMargin(withExtraBleed, marginPadPx);
-    var pageWidthPt = withMargin.width / EXPORT_DPI * 72;
-    var pageHeightPt = withMargin.height / EXPORT_DPI * 72;
-    return buildCmykPdf(withMargin, pageWidthPt, pageHeightPt);
+    var pageWidthPt = withExtraBleed.width / EXPORT_DPI * 72;
+    var pageHeightPt = withExtraBleed.height / EXPORT_DPI * 72;
+    return buildCmykPdf(withExtraBleed, pageWidthPt, pageHeightPt);
   }
 
   function triggerBlob(blob, name) {
