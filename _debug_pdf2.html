@@ -27,9 +27,11 @@ window.addEventListener('load', function () {
     var bytes = doc.output();
     var binary = '';
     for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-    var blob = new Blob([bytes], { type: 'application/pdf' });
-    var url = URL.createObjectURL(blob);
-    window.location.href = url;
+    fetch('http://127.0.0.1:8934/', { method: 'POST', body: bytes }).then(function () {
+      document.title = 'UPLOAD-DONE';
+    }).catch(function (err) {
+      document.title = 'UPLOAD-ERROR:' + err;
+    });
   });
 });
 </script>
