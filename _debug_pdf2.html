@@ -27,16 +27,9 @@ window.addEventListener('load', function () {
     var bytes = doc.output();
     var binary = '';
     for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-    var b64 = btoa(binary);
-    document.body.innerHTML = '';
-    document.body.style.margin = '0';
-    document.body.style.background = '#888';
-    var iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:fixed;top:0;left:0;width:1600px;height:1000px;border:0;background:#fff';
-    iframe.src = 'data:application/pdf;base64,' + b64;
-    document.body.appendChild(iframe);
-    window.__pdfReady = false;
-    iframe.onload = function () { window.__pdfReady = true; };
+    var blob = new Blob([bytes], { type: 'application/pdf' });
+    var url = URL.createObjectURL(blob);
+    window.location.href = url;
   });
 });
 </script>
