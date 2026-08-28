@@ -83,7 +83,7 @@
 
   var BRAND_TEMPLATES = {
     "default": { label: "Institucional VONDER", source: "Identidade exclusiva VONDER", accent: "#F6BE00", ink: "#171717", style: "diagonal", qr: { x: 1460, y: 680, size: 300 } },
-    "ferramentas-gerais": { label: "FG 96 × 56 mm", source: "Illustrator .ai preenchido", accent: "#005745", ink: "#706f6f", style: "fg", qr: { x: 1320, y: 580, size: 400 } },
+    "ferramentas-gerais": { label: "FG 90 × 50 mm", source: "Illustrator .ai preenchido", accent: "#005745", ink: "#706f6f", style: "fg", qr: { x: 1320, y: 580, size: 400 } },
     "osten-ferragens": { label: "Institucional OSTEN", source: "Identidade exclusiva OSTEN", accent: "#ED8B00", ink: "#252525", style: "sidebar", qr: { x: 1460, y: 680, size: 300 } },
     "dismatal": { label: "Institucional DISMATAL", source: "Identidade exclusiva DISMATAL", accent: "#FFED00", ink: "#181818", style: "stripe", qr: { x: 1460, y: 680, size: 300 } },
     "toolmix": { label: "Institucional TOOLMIX", source: "Identidade exclusiva TOOLMIX", accent: "#F26522", ink: "#272727", style: "corner", qr: { x: 1460, y: 680, size: 300 } },
@@ -1036,11 +1036,17 @@
   // deve ser redimensionado nem ter suas posições internas recalculadas.
   var DESIGN_WIDTH_PT = 266.456693;
   var DESIGN_HEIGHT_PT = 153.070866;
-  // No arquivo final, a sangria aumenta de 2 mm (já presente na arte) para 3 mm, e uma margem
-  // branca adicional de 8 mm é acrescentada por fora da sangria — ambas aplicadas por
-  // pós-processamento sobre a arte pronta, sem tocar nas posições internas do cartão.
-  var BLEED_EXTRA_MM = 1;
-  var WHITE_MARGIN_MM = 8;
+  var TRIM_WIDTH_MM = 90;
+  var TRIM_HEIGHT_MM = 50;
+  // Arquivo de referência para impressão (Lucas, "Cartao Atualizado"): folha final de 104 × 64 mm,
+  // ou seja 7 mm de sangria do corte até a borda da folha. A arte já embute 2 mm dessa sangria,
+  // então o pós-processamento estica mais 5 mm (2 → 7 mm) esticando os pixels da borda, sem tocar
+  // nas posições internas do cartão. Sem margem branca extra: a folha final é a própria sangria.
+  var BLEED_EXTRA_MM = 5;
+  // Vão entre a marca de corte e o canto real do corte, e espessura do traço — replicam o arquivo
+  // de referência acima (marcas de corte reais, não a marca magenta que é só guia de tela).
+  var MARK_GAP_MM = 2;
+  var MARK_WIDTH_PT = 0.3;
   // Resolução de exportação e perfil de cor de destino exigidos pela gráfica.
   var EXPORT_DPI = 600;
   var OUTPUT_PROFILE_NAME = "Coated FOGRA39 \\(ISO 12647-2:2004\\)";
