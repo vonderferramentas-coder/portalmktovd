@@ -1197,8 +1197,6 @@
     var withExtraBleed = extendEdges(scratch, bleedPadPx);
     var pageWidthPt = withExtraBleed.width / EXPORT_DPI * 72;
     var pageHeightPt = withExtraBleed.height / EXPORT_DPI * 72;
-    window.__debugExportCanvas = withExtraBleed;
-    window.__debugTrimInsetPx = { x: Math.round((withExtraBleed.width - TRIM_WIDTH_MM / 25.4 * EXPORT_DPI) / 2), y: Math.round((withExtraBleed.height - TRIM_HEIGHT_MM / 25.4 * EXPORT_DPI) / 2) };
     return buildCmykPdf(withExtraBleed, pageWidthPt, pageHeightPt);
   }
 
