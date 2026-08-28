@@ -74,7 +74,52 @@
     // migração: buckets salvos antes da troca do campo único de orientações
     if(typeof out.instructions !== 'string') out.instructions = (b && typeof b.productsNotes === 'string') ? b.productsNotes : '';
     delete out.productsNotes;
+    if(out.dna) out.dna = normalizeDna(out.dna);
     return out;
+  }
+
+  // backfill de um DNA salvo por uma versão mais antiga de generateDNA() (ver função abaixo),
+  // que ainda não tinha algum dos campos de leitura direta (ex: "ctas" foi adicionado depois de
+  // "hooks") — sem isso, um DNA gerado antes daquele campo existir quebra renderIntelSuggestBox()/
+  // validatePost() (app.js) com "Cannot read properties of undefined", que aborta a função no meio
+  // e por isso nem chega a abrir o modal de edição da postagem
+  function emptyConfidence(){ return { value:null, confidence:null, count:0 }; }
+  function normalizeConfidence(v){ return (v && typeof v==='object' && 'value' in v) ? v : emptyConfidence(); }
+  function normalizeDna(dna){
+    const howItWorks = dna.howItWorks || {};
+    const howBrandCommunicates = dna.howBrandCommunicates || {};
+    const visualStrategy = dna.visualStrategy || {};
+    const contentStrategy = dna.contentStrategy || {};
+    return Object.assign({
+      generatedAt: null, referenceCount: 0, userInstructions: '', referencesSnapshot: null
+    }, dna, {
+      perReferenceAnalysis: Array.isArray(dna.perReferenceAnalysis) ? dna.perReferenceAnalysis : [],
+      howItWorks: {
+        objective: normalizeConfidence(howItWorks.objective),
+        audience: normalizeConfidence(howItWorks.audience)
+      },
+      howBrandCommunicates: {
+        tone: normalizeConfidence(howBrandCommunicates.tone),
+        language: normalizeConfidence(howBrandCommunicates.language)
+      },
+      visualStrategy: {
+        presentation: normalizeConfidence(visualStrategy.presentation),
+        style: normalizeConfidence(visualStrategy.style),
+        composition: normalizeConfidence(visualStrategy.composition),
+        recurring: normalizeConfidence(visualStrategy.recurring),
+        hierarchy: normalizeConfidence(visualStrategy.hierarchy)
+      },
+      contentStrategy: {
+        textStructure: normalizeConfidence(contentStrategy.textStructure),
+        openingTypes: normalizeConfidence(contentStrategy.openingTypes),
+        ctaFormats: normalizeConfidence(contentStrategy.ctaFormats)
+      },
+      contentModels: Array.isArray(dna.contentModels) ? dna.contentModels : [],
+      hooks: Array.isArray(dna.hooks) ? dna.hooks : [],
+      ctas: Array.isArray(dna.ctas) ? dna.ctas : [],
+      recurringWords: Array.isArray(dna.recurringWords) ? dna.recurringWords : [],
+      stats: Object.assign({ avgWords:0, hashtagRatio:0, captionCount:0, visualCount:0 }, dna.stats || {})
+    });
   }
 
   // "achata" as peças em listas de visuais/legendas/briefings pra reaproveitar toda a análise

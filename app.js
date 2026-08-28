@@ -3223,6 +3223,15 @@
     }
     function closeScheduleWarning(){ $('scheduleWarningBackdrop').style.display = 'none'; }
 
+    // título do card gerado pela aplicação em massa de uma editoria: nome do(s) produto(s) da
+    // linha (pra não sair tudo com o mesmo título = nome da editoria, o que tornava os cards
+    // indistinguíveis no calendário), caindo pro nome da editoria só quando a linha não tem
+    // produto (ex: institucional/anúncio sem produto específico)
+    function titleForEditoriaRow(row, editoriaName){
+      const names = (row.products||[]).map(p=>shortenProductName(p.name)).filter(Boolean);
+      return names.length ? joinProductNames(names) : editoriaName;
+    }
+
     // garante que a linha tenha um card real (cria com os produtos já preenchidos na linha, se
     // ainda não existir um) — chamado pelo botão "Editar card", pra sempre abrir uma postagem
     // de verdade em vez de um formulário "solto"
@@ -3238,7 +3247,7 @@
       if(existing){ row.postId = existing.id; return; }
       const defaultStatus = (APP_SETTINGS.statuses[0] && APP_SETTINGS.statuses[0].name) || 'Rascunho';
       const p = {
-        id: generateId(), title: editoriaName, date: row.dateStr,
+        id: generateId(), title: titleForEditoriaRow(row, editoriaName), date: row.dateStr,
         channel: primary.channel, place: primary.places.slice(), type: primary.types[0] || 'Static',
         channels: channelsSnapshot,
         status: defaultStatus, notes: '', collab: false, color: null, editoria: [editoriaName], products: row.products.slice(), order: nextOrderForDate(row.dateStr)
@@ -3357,7 +3366,10 @@
         const existing = (row.postId && state.posts.find(p=>p.id===row.postId))
           || state.posts.find(p=> p.date===row.dateStr && (Array.isArray(p.editoria)?p.editoria:[p.editoria]).includes(editoriaName));
         if(existing){
-          updatedBefore.push({ id: existing.id, channel: existing.channel, place: existing.place, type: existing.type, channels: existing.channels, products: existing.products });
+          updatedBefore.push({ id: existing.id, title: existing.title, channel: existing.channel, place: existing.place, type: existing.type, channels: existing.channels, products: existing.products });
+          // só troca o título pelo novo produto se ele ainda for o auto-gerado (== nome da
+          // editoria) — um título já digitado manualmente pela pessoa nunca é sobrescrito aqui
+          if(existing.title === editoriaName) existing.title = titleForEditoriaRow(row, editoriaName);
           existing.channel = primary.channel; existing.place = primary.places.slice(); existing.type = primary.types[0] || 'Static';
           existing.channels = channelsSnapshot.map(c=>Object.assign({},c));
           existing.products = row.products.slice();
@@ -3366,7 +3378,7 @@
           return;
         }
         const p = {
-          id: generateId(), title: editoriaName, date: row.dateStr,
+          id: generateId(), title: titleForEditoriaRow(row, editoriaName), date: row.dateStr,
           channel: primary.channel, place: primary.places.slice(), type: primary.types[0] || 'Static',
           channels: channelsSnapshot.map(c=>Object.assign({},c)),
           status: defaultStatus, notes: '', collab: false, color: null, editoria: [editoriaName], products: row.products.slice(), order: nextOrderForDate(row.dateStr)

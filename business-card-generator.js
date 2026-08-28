@@ -89,7 +89,7 @@
     "toolmix": { label: "Institucional TOOLMIX", source: "Identidade exclusiva TOOLMIX", accent: "#F26522", ink: "#272727", style: "corner", qr: { x: 1460, y: 680, size: 300 } },
     "dwt": { label: "Institucional DWT", source: "Identidade exclusiva DWT", accent: "#285C4D", secondary: "#AB2328", ink: "#262626", style: "split", qr: { x: 1460, y: 680, size: 300 } },
     "nove54": { label: "Institucional NOVE54", source: "Identidade exclusiva NOVE54", accent: "#BD1D1D", ink: "#191919", style: "rail", qr: { x: 1460, y: 680, size: 300 } },
-    "grupo-ovd": { label: "Institucional GRUPO OVD", source: "Identidade exclusiva GRUPO OVD", accent: "#A6A6A6", secondary: "#F6BE00", ink: "#202020", style: "group", qr: { x: 1460, y: 680, size: 300 } }
+    "grupo-ovd": { label: "GRUPO OVD 90 × 50 mm", source: "CorelDRAW .cdr preenchido", accent: "#000000", secondary: "#FFC20D", ink: "#000000", style: "ovd", qr: { x: 1260, y: 508, size: 500 } }
   };
 
   var template = BRAND_TEMPLATES[brand.id] || { label: "Institucional " + brand.name, source: "Identidade exclusiva da marca", accent: "#4b5563", ink: "#202124", style: "corner" };
@@ -137,6 +137,7 @@
     return {
       id: uid(),
       name: clean(obj.name),
+      nameRuns: obj.nameRuns || null,
       role: clean(obj.role),
       address: clean(obj.address),
       landline: formatPhone(obj.landline, "landline"),
@@ -507,7 +508,33 @@
     return -1;
   }
 
-  function importRows(rows) {
+  // Lê o HTML de rich text que o SheetJS expõe por célula (cell.h — cada trecho com formatação
+  // diferente vira um <span>, o negrito vem como <b>) e devolve os trechos como {text,bold},
+  // juntando trechos vizinhos com o mesmo peso. É o único jeito de saber QUAIS palavras do nome
+  // estão em negrito na planilha — não dá pra deduzir isso só do texto puro.
+  function parseRichRunsFromHtml(html) {
+    var div = document.createElement("div");
+    div.innerHTML = html;
+    var runs = [];
+    (function walk(node, bold) {
+      node.childNodes.forEach(function (child) {
+        if (child.nodeType === 3) {
+          if (child.textContent) runs.push({ text: child.textContent, bold: bold });
+        } else if (child.nodeType === 1) {
+          walk(child, bold || child.tagName === "B" || child.tagName === "STRONG");
+        }
+      });
+    })(div, false);
+    var merged = [];
+    runs.forEach(function (run) {
+      var last = merged[merged.length - 1];
+      if (last && last.bold === run.bold) last.text += run.text;
+      else merged.push({ text: run.text, bold: run.bold });
+    });
+    return merged;
+  }
+
+  function importRows(rows, sheet) {
     if (!rows || rows.length < 2) {
       toast("A planilha não contém linhas de dados.");
       return;
@@ -517,7 +544,7 @@
       name: headerIndex(headers, ["nome", "nomecompleto", "name"]),
       role: headerIndex(headers, ["cargo", "funcao", "função", "role"]),
       address: headerIndex(headers, ["endereco", "address"]),
-      landline: headerIndex(headers, ["telefonefixo", "fixo", "telefonecomercial", "landline"]),
+      landline: headerIndex(headers, ["telefonefixo", "fixo", "telefonecomercial", "landline", "fone"]),
       phone: headerIndex(headers, ["celular", "telefonecelular", "whatsapp", "mobile", "phone", "telefone", "fone"]),
       email: headerIndex(headers, ["email", "correioeletronico"]),
       website: headerIndex(headers, ["site", "website", "url"])
@@ -526,13 +553,18 @@
       toast("Não encontrei a coluna NOME na planilha.");
       return;
     }
-    var records = rows.slice(1).filter(function (row) {
-      return row && row.some(function (v) { return clean(v) !== ""; });
-    }).map(function (row) {
+    var records = [];
+    for (var i = 1; i < rows.length; i++) {
+      var row = rows[i];
+      if (!row || !row.some(function (v) { return clean(v) !== ""; })) continue;
       var obj = {};
       Object.keys(map).forEach(function (key) { obj[key] = map[key] >= 0 ? row[map[key]] : ""; });
-      return recordFrom(obj);
-    });
+      if (sheet && window.XLSX && map.name >= 0) {
+        var cell = sheet[XLSX.utils.encode_cell({ r: i, c: map.name })];
+        if (cell && cell.h) obj.nameRuns = parseRichRunsFromHtml(cell.h);
+      }
+      records.push(recordFrom(obj));
+    }
     if (!records.length) {
       toast("Nenhum cartão válido foi encontrado.");
       return;
@@ -555,7 +587,7 @@
       var workbook = XLSX.read(data, { type: "array", cellDates: false });
       var sheet = workbook.Sheets[workbook.SheetNames[0]];
       var rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
-      importRows(rows);
+      importRows(rows, sheet);
     } catch (e) {
       console.error(e);
       toast("Não foi possível ler a planilha. Confira o arquivo e tente novamente.");
@@ -811,6 +843,166 @@
     drawCropMarks();
   }
 
+  // ==== GRUPO OVD (estilo "ovd") ====
+  // Réplica do arquivo CorelDRAW "Cartoes de Visitas OVD.cdr" (posições e fotos extraídas do
+  // PDF exportado por ele). Escala: nosso canvas lógico 1880×1080 representa a arte de 94×54mm
+  // (corte 90×50 + 2mm de sangria original), com origem no canto da FOLHA de impressão de
+  // 104×64mm (7mm de sangria contínua até a borda) — daí o deslocamento de 5mm (7−2) abaixo.
+  var OVD_PT_TO_PX = 20 * 25.4 / 72; // px de canvas por ponto PDF (20px/mm)
+  var OVD_ORIGIN_PX = 5 * 20; // 5mm (sangria da folha menos a já embutida na arte) em px
+  function ovdX(xPt) { return OVD_PT_TO_PX * xPt - OVD_ORIGIN_PX; }
+  function ovdY(yPt) { return H - (OVD_PT_TO_PX * yPt - OVD_ORIGIN_PX); }
+
+  // Desenha uma imagem usando a matriz de posicionamento (a,b,c,d,e,f) extraída literalmente
+  // do "cm" do PDF de referência — mesma convenção de matriz afim, só trocando a escala/origem.
+  function drawOvdPdfImage(img, a, b, c, d, e, f) {
+    if (!img) return;
+    var s = OVD_PT_TO_PX;
+    ctx.save();
+    ctx.transform(s * a, -s * b, s * c, -s * d, ovdX(e), ovdY(f));
+    // O PDF desenha a linha 0 da imagem em v=1 (topo do quadrado unitário, espaço y-para-cima);
+    // o canvas desenha a linha 0 em v=0 (topo, y-para-baixo) — sem este flip local, toda imagem
+    // sai de cabeça pra baixo/deslocada em relação à posição exata do arquivo de referência.
+    ctx.translate(0, 1);
+    ctx.scale(1, -1);
+    ctx.drawImage(img, 0, 0, 1, 1);
+    ctx.restore();
+  }
+
+  function ovdBarRect(yPt1, yPt2) {
+    var y1 = ovdY(yPt1), y2 = ovdY(yPt2);
+    var top = Math.max(0, Math.min(y1, y2));
+    var bottom = Math.min(H, Math.max(y1, y2));
+    return [top, bottom - top];
+  }
+
+  // Telefone sai de formatPhone() como "(DDD) XXXX-XXXX" (padrão usado no resto do app), mas o
+  // cartão OVD mostra "DDD XXXXX XXXX" sem parênteses/traço, com o DDD normal e o resto em
+  // negrito — replicando a formatação da planilha (mesma regra pro FONE institucional e pro
+  // CELULAR pessoal). Reconstrói a partir dos dígitos, então não depende da pontuação de exibição.
+  function ovdPhoneRuns(value, prefix) {
+    var digits = String(value || "").replace(/\D/g, "");
+    var runs = prefix ? [{ text: prefix, bold: false }] : [];
+    if (!digits) return runs;
+    var ddd = digits.slice(0, 2);
+    var local = digits.slice(2);
+    var firstLength = local.length > 8 ? 5 : Math.min(4, local.length);
+    var rest = [local.slice(0, firstLength), local.slice(firstLength)].filter(Boolean).join(" ");
+    runs.push({ text: ddd + " ", bold: false });
+    runs.push({ text: rest, bold: true });
+    return runs;
+  }
+
+  // Sem negrito vindo da planilha (cartão criado manualmente ou importado de .csv), aplica um
+  // padrão razoável: primeiro e último nome em negrito, meio normal — não é garantia de bater
+  // com o que a pessoa realmente destaca, só evita o nome sair 100% sem ênfase nenhuma.
+  function ovdDefaultNameRuns(name) {
+    var text = String(name || "");
+    var words = text.split(" ");
+    if (words.length < 2) return [{ text: text, bold: true }];
+    var runs = [{ text: words[0], bold: true }];
+    if (words.length > 2) runs.push({ text: " " + words.slice(1, -1).join(" "), bold: false });
+    runs.push({ text: " " + words[words.length - 1], bold: true });
+    return runs;
+  }
+
+  function drawOvdRuns(runs, x, y, sizePx, color) {
+    var cx = x;
+    ctx.textAlign = "left";
+    ctx.fillStyle = color;
+    runs.forEach(function (run) {
+      ctx.font = (run.bold ? "700 " : "400 ") + sizePx + "px Swiss721,Arial Narrow,Arial,sans-serif";
+      ctx.fillText(run.text, cx, y);
+      cx += ctx.measureText(run.text).width;
+    });
+    return cx;
+  }
+
+  function ovdRunsWidth(runs, sizePx) {
+    var total = 0;
+    runs.forEach(function (run) {
+      ctx.font = (run.bold ? "700 " : "400 ") + sizePx + "px Swiss721,Arial Narrow,Arial,sans-serif";
+      total += ctx.measureText(run.text).width;
+    });
+    return total;
+  }
+
+  async function drawOvd(r, token) {
+    var logo = await loadImage(embeddedAssets.ovdLogo || "business-card-assets/ovd-logo.png");
+    var toolWrench = await loadImage(embeddedAssets.ovdToolWrench || "business-card-assets/ovd-tool-wrench.png");
+    var toolDrillbit = await loadImage(embeddedAssets.ovdToolDrillbit || "business-card-assets/ovd-tool-drillbit.png");
+    var toolScrewdriver = await loadImage(embeddedAssets.ovdToolScrewdriver || "business-card-assets/ovd-tool-screwdriver.png");
+    var toolPliers = await loadImage(embeddedAssets.ovdToolPliers || "business-card-assets/ovd-tool-pliers.png");
+    if (token !== renderToken) return;
+
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, W, H);
+
+    // Fotos das ferramentas (posição e rotação idênticas ao arquivo da gráfica).
+    drawOvdPdfImage(toolWrench, -20.2346356, -48.7293190, 47.8899378, -19.8861084, 153.6332, 94.0803);
+    drawOvdPdfImage(toolDrillbit, 60.1674419, 0, 0, 80.3255494, 125.4575, 9.6769);
+    drawOvdPdfImage(toolScrewdriver, -0.0000001, -68.7113759, 8.6619437, -0.0000001, 179.2327, 94.7162);
+    drawOvdPdfImage(toolPliers, 94.8452309, 0, 0, 55.4776504, 102.5639, 12.9421);
+
+    // Barra preta superior e inferior — sangram até a borda da folha (ver ovdBarRect/clamp).
+    ctx.fillStyle = "#000";
+    var topBar = ovdBarRect(125.4543, 169.9251);
+    ctx.fillRect(0, topBar[0], W, topBar[1]);
+    var bottomBar = ovdBarRect(10.1356, 32.4672);
+    ctx.fillRect(0, bottomBar[0], W, bottomBar[1]);
+
+    // Logo "Grupo OVD" (variante 100% amarela — o contorno preto do logo original desapareceria
+    // sobre a barra preta, então usamos a versão sem contorno, igual ao cartão impresso).
+    if (logo) {
+      var logoW = W * 0.335, logoH = logoW * (logo.height / logo.width);
+      ctx.drawImage(logo, W - logoW - 62, topBar[0] + topBar[1] * 0.14, logoW, logoH);
+    }
+
+    // Caixa branca do QR Code, com friso fino.
+    var qr = template.qr;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(qr.x, qr.y, qr.size, qr.size);
+    ctx.strokeStyle = "#b3a5a0";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(qr.x + 1, qr.y + 1, qr.size - 2, qr.size - 2);
+    drawContactQr(r, qr);
+
+    var left = ovdX(30.5847);
+    // Só usa os negritos vindos da planilha se o texto deles ainda bater com o nome atual —
+    // se o cartão foi editado manualmente depois da importação, cai no padrão automático em
+    // vez de mostrar negrito fora de lugar sobre um nome que já mudou.
+    var nameRuns = (r.nameRuns && r.nameRuns.length && r.nameRuns.map(function (x) { return x.text; }).join("") === r.name)
+      ? r.nameRuns
+      : ovdDefaultNameRuns(r.name);
+    drawOvdRuns(nameRuns, left, ovdY(107.2908), 9 * OVD_PT_TO_PX, "#000");
+    ctx.font = "400 " + (6.5 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+    ctx.fillStyle = "#000";
+    ctx.fillText((r.role || "").toUpperCase(), left, ovdY(98.6692));
+    if (r.phone) drawOvdRuns(ovdPhoneRuns(r.phone), left, ovdY(90.8946), 6.5 * OVD_PT_TO_PX, "#000");
+    if (r.email) ctx.fillText(r.email, left, ovdY(83.8732));
+
+    var addressLines = String(r.address || "").split(/\r\n|\r|\n/).filter(Boolean);
+    var lineY = ovdY(61.6187);
+    var lineStep = 7.9710 * OVD_PT_TO_PX;
+    addressLines.forEach(function (line) {
+      ctx.font = "400 " + (7 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+      ctx.fillStyle = "#000";
+      ctx.fillText(line, left, lineY);
+      lineY += lineStep;
+    });
+    if (r.landline) drawOvdRuns(ovdPhoneRuns(r.landline, "Fone "), left, lineY, 7 * OVD_PT_TO_PX, "#000");
+
+    // "www.ovd.com.br" em negrito branco, centralizado na barra inferior.
+    if (r.website) {
+      var siteSize = 6.5 * OVD_PT_TO_PX;
+      var siteRuns = [{ text: r.website, bold: true }];
+      var siteWidth = ovdRunsWidth(siteRuns, siteSize);
+      drawOvdRuns(siteRuns, (W - siteWidth) / 2, ovdY(24.2442), siteSize, "#fff");
+    }
+
+    drawCropMarks();
+  }
+
   function drawDecor(style, accent, secondary) {
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, W, H);
@@ -948,6 +1140,7 @@
       previewGuidesEnabled = false;
       try {
         if (template.style === "fg") await drawFg(r || recordFrom({}), localToken);
+        else if (template.style === "ovd") await drawOvd(r || recordFrom({}), localToken);
         else await drawGeneric(r || recordFrom({}), localToken);
       } finally {
         previewGuidesEnabled = true;
@@ -962,6 +1155,7 @@
     var token = ++renderToken;
     r = r || recordFrom({ name: "Nome", role: "Cargo" });
     if (template.style === "fg") await drawFg(r, token);
+    else if (template.style === "ovd") await drawOvd(r, token);
     else await drawGeneric(r, token);
   }
 
@@ -1049,9 +1243,10 @@
   var TRIM_WIDTH_MM = 90;
   var TRIM_HEIGHT_MM = 50;
   // Arquivo de referência para impressão (Lucas, "Cartao Atualizado"): folha final de 104 × 64 mm,
-  // ou seja 7 mm de sangria do corte até a borda da folha. A arte já embute 2 mm dessa sangria,
-  // então o pós-processamento estica mais 5 mm (2 → 7 mm) esticando os pixels da borda, sem tocar
-  // nas posições internas do cartão. Sem margem branca extra: a folha final é a própria sangria.
+  // ou seja 7 mm de sangria do corte até a borda da folha — sangria por continuidade (o próprio
+  // fundo do cartão, verde ou branco, se estende até a borda), sem faixa preta nem branca à parte.
+  // A arte já embute 2 mm dessa sangria, então o pós-processamento estica mais 5 mm (2 → 7 mm)
+  // repetindo os pixels da borda, sem tocar nas posições internas do cartão.
   var BLEED_EXTRA_MM = 5;
   // Vão entre a marca de corte e o canto real do corte, e espessura do traço — replicam o arquivo
   // de referência acima (marcas de corte reais, não a marca magenta que é só guia de tela).
@@ -1103,7 +1298,9 @@
       [bleedXPt, heightPt - innerYPt, bleedXPt, heightPt],
       [widthPt - bleedXPt, heightPt - innerYPt, widthPt - bleedXPt, heightPt]
     ];
-    var lines = ["q", "0 0 0 1 k", MARK_WIDTH_PT + " w", "1 J"];
+    // Cor de registro (Separation "All", tinta 100%): imprime nas 4 chapas ao mesmo tempo, igual
+    // ao arquivo de referência da gráfica — não é preto CMYK comum (0 0 0 1 k).
+    var lines = ["q", "/CS0 CS 1 SCN", MARK_WIDTH_PT + " w"];
     segments.forEach(function (s) {
       lines.push(s[0] + " " + s[1] + " m", s[2] + " " + s[3] + " l", "S");
     });
@@ -1137,7 +1334,7 @@
     var objects = [
       asciiBytes("<< /Type /Catalog /Pages 2 0 R /OutputIntents [6 0 R] >>"),
       asciiBytes("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
-      asciiBytes("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + widthPt + " " + heightPt + "] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>"),
+      asciiBytes("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + widthPt + " " + heightPt + "] /Resources << /XObject << /Im0 4 0 R >> /ColorSpace << /CS0 8 0 R >> >> /Contents 5 0 R >>"),
       concatBytes([
         asciiBytes("<< /Type /XObject /Subtype /Image /Width " + exportCanvas.width + " /Height " + exportCanvas.height + " /ColorSpace /DeviceCMYK /BitsPerComponent 8" + image.filter + " /Length " + image.bytes.length + " >>\nstream\n"),
         image.bytes,
@@ -1155,7 +1352,10 @@
         asciiBytes("<< /N 4 /Alternate /DeviceCMYK" + profile.filter + " /Length " + profile.bytes.length + " >>\nstream\n"),
         profile.bytes,
         asciiBytes("\nendstream")
-      ])
+      ]),
+      // Colorspace de registro ("All"), idêntico ao usado nas marcas de corte do arquivo de
+      // referência da gráfica: tinta 100% imprime nas 4 chapas simultaneamente.
+      asciiBytes("[/Separation /All /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0.0 0.0 0.0 0.0] /C1 [1.0 1.0 1.0 1.0] /N 1.0 >>]")
     ];
     var parts = [asciiBytes("%PDF-1.4\n% CMYK print file - " + EXPORT_DPI + " DPI\n")];
     var offsets = [0];
