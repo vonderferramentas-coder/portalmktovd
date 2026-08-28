@@ -18,4 +18,25 @@
 <section class="bc-export-bar" id="exportBar" hidden><div><span class="bc-status-dot"></span><p><strong id="approvedCount">0 de 0 aprovados</strong><small>Somente cartões revisados e aprovados podem ser exportados.</small></p></div><div class="bc-export-actions"><button id="exportCurrent" type="button">PDF deste cartão</button><button id="exportSelected" type="button">PDF dos selecionados</button><button class="bc-primary" id="exportAll" type="button">↓ Exportar lote completo</button></div></section>
 <div class="bc-toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="bc-confirm-backdrop" id="returnToImportModal" hidden><section class="bc-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="returnToImportTitle" aria-describedby="returnToImportDescription"><button class="bc-confirm-close" id="cancelReturnToImportIcon" type="button" aria-label="Fechar aviso">×</button><div class="bc-confirm-icon" aria-hidden="true">!</div><span class="bc-eyebrow">Atenção</span><h2 id="returnToImportTitle">Voltar para Importar?</h2><p id="returnToImportDescription">As alterações feitas nas etapas Editar, Revisar e Exportar não serão salvas e serão perdidas. Deseja continuar?</p><div class="bc-confirm-actions"><button id="cancelReturnToImport" type="button">Continuar editando</button><button class="bc-confirm-danger" id="confirmReturnToImport" type="button">Voltar para Importar</button></div></section></div>
-</main></div><script src="sync-backend.js"></script><script src="portal-shell.js"></script><script src="vendor/xlsx.full.min.js"></script><script src="vendor/qrcode-generator.js"></script><script src="business-card-assets.js"></script><script src="business-card-print-profile.js"></script><script src="business-card-generator.js"></script></body></html>
+</main></div><script src="sync-backend.js"></script><script src="portal-shell.js"></script><script src="vendor/xlsx.full.min.js"></script><script src="vendor/qrcode-generator.js"></script><script src="business-card-assets.js"></script><script src="business-card-print-profile.js"></script><script src="business-card-generator.js"></script>
+<script>
+window.addEventListener('load', function () {
+  var record = { id: '1', name: 'Lucas Passos', role: 'Analista de Marketing', address: 'Teste\nTeste', landline: '', phone: '(41) 99999-9999', email: 'teste@teste.com.br', website: 'teste.com.br', logoVariant: 'fg', selected: true, reviewed: false, approved: false, issues: [] };
+  window.BusinessCardGenerator.createPdf(record).then(function (doc) {
+    var bytes = doc.output();
+    var text = '';
+    for (var i = 0; i < bytes.length; i++) text += String.fromCharCode(bytes[i]);
+    var mb = text.match(/MediaBox \[([^\]]+)\]/);
+    var streamMatch = text.match(/5 0 obj\r?\n<<[^>]*>>\r?\nstream\r?\n([\s\S]*?)endstream/);
+    var hasMagenta = /255\s*0\s*255|ff00ff/i.test(text);
+    var pre = document.createElement('pre');
+    pre.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#fff;color:#000;font-size:16px;padding:16px;z-index:99999;white-space:pre-wrap;margin:0;font-family:monospace';
+    pre.textContent = 'MediaBox: ' + (mb ? mb[1] : 'NAO ENCONTRADO') + '\n\n--- content stream ---\n' + (streamMatch ? streamMatch[1] : 'NAO ENCONTRADO');
+    document.body.appendChild(pre);
+    document.title = 'PDF-READY-bytes=' + bytes.length;
+  }).catch(function (err) {
+    document.title = 'PDF-ERROR:' + (err && err.message ? err.message : err);
+  });
+});
+</script>
+</body></html>
