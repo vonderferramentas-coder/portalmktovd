@@ -102,6 +102,10 @@
   var H = canvas.height;
   var renderToken = 0;
   var images = {};
+  // drawCropMarks() é só um guia magenta em tela para orientar o enquadramento durante a edição.
+  // Nunca pode ser desenhado no canvas offscreen usado para gerar o PDF de impressão — senão a
+  // marca vira tinta real no arquivo final. renderCanvas() liga/desliga esta flag.
+  var previewGuidesEnabled = true;
   var fields = {
     logoVariant: $("fieldLogoVariant"),
     name: $("fieldName"),
@@ -714,6 +718,7 @@
   }
 
   function drawCropMarks() {
+    if (!previewGuidesEnabled) return;
     var inset = 40;
     var gap = 11;
     var len = 29;
@@ -940,8 +945,13 @@
       H = logicalSize ? logicalSize.height : physicalHeight;
       ctx.setTransform(physicalWidth / W, 0, 0, physicalHeight / H, 0, 0);
       var localToken = ++renderToken;
-      if (template.style === "fg") await drawFg(r || recordFrom({}), localToken);
-      else await drawGeneric(r || recordFrom({}), localToken);
+      previewGuidesEnabled = false;
+      try {
+        if (template.style === "fg") await drawFg(r || recordFrom({}), localToken);
+        else await drawGeneric(r || recordFrom({}), localToken);
+      } finally {
+        previewGuidesEnabled = true;
+      }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       canvas = oldCanvas;
       ctx = oldCtx;
