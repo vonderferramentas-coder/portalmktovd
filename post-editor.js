@@ -220,7 +220,7 @@ function chooseCatalogProduct(item){
  }).catch(function(){if(selectedProduct!==item)return;$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Produto carregado; a foto de aplicação não abriu',false)})}else{$('#backgroundFileName').textContent='Clique ou arraste uma imagem'}
  var urls=itemImageUrls(item,CATALOG_PRODUCT_WIDTH);if(!urls.length){status('Dados preenchidos; envie a foto do produto',false);return}status(bgUrl?'Carregando produto e foto de aplicação…':'Carregando e recortando a foto do catálogo…',true);$('#productFileName').textContent='Foto do catálogo · '+(codes[0]?codes[0].code:'produto')+' · clique para alterar';
  loadExportSafeImage(urls).then(function(im){if(selectedProduct!==item)return;
-  state.product=im;$('#productFileName').textContent='Foto do catálogo carregada · clique para alterar';$('#removeWhite').checked=true;updateProduct()
+  state.product=im;$('#productFileName').textContent='Foto do catálogo carregada · clique para alterar';$('#removeWhite').checked=!hasTransparency(im);updateProduct()
  }).catch(function(){if(selectedProduct!==item)return;var localHint=location.protocol==='file:'?' Abra pelo arquivo “Abrir Calendario.cmd” para ativar o recorte automático.':'';status('Dados preenchidos; não foi possível carregar a foto automaticamente.'+localHint,false);$('#productFileName').textContent='Foto visível, mas o recorte automático precisa do lançador'})
 }
 // resultados que começam pelo termo buscado (no nome ou em algum código) vêm antes dos que só
@@ -371,6 +371,16 @@ function analyze(){
  Object.keys(candidates).forEach(function(k){var s=regionScore(state.background,candidates[k]);if(s<score){score=s;best=k}});state.autoLayout=best;drawAll();status('Composição automática: '+({left:'esquerda',stacked:'superior',right:'direita'}[best]),false)
 }
 function fileImage(file){return new Promise(function(resolve,reject){var u=URL.createObjectURL(file),im=new Image();im.onload=function(){URL.revokeObjectURL(u);resolve(im)};im.onerror=function(){URL.revokeObjectURL(u);reject(new Error('Imagem inválida'))};im.src=u})}
+// true se a imagem já vier com transparência de verdade (PNG já recortado no catálogo) — nesse
+// caso o recorte automático não deve rodar de novo em cima dela: sem fundo sobrando pras bordas
+// calibrarem a cor "de fundo", o algoritmo (baseado na cor média dos 4 cantos) perde a referência
+// e passa a comer partes claras/escuras do próprio produto. Amostra em baixa resolução (mesmo
+// teto de removeWhite) só pra decidir rápido, sem pesar no carregamento.
+function hasTransparency(im){
+ var max=200,s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));
+ var x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);
+ try{var d=x.getImageData(0,0,c.width,c.height).data;for(var i=3;i<d.length;i+=4)if(d[i]<250)return true;return false}catch(e){return false}
+}
 function removeWhite(im){
  var max=900,s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);var x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);var data=x.getImageData(0,0,c.width,c.height),d=data.data,w=c.width,h=c.height,corners=[[0,0],[w-1,0],[0,h-1],[w-1,h-1]],avg=[0,0,0];
  corners.forEach(function(p){var i=(p[1]*w+p[0])*4;avg[0]+=d[i]/4;avg[1]+=d[i+1]/4;avg[2]+=d[i+2]/4});var seen=new Uint8Array(w*h),queue=new Int32Array(w*h),head=0,tail=0;
