@@ -1,6 +1,7 @@
 # Ferramentas locais (Claude Code / agentes) — não faz parte do site
 .agents/
 .claude/
+.autosync/
 
 # Lixo do Windows
 Thumbs.db
