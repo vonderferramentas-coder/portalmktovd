@@ -667,6 +667,8 @@
     .guided-form-panel .grid-2{display:block}
     .guided-form-panel .grid-2 > div{display:contents}
     .modal--guided-post [data-guided-step][hidden]{display:none}
+    /* Ocultação exclusiva do fluxo institucional: não interfere nas etapas guiadas. */
+    .modal--guided-post .institutional-hidden{display:none!important}
     .modal--guided-post .guided-post-footer [hidden]{display:none!important}
     .guided-preview-panel{position:sticky;top:0;min-width:0}
     .guided-preview-panel .form-group{margin-bottom:0}

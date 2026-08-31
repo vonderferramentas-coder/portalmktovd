@@ -67,13 +67,23 @@
   function validatePhone(value, type, required) {
     var digits = phoneDigits(value, type);
     var label = type === "landline" ? "Telefone fixo" : "Celular";
-    var expected = type === "landline" ? 10 : 11;
-    if (!digits) return { valid: !required, empty: true, message: required ? label + " não informado." : "DDD + 8 números" };
-    if (digits.length !== expected) return { valid: false, empty: false, message: label + " deve ter DDD + " + (expected - 2) + " números." };
+    if (!digits) return { valid: !required, empty: true, message: required ? label + " não informado." : (type === "landline" ? "DDD + 8 números" : "DDD + 9 números") };
+    if (type === "landline") {
+      if (digits.length !== 10) return { valid: false, empty: false, message: label + " deve ter DDD + 8 números." };
+      if (!VALID_DDDS[digits.slice(0, 2)]) return { valid: false, empty: false, message: "DDD inválido. Confira os dois primeiros números." };
+      if (!/[2-5]/.test(digits.charAt(2))) return { valid: false, empty: false, message: "Telefone fixo deve começar entre 2 e 5 após o DDD." };
+      return { valid: true, empty: false, message: "Telefone fixo válido" };
+    }
+    // Celular aceita o padrão DDD + 9 (começando com 9) e também o ramal interno da empresa, que
+    // funciona como WhatsApp e é cadastrável aqui: DDD + 8 números começando com 2, ex.: (41) 2101-3357.
+    var isMobile9 = digits.length === 11 && digits.charAt(2) === "9";
+    var isRamal8 = digits.length === 10 && digits.charAt(2) === "2";
+    if (!isMobile9 && !isRamal8) {
+      if (digits.length !== 10 && digits.length !== 11) return { valid: false, empty: false, message: "Celular deve ter DDD + 8 (ramal) ou DDD + 9 números." };
+      return { valid: false, empty: false, message: "Celular deve começar com 9 (DDD + 9) ou com 2 no caso de ramal (DDD + 8)." };
+    }
     if (!VALID_DDDS[digits.slice(0, 2)]) return { valid: false, empty: false, message: "DDD inválido. Confira os dois primeiros números." };
-    if (type === "mobile" && digits.charAt(2) !== "9") return { valid: false, empty: false, message: "Celular deve começar com 9 após o DDD." };
-    if (type === "landline" && !/[2-5]/.test(digits.charAt(2))) return { valid: false, empty: false, message: "Telefone fixo deve começar entre 2 e 5 após o DDD." };
-    return { valid: true, empty: false, message: type === "landline" ? "Telefone fixo válido" : "Celular válido" };
+    return { valid: true, empty: false, message: "Celular válido" };
   }
 
   function activeBrand() {
@@ -93,7 +103,8 @@
     "toolmix": { label: "Institucional TOOLMIX", source: "Identidade exclusiva TOOLMIX", accent: "#F26522", ink: "#272727", style: "corner", qr: { x: 1460, y: 680, size: 300 } },
     "dwt": { label: "Institucional DWT", source: "Identidade exclusiva DWT", accent: "#285C4D", secondary: "#AB2328", ink: "#262626", style: "split", qr: { x: 1460, y: 680, size: 300 } },
     "nove54": { label: "Institucional NOVE54", source: "Identidade exclusiva NOVE54", accent: "#BD1D1D", ink: "#191919", style: "rail", qr: { x: 1460, y: 680, size: 300 } },
-    "grupo-ovd": { label: "GRUPO OVD 90 × 50 mm", source: "CorelDRAW .cdr preenchido", accent: "#000000", secondary: "#FFC20D", ink: "#000000", style: "ovd", qr: { x: 1260, y: 508, size: 500 } }
+    "grupo-ovd": { label: "GRUPO OVD 90 × 50 mm", source: "CorelDRAW .cdr preenchido", accent: "#000000", secondary: "#FFC20D", ink: "#000000", style: "ovd", qr: { x: 1260, y: 508, size: 500 } },
+    "pilar-tecnologia": { label: "Pilar Tecnologia 90 × 50 mm", source: "Illustrator .ai de referência", accent: "#003A5D", ink: "#333333", style: "pilar", qr: { x: 1220, y: 372.5, size: 520 } }
   };
 
   var template = BRAND_TEMPLATES[brand.id] || { label: "Institucional " + brand.name, source: "Identidade exclusiva da marca", accent: "#4b5563", ink: "#202124", style: "corner" };
@@ -270,22 +281,27 @@
     });
   }
 
-  function renderPhoneValidation(fieldName, type, showEmpty) {
+  function renderPhoneValidation(fieldName, type, showEmpty, required) {
     var input = fields[fieldName];
     var hint = $(fieldName === "landline" ? "landlineHint" : "phoneHint");
     if (!input || !hint) return;
-    var result = validatePhone(input.value, type, fieldName === "phone");
+    var result = validatePhone(input.value, type, required);
     var invalid = !result.valid && (!result.empty || showEmpty);
     input.classList.toggle("is-invalid", invalid);
     input.setAttribute("aria-invalid", invalid ? "true" : "false");
+    input.setAttribute("aria-required", required ? "true" : "false");
     hint.classList.toggle("is-invalid", invalid);
     if (invalid || (!result.empty && result.valid)) hint.textContent = result.message;
-    else hint.textContent = fieldName === "landline" ? "DDD + 8 números" : "DDD + 9 números";
+    else hint.textContent = fieldName === "landline" ? "DDD + 8 números" : "DDD + 9 números (ou 8, se ramal)";
   }
 
   function renderPhoneValidations(showEmpty) {
-    renderPhoneValidation("landline", "landline", showEmpty);
-    renderPhoneValidation("phone", "mobile", showEmpty);
+    var r = current();
+    // Com o Telefone preenchido (ex.: coluna única "FONE" da planilha), ele passa a ser o único
+    // número obrigatório do cartão e o Celular deixa de ser exigido.
+    var mobileRequired = !(r && r.landline);
+    renderPhoneValidation("landline", "landline", showEmpty, false);
+    renderPhoneValidation("phone", "mobile", showEmpty, mobileRequired);
   }
 
   function renderEditor() {
@@ -329,14 +345,14 @@
     }
   }
 
-  // Seletor manual de negrito do nome — só faz sentido no cartão GRUPO OVD (drawOvd), que é
-  // o único template que desenha o nome em runs {texto,negrito}. Cada nome tem uma parte
-  // "fantasia" própria e sem regra fixa (ex.: "Ailton Ribeiro da Silva" → Ailton Silva;
-  // "Marlos José Camilli" → só Marlos), por isso a escolha fica a cargo de quem revisa o cartão.
+  // Seletor manual de negrito do nome — só faz sentido nos cartões que desenham o nome em runs
+  // {texto,negrito} (GRUPO OVD e PILAR TECNOLOGIA). Cada nome tem uma parte "fantasia" própria e
+  // sem regra fixa (ex.: "Ailton Ribeiro da Silva" → Ailton Silva; "Marlos José Camilli" → só
+  // Marlos), por isso a escolha fica a cargo de quem revisa o cartão.
   function renderNameBoldPicker(r) {
     var field = $("nameBoldField");
     if (!field) return;
-    var show = !!r && template.style === "ovd";
+    var show = !!r && (template.style === "ovd" || template.style === "pilar");
     field.hidden = !show;
     if (!show) return;
     var words = nameWordsWithBold(r);
@@ -682,7 +698,9 @@
     if (!r.name) issues.push({ blocking: true, message: "Nome completo não informado." });
     if (!r.role) issues.push({ blocking: true, message: "Cargo não informado." });
     var landlineCheck = validatePhone(r.landline, "landline", false);
-    var mobileCheck = validatePhone(r.phone, "mobile", true);
+    // Se o Telefone já cadastra o único número do cartão (ex.: planilha com coluna única "FONE"),
+    // o Celular deixa de ser obrigatório.
+    var mobileCheck = validatePhone(r.phone, "mobile", !r.landline);
     if (!landlineCheck.valid) issues.push({ blocking: true, message: landlineCheck.message });
     if (!mobileCheck.valid) issues.push({ blocking: true, message: mobileCheck.message });
     if (!r.email) issues.push({ blocking: true, message: "E-mail não informado." });
@@ -811,7 +829,9 @@
       role: headerIndex(headers, ["cargo", "funcao", "função", "role"]),
       address: headerIndex(headers, ["endereco", "address"]),
       landline: headerIndex(headers, ["telefonefixo", "fixo", "telefonecomercial", "landline", "fone"]),
-      phone: headerIndex(headers, ["celular", "telefonecelular", "whatsapp", "mobile", "phone", "telefone", "fone"]),
+      // "fone" fica só no Telefone: uma planilha com coluna única "FONE" (sem Celular separado)
+      // deve carregar apenas o Telefone, e não duplicar o mesmo número no Celular.
+      phone: headerIndex(headers, ["celular", "telefonecelular", "whatsapp", "mobile", "phone", "telefone"]),
       email: headerIndex(headers, ["email", "correioeletronico"]),
       website: headerIndex(headers, ["site", "website", "url"])
     };
@@ -1183,12 +1203,25 @@
     return runs;
   }
 
+  // Mesma ideia do padrão OVD, mas o cartão PILAR TECNOLOGIA destaca só o primeiro nome —
+  // o restante (sobrenome) sai em peso normal enquanto ninguém escolher outra palavra.
+  function pilarDefaultNameRuns(name) {
+    var text = String(name || "");
+    var words = text.split(" ");
+    if (words.length < 2) return [{ text: text, bold: true }];
+    return [{ text: words[0], bold: true }, { text: " " + words.slice(1).join(" "), bold: false }];
+  }
+
+  function defaultNameRuns(name) {
+    return template.style === "pilar" ? pilarDefaultNameRuns(name) : ovdDefaultNameRuns(name);
+  }
+
   // Runs "ativos" de um cartão: usa o negrito escolhido manualmente (r.nameRuns) enquanto ele
-  // ainda descrever o nome atual; senão cai no padrão automático (primeiro + último nome).
+  // ainda descrever o nome atual; senão cai no padrão automático do template ativo.
   function ovdActiveNameRuns(r) {
     return (r.nameRuns && r.nameRuns.length && r.nameRuns.map(function (x) { return x.text; }).join("") === r.name)
       ? r.nameRuns
-      : ovdDefaultNameRuns(r.name);
+      : defaultNameRuns(r.name);
   }
 
   // Expande runs {text,bold} num array de flags de negrito por caractere, na mesma ordem do
@@ -1431,6 +1464,97 @@
     }
   }
 
+  // ==== PILAR TECNOLOGIA (estilo "pilar") ====
+  // Coordenadas extraídas diretamente do PDF compatível incorporado ao arquivo Illustrator.
+  // A página-fonte tem 104 × 64 mm; o canvas representa os 94 × 54 mm centrais do gerador.
+  var PILAR_PT_TO_PX = 20 / 2.834645669;
+  var PILAR_ART_LEFT_PT = 14.1732;
+  var PILAR_ART_TOP_PT = 14.1732;
+
+  function pilarX(pt) { return (pt - PILAR_ART_LEFT_PT) * PILAR_PT_TO_PX; }
+  function pilarY(ptFromPageTop) { return (ptFromPageTop - PILAR_ART_TOP_PT) * PILAR_PT_TO_PX; }
+
+  function drawPilarPhone(phone, x, baseline, gray) {
+    var digits = String(phone || "").replace(/\D/g, "");
+    if (digits.slice(0, 2) === "55" && digits.length > 10) digits = digits.slice(2);
+    if (!digits) return;
+    var ddd = digits.slice(0, 2);
+    var number = digits.slice(2);
+    var grouped = number.length === 9 ? number.slice(0, 5) + " " + number.slice(5) : number.slice(0, 4) + " " + number.slice(4);
+    ctx.font = "400 " + (7 * PILAR_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+    ctx.fillStyle = gray;
+    var prefix = "Fone " + ddd + " ";
+    ctx.fillText(prefix, x, baseline);
+    var prefixWidth = ctx.measureText(prefix).width;
+    ctx.font = "700 " + (7 * PILAR_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+    ctx.fillText(grouped, x + prefixWidth, baseline);
+  }
+
+  async function drawPilar(r, token) {
+    var blue = "#003A5D";
+    var gray = "#333333"; // CMYK 0/0/0/80 aprovado para o texto
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = blue;
+    ctx.fillRect(0, 0, W, pilarY(56.693));
+    ctx.fillRect(0, pilarY(151.653), W, H - pilarY(151.653));
+
+    var logoSource = (window.OVD_BRAND_LOGOS || {})["Pilar_Tecnologia_Horizontal"];
+    var logo = logoSource ? await loadImage(logoSource) : null;
+    var qrDiagram = await loadImage("business-card-assets/pilar-qr-diagram.png");
+    if (token !== renderToken) return;
+    if (qrDiagram) {
+      var diagramHeight = (151.653 - 56.693) * PILAR_PT_TO_PX;
+      var diagramWidth = diagramHeight * (qrDiagram.width / qrDiagram.height);
+      ctx.drawImage(qrDiagram, pilarX(283.465) - diagramWidth, pilarY(56.693), diagramWidth, diagramHeight);
+    }
+    if (logo) {
+      var logoBox = { x: pilarX(223.246), y: pilarY(28.346), w: 37.5414 * PILAR_PT_TO_PX, h: 22.6765 * PILAR_PT_TO_PX };
+      var scale = Math.min(logoBox.w / logo.width, logoBox.h / logo.height);
+      var iw = logo.width * scale, ih = logo.height * scale;
+      ctx.save();
+      ctx.filter = "brightness(0) invert(1)";
+      ctx.drawImage(logo, logoBox.x + (logoBox.w - iw) / 2, logoBox.y + (logoBox.h - ih) / 2, iw, ih);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "right";
+      ctx.font = "700 72px Arial,sans-serif";
+      ctx.fillText("PILAR", pilarX(260.7874), pilarY(42));
+      ctx.font = "400 34px Arial,sans-serif";
+      ctx.fillText("TECNOLOGIA", pilarX(260.7874), pilarY(49));
+    }
+
+    var nameX = pilarX(34.7891);
+    var textX = pilarX(34.0156);
+    var textMax = pilarX(176) - nameX;
+    // Bloco de texto deslocado -1.221pt (medido pelas métricas reais de fonte: fontBoundingBoxAscent
+    // do nome e fontBoundingBoxDescent do telefone) para que a margem acima do Nome completo fique
+    // igual à margem abaixo do Fone dentro da faixa branca do cartão.
+    var baseline = pilarY(75.7742);
+    ctx.textAlign = "left";
+    var nameRuns = ovdActiveNameRuns(r.name ? r : { name: "Nome completo", nameRuns: null });
+    var fitSize = 9 * PILAR_PT_TO_PX;
+    while (fitSize > 24 && ovdRunsWidth(nameRuns, fitSize) > textMax) fitSize -= 2;
+    drawOvdRuns(nameRuns, nameX, baseline, fitSize, gray);
+    ctx.font = "400 " + (6.5 * PILAR_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+    ctx.fillText((r.role || "Cargo").toUpperCase(), nameX, pilarY(84.3549));
+    ctx.fillText(r.email || "email@pilartecnologia.com.br", nameX, pilarY(92.1549));
+    ctx.font = "400 " + (7 * PILAR_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+    var addressLines = wrapText(r.address || "Endereço", textMax, 3);
+    addressLines.forEach(function (line, index) { ctx.fillText(line, textX, pilarY(114.3166 + index * 8.4)); });
+    var phone = r.landline || r.phone || "";
+    if (phone) drawPilarPhone(phone, textX, pilarY(139.5166), gray);
+
+    var qr = template.qr;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(qr.x, qr.y, qr.size, qr.size);
+    drawContactQr(r, qr);
+    ctx.strokeStyle = "rgba(0,0,0,.8)";
+    ctx.lineWidth = 0.5 * PILAR_PT_TO_PX;
+    ctx.strokeRect(qr.x, qr.y, qr.size, qr.size);
+  }
+
   async function drawGeneric(r, token) {
     drawDecor(template.style, template.accent, template.secondary);
     var logoSource = (embeddedAssets.logos && embeddedAssets.logos[brand.id]) || brand.photo;
@@ -1484,6 +1608,7 @@
       var localToken = ++renderToken;
       if (template.style === "fg") await drawFg(r || recordFrom({}), localToken);
       else if (template.style === "ovd") await drawOvd(r || recordFrom({}), localToken);
+      else if (template.style === "pilar") await drawPilar(r || recordFrom({}), localToken);
       else await drawGeneric(r || recordFrom({}), localToken);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       canvas = oldCanvas;
@@ -1496,6 +1621,7 @@
     r = r || recordFrom({ name: "Nome", role: "Cargo" });
     if (template.style === "fg") await drawFg(r, token);
     else if (template.style === "ovd") await drawOvd(r, token);
+    else if (template.style === "pilar") await drawPilar(r, token);
     else await drawGeneric(r, token);
   }
 
@@ -1544,12 +1670,14 @@
   }
 
   // Cores institucionais com receita CMYK exata aprovada (independente da conversão RGB→CMYK
-  // genérica): verde FG (#005745) e amarelo GRUPO OVD (#FFC20D, pixel dominante do logo raster
-  // business-card-assets/ovd-logo.png). Cada entrada vira um vetor/norma pré-calculado usado para
-  // detectar tanto o pixel sólido quanto sua suavização contra o branco ao redor.
+  // genérica): verde FG (#005745), amarelo GRUPO OVD (#FFC20D, pixel dominante do logo raster
+  // business-card-assets/ovd-logo.png) e azul PILAR TECNOLOGIA (#003A5D, CMYK 100/48/12/58
+  // aprovado). Cada entrada vira um vetor/norma pré-calculado usado para detectar tanto o pixel
+  // sólido quanto sua suavização contra o branco ao redor.
   var BRAND_CMYK_RECIPES = [
     { rgb: [0, 87, 69], cmyk: [.95, .37, .73, .38] },
-    { rgb: [255, 194, 13], cmyk: [0, .25, 1, 0] }
+    { rgb: [255, 194, 13], cmyk: [0, .25, 1, 0] },
+    { rgb: [0, 58, 93], cmyk: [1, .48, .12, .58] }
   ].map(function (recipe) {
     var vector = [255 - recipe.rgb[0], 255 - recipe.rgb[1], 255 - recipe.rgb[2]];
     var norm = vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2];
@@ -1954,6 +2082,16 @@
     $("brandDot").textContent = brand.shortName || brand.name.slice(0, 3).toUpperCase();
     $("miniBrand").textContent = brand.shortName || brand.name.slice(0, 3).toUpperCase();
     $("logoVariantField").hidden = template.style !== "fg";
+    if (template.style === "pilar") {
+      // O cartão PILAR TECNOLOGIA não tem site impresso e mostra o e-mail logo após o cargo
+      // (mesma ordem da arte impressa: nome, cargo, e-mail, endereço).
+      $("websiteField").hidden = true;
+      var emailField = $("fieldEmail").closest(".bc-field");
+      var addressField = $("fieldAddress").closest(".bc-field");
+      if (emailField && addressField && emailField.parentNode === addressField.parentNode) {
+        addressField.parentNode.insertBefore(emailField, addressField);
+      }
+    }
     $("spreadsheetFile").addEventListener("change", function () { handleFile(this.files[0]); this.value = ""; });
     $("startManual").addEventListener("click", startManualCard);
     $("addRecord").addEventListener("click", addManual);

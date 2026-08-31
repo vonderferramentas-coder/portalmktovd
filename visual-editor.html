@@ -445,9 +445,16 @@
               <h3 class="fg-label">Tipo da publicação</h3>
               <label>Editoria</label>
               <div id="editoriasContainer" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"></div>
+              <div id="mCommemorativePostTypeField" hidden>
+                <label class="field-gap" for="mCommemorativePostType">Tipo de post da data</label>
+                <select id="mCommemorativePostType">
+                  <option value="custom">Personalizado — criar briefing</option>
+                  <option value="institutional">Institucional — criar no Editor de Posts</option>
+                </select>
+              </div>
             </div>
 
-            <div class="form-group" data-guided-step="2">
+            <div id="mInstitutionalCommemorativeProductsGroup" class="form-group" data-guided-step="2">
               <h3 class="fg-label">Produto(s)</h3>
               <label class="chip" style="margin-bottom:8px;width:fit-content"><input type="checkbox" id="mNoProduct" title="Marque para postagens sem produto específico, como institucionais/anúncios" /> Postagem sem produto (institucional)</label>
               <label>Buscar produto</label>
@@ -481,7 +488,7 @@
               <div id="mPlacesContainer" style="display:flex;flex-direction:column;gap:6px;margin-top:6px"></div>
             </div>
 
-            <div class="form-group" data-guided-step="2">
+            <div id="mContentSuggestionsGroup" class="form-group" data-guided-step="2">
               <h3 class="fg-label">Sugestões de conteúdo</h3>
               <div style="font-size:11.5px;color:var(--muted);margin:-6px 0 8px">3 ideias de pauta prontas, de acordo com a editoria selecionada.</div>
               <div id="contentSuggestions"></div>
@@ -491,7 +498,13 @@
               <div id="intelSuggestBox" class="intel-modal-box" style="display:none"></div>
             </div>
             <div class="form-group" data-guided-step="2">
-              <h3 class="fg-label">Conteúdo da publicação</h3>
+              <h3 id="mInstitutionalCommemorativeContentHeading" class="fg-label">Conteúdo da publicação</h3>
+              <div id="mInstitutionalCommemorativeBox" hidden style="margin:-2px 0 12px;padding:12px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:color-mix(in srgb,var(--accent) 8%,var(--surface));font-size:12px;line-height:1.55;color:var(--text)">
+                <strong style="display:block;margin-bottom:4px">Post institucional de data comemorativa</strong>
+                <span>Este card será salvo apenas como marcação no calendário. A arte será criada e baixada diretamente no Editor de Posts, usando a template institucional de Datas comemorativas. Por isso, ele não será enviado como briefing para a equipe de designers.</span>
+                <button type="button" id="mOpenInstitutionalCommemorativeEditorBtn" class="btn small" style="margin-top:10px">Salvar marcação e abrir o Editor de Posts</button>
+              </div>
+              <div id="mInstitutionalCommemorativeContentFields">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
                 <label style="margin:0">Texto</label>
                 <div style="display:flex;gap:6px">
@@ -510,8 +523,9 @@
                 <button type="button" id="intelValidateBtn" class="btn ghost small">Analisar publicação</button>
               </div>
               <div id="intelValidateResult"></div>
+              </div>
             </div>
-            <div class="form-group" data-guided-preview>
+            <div id="mBriefingPreviewGroup" class="form-group" data-guided-preview>
               <div class="fg-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
                 <h3 style="margin-bottom:0;padding-bottom:0;border-bottom:0">Pré-visualização do briefing</h3>
                 <button type="button" id="mCopyBriefingBtn" class="btn-icon" style="width:26px;height:26px;font-size:13px;flex-shrink:0" title="Copiar texto do briefing" aria-label="Copiar texto do briefing"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
@@ -529,6 +543,17 @@
       </div>
     </div>
 
+    <!-- Confirmação visual para as ações de duplicar e excluir cards. -->
+    <div id="cardActionConfirmBackdrop" class="modal-backdrop">
+      <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="cardActionConfirmTitle">
+        <div class="modal-header">
+          <div class="modal-header-title"><h2 id="cardActionConfirmTitle">Confirmar ação</h2></div>
+          <div class="modal-header-actions"><button type="button" id="cardActionConfirmCloseBtn" class="modal-close" aria-label="Fechar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+        </div>
+        <div class="modal-body"><p id="cardActionConfirmMessage" style="margin:0;font-size:13px;line-height:1.55;color:var(--text)"></p></div>
+        <div class="modal-footer"><button type="button" id="cardActionConfirmCancel" class="btn ghost">Cancelar</button><button type="button" id="cardActionConfirmOk" class="btn">Confirmar</button></div>
+      </div>
+    </div>
     <!-- Modal de confirmação: remover produto quando já há conteúdo escrito na publicação — avisa
          que o conteúdo (campo Texto) também será apagado antes de confirmar a remoção. Fica depois
          de #modalBackdrop no HTML de propósito, pra empilhar por cima dele (mesmo z-index, ordem no
