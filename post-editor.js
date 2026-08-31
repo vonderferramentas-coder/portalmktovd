@@ -290,15 +290,12 @@ function loadExportSafeImage(urls){return new Promise(function(resolve,reject){
 })}
 // ============================================================
 // MARCA NO CABEÇALHO — biblioteca de logos em post-editor-assets/brands/*.svg (centenas de
-// marcas). Sob file:// nem fetch() nem XHR conseguem ler esses arquivos como texto (bloqueado
-// pelo navegador), então cada SVG tem um "wrapper" gerado em post-editor-assets/brands-js/
-// (mesmo nome + .js) que só faz window.OVD_BRAND_LOGOS[nome]='data:image/svg+xml;base64,...' —
-// uma tag <script> carrega isso sem restrição de CORS, e o resultado (uma data: URI) nunca
-// contamina o canvas. As miniaturas do buscador, por outro lado, usam o SVG bruto direto num
-// <img> (nunca desenhadas em canvas), o que é seguro e mais leve.
+// marcas). Os SVGs brutos são fontes locais e ficam fora do Git. Cada um tem um "wrapper"
+// publicado em post-editor-assets/brands-js/ (mesmo nome + .js), que registra uma data: URI em
+// window.OVD_BRAND_LOGOS. Uma tag <script> carrega o wrapper sem restrição de CORS sob file://;
+// a mesma data: URI alimenta canvas e miniaturas sem depender da pasta-fonte ignorada.
 var BRAND_MANIFEST=window.OVD_BRAND_MANIFEST||['VONDER','Vonder_plus'];
 var BRAND_LOGO_CACHE={};
-function brandLogoSvgUrl(name){return'post-editor-assets/brands/'+encodeURIComponent(name)+'.svg'}
 function displayBrandName(name){return String(name||'').replace(/_/g,' ')}
 // compatibilidade com o antigo valor de item.brandVariant salvo no catálogo ('vonder'/'vonder-plus')
 function normalizeBrandVariant(value){if(!value)return null;if(/^vonder-plus$/i.test(value))return'Vonder_plus';if(/^vonder$/i.test(value))return'VONDER';return value}
@@ -322,9 +319,10 @@ function selectBrandLogo(name,skipRedraw){
  state.brandLogoName=name;
  var nameEl=$('#brandLogoName');if(nameEl)nameEl.textContent=displayBrandName(name);
  var thumb=$('#brandLogoThumb');
- if(thumb){thumb.innerHTML='';var im=document.createElement('img');im.alt='';im.src=brandLogoSvgUrl(name);thumb.appendChild(im)}
+ if(thumb){thumb.innerHTML='';var im=document.createElement('img');im.alt='';thumb.appendChild(im)}
  loadBrandLogoImage(name).then(function(img){
   if(state.brandLogoName!==name)return;
+  var thumbImg=$('#brandLogoThumb img');if(thumbImg)thumbImg.src=img.src;
   state.customAssets.brandLogo=img;
   if(!skipRedraw)drawAll()
  }).catch(function(){
@@ -342,10 +340,11 @@ function renderBrandLogoResults(){
  var matches=matchingBrandLogos(input.value);
  if(!matches.length){box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhuma marca encontrada</strong>Tente buscar por outro termo.</div>';return}
  box.innerHTML=matches.map(function(name,index){
-  return '<button type="button" class="pe-catalog-item" data-brand-index="'+index+'"><img alt="" loading="lazy" decoding="async" src="'+brandLogoSvgUrl(name)+'"><span><strong>'+escapeHtml(displayBrandName(name))+'</strong></span><span>›</span></button>'
+  return '<button type="button" class="pe-catalog-item" data-brand-index="'+index+'"><img alt="" loading="lazy" decoding="async"><span><strong>'+escapeHtml(displayBrandName(name))+'</strong></span><span>›</span></button>'
  }).join('');
  $$('#brandLogoResults [data-brand-index]').forEach(function(btn){
   var name=matches[Number(btn.dataset.brandIndex)];
+  loadBrandLogoImage(name).then(function(img){var thumb=btn.querySelector('img');if(thumb)thumb.src=img.src}).catch(function(){btn.classList.add('is-unavailable')});
   btn.addEventListener('click',function(){
    selectBrandLogo(name);
    $('#brandLogoPicker').hidden=true;$('#brandLogoSummary').hidden=false
