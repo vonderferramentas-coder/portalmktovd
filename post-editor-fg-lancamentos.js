@@ -39,29 +39,28 @@
 
     var titleRight=1029,titleLeft=isStory?413:396,titleFit=fitTitle(ctx,api.productName,titleRight-titleLeft,2,58,16),lineH=titleFit.size*1.09,titleY,lineY;
     var badgeColor=state.brandBadgeColor||'#fbc400';
-    var brand=api.brandVariant==='vonder-plus'?state.customAssets.brandPlus:state.customAssets.brandVonder;
+    var brand=state.customAssets.brandLogo;
+    var isPlus=state.brandLogoName==='Vonder_plus';
     if(isStory){
       if(state.customAssets.headerGradient)ctx.drawImage(state.customAssets.headerGradient,0,0,t.w,430);
       else{ctx.fillStyle='#000';ctx.fillRect(0,0,t.w,314)}
       ctx.fillStyle=badgeColor;ctx.fillRect(68,0,302,314);
-      if(brand){
-        if(api.brandVariant==='vonder-plus')ctx.drawImage(brand,86,172,263,115);
-        else ctx.drawImage(brand,84,193,274,77)
-      }
+      // Caixa generosa, centralizada no retângulo da marca: qualquer logo (largo, alto ou
+      // quadrado, das centenas da biblioteca) cabe sem distorcer, via contain() (mantém
+      // proporção e centraliza) em vez do drawImage esticado usado só para VONDER/VONDER PLUS.
+      if(brand)api.helpers.contain(ctx,brand,[88,40,262,234]);
       lineY=311;titleY=Math.max(92,lineY-titleFit.lines.length*lineH-8)
     }else{
       // o header achatado (header-vonder.png/header-vonder-plus.png) traz o fundo preto
-      // gradiente + o retângulo amarelo + a logo, tudo cozido numa imagem só. Pra cor do
-      // retângulo virar configurável, desenhamos ele por cima com a cor escolhida (mesmas
-      // coordenadas do retângulo original, medidas em pixel na imagem) e depois a logo
-      // isolada (mesmo arquivo já usado no Story), igual ao Story já faz — sem imagem achatada
-      var header=api.brandVariant==='vonder-plus'?state.customAssets.headerPlus:state.customAssets.headerVonder;
+      // gradiente + o retângulo amarelo, tudo cozido numa imagem só. Pra cor do retângulo
+      // virar configurável, desenhamos ele por cima com a cor escolhida (mesmas coordenadas
+      // do retângulo original, medidas em pixel na imagem) e depois a logo escolhida por
+      // cima, igual ao Story já faz — sem imagem achatada. Só a variante "Vonder_plus" ainda
+      // usa o header próprio (headerPlus); qualquer outra marca cai no header padrão.
+      var header=isPlus?state.customAssets.headerPlus:state.customAssets.headerVonder;
       if(header)ctx.drawImage(header,0,0,t.w,377);else{ctx.fillStyle='#000';ctx.fillRect(0,0,t.w,228)}
       ctx.fillStyle=badgeColor;ctx.fillRect(48,0,223,179);
-      if(brand){
-        if(api.brandVariant==='vonder-plus')ctx.drawImage(brand,64,83,192,84);
-        else ctx.drawImage(brand,58,102,202,57)
-      }
+      if(brand)api.helpers.contain(ctx,brand,[62,20,195,139]);
       titleY=55;lineY=Math.min(249,titleY+titleFit.lines.length*lineH+11)
     }
 
@@ -85,16 +84,22 @@
       supportsBrandVariant:true,
       supportsCodes:false,
       supportsProductCutout:false,
-      assetSources:{
-        headerVonder:'post-editor-assets/fg-lancamentos/header-vonder.png',
-        headerPlus:'post-editor-assets/fg-lancamentos/header-vonder-plus.png',
-        headerGradient:'post-editor-assets/fg-lancamentos/header-gradient.png',
-        brandVonder:'post-editor-assets/fg-lancamentos/brand-vonder.png',
-        brandPlus:'post-editor-assets/fg-lancamentos/brand-vonder-plus.png',
-        footer:'post-editor-assets/fg-lancamentos/footer-lancamentos.png',
-        footerBadge:'post-editor-assets/fg-lancamentos/footer-badge.png',
-        footerFg:'post-editor-assets/fg-lancamentos/footer-fg.png'
-      },
+      // Embutidos em base64 (post-editor-assets/fg-lancamentos-assets.js) em vez de carregados
+      // por caminho relativo: sob file://, uma imagem relativa "contamina" o canvas e impede a
+      // exportação (toDataURL/toBlob), mesmo marcada como exportSafe pela checagem ingênua de
+      // mesma origem em loadImage(). Uma data: URI nunca contamina. O caminho relativo permanece
+      // só como fallback, caso o arquivo de assets embutidos não tenha carregado.
+      assetSources:(function(){
+        var embedded=window.POST_EDITOR_FG_LANCAMENTOS_ASSETS||{};
+        return{
+          headerVonder:embedded.headerVonder||'post-editor-assets/fg-lancamentos/header-vonder.png',
+          headerPlus:embedded.headerPlus||'post-editor-assets/fg-lancamentos/header-vonder-plus.png',
+          headerGradient:embedded.headerGradient||'post-editor-assets/fg-lancamentos/header-gradient.png',
+          footer:embedded.footer||'post-editor-assets/fg-lancamentos/footer-lancamentos.png',
+          footerBadge:embedded.footerBadge||'post-editor-assets/fg-lancamentos/footer-badge.png',
+          footerFg:embedded.footerFg||'post-editor-assets/fg-lancamentos/footer-fg.png'
+        }
+      })(),
       renderer:renderer
     }
   });
