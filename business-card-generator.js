@@ -30,6 +30,10 @@
       .replace(/[^a-z0-9]/g, "");
   }
 
+  function escapeRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
   function safeFile(value) {
     return normalize(value).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "cartao";
   }
@@ -96,16 +100,14 @@
   var STORAGE_KEY = "business_card_generator_v1__" + brand.id;
   var state = { records: [], activeId: null, currentStep: "import" };
   var returnToImportTrigger = null;
+  var deleteConfirmTrigger = null;
+  var pendingDeleteAction = null;
   var canvas = $("cardCanvas");
   var ctx = canvas.getContext("2d");
   var W = canvas.width;
   var H = canvas.height;
   var renderToken = 0;
   var images = {};
-  // drawCropMarks() é só um guia magenta em tela para orientar o enquadramento durante a edição.
-  // Nunca pode ser desenhado no canvas offscreen usado para gerar o PDF de impressão — senão a
-  // marca vira tinta real no arquivo final. renderCanvas() liga/desliga esta flag.
-  var previewGuidesEnabled = true;
   var fields = {
     logoVariant: $("fieldLogoVariant"),
     name: $("fieldName"),
@@ -293,6 +295,7 @@
       fields[key].value = r ? r[key] || "" : "";
     });
     $("editorTitle").textContent = r ? (r.name || "Cartão sem nome") : "Selecione um cartão";
+    renderNameBoldPicker(r);
     renderPhoneValidations(!!(r && r.reviewed));
     var approve = $("approveCurrent");
     approve.disabled = !r || !r.reviewed || hasBlocking(r);
@@ -314,10 +317,67 @@
     if (!r.issues.length) {
       list.innerHTML = '<div class="bc-issue is-ok"><span>✓</span><span>Nenhum problema encontrado. Faça a leitura final da arte e aprove o cartão.</span></div>';
     } else {
-      list.innerHTML = r.issues.map(function (i) {
-        return '<div class="bc-issue ' + (i.level === "ok" ? "is-ok" : "") + '"><span>' + (i.blocking ? "!" : "•") + '</span><span>' + esc(i.message) + '</span></div>';
+      list.innerHTML = r.issues.map(function (i, index) {
+        var fixBtn = i.fix ? '<button type="button" class="bc-issue-fix" data-issue-fix="' + index + '">Aplicar</button>' : '';
+        return '<div class="bc-issue ' + (i.level === "ok" ? "is-ok" : "") + '"><span>' + (i.blocking ? "!" : "•") + '</span><span class="bc-issue-text">' + esc(i.message) + '</span>' + fixBtn + '</div>';
       }).join("");
+      list.querySelectorAll("[data-issue-fix]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          applyIssueFix(r, parseInt(btn.getAttribute("data-issue-fix"), 10));
+        });
+      });
     }
+  }
+
+  // Seletor manual de negrito do nome — só faz sentido no cartão GRUPO OVD (drawOvd), que é
+  // o único template que desenha o nome em runs {texto,negrito}. Cada nome tem uma parte
+  // "fantasia" própria e sem regra fixa (ex.: "Ailton Ribeiro da Silva" → Ailton Silva;
+  // "Marlos José Camilli" → só Marlos), por isso a escolha fica a cargo de quem revisa o cartão.
+  function renderNameBoldPicker(r) {
+    var field = $("nameBoldField");
+    if (!field) return;
+    var show = !!r && template.style === "ovd";
+    field.hidden = !show;
+    if (!show) return;
+    var words = nameWordsWithBold(r);
+    var container = $("nameBoldWords");
+    if (!words.length) {
+      container.innerHTML = "";
+      return;
+    }
+    container.innerHTML = words.map(function (word, index) {
+      return '<button type="button" class="bc-name-bold-word' + (word.bold ? " is-bold" : "") +
+        '" data-word-index="' + index + '" aria-pressed="' + (word.bold ? "true" : "false") + '">' +
+        esc(word.text) + '</button>';
+    }).join("");
+    container.querySelectorAll("[data-word-index]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        toggleNameBoldWord(r, parseInt(btn.getAttribute("data-word-index"), 10));
+      });
+    });
+  }
+
+  function toggleNameBoldWord(r, wordIndex) {
+    var words = nameWordsWithBold(r);
+    var boldIndexes = [];
+    words.forEach(function (word, index) { if (word.bold) boldIndexes.push(index); });
+    var at = boldIndexes.indexOf(wordIndex);
+    if (at >= 0) boldIndexes.splice(at, 1);
+    else boldIndexes.push(wordIndex);
+    r.nameRuns = nameRunsFromBoldWords(r.name, words, boldIndexes);
+    r.reviewed = false;
+    r.approved = false;
+    r.issues = [];
+    save();
+    $("saveState").textContent = "Alterações salvas localmente";
+    renderRecords();
+    renderStats();
+    updateFlow();
+    renderCanvas(r);
+    renderIssues(r);
+    renderNameBoldPicker(r);
+    $("approveCurrent").disabled = true;
+    $("approveCurrent").checked = false;
   }
 
   function renderStats() {
@@ -341,13 +401,18 @@
   function deleteRecord(id) {
     var r = state.records.find(function (item) { return item.id === id; });
     if (!r) return;
-    if (!confirm('Excluir o cartão de "' + (r.name || "colaborador sem nome") + '"? Esta ação não pode ser desfeita.')) return;
-    state.records = state.records.filter(function (item) { return item.id !== id; });
-    if (state.activeId === id) state.activeId = state.records.length ? state.records[0].id : null;
-    save();
-    backToImportIfEmpty();
-    renderAll();
-    toast("Cartão excluído.");
+    openDeleteConfirmModal(
+      "Excluir cartão?",
+      'Tem certeza que deseja excluir o cartão de "' + (r.name || "colaborador sem nome") + '"? Esta ação não pode ser desfeita.',
+      function () {
+        state.records = state.records.filter(function (item) { return item.id !== id; });
+        if (state.activeId === id) state.activeId = state.records.length ? state.records[0].id : null;
+        save();
+        backToImportIfEmpty();
+        renderAll();
+        toast("Cartão excluído.");
+      }
+    );
   }
 
   function deleteSelected() {
@@ -356,14 +421,21 @@
       toast("Nenhum cartão selecionado.");
       return;
     }
-    if (!confirm("Excluir " + selected.length + " cartão" + (selected.length === 1 ? "" : "ões") + " selecionado" + (selected.length === 1 ? "" : "s") + "? Esta ação não pode ser desfeita.")) return;
-    var ids = selected.map(function (r) { return r.id; });
-    state.records = state.records.filter(function (r) { return ids.indexOf(r.id) < 0; });
-    if (state.activeId && ids.indexOf(state.activeId) >= 0) state.activeId = state.records.length ? state.records[0].id : null;
-    save();
-    backToImportIfEmpty();
-    renderAll();
-    toast(selected.length + " cartão" + (selected.length === 1 ? "" : "ões") + " excluído" + (selected.length === 1 ? "" : "s") + ".");
+    var plural = selected.length === 1 ? "" : "s";
+    var pluralOes = selected.length === 1 ? "ão" : "ões";
+    openDeleteConfirmModal(
+      "Excluir cart" + pluralOes + "?",
+      "Tem certeza que deseja excluir " + selected.length + " cart" + pluralOes + " selecionado" + plural + "? Esta ação não pode ser desfeita.",
+      function () {
+        var ids = selected.map(function (r) { return r.id; });
+        state.records = state.records.filter(function (r) { return ids.indexOf(r.id) < 0; });
+        if (state.activeId && ids.indexOf(state.activeId) >= 0) state.activeId = state.records.length ? state.records[0].id : null;
+        save();
+        backToImportIfEmpty();
+        renderAll();
+        toast(selected.length + " cart" + pluralOes + " excluíd" + (selected.length === 1 ? "o" : "os") + ".");
+      }
+    );
   }
 
   function flashElement(el) {
@@ -438,8 +510,168 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function openDeleteConfirmModal(title, description, onConfirm) {
+    $("deleteConfirmTitle").textContent = title;
+    $("deleteConfirmDescription").textContent = description;
+    pendingDeleteAction = onConfirm;
+    deleteConfirmTrigger = document.activeElement;
+    $("deleteConfirmModal").hidden = false;
+    document.body.style.overflow = "hidden";
+    $("cancelDeleteConfirm").focus();
+  }
+
+  function closeDeleteConfirmModal() {
+    $("deleteConfirmModal").hidden = true;
+    document.body.style.overflow = "";
+    if (deleteConfirmTrigger && deleteConfirmTrigger.focus) deleteConfirmTrigger.focus();
+    deleteConfirmTrigger = null;
+    pendingDeleteAction = null;
+  }
+
   function hasBlocking(r) {
     return !!(r && r.issues && r.issues.some(function (i) { return i.blocking; }));
+  }
+
+  // Dicionário de acentuação: forma sem acento (chave de busca, sempre ASCII/minúscula) → forma
+  // correta. Cobre vocabulário comum de cargo, endereço e nomes próprios em cartões de visita.
+  // Como cada sugestão só vira correção com um clique manual em "Aplicar" (nunca automático), um
+  // dicionário mais amplo é seguro mesmo quando alguma entrada for ambígua fora de contexto.
+  var ACCENT_FIXES = [
+    { find: /\btecnico\b/, fix: "técnico", label: "“técnico”" },
+    { find: /\btecnica\b/, fix: "técnica", label: "“técnica”" },
+    { find: /\btecnicos\b/, fix: "técnicos", label: "“técnicos”" },
+    { find: /\btecnicas\b/, fix: "técnicas", label: "“técnicas”" },
+    { find: /\bantonio\b/, fix: "Antônio", label: "“Antônio”" },
+    { find: /\bsao\b/, fix: "São", label: "“São”" },
+    { find: /\bluis\b/, fix: "Luís", label: "“Luís”" },
+    { find: /\bendereco\b/, fix: "endereço", label: "“endereço”" },
+    { find: /\bgerencia\b/, fix: "gerência", label: "“gerência”" },
+    { find: /\beletrico\b/, fix: "elétrico", label: "“elétrico”" },
+    { find: /\beletrica\b/, fix: "elétrica", label: "“elétrica”" },
+    { find: /\beletronico\b/, fix: "eletrônico", label: "“eletrônico”" },
+    { find: /\beletronica\b/, fix: "eletrônica", label: "“eletrônica”" },
+    { find: /\bmecanico\b/, fix: "mecânico", label: "“mecânico”" },
+    { find: /\bmecanica\b/, fix: "mecânica", label: "“mecânica”" },
+    { find: /\bquimico\b/, fix: "químico", label: "“químico”" },
+    { find: /\bquimica\b/, fix: "química", label: "“química”" },
+    { find: /\bmedico\b/, fix: "médico", label: "“médico”" },
+    { find: /\bmedica\b/, fix: "médica", label: "“médica”" },
+    { find: /\bjuridico\b/, fix: "jurídico", label: "“jurídico”" },
+    { find: /\bjuridica\b/, fix: "jurídica", label: "“jurídica”" },
+    { find: /\blogistica\b/, fix: "logística", label: "“logística”" },
+    { find: /\bacademico\b/, fix: "acadêmico", label: "“acadêmico”" },
+    { find: /\bacademica\b/, fix: "acadêmica", label: "“acadêmica”" },
+    { find: /\bpublico\b/, fix: "público", label: "“público”" },
+    { find: /\bpublica\b/, fix: "pública", label: "“pública”" },
+    { find: /\bunico\b/, fix: "único", label: "“único”" },
+    { find: /\bunica\b/, fix: "única", label: "“única”" },
+    { find: /\bpratico\b/, fix: "prático", label: "“prático”" },
+    { find: /\bpratica\b/, fix: "prática", label: "“prática”" },
+    { find: /\bbasico\b/, fix: "básico", label: "“básico”" },
+    { find: /\bbasica\b/, fix: "básica", label: "“básica”" },
+    { find: /\bfisico\b/, fix: "físico", label: "“físico”" },
+    { find: /\bfisica\b/, fix: "física", label: "“física”" },
+    { find: /\bmanutencao\b/, fix: "manutenção", label: "“manutenção”" },
+    { find: /\bproducao\b/, fix: "produção", label: "“produção”" },
+    { find: /\badministracao\b/, fix: "administração", label: "“administração”" },
+    { find: /\bcomunicacao\b/, fix: "comunicação", label: "“comunicação”" },
+    { find: /\brecepcao\b/, fix: "recepção", label: "“recepção”" },
+    { find: /\boperacao\b/, fix: "operação", label: "“operação”" },
+    { find: /\boperacoes\b/, fix: "operações", label: "“operações”" },
+    { find: /\bpromocao\b/, fix: "promoção", label: "“promoção”" },
+    { find: /\bimportacao\b/, fix: "importação", label: "“importação”" },
+    { find: /\bexportacao\b/, fix: "exportação", label: "“exportação”" },
+    { find: /\bdistribuicao\b/, fix: "distribuição", label: "“distribuição”" },
+    { find: /\bconstrucao\b/, fix: "construção", label: "“construção”" },
+    { find: /\bfiscalizacao\b/, fix: "fiscalização", label: "“fiscalização”" },
+    { find: /\bregiao\b/, fix: "região", label: "“região”" },
+    { find: /\bregioes\b/, fix: "regiões", label: "“regiões”" },
+    { find: /\bassistencia\b/, fix: "assistência", label: "“assistência”" },
+    { find: /\bpresidencia\b/, fix: "presidência", label: "“presidência”" },
+    { find: /\bindependencia\b/, fix: "Independência", label: "“Independência”" },
+    { find: /\bfarmacia\b/, fix: "farmácia", label: "“farmácia”" },
+    { find: /\bfamilia\b/, fix: "família", label: "“família”" },
+    { find: /\bnumero\b/, fix: "número", label: "“número”" },
+    { find: /\bproximo\b/, fix: "próximo", label: "“próximo”" },
+    { find: /\bproxima\b/, fix: "próxima", label: "“próxima”" },
+    { find: /\barea\b/, fix: "área", label: "“área”" },
+    { find: /\bparana\b/, fix: "Paraná", label: "“Paraná”" },
+    { find: /\bgoias\b/, fix: "Goiás", label: "“Goiás”" },
+    { find: /\bceara\b/, fix: "Ceará", label: "“Ceará”" },
+    { find: /\bmaranhao\b/, fix: "Maranhão", label: "“Maranhão”" },
+    { find: /\brondonia\b/, fix: "Rondônia", label: "“Rondônia”" },
+    { find: /\bamapa\b/, fix: "Amapá", label: "“Amapá”" },
+    { find: /\bpiaui\b/, fix: "Piauí", label: "“Piauí”" },
+    { find: /\bjose\b/, fix: "José", label: "“José”" },
+    { find: /\bjoao\b/, fix: "João", label: "“João”" },
+    { find: /\bandre\b/, fix: "André", label: "“André”" },
+    { find: /\bmarcia\b/, fix: "Márcia", label: "“Márcia”" },
+    { find: /\bmonica\b/, fix: "Mônica", label: "“Mônica”" },
+    { find: /\bveronica\b/, fix: "Verônica", label: "“Verônica”" },
+    { find: /\bjessica\b/, fix: "Jéssica", label: "“Jéssica”" },
+    { find: /\bpatricia\b/, fix: "Patrícia", label: "“Patrícia”" },
+    { find: /\bclaudia\b/, fix: "Cláudia", label: "“Cláudia”" },
+    { find: /\blucia\b/, fix: "Lúcia", label: "“Lúcia”" },
+    { find: /\bsilvia\b/, fix: "Sílvia", label: "“Sílvia”" },
+    { find: /\bgloria\b/, fix: "Glória", label: "“Glória”" },
+    { find: /\bcesar\b/, fix: "César", label: "“César”" },
+    { find: /\bines\b/, fix: "Inês", label: "“Inês”" },
+    { find: /\bfelix\b/, fix: "Félix", label: "“Félix”" }
+  ];
+
+  var DUP_WORD_RE = /\b([A-Za-zÀ-ÖØ-öø-ÿ]+)\s+\1\b/gi;
+
+  // Pares singular/plural de substantivos e adjetivos comuns em cargos, usados para checar
+  // concordância de número entre palavras vizinhas no campo Cargo (ex.: "Auxiliares Administrativo").
+  // Comparação usa normalize() (sem acento, minúsculo), então funciona com ou sem acentuação.
+  // Formas canônicas (com acento correto) — a comparação com o texto digitado é feita via
+  // normalize() dos dois lados, então "tecnico"/"técnico" batem com a mesma entrada; o valor aqui
+  // é o que efetivamente entra no cartão quando o "Aplicar" é clicado.
+  var CARGO_NOUNS = [
+    ["auxiliar", "auxiliares"], ["assistente", "assistentes"], ["analista", "analistas"],
+    ["gerente", "gerentes"], ["coordenador", "coordenadores"], ["coordenadora", "coordenadoras"],
+    ["supervisor", "supervisores"], ["supervisora", "supervisoras"], ["diretor", "diretores"],
+    ["diretora", "diretoras"], ["consultor", "consultores"], ["consultora", "consultoras"],
+    ["representante", "representantes"], ["vendedor", "vendedores"], ["vendedora", "vendedoras"],
+    ["especialista", "especialistas"], ["estagiário", "estagiários"], ["estagiária", "estagiárias"],
+    ["comprador", "compradores"], ["compradora", "compradoras"], ["recepcionista", "recepcionistas"],
+    ["motorista", "motoristas"]
+  ];
+  var CARGO_ADJECTIVES = [
+    ["administrativo", "administrativos"], ["administrativa", "administrativas"],
+    ["financeiro", "financeiros"], ["financeira", "financeiras"],
+    ["comercial", "comerciais"], ["operacional", "operacionais"],
+    ["jurídico", "jurídicos"], ["jurídica", "jurídicas"],
+    ["industrial", "industriais"], ["hospitalar", "hospitalares"],
+    ["geral", "gerais"], ["regional", "regionais"], ["nacional", "nacionais"],
+    ["interno", "internos"], ["interna", "internas"], ["externo", "externos"], ["externa", "externas"],
+    ["técnico", "técnicos"], ["técnica", "técnicas"]
+  ];
+
+  // Reaplica no texto de troca (fix) o padrão de maiúsculas do trecho original encontrado —
+  // assim "TECNICO" vira "TÉCNICO", "Tecnico" vira "Técnico" e "tecnico" vira "técnico".
+  function matchCase(sample, replacement) {
+    if (sample === sample.toUpperCase()) return replacement.toUpperCase();
+    if (sample.charAt(0) === sample.charAt(0).toUpperCase()) return replacement.charAt(0).toUpperCase() + replacement.slice(1);
+    return replacement;
+  }
+
+  function applyAccentFix(r, rule) {
+    ["name", "role", "address"].forEach(function (key) {
+      var value = r[key];
+      if (!value) return;
+      var re = new RegExp(rule.find.source, "gi");
+      r[key] = value.replace(re, function (match) { return matchCase(match, rule.fix); });
+    });
+  }
+
+  // Botão "Aplicar" de uma sugestão de acentuação: corrige o texto direto no registro e roda a
+  // revisão de novo, o que já atualiza campos, canvas e a própria lista de pendências.
+  function applyIssueFix(r, issueIndex) {
+    var issue = r.issues[issueIndex];
+    if (!issue || !issue.fix) return;
+    applyAccentFix(r, issue.fix);
+    reviewRecord(r);
   }
 
   function reviewRecord(r) {
@@ -457,17 +689,50 @@
     if (r.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)) issues.push({ blocking: true, message: "Confira o formato do e-mail." });
     if (r.website && !/[.]/.test(r.website)) issues.push({ blocking: false, message: "Confira o endereço do site: não foi encontrado um domínio completo." });
     var scan = (r.name + " " + r.role + " " + r.address).toLowerCase();
-    var common = [
-      [/\btecnico\b/, "“técnico”"],
-      [/\bantonio\b/, "“Antônio”"],
-      [/\bsao\b/, "“São”"],
-      [/\bluis\b/, "“Luís”"],
-      [/\bendereco\b/, "“endereço”"],
-      [/\bgerencia\b/, "“gerência”"]
-    ];
-    common.forEach(function (rule) {
-      if (rule[0].test(scan)) issues.push({ blocking: false, message: "Possível ajuste de acentuação: confira " + rule[1] + "." });
+    // Palavras comuns em nome, cargo e endereço de cartão de visitas que costumam ser digitadas
+    // sem acento. Cada entrada só dispara quando a forma exata sem acento aparece — se a pessoa já
+    // escreveu certo, o regex não bate e nada é sugerido.
+    ACCENT_FIXES.forEach(function (rule) {
+      if (rule.find.test(scan)) issues.push({ blocking: false, message: "Possível ajuste de acentuação: confira " + rule.label + ".", fix: rule });
     });
+    // Palavra repetida em sequência (ex.: "da da", "Rua Rua") — erro comum de copiar/colar.
+    var dupSeen = {};
+    var dupSource = [r.name, r.role, r.address].join(" ");
+    var dupMatch;
+    DUP_WORD_RE.lastIndex = 0;
+    while ((dupMatch = DUP_WORD_RE.exec(dupSource))) {
+      var dupWord = dupMatch[1];
+      var dupKey = dupWord.toLowerCase();
+      if (dupSeen[dupKey]) continue;
+      dupSeen[dupKey] = true;
+      issues.push({
+        blocking: false,
+        message: "Palavra repetida: confira “" + dupWord + " " + dupWord + "”.",
+        fix: { find: new RegExp("\\b" + escapeRegExp(dupWord) + "\\s+" + escapeRegExp(dupWord) + "\\b"), fix: dupWord }
+      });
+    }
+    // Concordância de número no cargo: substantivo e adjetivo próximos devem concordar no plural
+    // (ex.: "Auxiliares Administrativo" está errado — ou os dois no singular, ou os dois no plural).
+    var roleWords = [];
+    var roleWordRe = /[A-Za-zÀ-ÖØ-öø-ÿ]+/g;
+    var roleMatch;
+    while ((roleMatch = roleWordRe.exec(r.role))) roleWords.push({ text: roleMatch[0], key: normalize(roleMatch[0]) });
+    for (var wi = 0; wi < roleWords.length - 1; wi++) {
+      var nounWord = roleWords[wi];
+      var adjWord = roleWords[wi + 1];
+      var nounPair = CARGO_NOUNS.filter(function (p) { return normalize(p[0]) === nounWord.key || normalize(p[1]) === nounWord.key; })[0];
+      var adjPair = CARGO_ADJECTIVES.filter(function (p) { return normalize(p[0]) === adjWord.key || normalize(p[1]) === adjWord.key; })[0];
+      if (!nounPair || !adjPair) continue;
+      var nounIsPlural = nounWord.key === normalize(nounPair[1]);
+      var adjIsPlural = adjWord.key === normalize(adjPair[1]);
+      if (nounIsPlural === adjIsPlural) continue;
+      var correctAdj = nounIsPlural ? adjPair[1] : adjPair[0];
+      issues.push({
+        blocking: false,
+        message: "Possível erro de concordância: confira “" + nounWord.text + " " + correctAdj + "”.",
+        fix: { find: new RegExp("\\b" + escapeRegExp(adjWord.text) + "\\b"), fix: correctAdj }
+      });
+    }
     if (/[ ]{2,}/.test(r.name + " " + r.role + " " + r.landline + " " + r.phone)) issues.push({ blocking: false, message: "Há espaços duplicados; a limpeza automática foi aplicada." });
     r.reviewed = true;
     r.approved = false;
@@ -495,6 +760,7 @@
     updateFlow();
     renderCanvas(r);
     renderIssues(r);
+    if (ev.target.name === "name") renderNameBoldPicker(r);
     renderPhoneValidations(false);
     $("approveCurrent").disabled = true;
     $("approveCurrent").checked = false;
@@ -749,32 +1015,6 @@
     ctx.restore();
   }
 
-  function drawCropMarks() {
-    if (!previewGuidesEnabled) return;
-    var inset = 40;
-    var gap = 11;
-    var len = 29;
-    ctx.save();
-    ctx.strokeStyle = "#ff00ff";
-    ctx.lineWidth = 2;
-    [
-      [0, inset, inset - gap, inset],
-      [W - inset + gap, inset, W, inset],
-      [0, H - inset, inset - gap, H - inset],
-      [W - inset + gap, H - inset, W, H - inset],
-      [inset, 0, inset, inset - gap],
-      [W - inset, 0, W - inset, inset - gap],
-      [inset, H - inset + gap, inset, H],
-      [W - inset, H - inset + gap, W - inset, H]
-    ].forEach(function (a) {
-      ctx.beginPath();
-      ctx.moveTo(a[0], a[1]);
-      ctx.lineTo(a[2], a[3]);
-      ctx.stroke();
-    });
-    ctx.restore();
-  }
-
   function drawContact(r, x, y, width, color) {
     ctx.fillStyle = color;
     ctx.textAlign = "left";
@@ -796,9 +1036,19 @@
   // valores são fixos — não usam fitText/auto-encolhe — porque esse é o padrão gráfico aprovado
   // para impressão e não pode variar conforme o texto digitado.
   var FG_GRAY = "#4d4d4d";
-  var FG_RIGHT = 1720.19;
-  var FG_LEFT = 116;
+  var FG_SAFE_FROM_BLEED_MM = 6.36;
+  var FG_LOGICAL_PX_PER_MM = 20;
+  var FG_EXTRA_BLEED_MM = 1;
+  var FG_LEFT = (FG_SAFE_FROM_BLEED_MM - FG_EXTRA_BLEED_MM) * FG_LOGICAL_PX_PER_MM; // 107,2 px
+  var FG_RIGHT = 1880 + FG_EXTRA_BLEED_MM * FG_LOGICAL_PX_PER_MM - FG_SAFE_FROM_BLEED_MM * FG_LOGICAL_PX_PER_MM; // 1772,8 px
+  var FG_TEMPLATE_ORIGINAL_LEFT = 116;
+  // Transformação horizontal contínua: leva o alinhamento antigo de 116 px para 107,2 px e
+  // mantém a borda direita em 1880 px. Não existe segundo retângulo nem ponto de emenda.
+  var FG_TEMPLATE_SCALE_X = (1880 - FG_LEFT) / (1880 - FG_TEMPLATE_ORIGINAL_LEFT);
+  var FG_TEMPLATE_DRAW_X = FG_LEFT - FG_TEMPLATE_ORIGINAL_LEFT * FG_TEMPLATE_SCALE_X;
+  var FG_TEMPLATE_DRAW_WIDTH = 1880 * FG_TEMPLATE_SCALE_X;
   var FG_LINE = 58.31;
+  var FG_INLINE_SEPARATOR = "\u2009|\u2009"; // espaço fino: compacto e legível
 
   // Variação de logotipo por cartão: "fg" é o padrão institucional já usado; "fg-ico" acrescenta o
   // selo ICO ao lado do logotipo (business-card-assets/source, arquivo cedido por Lucas). A escolha
@@ -809,19 +1059,46 @@
     "fg": "business-card-assets/fg-template-600.png",
     "fg-ico": "business-card-assets/fg-ico-template-600.png"
   };
+  var fgAlignedTemplates = {};
+
+  function alignedFgTemplate(img) {
+    var key = img.src || "fg";
+    if (fgAlignedTemplates[key]) return fgAlignedTemplates[key];
+    var source = colorizeFgTemplate(img);
+    var output = document.createElement("canvas");
+    // Descarta a coluna branca técnica antes de qualquer reamostragem. Assim o filtro do canvas
+    // não consegue misturá-la ao verde e gerar brilho na extremidade direita.
+    output.width = Math.max(1, source.width - 1);
+    output.height = source.height;
+    var outputCtx = output.getContext("2d");
+    outputCtx.imageSmoothingEnabled = false;
+    outputCtx.drawImage(source, 0, 0);
+    fgAlignedTemplates[key] = output;
+    return output;
+  }
 
   async function drawFg(r, token) {
     var variant = r.logoVariant === "fg-ico" ? "fg-ico" : "fg";
     var embeddedSrc = variant === "fg" ? embeddedAssets.fgTemplate : embeddedAssets.fgTemplateIco;
     var templateSrc = embeddedSrc || FG_LOGO_VARIANTS[variant];
+    // QR, nome e cargo compartilham exatamente a mesma âncora direita: 6,36 mm desde a
+    // borda direita da sangra. O tamanho e a coordenada vertical do QR permanecem inalterados.
+    var fgQr = { x: FG_RIGHT - template.qr.size, y: template.qr.y, size: template.qr.size };
     var bg = await loadImage(templateSrc);
     if (token !== renderToken) return;
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, W, H);
-    if (bg) ctx.drawImage(colorizeFgTemplate(bg), 0, 0, W, H);
+    if (bg) {
+      var alignedBg = alignedFgTemplate(bg);
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(alignedBg, FG_TEMPLATE_DRAW_X, 0, FG_TEMPLATE_DRAW_WIDTH, H);
+      ctx.restore();
+    }
     ctx.fillStyle = "#fff";
     ctx.fillRect(W * .75, H * .30, W * .23, H * .27);
-    ctx.fillRect(85, H * .64, template.qr.x - 160, H * .32);
+    ctx.fillRect(85, H * .64, fgQr.x - 160, H * .32);
     ctx.fillStyle = FG_GRAY;
     ctx.textAlign = "right";
     ctx.font = "700 81.14px Swiss721,Arial Narrow,Arial,sans-serif";
@@ -830,17 +1107,16 @@
     ctx.fillText(r.role || "Cargo", FG_RIGHT, 517.95);
     ctx.textAlign = "left";
     ctx.font = "400 48.59px Swiss721,Arial Narrow,Arial,sans-serif";
-    var addressLines = wrapText(r.address, template.qr.x - FG_LEFT - 55, 2);
+    var addressLines = wrapText(r.address, fgQr.x - FG_LEFT - 55, 2);
     addressLines.forEach(function (line, i) { ctx.fillText(line, FG_LEFT, 805.18 + i * FG_LINE); });
     // Telefones e E-mail/Site têm âncoras fixas no original. Nunca descem quando o endereço quebra.
-    var phoneLine = [r.phone ? "Celular: " + r.phone : "", r.landline ? "Telefone: " + r.landline : ""].filter(Boolean).join("   |   ");
-    fitText(phoneLine, template.qr.x - FG_LEFT - 55, 48.59, 400);
+    var phoneLine = [r.phone ? "Celular: " + r.phone : "", r.landline ? "Telefone: " + r.landline : ""].filter(Boolean).join(FG_INLINE_SEPARATOR);
+    fitText(phoneLine, fgQr.x - FG_LEFT - 55, 48.59, 400);
     ctx.fillText(phoneLine, FG_LEFT, 921.81);
     ctx.font = "400 48.59px Swiss721,Arial Narrow,Arial,sans-serif";
-    var contact = [r.email, r.website].filter(Boolean).join(" | ");
+    var contact = [r.email, r.website].filter(Boolean).join(FG_INLINE_SEPARATOR);
     ctx.fillText(contact, FG_LEFT, 980.12);
-    drawContactQr(r, template.qr);
-    drawCropMarks();
+    drawContactQr(r, fgQr);
   }
 
   // ==== GRUPO OVD (estilo "ovd") ====
@@ -855,10 +1131,11 @@
 
   // Desenha uma imagem usando a matriz de posicionamento (a,b,c,d,e,f) extraída literalmente
   // do "cm" do PDF de referência — mesma convenção de matriz afim, só trocando a escala/origem.
-  function drawOvdPdfImage(img, a, b, c, d, e, f) {
+  function drawOvdPdfImage(img, a, b, c, d, e, f, opacity) {
     if (!img) return;
     var s = OVD_PT_TO_PX;
     ctx.save();
+    ctx.globalAlpha = opacity == null ? 1 : opacity;
     ctx.transform(s * a, -s * b, s * c, -s * d, ovdX(e), ovdY(f));
     // O PDF desenha a linha 0 da imagem em v=1 (topo do quadrado unitário, espaço y-para-cima);
     // o canvas desenha a linha 0 em v=0 (topo, y-para-baixo) — sem este flip local, toda imagem
@@ -906,6 +1183,60 @@
     return runs;
   }
 
+  // Runs "ativos" de um cartão: usa o negrito escolhido manualmente (r.nameRuns) enquanto ele
+  // ainda descrever o nome atual; senão cai no padrão automático (primeiro + último nome).
+  function ovdActiveNameRuns(r) {
+    return (r.nameRuns && r.nameRuns.length && r.nameRuns.map(function (x) { return x.text; }).join("") === r.name)
+      ? r.nameRuns
+      : ovdDefaultNameRuns(r.name);
+  }
+
+  // Expande runs {text,bold} num array de flags de negrito por caractere, na mesma ordem do
+  // texto concatenado — usado para descobrir se uma palavra específica do nome está em negrito.
+  function nameRunsToCharBold(runs) {
+    var flags = [];
+    runs.forEach(function (run) {
+      for (var i = 0; i < run.text.length; i++) flags.push(!!run.bold);
+    });
+    return flags;
+  }
+
+  // Divide r.name em palavras (preservando a posição de cada uma no texto original) e marca cada
+  // palavra como negrito ou não, a partir dos runs ativos do cartão. Base do seletor manual de
+  // negrito na tela de edição.
+  function nameWordsWithBold(r) {
+    var name = r.name || "";
+    var flags = nameRunsToCharBold(ovdActiveNameRuns(r));
+    var words = [];
+    var re = /\S+/g;
+    var match;
+    while ((match = re.exec(name))) {
+      words.push({ text: match[0], start: match.index, bold: !!flags[match.index] });
+    }
+    return words;
+  }
+
+  function appendNameRun(runs, text, bold) {
+    if (!text) return;
+    var last = runs[runs.length - 1];
+    if (last && last.bold === bold) last.text += text;
+    else runs.push({ text: text, bold: bold });
+  }
+
+  // Reconstrói os runs {text,bold} do nome inteiro a partir da lista de palavras e do conjunto
+  // de índices marcados como negrito, preservando os espaços/separadores originais entre elas.
+  function nameRunsFromBoldWords(name, words, boldIndexes) {
+    var runs = [];
+    var cursor = 0;
+    words.forEach(function (word, index) {
+      if (word.start > cursor) appendNameRun(runs, name.slice(cursor, word.start), false);
+      appendNameRun(runs, word.text, boldIndexes.indexOf(index) >= 0);
+      cursor = word.start + word.text.length;
+    });
+    if (cursor < name.length) appendNameRun(runs, name.slice(cursor), false);
+    return runs;
+  }
+
   function drawOvdRuns(runs, x, y, sizePx, color) {
     var cx = x;
     ctx.textAlign = "left";
@@ -939,9 +1270,9 @@
     ctx.fillRect(0, 0, W, H);
 
     // Fotos das ferramentas (posição e rotação idênticas ao arquivo da gráfica).
-    drawOvdPdfImage(toolWrench, -20.2346356, -48.7293190, 47.8899378, -19.8861084, 153.6332, 94.0803);
+    drawOvdPdfImage(toolWrench, -20.2346356, -48.7293190, 47.8899378, -19.8861084, 153.6332, 94.0803, 0.5);
     drawOvdPdfImage(toolDrillbit, 60.1674419, 0, 0, 80.3255494, 125.4575, 9.6769);
-    drawOvdPdfImage(toolScrewdriver, -0.0000001, -68.7113759, 8.6619437, -0.0000001, 179.2327, 94.7162);
+    drawOvdPdfImage(toolScrewdriver, -0.0000001, -68.7113759, 8.6619437, -0.0000001, 179.2327, 94.7162, 0.4);
     drawOvdPdfImage(toolPliers, 94.8452309, 0, 0, 55.4776504, 102.5639, 12.9421);
 
     // Barra preta superior e inferior — sangram até a borda da folha (ver ovdBarRect/clamp).
@@ -951,35 +1282,48 @@
     var bottomBar = ovdBarRect(10.1356, 32.4672);
     ctx.fillRect(0, bottomBar[0], W, bottomBar[1]);
 
-    // Logo "Grupo OVD" (variante 100% amarela — o contorno preto do logo original desapareceria
-    // sobre a barra preta, então usamos a versão sem contorno, igual ao cartão impresso).
+    // Limites vetoriais medidos no PDF do Corel: 65,9010 × 35,6984 pt, ancorados em
+    // x=195,9874 pt e no topo y=153,5074 pt. Isso preserva escala e posição do original.
     if (logo) {
-      var logoW = W * 0.335, logoH = logoW * (logo.height / logo.width);
-      ctx.drawImage(logo, W - logoW - 62, topBar[0] + topBar[1] * 0.14, logoW, logoH);
+      ctx.drawImage(
+        logo,
+        ovdX(195.9874),
+        ovdY(153.5074),
+        65.9010 * OVD_PT_TO_PX,
+        35.6984 * OVD_PT_TO_PX
+      );
     }
 
-    // Caixa branca do QR Code, com friso fino.
+    // O Corel usa um quadro externo de 25mm, linha preta de 0,25mm e QR recuado 1mm
+    // em cada lado (área interna de 23mm). A moldura é traçada por último para não ser
+    // coberta pelo fundo branco produzido por drawContactQr().
     var qr = template.qr;
     ctx.fillStyle = "#fff";
     ctx.fillRect(qr.x, qr.y, qr.size, qr.size);
-    ctx.strokeStyle = "#b3a5a0";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(qr.x + 1, qr.y + 1, qr.size - 2, qr.size - 2);
-    drawContactQr(r, qr);
+    var qrInset = 20; // 1mm no canvas lógico (20px/mm)
+    drawContactQr(r, {
+      x: qr.x + qrInset,
+      y: qr.y + qrInset,
+      size: qr.size - qrInset * 2
+    });
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 5; // 0,25mm
+    ctx.strokeRect(qr.x, qr.y, qr.size, qr.size);
 
     var left = ovdX(30.5847);
-    // Só usa os negritos vindos da planilha se o texto deles ainda bater com o nome atual —
-    // se o cartão foi editado manualmente depois da importação, cai no padrão automático em
-    // vez de mostrar negrito fora de lugar sobre um nome que já mudou.
-    var nameRuns = (r.nameRuns && r.nameRuns.length && r.nameRuns.map(function (x) { return x.text; }).join("") === r.name)
-      ? r.nameRuns
-      : ovdDefaultNameRuns(r.name);
-    drawOvdRuns(nameRuns, left, ovdY(107.2908), 9 * OVD_PT_TO_PX, "#000");
+    // Só usa os negritos escolhidos manualmente (ou vindos da planilha) se o texto deles ainda
+    // bater com o nome atual — se o cartão foi editado manualmente depois, cai no padrão
+    // automático em vez de mostrar negrito fora de lugar sobre um nome que já mudou.
+    drawOvdRuns(ovdActiveNameRuns(r), left, ovdY(107.2908), 9 * OVD_PT_TO_PX, "#000");
     ctx.font = "400 " + (6.5 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
     ctx.fillStyle = "#000";
     ctx.fillText((r.role || "").toUpperCase(), left, ovdY(98.6692));
     if (r.phone) drawOvdRuns(ovdPhoneRuns(r.phone), left, ovdY(90.8946), 6.5 * OVD_PT_TO_PX, "#000");
-    if (r.email) ctx.fillText(r.email, left, ovdY(83.8732));
+    if (r.email) {
+      ctx.font = "400 " + (6.5 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+      ctx.fillStyle = "#000";
+      ctx.fillText(r.email, left, ovdY(83.8732));
+    }
 
     var addressLines = String(r.address || "").split(/\r\n|\r|\n/).filter(Boolean);
     var lineY = ovdY(61.6187);
@@ -992,15 +1336,17 @@
     });
     if (r.landline) drawOvdRuns(ovdPhoneRuns(r.landline, "Fone "), left, lineY, 7 * OVD_PT_TO_PX, "#000");
 
-    // "www.ovd.com.br" em negrito branco, centralizado na barra inferior.
+    // Site em negrito branco, ancorado pela direita no mesmo eixo da extremidade da
+    // chave de fenda (x=179,2327+8,6619437 pt no PDF do Corel). Se o endereço mudar,
+    // o texto cresce somente para a esquerda e nunca avança sobre o QR.
     if (r.website) {
       var siteSize = 6.5 * OVD_PT_TO_PX;
       var siteRuns = [{ text: r.website, bold: true }];
       var siteWidth = ovdRunsWidth(siteRuns, siteSize);
-      drawOvdRuns(siteRuns, (W - siteWidth) / 2, ovdY(24.2442), siteSize, "#fff");
+      var siteRight = ovdX(187.8946437);
+      drawOvdRuns(siteRuns, siteRight - siteWidth, ovdY(24.2442), siteSize, "#fff");
     }
 
-    drawCropMarks();
   }
 
   function drawDecor(style, accent, secondary) {
@@ -1123,7 +1469,6 @@
     var contactWidth = template.qr ? Math.max(320, template.qr.x - left - 45) : max;
     drawContact(r, left, H * .62, contactWidth, template.ink);
     drawContactQr(r, template.qr);
-    drawCropMarks();
   }
 
   async function renderCanvas(r, targetCanvas, logicalSize) {
@@ -1137,14 +1482,9 @@
       H = logicalSize ? logicalSize.height : physicalHeight;
       ctx.setTransform(physicalWidth / W, 0, 0, physicalHeight / H, 0, 0);
       var localToken = ++renderToken;
-      previewGuidesEnabled = false;
-      try {
-        if (template.style === "fg") await drawFg(r || recordFrom({}), localToken);
-        else if (template.style === "ovd") await drawOvd(r || recordFrom({}), localToken);
-        else await drawGeneric(r || recordFrom({}), localToken);
-      } finally {
-        previewGuidesEnabled = true;
-      }
+      if (template.style === "fg") await drawFg(r || recordFrom({}), localToken);
+      else if (template.style === "ovd") await drawOvd(r || recordFrom({}), localToken);
+      else await drawGeneric(r || recordFrom({}), localToken);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       canvas = oldCanvas;
       ctx = oldCtx;
@@ -1203,27 +1543,41 @@
     }
   }
 
+  // Cores institucionais com receita CMYK exata aprovada (independente da conversão RGB→CMYK
+  // genérica): verde FG (#005745) e amarelo GRUPO OVD (#FFC20D, pixel dominante do logo raster
+  // business-card-assets/ovd-logo.png). Cada entrada vira um vetor/norma pré-calculado usado para
+  // detectar tanto o pixel sólido quanto sua suavização contra o branco ao redor.
+  var BRAND_CMYK_RECIPES = [
+    { rgb: [0, 87, 69], cmyk: [.95, .37, .73, .38] },
+    { rgb: [255, 194, 13], cmyk: [0, .25, 1, 0] }
+  ].map(function (recipe) {
+    var vector = [255 - recipe.rgb[0], 255 - recipe.rgb[1], 255 - recipe.rgb[2]];
+    var norm = vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2];
+    return { cmyk: recipe.cmyk, vector: vector, norm: norm };
+  });
+
   function canvasToCmyk(canvasElement) {
     var rgba = canvasElement.getContext("2d").getImageData(0, 0, canvasElement.width, canvasElement.height).data;
     var output = new Uint8Array(canvasElement.width * canvasElement.height * 4);
-    var brandRgb = [0, 87, 69];
-    var brandCmyk = [.95, .37, .73, .38];
-    var vector = [255 - brandRgb[0], 255 - brandRgb[1], 255 - brandRgb[2]];
-    var norm = vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2];
     for (var source = 0, target = 0; source < rgba.length; source += 4, target += 4) {
       var r = rgba[source], g = rgba[source + 1], b = rgba[source + 2];
-      // Preserva o verde institucional (inclusive pixels suavizados) com a receita CMYK exata.
-      var coverage = ((255 - r) * vector[0] + (255 - g) * vector[1] + (255 - b) * vector[2]) / norm;
-      var predictedR = 255 - coverage * vector[0];
-      var predictedG = 255 - coverage * vector[1];
-      var predictedB = 255 - coverage * vector[2];
-      if (coverage > .015 && coverage <= 1.03 && Math.abs(r - predictedR) + Math.abs(g - predictedG) + Math.abs(b - predictedB) < 18) {
-        output[target] = Math.round(255 * brandCmyk[0] * coverage);
-        output[target + 1] = Math.round(255 * brandCmyk[1] * coverage);
-        output[target + 2] = Math.round(255 * brandCmyk[2] * coverage);
-        output[target + 3] = Math.round(255 * brandCmyk[3] * coverage);
-        continue;
+      var matched = false;
+      for (var i = 0; i < BRAND_CMYK_RECIPES.length; i++) {
+        var recipe = BRAND_CMYK_RECIPES[i];
+        var coverage = ((255 - r) * recipe.vector[0] + (255 - g) * recipe.vector[1] + (255 - b) * recipe.vector[2]) / recipe.norm;
+        if (coverage <= .015 || coverage > 1.03) continue;
+        var predictedR = 255 - coverage * recipe.vector[0];
+        var predictedG = 255 - coverage * recipe.vector[1];
+        var predictedB = 255 - coverage * recipe.vector[2];
+        if (Math.abs(r - predictedR) + Math.abs(g - predictedG) + Math.abs(b - predictedB) >= 18) continue;
+        output[target] = Math.round(255 * recipe.cmyk[0] * coverage);
+        output[target + 1] = Math.round(255 * recipe.cmyk[1] * coverage);
+        output[target + 2] = Math.round(255 * recipe.cmyk[2] * coverage);
+        output[target + 3] = Math.round(255 * recipe.cmyk[3] * coverage);
+        matched = true;
+        break;
       }
+      if (matched) continue;
       var red = r / 255, green = g / 255, blue = b / 255;
       var k = 1 - Math.max(red, green, blue);
       var denominator = 1 - k;
@@ -1242,12 +1596,14 @@
   var DESIGN_HEIGHT_PT = 153.070866;
   var TRIM_WIDTH_MM = 90;
   var TRIM_HEIGHT_MM = 50;
-  // Arquivo de referência para impressão (Lucas, "Cartao Atualizado"): folha final de 104 × 64 mm,
-  // ou seja 7 mm de sangria do corte até a borda da folha — sangria por continuidade (o próprio
-  // fundo do cartão, verde ou branco, se estende até a borda), sem faixa preta nem branca à parte.
-  // A arte já embute 2 mm dessa sangria, então o pós-processamento estica mais 5 mm (2 → 7 mm)
-  // repetindo os pixels da borda, sem tocar nas posições internas do cartão.
-  var BLEED_EXTRA_MM = 5;
+  // Especificação final: 3 mm de sangra (96 × 56 mm) centralizados em uma folha branca de
+  // 104 × 64 mm. Portanto há 4 mm de margem branca por lado, além da sangra. Como a arte
+  // aprovada já contém 2 mm, apenas 1 mm adicional é criado por continuidade das bordas.
+  var TARGET_BLEED_MM = 3;
+  var BLEED_EXTRA_MM = 1;
+  var SHEET_MARGIN_MM = 4;
+  var PAGE_WIDTH_MM = TRIM_WIDTH_MM + 2 * (TARGET_BLEED_MM + SHEET_MARGIN_MM);
+  var PAGE_HEIGHT_MM = TRIM_HEIGHT_MM + 2 * (TARGET_BLEED_MM + SHEET_MARGIN_MM);
   // Vão entre a marca de corte e o canto real do corte, e espessura do traço — replicam o arquivo
   // de referência acima (marcas de corte reais, não a marca magenta que é só guia de tela).
   var MARK_GAP_MM = 2;
@@ -1256,24 +1612,48 @@
   var EXPORT_DPI = 600;
   var OUTPUT_PROFILE_NAME = "Coated FOGRA39 \\(ISO 12647-2:2004\\)";
 
-  // Estica a última linha/coluna de pixels da arte para fora, criando a sangria extra de forma
-  // contínua (sem costura), sem alterar nenhum pixel do conteúdo original.
-  function extendEdges(source, padPx) {
-    if (!padPx) return source;
-    var sw = source.width, sh = source.height;
+  function mmToCanvasPx(mm, totalMm, pixels) {
+    return Math.round(mm / totalMm * pixels);
+  }
+
+  // Compõe a folha final diretamente nas posições físicas pedidas. A área fora de 96 × 56 mm
+  // fica branca; dentro dela, o 1 mm adicional repete somente os pixels externos da arte.
+  function composePrintSheet(source) {
     var out = document.createElement("canvas");
-    out.width = sw + 2 * padPx;
-    out.height = sh + 2 * padPx;
+    out.width = Math.round(PAGE_WIDTH_MM / 25.4 * EXPORT_DPI);
+    out.height = Math.round(PAGE_HEIGHT_MM / 25.4 * EXPORT_DPI);
     var octx = out.getContext("2d");
-    octx.drawImage(source, 0, 0, 1, 1, 0, 0, padPx, padPx);
-    octx.drawImage(source, sw - 1, 0, 1, 1, padPx + sw, 0, padPx, padPx);
-    octx.drawImage(source, 0, sh - 1, 1, 1, 0, padPx + sh, padPx, padPx);
-    octx.drawImage(source, sw - 1, sh - 1, 1, 1, padPx + sw, padPx + sh, padPx, padPx);
-    octx.drawImage(source, 0, 0, sw, 1, padPx, 0, sw, padPx);
-    octx.drawImage(source, 0, sh - 1, sw, 1, padPx, padPx + sh, sw, padPx);
-    octx.drawImage(source, 0, 0, 1, sh, 0, padPx, padPx, sh);
-    octx.drawImage(source, sw - 1, 0, 1, sh, padPx + sw, padPx, padPx, sh);
-    octx.drawImage(source, padPx, padPx);
+    octx.fillStyle = "#fff";
+    octx.fillRect(0, 0, out.width, out.height);
+
+    var bleedLeft = mmToCanvasPx(SHEET_MARGIN_MM, PAGE_WIDTH_MM, out.width);
+    var bleedTop = mmToCanvasPx(SHEET_MARGIN_MM, PAGE_HEIGHT_MM, out.height);
+    var artLeft = mmToCanvasPx(SHEET_MARGIN_MM + BLEED_EXTRA_MM, PAGE_WIDTH_MM, out.width);
+    var artTop = mmToCanvasPx(SHEET_MARGIN_MM + BLEED_EXTRA_MM, PAGE_HEIGHT_MM, out.height);
+    var artRight = mmToCanvasPx(PAGE_WIDTH_MM - SHEET_MARGIN_MM - BLEED_EXTRA_MM, PAGE_WIDTH_MM, out.width);
+    var artBottom = mmToCanvasPx(PAGE_HEIGHT_MM - SHEET_MARGIN_MM - BLEED_EXTRA_MM, PAGE_HEIGHT_MM, out.height);
+    var bleedRight = mmToCanvasPx(PAGE_WIDTH_MM - SHEET_MARGIN_MM, PAGE_WIDTH_MM, out.width);
+    var bleedBottom = mmToCanvasPx(PAGE_HEIGHT_MM - SHEET_MARGIN_MM, PAGE_HEIGHT_MM, out.height);
+    var artWidth = artRight - artLeft;
+    var artHeight = artBottom - artTop;
+    // O PNG-base da FG traz uma única coluna branca residual no extremo direito (fora da arte
+    // útil exportada pelo Illustrator). Se essa coluna for usada como amostra, ela vira uma
+    // faixa clara de 1 mm ao criar a sangra. Ignoramos somente esse pixel técnico na FG.
+    var sourceCropWidth = template.style === "fg" ? Math.max(1, source.width - 1) : source.width;
+    var sourceRightX = sourceCropWidth - 1;
+    // A arte FG já chega renderizada nos pixels finais de impressão. Desligar a interpolação
+    // nesta composição impede qualquer halo entre o verde sólido e a margem branca.
+    if (template.style === "fg") octx.imageSmoothingEnabled = false;
+
+    octx.drawImage(source, 0, 0, 1, 1, bleedLeft, bleedTop, artLeft - bleedLeft, artTop - bleedTop);
+    octx.drawImage(source, sourceRightX, 0, 1, 1, artRight, bleedTop, bleedRight - artRight, artTop - bleedTop);
+    octx.drawImage(source, 0, source.height - 1, 1, 1, bleedLeft, artBottom, artLeft - bleedLeft, bleedBottom - artBottom);
+    octx.drawImage(source, sourceRightX, source.height - 1, 1, 1, artRight, artBottom, bleedRight - artRight, bleedBottom - artBottom);
+    octx.drawImage(source, 0, 0, sourceCropWidth, 1, artLeft, bleedTop, artWidth, artTop - bleedTop);
+    octx.drawImage(source, 0, source.height - 1, sourceCropWidth, 1, artLeft, artBottom, artWidth, bleedBottom - artBottom);
+    octx.drawImage(source, 0, 0, 1, source.height, bleedLeft, artTop, artLeft - bleedLeft, artHeight);
+    octx.drawImage(source, sourceRightX, 0, 1, source.height, artRight, artTop, bleedRight - artRight, artHeight);
+    octx.drawImage(source, 0, 0, sourceCropWidth, source.height, artLeft, artTop, artWidth, artHeight);
     return out;
   }
 
@@ -1298,9 +1678,8 @@
       [bleedXPt, heightPt - innerYPt, bleedXPt, heightPt],
       [widthPt - bleedXPt, heightPt - innerYPt, widthPt - bleedXPt, heightPt]
     ];
-    // Cor de registro (Separation "All", tinta 100%): imprime nas 4 chapas ao mesmo tempo, igual
-    // ao arquivo de referência da gráfica — não é preto CMYK comum (0 0 0 1 k).
-    var lines = ["q", "/CS0 CS 1 SCN", MARK_WIDTH_PT + " w"];
+    // Preto puro #000000 convertido para CMYK 0/0/0/100, como especificado para as linhas.
+    var lines = ["q", "0 0 0 1 K", MARK_WIDTH_PT + " w"];
     segments.forEach(function (s) {
       lines.push(s[0] + " " + s[1] + " m", s[2] + " " + s[3] + " l", "S");
     });
@@ -1331,10 +1710,16 @@
     if (!profileBytes.length) throw new Error("Perfil ICC CoatedFOGRA39 não carregado.");
     var profile = await compressPdfStream(profileBytes);
     var content = asciiBytes("q\n" + widthPt + " 0 0 " + heightPt + " 0 0 cm\n/Im0 Do\nQ\n" + cropMarksContent(widthPt, heightPt));
+    var trimWidthPt = TRIM_WIDTH_MM / 25.4 * 72;
+    var trimHeightPt = TRIM_HEIGHT_MM / 25.4 * 72;
+    var trimXPt = (widthPt - trimWidthPt) / 2;
+    var trimYPt = (heightPt - trimHeightPt) / 2;
+    var bleedInsetPt = SHEET_MARGIN_MM / 25.4 * 72;
+    var pageBoxes = " /TrimBox [" + trimXPt + " " + trimYPt + " " + (widthPt - trimXPt) + " " + (heightPt - trimYPt) + "] /BleedBox [" + bleedInsetPt + " " + bleedInsetPt + " " + (widthPt - bleedInsetPt) + " " + (heightPt - bleedInsetPt) + "]";
     var objects = [
       asciiBytes("<< /Type /Catalog /Pages 2 0 R /OutputIntents [6 0 R] >>"),
       asciiBytes("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
-      asciiBytes("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + widthPt + " " + heightPt + "] /Resources << /XObject << /Im0 4 0 R >> /ColorSpace << /CS0 8 0 R >> >> /Contents 5 0 R >>"),
+      asciiBytes("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + widthPt + " " + heightPt + "]" + pageBoxes + " /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>"),
       concatBytes([
         asciiBytes("<< /Type /XObject /Subtype /Image /Width " + exportCanvas.width + " /Height " + exportCanvas.height + " /ColorSpace /DeviceCMYK /BitsPerComponent 8" + image.filter + " /Length " + image.bytes.length + " >>\nstream\n"),
         image.bytes,
@@ -1352,10 +1737,7 @@
         asciiBytes("<< /N 4 /Alternate /DeviceCMYK" + profile.filter + " /Length " + profile.bytes.length + " >>\nstream\n"),
         profile.bytes,
         asciiBytes("\nendstream")
-      ]),
-      // Colorspace de registro ("All"), idêntico ao usado nas marcas de corte do arquivo de
-      // referência da gráfica: tinta 100% imprime nas 4 chapas simultaneamente.
-      asciiBytes("[/Separation /All /DeviceCMYK << /FunctionType 2 /Domain [0 1] /C0 [0.0 0.0 0.0 0.0] /C1 [1.0 1.0 1.0 1.0] /N 1.0 >>]")
+      ])
     ];
     var parts = [asciiBytes("%PDF-1.4\n% CMYK print file - " + EXPORT_DPI + " DPI\n")];
     var offsets = [0];
@@ -1390,14 +1772,12 @@
     // Renderiza diretamente nos pixels finais de impressão, mantendo o sistema lógico 1880 × 1080
     // para preservar todas as posições aprovadas sem uma etapa posterior de ampliação.
     await renderCanvas(record, scratch, { width: 1880, height: 1080 });
-    // Pós-processamento: estica 5 mm extra de sangria (2 → 7 mm), chegando à folha final de
-    // 104 × 64 mm exigida pela gráfica, sem alterar nenhum pixel do cartão de 90 × 50 mm já
-    // renderizado. As marcas de corte são desenhadas depois, na hora de montar o PDF.
-    var bleedPadPx = Math.round(BLEED_EXTRA_MM / 25.4 * EXPORT_DPI);
-    var withExtraBleed = extendEdges(scratch, bleedPadPx);
-    var pageWidthPt = withExtraBleed.width / EXPORT_DPI * 72;
-    var pageHeightPt = withExtraBleed.height / EXPORT_DPI * 72;
-    return buildCmykPdf(withExtraBleed, pageWidthPt, pageHeightPt);
+    // A folha final preserva a arte central, cria 1 mm extra de sangra e mantém 4 mm brancos
+    // ao redor. As marcas vetoriais são acrescentadas depois, diretamente no conteúdo do PDF.
+    var printSheet = composePrintSheet(scratch);
+    var pageWidthPt = PAGE_WIDTH_MM / 25.4 * 72;
+    var pageHeightPt = PAGE_HEIGHT_MM / 25.4 * 72;
+    return buildCmykPdf(printSheet, pageWidthPt, pageHeightPt);
   }
 
   function triggerBlob(blob, name) {
@@ -1547,6 +1927,17 @@
     showWorkspace();
   }
 
+  // Criar cartão manualmente a partir da etapa "Criar ou Importar" começa uma lista nova — não
+  // soma ao que já existia (diferente de "Adicionar cartão manualmente" dentro do workspace, que
+  // complementa um lote em andamento).
+  function startManualCard() {
+    var r = recordFrom({ name: "", role: "", address: "", landline: "", phone: "", email: "", website: "" });
+    state.records = [r];
+    state.activeId = r.id;
+    save();
+    showWorkspace();
+  }
+
   function loadDemo() {
     var demo = [
       { name: "Mariana Alves", role: "Supervisora de Vendas Externas", address: "Av. Antônio Gazzola, 1001 | Jardim Corazza\nItu | SP | CEP 13301-245", landline: "(11) 3333-4444", phone: "(11) 99999-0000", email: "mariana.alves@empresa.com.br", website: "www.empresa.com.br" },
@@ -1564,8 +1955,7 @@
     $("miniBrand").textContent = brand.shortName || brand.name.slice(0, 3).toUpperCase();
     $("logoVariantField").hidden = template.style !== "fg";
     $("spreadsheetFile").addEventListener("change", function () { handleFile(this.files[0]); this.value = ""; });
-    $("replaceFile").addEventListener("click", function () { $("spreadsheetFile").click(); });
-    $("startManual").addEventListener("click", addManual);
+    $("startManual").addEventListener("click", startManualCard);
     $("addRecord").addEventListener("click", addManual);
     $("deleteSelected").addEventListener("click", deleteSelected);
     $("backToWorkspace").addEventListener("click", function () { goToStep("edit"); });
@@ -1573,8 +1963,18 @@
     $("cancelReturnToImportIcon").addEventListener("click", closeReturnToImportModal);
     $("confirmReturnToImport").addEventListener("click", confirmReturnToImport);
     $("returnToImportModal").addEventListener("click", function (ev) { if (ev.target === this) closeReturnToImportModal(); });
+    $("cancelDeleteConfirm").addEventListener("click", closeDeleteConfirmModal);
+    $("cancelDeleteConfirmIcon").addEventListener("click", closeDeleteConfirmModal);
+    $("confirmDeleteConfirm").addEventListener("click", function () {
+      var action = pendingDeleteAction;
+      closeDeleteConfirmModal();
+      if (action) action();
+    });
+    $("deleteConfirmModal").addEventListener("click", function (ev) { if (ev.target === this) closeDeleteConfirmModal(); });
     document.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape" && !$("returnToImportModal").hidden) closeReturnToImportModal();
+      if (ev.key !== "Escape") return;
+      if (!$("returnToImportModal").hidden) closeReturnToImportModal();
+      if (!$("deleteConfirmModal").hidden) closeDeleteConfirmModal();
     });
     document.querySelectorAll(".bc-flow-step").forEach(function (el) {
       el.addEventListener("click", function () { goToStep(el.getAttribute("data-step")); });

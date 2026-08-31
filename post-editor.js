@@ -14,6 +14,10 @@ var positions={
 };
 var state={editoriaName:null,editoriaColor:null,footerColor:'#FFBE00',brandBadgeColor:'#fbc400',background:null,product:null,productDrawable:null,productHasCircle:true,badgeFeed:null,badgeStory:null,customAssets:{},autoLayout:'left',bgZoom:{feed:1,story:1},overlayScale:1,format:{feed:{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0},story:{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0}}};
 var lastProductBox={feed:null,story:null},lastBadgeBox={feed:null,story:null};
+var INCOMING_COMM=(function(){
+ var q=new URLSearchParams(location.search);if(!q.get('eventTitle'))return null;
+ return{day:q.get('eventDay')||'01',month:q.get('eventMonth')||'JANEIRO',prefix:q.get('eventPrefix')||'',title:q.get('eventTitle')||'NOME DA DATA'};
+})();
 var catalog=[],selectedProduct=null,catalogFocus=0,catalogLoading=true;
 // ============================================================
 // EDITORIAS — mesma fonte usada em Configurações → Editorias no Calendário (app.js), lida
@@ -102,11 +106,13 @@ var CATALOG_THUMB_WIDTH=160;
 var CATALOG_PRODUCT_WIDTH=1600;
 function productImageUrl(code,width){var digits=normalizeCode(code);if(!digits)return'';return'product-image.php?code='+encodeURIComponent(digits)+'&v=4'+(width?'&w='+width:'')}
 function localProductImageUrl(code,width){var digits=normalizeCode(code);if(!digits)return'';return'http://127.0.0.1:8765/product-image?code='+encodeURIComponent(digits)+'&v=4'+(width?'&w='+width:'')}
-// o helper local só existe na máquina de quem está editando (rodado pelo "Abrir
-// Calendario.cmd"); num site publicado (GitHub Pages etc.) chamar 127.0.0.1 faz o Chrome
-// pedir a permissão de "Acessar dispositivos na rede local" pro visitante à toa, então só
-// tentamos esse endereço quando a própria página está sendo servida localmente
-var IS_LOCAL_HOST=location.protocol==='file:'||/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+// o helper local (rodado pelo "Abrir Calendario.cmd") é sempre tentado como fallback, mesmo
+// no site publicado (GitHub Pages, que não executa o PHP do proxy) — sem ele o recorte
+// automático simplesmente não tinha nenhuma origem que funcionasse por lá. Só faz efeito em
+// quem estiver com o auxiliar local rodando (loadExportSafeImage já ignora o resto quando a
+// conexão é recusada, caindo no aviso "envie a foto manualmente"); pra quem não tiver, o
+// Chrome pode pedir a permissão de "Acessar dispositivos na rede local" — aceito como troca
+// deliberada em favor do recorte automático funcionar direto do link publicado.
 function itemImageUrls(item,width){
  var codes=catalogCodes(item),code=codes[0]&&codes[0].code,direct=(item&&(item.imageUrl||item.image||item.photo))||'',urls=[];
  // Em file:// o PHP da pasta não é executado. O helper local devolve a foto com CORS;
@@ -115,7 +121,7 @@ function itemImageUrls(item,width){
  // responder — e nunca será desenhada se contaminar o canvas.
  if(CATALOG_PHOTO_SLUG==='vonder'&&code){
   if(location.protocol==='file:')urls.push(localProductImageUrl(code,width));else urls.push(productImageUrl(code,width));
-  if(IS_LOCAL_HOST)urls.push(localProductImageUrl(code,width))
+  urls.push(localProductImageUrl(code,width))
  }
  if(direct)urls.push(direct);
  return urls.filter(function(url,index){return url&&urls.indexOf(url)===index})
@@ -183,13 +189,25 @@ function chooseEditoria(editoria){
  state.editoriaName=editoria.name;state.editoriaColor=editoria.color||'#64748b';state.footerColor=preset.footerColor||'#FFBE00';
  state.brandBadgeColor=preset.brandBadgeColor||'#fbc400';if($('#brandBadgeColor'))$('#brandBadgeColor').value=state.brandBadgeColor;
  state.customAssets={};var brandField=$('#brandVariantField');if(brandField)brandField.hidden=!preset.supportsBrandVariant;
- var usesCodes=preset.supportsCodes!==false,usesCutout=preset.supportsProductCutout!==false;
+ var usesCodes=preset.supportsCodes!==false,usesCutout=preset.supportsProductCutout!==false,isCommemorative=!!preset.commemorative;
  $('#codeControls').hidden=!usesCodes;$('#selectedProductCode').hidden=!usesCodes;$('#productDrop').hidden=!usesCutout;$('#removeWhiteField').hidden=!usesCutout;
+ $('#commemorativeFields').hidden=!isCommemorative;$('#selectedProductSummary').hidden=isCommemorative;$('#productNameLabel').textContent=isCommemorative?'Título da data comemorativa':'Nome completo';
+ $('#detailsSectionTitle').textContent=isCommemorative?'Data comemorativa':'Produto';$('#detailsSectionHint').textContent=isCommemorative?'Data, mês e título editáveis':'Dados preenchidos pelo catálogo, mas editáveis';
+ // Editorias com skipProductChooser (ex: Datas comemorativas) nunca passam pela etapa "Escolher
+ // produto" — o passo 2 do topo e o "Tamanho do destaque" (que só se aplica ao destaque de
+ // produto/logo movível, inexistente nesse preset) somem do fluxo pra essa editoria.
+ $('[data-flow-step="choose"]').hidden=!!preset.skipProductChooser;$('#flowSepChoose').hidden=!!preset.skipProductChooser;
+ $('#flowStepEditNumber').textContent=preset.skipProductChooser?'2':'3';
+ $('#overlayScaleField').hidden=isCommemorative;
  $('#imageSectionHint').textContent=usesCutout?'Envie a cena e, se tiver, o produto recortado':'Envie somente a imagem de uso do produto';
  syncEditoriaBadges();status('Carregando preset de '+editoria.name+'…',true);
  var assetNames=Object.keys(preset.assetSources||{}),sources=[preset.badgeFeed,preset.badgeStory].concat(assetNames.map(function(name){return preset.assetSources[name]}));
  Promise.all(sources.map(function(src){return src?loadImage(src):Promise.resolve(null)})).then(function(v){state.badgeFeed=v[0];state.badgeStory=v[1];assetNames.forEach(function(name,index){state.customAssets[name]=v[index+2]});drawAll();status('Preset de '+editoria.name+' carregado',false)}).catch(function(){drawAll();status('Preset de '+editoria.name+' carregado; algumas imagens não abriram',false)});
- setFlow('choose')
+ if(preset.skipProductChooser){
+  selectedProduct=null;state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;
+$('#productName').value=(INCOMING_COMM&&INCOMING_COMM.title)||'NOME DA DATA';$('#eventDay').value=(INCOMING_COMM&&INCOMING_COMM.day)||'01';$('#eventMonth').value=(INCOMING_COMM&&INCOMING_COMM.month)||'JANEIRO';$('#eventPrefix').value=(INCOMING_COMM&&INCOMING_COMM.prefix)||'Dia do';
+  $('#backgroundFileName').textContent='Clique ou arraste uma imagem';showEditor({},true);status('Preencha a data e envie a imagem de fundo',false)
+ }else setFlow('choose')
 }
 function setProductFilePreview(src,text,fallbacks){
  var preview=$('#productFilePreview'),drop=$('#productDrop');if(!preview||!drop)return;
@@ -206,11 +224,11 @@ function updateSelectedSummary(item,manual){
 }
 function showEditor(item,manual){updateSelectedSummary(item||{},!!manual);setFlow('edit');setTimeout(function(){drawAll()},0)}
 function chooseManualProduct(){
- selectedProduct=null;$('#productName').value='';$('#productCode').value='';$('#productCode2').value='';$('#codeCount').value='1';if($('#brandVariant'))$('#brandVariant').value='vonder';state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;setProductFilePreview('','PNG transparente ou foto em fundo branco');$('#backgroundFileName').textContent='Clique ou arraste uma imagem';syncCodeFields();showEditor({},true);drawAll();status('Preencha os dados e envie as imagens',false)
+ selectedProduct=null;$('#productName').value='';$('#productCode').value='';$('#productCode2').value='';$('#codeCount').value='1';selectBrandLogo('VONDER',true);state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;setProductFilePreview('','PNG transparente ou foto em fundo branco');$('#backgroundFileName').textContent='Clique ou arraste uma imagem';syncCodeFields();showEditor({},true);drawAll();status('Preencha os dados e envie as imagens',false)
 }
 function chooseCatalogProduct(item){
  selectedProduct=item;var codes=catalogCodes(item);$('#productName').value=editorNameFor(item);$('#productCode').value=codes[0]?codes[0].code:'';$('#productCode2').value=codes[1]?codes[1].code:'';$('#codeVariant1').value=(codes[0]&&codes[0].label)||'110 V~';$('#codeVariant2').value=(codes[1]&&codes[1].label)||'220 V~';$('#codeCount').value=codes.length>1?'2':'1';syncCodeFields();
- if($('#brandVariant'))$('#brandVariant').value=item.brandVariant||(/vonder\s*plus/i.test(item.name||'')?'vonder-plus':'vonder');
+ selectBrandLogo(normalizeBrandVariant(item.brandVariant)||(/vonder\s*plus/i.test(item.name||'')?'Vonder_plus':'VONDER'),true);
  state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};var thumbUrls=itemThumbnailUrls(item);setProductFilePreview(thumbUrls[0],'Carregada automaticamente · clique para alterar',thumbUrls.slice(1));showEditor(item,false);drawAll();
  var bgUrl=itemBackgroundUrl(item);if(bgUrl){$('#backgroundFileName').textContent='Foto de aplicação do catálogo';loadImage(bgUrl).then(function(im){if(selectedProduct!==item)return;
   if(!im.exportSafe){$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Essa foto de aplicação não pode ser usada automaticamente (o servidor de origem não libera para exportação) — envie manualmente abaixo',false);return}
@@ -218,7 +236,7 @@ function chooseCatalogProduct(item){
  }).catch(function(){if(selectedProduct!==item)return;$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Produto carregado; a foto de aplicação não abriu',false)})}else{$('#backgroundFileName').textContent='Clique ou arraste uma imagem'}
  var urls=itemImageUrls(item,CATALOG_PRODUCT_WIDTH);if(!urls.length){status('Dados preenchidos; envie a foto do produto',false);return}status(bgUrl?'Carregando produto e foto de aplicação…':'Carregando e recortando a foto do catálogo…',true);$('#productFileName').textContent='Foto do catálogo · '+(codes[0]?codes[0].code:'produto')+' · clique para alterar';
  loadExportSafeImage(urls).then(function(im){if(selectedProduct!==item)return;
-  state.product=im;$('#productFileName').textContent='Foto do catálogo carregada · clique para alterar';$('#removeWhite').checked=true;updateProduct()
+  state.product=im;$('#productFileName').textContent='Foto do catálogo carregada · clique para alterar';$('#removeWhite').checked=!hasTransparency(im);updateProduct()
  }).catch(function(){if(selectedProduct!==item)return;var localHint=location.protocol==='file:'?' Abra pelo arquivo “Abrir Calendario.cmd” para ativar o recorte automático.':'';status('Dados preenchidos; não foi possível carregar a foto automaticamente.'+localHint,false);$('#productFileName').textContent='Foto visível, mas o recorte automático precisa do lançador'})
 }
 // resultados que começam pelo termo buscado (no nome ou em algum código) vêm antes dos que só
@@ -286,6 +304,69 @@ function loadExportSafeImage(urls){return new Promise(function(resolve,reject){
  }
  tryLocal().then(resolve,reject)
 })}
+// ============================================================
+// MARCA NO CABEÇALHO — biblioteca de logos em post-editor-assets/brands/*.svg (centenas de
+// marcas). Os SVGs brutos são fontes locais e ficam fora do Git. Cada um tem um "wrapper"
+// publicado em post-editor-assets/brands-js/ (mesmo nome + .js), que registra uma data: URI em
+// window.OVD_BRAND_LOGOS. Uma tag <script> carrega o wrapper sem restrição de CORS sob file://;
+// a mesma data: URI alimenta canvas e miniaturas sem depender da pasta-fonte ignorada.
+var BRAND_MANIFEST=window.OVD_BRAND_MANIFEST||['VONDER','Vonder_plus'];
+var BRAND_LOGO_CACHE={};
+function displayBrandName(name){return String(name||'').replace(/_/g,' ')}
+// compatibilidade com o antigo valor de item.brandVariant salvo no catálogo ('vonder'/'vonder-plus')
+function normalizeBrandVariant(value){if(!value)return null;if(/^vonder-plus$/i.test(value))return'Vonder_plus';if(/^vonder$/i.test(value))return'VONDER';return value}
+function loadBrandLogoImage(name){
+ if(!name)return Promise.resolve(null);
+ if(BRAND_LOGO_CACHE[name])return BRAND_LOGO_CACHE[name];
+ var p=new Promise(function(resolve,reject){
+  if(window.OVD_BRAND_LOGOS&&window.OVD_BRAND_LOGOS[name]){resolve(window.OVD_BRAND_LOGOS[name]);return}
+  var script=document.createElement('script');
+  script.src='post-editor-assets/brands-js/'+encodeURIComponent(name)+'.js';
+  script.onload=function(){var uri=window.OVD_BRAND_LOGOS&&window.OVD_BRAND_LOGOS[name];if(uri)resolve(uri);else reject(new Error('Logo não encontrado: '+name))};
+  script.onerror=function(){reject(new Error('Falha ao carregar o logo de '+name))};
+  document.head.appendChild(script)
+ }).then(function(dataUri){return loadImage(dataUri)});
+ BRAND_LOGO_CACHE[name]=p;return p
+}
+// skipRedraw evita um drawAll() extra quando quem chamou já vai chamar drawAll() em seguida
+// (chooseManualProduct/chooseCatalogProduct) — o redraw de verdade sempre acontece assim que a
+// imagem carrega, via a Promise abaixo.
+function selectBrandLogo(name,skipRedraw){
+ state.brandLogoName=name;
+ var nameEl=$('#brandLogoName');if(nameEl)nameEl.textContent=displayBrandName(name);
+ var thumb=$('#brandLogoThumb');
+ if(thumb){thumb.innerHTML='';var im=document.createElement('img');im.alt='';thumb.appendChild(im)}
+ loadBrandLogoImage(name).then(function(img){
+  if(state.brandLogoName!==name)return;
+  var thumbImg=$('#brandLogoThumb img');if(thumbImg)thumbImg.src=img.src;
+  state.customAssets.brandLogo=img;
+  if(!skipRedraw)drawAll()
+ }).catch(function(){
+  if(state.brandLogoName===name)status('Não foi possível carregar o logo de '+displayBrandName(name),false)
+ })
+}
+function matchingBrandLogos(query){
+ var q=normalizeText(String(query||'').trim());
+ var results=BRAND_MANIFEST.filter(function(name){return!q||normalizeText(name).indexOf(q)>=0});
+ results.sort(function(a,b){var ar=normalizeText(a).indexOf(q)===0?0:1,br=normalizeText(b).indexOf(q)===0?0:1;return ar-br||a.localeCompare(b)});
+ return results.slice(0,q?40:20)
+}
+function renderBrandLogoResults(){
+ var input=$('#brandLogoSearch'),box=$('#brandLogoResults');if(!input||!box)return;
+ var matches=matchingBrandLogos(input.value);
+ if(!matches.length){box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhuma marca encontrada</strong>Tente buscar por outro termo.</div>';return}
+ box.innerHTML=matches.map(function(name,index){
+  return '<button type="button" class="pe-catalog-item" data-brand-index="'+index+'"><img alt="" loading="lazy" decoding="async"><span><strong>'+escapeHtml(displayBrandName(name))+'</strong></span><span>›</span></button>'
+ }).join('');
+ $$('#brandLogoResults [data-brand-index]').forEach(function(btn){
+  var name=matches[Number(btn.dataset.brandIndex)];
+  loadBrandLogoImage(name).then(function(img){var thumb=btn.querySelector('img');if(thumb)thumb.src=img.src}).catch(function(){btn.classList.add('is-unavailable')});
+  btn.addEventListener('click',function(){
+   selectBrandLogo(name);
+   $('#brandLogoPicker').hidden=true;$('#brandLogoSummary').hidden=false
+  })
+ })
+}
 function trimBackgroundMargins(im){var c=document.createElement('canvas');c.width=im.width;c.height=im.height;var ctx=c.getContext('2d');ctx.drawImage(im,0,0);var pixels=ctx.getImageData(0,0,c.width,c.height).data,minX=c.width,minY=c.height,maxX=-1,maxY=-1;for(var y=0;y<c.height;y++)for(var x=0;x<c.width;x++){var i=(y*c.width+x)*4;if(pixels[i+3]>8&&(pixels[i]<245||pixels[i+1]<245||pixels[i+2]<245)){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y}}if(maxX<minX||maxY<minY)return im;var cropW=maxX-minX+1,cropH=maxY-minY+1;if(cropW>=c.width*.98&&cropH>=c.height*.98)return im;var inset=3;minX=Math.min(maxX,minX+inset);minY=Math.min(maxY,minY+inset);maxX=Math.max(minX,maxX-inset);maxY=Math.max(minY,maxY-inset);cropW=maxX-minX+1;cropH=maxY-minY+1;var out=document.createElement('canvas');out.width=cropW;out.height=cropH;out.getContext('2d').drawImage(c,minX,minY,cropW,cropH,0,0,cropW,cropH);return out}
 function drawPlaceholder(ctx,t){
  var g=ctx.createLinearGradient(0,0,t.w,t.h);g.addColorStop(0,'#202427');g.addColorStop(.48,'#5a5f5d');g.addColorStop(1,'#1d201f');ctx.fillStyle=g;ctx.fillRect(0,0,t.w,t.h);
@@ -347,7 +428,7 @@ function draw(format){
  var activePreset=EDITORIA_PRESETS[state.editoriaName];
  if(activePreset&&typeof activePreset.renderer==='function'){
   lastProductBox[format]=null;lastBadgeBox[format]=null;
-  activePreset.renderer({format:format,canvas:c,ctx:ctx,t:t,state:state,item:selectedProduct,productName:$('#productName').value,brandVariant:$('#brandVariant')?$('#brandVariant').value:'vonder',helpers:{drawCover:drawCover,drawPlaceholder:drawPlaceholder,contain:contain,roundRect:roundRect,font:font,fitFont:fitFont}});return
+  activePreset.renderer({format:format,canvas:c,ctx:ctx,t:t,state:state,item:selectedProduct,productName:$('#productName').value,helpers:{drawCover:drawCover,drawPlaceholder:drawPlaceholder,contain:contain,roundRect:roundRect,font:font,fitFont:fitFont}});return
  }
  if(state.background)drawCover(ctx,state.background,t,format);else drawPlaceholder(ctx,t);
  var productBox=scaled(pos.product,format),badgeBox=scaled(pos.badge,format);lastProductBox[format]=productBox;lastBadgeBox[format]=badgeBox;
@@ -369,6 +450,16 @@ function analyze(){
  Object.keys(candidates).forEach(function(k){var s=regionScore(state.background,candidates[k]);if(s<score){score=s;best=k}});state.autoLayout=best;drawAll();status('Composição automática: '+({left:'esquerda',stacked:'superior',right:'direita'}[best]),false)
 }
 function fileImage(file){return new Promise(function(resolve,reject){var u=URL.createObjectURL(file),im=new Image();im.onload=function(){URL.revokeObjectURL(u);resolve(im)};im.onerror=function(){URL.revokeObjectURL(u);reject(new Error('Imagem inválida'))};im.src=u})}
+// true se a imagem já vier com transparência de verdade (PNG já recortado no catálogo) — nesse
+// caso o recorte automático não deve rodar de novo em cima dela: sem fundo sobrando pras bordas
+// calibrarem a cor "de fundo", o algoritmo (baseado na cor média dos 4 cantos) perde a referência
+// e passa a comer partes claras/escuras do próprio produto. Amostra em baixa resolução (mesmo
+// teto de removeWhite) só pra decidir rápido, sem pesar no carregamento.
+function hasTransparency(im){
+ var max=200,s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*s));c.height=Math.max(1,Math.round(im.height*s));
+ var x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);
+ try{var d=x.getImageData(0,0,c.width,c.height).data;for(var i=3;i<d.length;i+=4)if(d[i]<250)return true;return false}catch(e){return false}
+}
 function removeWhite(im){
  var max=900,s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);var x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);var data=x.getImageData(0,0,c.width,c.height),d=data.data,w=c.width,h=c.height,corners=[[0,0],[w-1,0],[0,h-1],[w-1,h-1]],avg=[0,0,0];
  corners.forEach(function(p){var i=(p[1]*w+p[0])*4;avg[0]+=d[i]/4;avg[1]+=d[i+1]/4;avg[2]+=d[i+2]/4});var seen=new Uint8Array(w*h),queue=new Int32Array(w*h),head=0,tail=0;
@@ -416,7 +507,7 @@ function makeZip(files){var encoder=new TextEncoder(),stamp=zipDate(),locals=[],
 function downloadZip(){var base=exportBaseName();status('Montando pacote ZIP…',true);Promise.all([canvasBlob('feed'),canvasBlob('story')]).then(function(blobs){return Promise.all(blobs.map(function(blob){return blob.arrayBuffer()}))}).then(function(buffers){var zip=makeZip([{name:base+'_FEED.jpg',data:new Uint8Array(buffers[0])},{name:base+'_STORY.jpg',data:new Uint8Array(buffers[1])}]);triggerBlob(zip,base+'_FEED_STORY.zip');status('Pacote ZIP baixado',false)}).catch(function(){status('Não foi possível gerar o pacote ZIP',false)})}
 setupDrop('#backgroundDrop','#backgroundFile','#backgroundFileName',function(file,name){name.textContent=file.name;status('Analisando a foto…',true);fileImage(file).then(function(im){state.background=im;state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};analyze()}).catch(function(){status('Não foi possível abrir a foto',false)})});
 setupDrop('#productDrop','#productFile','#productFileName',function(file,name){setProductFilePreviewFromFile(file);fileImage(file).then(function(im){state.product=im;updateProduct()}).catch(function(){status('Não foi possível abrir o produto',false)})});
-['#productName','#productCode','#productCode2','#codeVariant1','#codeVariant2','#brandVariant'].forEach(function(s){var el=$(s);if(el)el.addEventListener('input',drawAll)});function syncCodeFields(){var dual=$('#codeCount').value==='2';$('#codeVariantField1').hidden=!dual;$('#codeRow1').classList.toggle('is-dual',dual);$('#codeRow2').hidden=!dual;$('#productCodeLabel').textContent=dual?'Código 1':'Código';drawAll()}$('#codeCount').addEventListener('change',syncCodeFields);syncCodeFields();$('#layoutMode').addEventListener('change',drawAll);$('#removeWhite').addEventListener('change',updateProduct);
+['#productName','#productCode','#productCode2','#codeVariant1','#codeVariant2','#eventDay','#eventMonth','#eventPrefix'].forEach(function(s){var el=$(s);if(el)el.addEventListener('input',drawAll)});if($('#eventMonth'))$('#eventMonth').addEventListener('blur',function(){var month=this.value.trim().toLocaleLowerCase('pt-BR');this.value=month?month.charAt(0).toLocaleUpperCase('pt-BR')+month.slice(1):'';drawAll()});function syncCodeFields(){var dual=$('#codeCount').value==='2';$('#codeVariantField1').hidden=!dual;$('#codeRow1').classList.toggle('is-dual',dual);$('#codeRow2').hidden=!dual;$('#productCodeLabel').textContent=dual?'Código 1':'Código';drawAll()}$('#codeCount').addEventListener('change',syncCodeFields);syncCodeFields();$('#layoutMode').addEventListener('change',drawAll);$('#removeWhite').addEventListener('change',updateProduct);
 ['feed','story'].forEach(function(format){var cap=format[0].toUpperCase()+format.slice(1),input=$('#backgroundZoom'+cap),output=$('#backgroundZoom'+cap+'Out');input.addEventListener('input',function(){state.bgZoom[format]=this.value/100;output.value=this.value+'%';draw(format)})});$('#overlayScale').addEventListener('input',function(){state.overlayScale=this.value/100;$('#overlayScaleOut').value=this.value+'%';drawAll()});
 if($('#brandBadgeColor'))$('#brandBadgeColor').addEventListener('input',function(){state.brandBadgeColor=this.value;drawAll()});
 $('#autoCompose').addEventListener('click',analyze);$('#generateCompositions').addEventListener('click',generateCompositions);$$('[data-composition]').forEach(function(button){button.addEventListener('click',function(){applyComposition(button.dataset.composition)})});$('#resetPosition').addEventListener('click',function(){state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};drawAll();status('Posições centralizadas',false)});
@@ -453,8 +544,11 @@ $('#downloadFeed').onclick=function(){download('feed')};$('#downloadStory').oncl
 $('#catalogSearch').addEventListener('input',function(){catalogFocus=0;renderCatalogResults()});
 $('#catalogSearch').addEventListener('keydown',function(ev){var matches=matchingProducts(this.value);if(ev.key==='ArrowDown'&&matches.length){catalogFocus=Math.min(matches.length-1,catalogFocus+1);renderCatalogResults();ev.preventDefault()}else if(ev.key==='ArrowUp'&&matches.length){catalogFocus=Math.max(0,catalogFocus-1);renderCatalogResults();ev.preventDefault()}else if(ev.key==='Enter'&&matches.length){chooseCatalogProduct(matches[catalogFocus]||matches[0]);ev.preventDefault()}});
 $('#manualProduct').addEventListener('click',chooseManualProduct);$('#changeProduct').addEventListener('click',function(){goToStep('choose')});
+if($('#changeBrandLogo'))$('#changeBrandLogo').addEventListener('click',function(){$('#brandLogoSummary').hidden=true;$('#brandLogoPicker').hidden=false;$('#brandLogoSearch').value='';renderBrandLogoResults();setTimeout(function(){$('#brandLogoSearch').focus()},20)});
+if($('#brandLogoSearch'))$('#brandLogoSearch').addEventListener('input',renderBrandLogoResults);
 $('#changeEditoriaChoose').addEventListener('click',function(){goToStep('editoria')});$('#changeEditoriaEdit').addEventListener('click',function(){goToStep('editoria')});
 setFlow('editoria');renderEditoriaGrid();loadCatalog();refreshEditoriasFromServer();
+if(INCOMING_COMM){var incomingEditoria=EDITORIAS.filter(function(e){return /comemorat/i.test(e.name||'')})[0];if(incomingEditoria&&EDITORIA_PRESETS[incomingEditoria.name])chooseEditoria(incomingEditoria)}
 var embedded=window.POST_EDITOR_ASSETS||{};loadImage(embedded.product||'post-editor-assets/demo-product.png').then(function(im){if(!selectedProduct&&!state.product&&$('#editorWorkspace').hidden)state.productDrawable=im;drawAll();try{canvases.feed.toDataURL('image/jpeg',.1);document.body.dataset.exportReady='true';status('Editor pronto',false)}catch(e){document.body.dataset.exportReady='false';status('Prévia pronta; exportação bloqueada pelo navegador',false)}}).catch(function(){drawAll();status('Editor aberto; alguns elementos não carregaram',false)});
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawAll);else drawAll();
 window.PostEditor={redraw:drawAll,state:state,chooseProduct:chooseCatalogProduct,getCatalog:function(){return catalog.slice()},makeZip:makeZip,exportBaseName:exportBaseName};

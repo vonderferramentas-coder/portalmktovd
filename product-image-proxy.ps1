@@ -18,6 +18,10 @@ while($listener.IsListening){
  try{
   $context=$listener.GetContext();$request=$context.Request;$response=$context.Response
   $response.Headers['Access-Control-Allow-Origin']='*';$response.Headers['Access-Control-Allow-Methods']='GET, OPTIONS';$response.Headers['Access-Control-Allow-Headers']='Content-Type';$response.Headers['X-Content-Type-Options']='nosniff'
+  # exigido pelo Chrome (Private Network Access) pra permitir que uma página https (ex: o site
+  # publicado no GitHub Pages) busque algo em 127.0.0.1 — sem isso o navegador bloqueia o pedido
+  # antes mesmo de chegar aqui, mesmo com o auxiliar rodando normalmente
+  $response.Headers['Access-Control-Allow-Private-Network']='true'
   if($request.HttpMethod-eq'OPTIONS'){$response.StatusCode=204;$response.Close();continue}
   if($request.Url.AbsolutePath-eq'/health'){Send-TextResponse $response 200 'ok';$response.Close();continue}
   if($request.Url.AbsolutePath-ne'/product-image'){Send-TextResponse $response 404 'Rota não encontrada.';$response.Close();continue}

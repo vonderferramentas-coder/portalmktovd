@@ -1147,6 +1147,64 @@
       const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
       return (APP_SETTINGS.editorias||[]).find(e=> norm(e.name).includes('comemorat'));
     }
+    // Marcas cuja editoria "Datas comemorativas" tem preset próprio no Editor de Posts (ver
+    // post-editor-osten-datas-comemorativas.js / post-editor-dismatal-datas-comemorativas.js —
+    // arquivos e presets totalmente independentes entre si, sem nenhuma referência cruzada) e
+    // por isso ganham o atalho de "Abrir editor de posts" direto a partir da data comemorativa.
+    // Esse gate e o fluxo abaixo (modal, criação do card mínimo) são infraestrutura genérica,
+    // compartilhada por qualquer marca aqui listada — não fazem parte do layout de nenhuma delas.
+    function brandHasCommemorativeEditorShortcut(){ return BRAND_SUFFIX==='__osten-ferragens' || BRAND_SUFFIX==='__dismatal'; }
+    function splitCommemorativeTitle(holidayName){
+      const match=String(holidayName||'').trim().match(/^(Dia(?:s)?\s+(?:(?:Internacional|Nacional|Mundial)\s+)?(?:do|da|de|dos|das)\s+)(.+)$/i);
+      return match ? { prefix:match[1].trim(), title:match[2].trim() } : { prefix:'', title:String(holidayName||'').trim() };
+    }
+    function openCommemorativeEditorChoice(dateStr, holidayName){
+      pendingCommemorativeDate={ dateStr, holidayName };
+      const [y,m,d]=dateStr.split('-').map(Number),dateLabel=new Date(y,m-1,d).toLocaleDateString('pt-BR',{ day:'2-digit', month:'long' });
+      $('ostenCommemorativeChoiceMessage').textContent=`Escolha como trabalhar “${holidayName}” (${dateLabel}).`;
+      $('ostenCommemorativeChoiceBackdrop').style.display='flex';
+    }
+    function closeCommemorativeEditorChoice(){
+      $('ostenCommemorativeChoiceBackdrop').style.display='none';
+      pendingCommemorativeDate=null;
+    }
+    function createCommemorativeBriefingFromChoice(){
+      if(!pendingCommemorativeDate) return;
+      $('ostenCommemorativeChoiceBackdrop').style.display='none';
+      confirmCommemorativeDatePost();
+    }
+    function formatCommemorativeMonth(value){
+      const month=String(value||'').trim().toLocaleLowerCase('pt-BR');
+      return month ? month.charAt(0).toLocaleUpperCase('pt-BR')+month.slice(1) : '';
+    }
+    // Ao abrir direto o editor, também criamos o registro mínimo no calendário. Assim a pauta
+    // fica visível na data, sem obrigar o preenchimento do briefing neste momento.
+    function ensureCommemorativeCard(dateStr, holidayName){
+      const editoria=commemorativeEditoria(), editoriaName=editoria ? editoria.name : 'Datas comemorativas';
+      const existing=state.posts.find(p=>p.date===dateStr && p.title===holidayName && (Array.isArray(p.editoria)?p.editoria:[p.editoria]).includes(editoriaName));
+      if(existing) return existing;
+      const network=(APP_SETTINGS.networks||[])[0]||{name:'Instagram',formats:[{name:'Feed'}]};
+      const channel=network.name||'Instagram', place=((network.formats||[])[0]||{name:'Feed'}).name||'Feed';
+      const defaultStatus=(APP_SETTINGS.statuses[0]&&APP_SETTINGS.statuses[0].name)||'Rascunho';
+      const post={
+        id:generateId(), title:holidayName, date:dateStr, channel, place:[place], type:'Static',
+        channels:[{channel,types:['Static'],places:[place]}], status:defaultStatus,
+        notes:'', briefingLink:'', referencesLink:'', artsLink:'', imageLink:'', imageNotes:'',
+        referenceImages:[], noProduct:true, collab:false, color:null, editoria:[editoriaName], products:[],
+        order:nextOrderForDate(dateStr)
+      };
+      state.posts.push(post); saveState(); render();
+      pushUndo({type:'create',posts:[post.id]}); redoStack=[];
+      return post;
+    }
+    function openCommemorativeEditorDirect(){
+      if(!pendingCommemorativeDate) return;
+      const { dateStr,holidayName }=pendingCommemorativeDate,[y,m,d]=dateStr.split('-').map(Number),parts=splitCommemorativeTitle(holidayName);
+      const month=formatCommemorativeMonth(new Date(y,m-1,d).toLocaleDateString('pt-BR',{month:'long'}));
+      ensureCommemorativeCard(dateStr,holidayName);
+      const params=new URLSearchParams({ eventDay:String(d).padStart(2,'0'), eventMonth:month, eventPrefix:parts.prefix, eventTitle:parts.title });
+      location.href='post-editor.html?'+params.toString();
+    }
     function openCommemorativeDateConfirm(dateStr, holidayName){
       pendingCommemorativeDate = { dateStr, holidayName };
       const [y,m,d] = dateStr.split('-').map(Number);
@@ -1192,7 +1250,7 @@
       // pára a propagação pro mesmo motivo que .date/.day-count acima (senão também abriria
       // "Postagens do dia")
       const holidayEl = cell.querySelector('.holiday-name');
-      if(holidayEl) holidayEl.addEventListener('click', (ev)=>{ ev.stopPropagation(); openCommemorativeDateConfirm(dateStr, commemorativeDateName(dateStr)); });
+      if(holidayEl) holidayEl.addEventListener('click', (ev)=>{ ev.stopPropagation(); const holidayName=commemorativeDateName(dateStr); if(brandHasCommemorativeEditorShortcut()) openCommemorativeEditorChoice(dateStr,holidayName); else openCommemorativeDateConfirm(dateStr,holidayName); });
       // clicar em qualquer área do card do dia (fora de um post específico, que já abre a edição
       // dele) também abre "Postagens do dia" — mesmo destino do clique na data/contador acima.
       // Cards de postagem, o badge "+N" e o "+ Adicionar postagem" já param a propagação nos
@@ -4367,6 +4425,9 @@
     if($('confirmApplyEditoria')) $('confirmApplyEditoria').addEventListener('click', confirmApplyEditoriaModal);
     wireModalDismiss('scheduleWarningBackdrop', closeScheduleWarning, '#scheduleWarningCloseBtn');
     if($('scheduleWarningOkBtn')) $('scheduleWarningOkBtn').addEventListener('click', closeScheduleWarning);
+    wireModalDismiss('ostenCommemorativeChoiceBackdrop', closeCommemorativeEditorChoice, '#ostenCommemorativeChoiceCloseBtn');
+if($('ostenCommemorativeCreateBriefing')) $('ostenCommemorativeCreateBriefing').addEventListener('click', createCommemorativeBriefingFromChoice);
+if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEventListener('click', openCommemorativeEditorDirect);
     wireModalDismiss('commemorativeConfirmBackdrop', closeCommemorativeDateConfirm, '#commemorativeConfirmCloseBtn');
     if($('commemorativeConfirmCancel')) $('commemorativeConfirmCancel').addEventListener('click', closeCommemorativeDateConfirm);
     if($('commemorativeConfirmOk')) $('commemorativeConfirmOk').addEventListener('click', confirmCommemorativeDatePost);
