@@ -60,7 +60,8 @@
     { id:'toolmix', name:'TOOLMIX', shortName:'TM', photo:'icons/icon_toolmix.jpg', themeColor:{ dark:'#F26522', light:'#F26522' }, themeColorInk:'#FFFFFF', onAccent:'#FFFFFF' },
     { id:'dwt', name:'DWT', shortName:'DWT', photo:'icons/icon_dwt.jpg', themeColor:{ dark:'#285C4D', light:'#285C4D' }, themeColorInk:'#AB2328' },
     { id:'nove54', name:'NOVE54', shortName:'N54', photo:'icons/icon_nove54.jpg', themeColor:{ dark:'#BD1D1D', light:'#BD1D1D' }, themeColorInk:'#000000' },
-    { id:'grupo-ovd', name:'GRUPO OVD', shortName:'GOVD', photo:'icons/icon_grupo_ovd.jpg', themeColor:{ dark:'#A6A6A6', light:'#A6A6A6' }, themeColorInk:'#000000' }
+    { id:'grupo-ovd', name:'GRUPO OVD', shortName:'GOVD', photo:'icons/icon_grupo_ovd.jpg', themeColor:{ dark:'#A6A6A6', light:'#A6A6A6' }, themeColorInk:'#000000' },
+    { id:'pilar-tecnologia', name:'PILAR TECNOLOGIA', shortName:'PT', photo:'icons/icon_pilar_tecnologia.svg', themeColor:{ dark:'#003A5D', light:'#003A5D' }, themeColorInk:'#FFFFFF', onAccent:'#FFFFFF' }
   ];
 
   // paleta de fundo do avatar quando a marca não tem foto — escolhida por hash do id, só
@@ -361,9 +362,21 @@
     try{
       const res = await syncFetchBrands();
       if(res.v!==null && Array.isArray(res.v) && res.v.length && res.updated_at!==syncVersion){
-        BRANDS = res.v;
+        // A lista remota pode ter sido salva antes da inclusão de uma marca-padrão nova.
+        // Completa-a antes de adotá-la, para que a sincronização não faça perfis como a
+        // Pilar Tecnologia desaparecerem da listagem local após o carregamento.
+        const remoteBrands = res.v.slice();
+        let completedDefaults = false;
+        DEFAULT_BRANDS.forEach(def=>{
+          if(!remoteBrands.some(item=>item.id===def.id)){
+            remoteBrands.push(Object.assign({}, def));
+            completedDefaults = true;
+          }
+        });
+        BRANDS = remoteBrands;
         window.PortalBrand.list = BRANDS;
         localStorage.setItem(BRANDS_KEY, JSON.stringify(BRANDS));
+        if(completedDefaults) saveBrands(BRANDS);
         renderBrandTrigger();
       }
       syncVersion = res.updated_at;
