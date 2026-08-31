@@ -803,7 +803,25 @@
       document.body.removeChild(ta);
     }
 
+    function commemorativeEditoriaIsSelected(){
+      return Array.from(document.querySelectorAll('.mEditoria:checked')).some(input=> String(input.value||'').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[̀-ͯ]/g,'').includes('comemorat'));
+    }
+
+    // Datas comemorativas podem seguir dois fluxos: personalizado (briefing normal) ou
+    // institucional (a arte é criada no Editor de Posts e o card só marca o calendário).
+    function updateCommemorativePostTypeUI(){
+      const field=$('mCommemorativePostTypeField'), select=$('mCommemorativePostType'), box=$('mInstitutionalCommemorativeBox');
+      if(!field || !select || !box) return;
+      const isCommemorative=commemorativeEditoriaIsSelected();
+      const isInstitutional=isCommemorative && select.value==='institutional';
+      field.hidden=!isCommemorative;
+      if(!isCommemorative) select.value='custom';
+      box.hidden=!isInstitutional;
+      ['mInstitutionalCommemorativeProductsGroup','mContentSuggestionsGroup','mInstitutionalCommemorativeContentFields','mBriefingPreviewGroup','mInstitutionalCommemorativeContentHeading'].forEach(id=>{ const el=$(id); if(el) el.classList.toggle('institutional-hidden',isInstitutional); });
+    }
+
     function refreshModalDynamic(){
+      updateCommemorativePostTypeUI();
       renderTitleSuggestion();
       renderBriefingPreview();
       renderContentSuggestions();
@@ -1153,7 +1171,7 @@
     // por isso ganham o atalho de "Abrir editor de posts" direto a partir da data comemorativa.
     // Esse gate e o fluxo abaixo (modal, criação do card mínimo) são infraestrutura genérica,
     // compartilhada por qualquer marca aqui listada — não fazem parte do layout de nenhuma delas.
-    function brandHasCommemorativeEditorShortcut(){ return BRAND_SUFFIX==='__osten-ferragens' || BRAND_SUFFIX==='__dismatal'; }
+    function brandHasCommemorativeEditorShortcut(){ return BRAND_SUFFIX==='__osten-ferragens' || BRAND_SUFFIX==='__dismatal' || BRAND_SUFFIX==='__dwt'; }
     function splitCommemorativeTitle(holidayName){
       const match=String(holidayName||'').trim().match(/^(Dia(?:s)?\s+(?:(?:Internacional|Nacional|Mundial)\s+)?(?:do|da|de|dos|das)\s+)(.+)$/i);
       return match ? { prefix:match[1].trim(), title:match[2].trim() } : { prefix:'', title:String(holidayName||'').trim() };
@@ -1190,20 +1208,25 @@
         id:generateId(), title:holidayName, date:dateStr, channel, place:[place], type:'Static',
         channels:[{channel,types:['Static'],places:[place]}], status:defaultStatus,
         notes:'', briefingLink:'', referencesLink:'', artsLink:'', imageLink:'', imageNotes:'',
-        referenceImages:[], noProduct:true, collab:false, color:null, editoria:[editoriaName], products:[],
+        referenceImages:[], noProduct:true, commemorativePostType:'institutional', collab:false, color:null, editoria:[editoriaName], products:[],
         order:nextOrderForDate(dateStr)
       };
       state.posts.push(post); saveState(); render();
       pushUndo({type:'create',posts:[post.id]}); redoStack=[];
       return post;
     }
+    function openInstitutionalCommemorativeEditor(dateStr,holidayName){
+      const [y,m,d]=dateStr.split('-').map(Number), parts=splitCommemorativeTitle(holidayName);
+      const month=formatCommemorativeMonth(new Date(y,m-1,d).toLocaleDateString('pt-BR',{month:'long'}));
+      const eventTitle=BRAND_SUFFIX==='__dwt' ? holidayName : parts.title;
+      const params=new URLSearchParams({ eventDay:String(d).padStart(2,'0'), eventMonth:month, eventPrefix:parts.prefix, eventTitle });
+      location.href='post-editor.html?'+params.toString();
+    }
     function openCommemorativeEditorDirect(){
       if(!pendingCommemorativeDate) return;
-      const { dateStr,holidayName }=pendingCommemorativeDate,[y,m,d]=dateStr.split('-').map(Number),parts=splitCommemorativeTitle(holidayName);
-      const month=formatCommemorativeMonth(new Date(y,m-1,d).toLocaleDateString('pt-BR',{month:'long'}));
+      const { dateStr,holidayName }=pendingCommemorativeDate;
       ensureCommemorativeCard(dateStr,holidayName);
-      const params=new URLSearchParams({ eventDay:String(d).padStart(2,'0'), eventMonth:month, eventPrefix:parts.prefix, eventTitle:parts.title });
-      location.href='post-editor.html?'+params.toString();
+      openInstitutionalCommemorativeEditor(dateStr,holidayName);
     }
     function openCommemorativeDateConfirm(dateStr, holidayName){
       pendingCommemorativeDate = { dateStr, holidayName };
@@ -1573,8 +1596,33 @@
       return { btn };
     }
 
-    // duplica uma postagem — cópia idêntica, com nova id, inserida logo após a original no mesmo dia
-    function duplicatePost(id){
+    // Ações de card passam por uma confirmação visual centralizada, coerente com os demais modais.
+    let pendingCardAction = null;
+    function openCardActionConfirm(action,id){
+      const post=state.posts.find(p=>p.id===id); if(!post) return;
+      pendingCardAction={action,id};
+      const duplicate=action==='duplicate';
+      $('cardActionConfirmTitle').textContent=duplicate ? 'Duplicar postagem?' : 'Excluir postagem?';
+      $('cardActionConfirmMessage').textContent=duplicate
+        ? `Será criada uma cópia de “${post.title||'Sem título'}” na mesma data.`
+        : `“${post.title||'Sem título'}” será removida do calendário. Você poderá desfazer esta ação logo em seguida com Ctrl+Z.`;
+      $('cardActionConfirmOk').textContent=duplicate ? 'Duplicar postagem' : 'Excluir postagem';
+      $('cardActionConfirmOk').classList.toggle('danger',!duplicate);
+      $('cardActionConfirmBackdrop').style.display='flex';
+    }
+    function closeCardActionConfirm(){ $('cardActionConfirmBackdrop').style.display='none'; pendingCardAction=null; }
+    function confirmCardAction(){
+      const action=pendingCardAction; if(!action) return;
+      closeCardActionConfirm();
+      if(action.action==='duplicate') performDuplicatePost(action.id); else performDeletePost(action.id);
+    }
+    function wireCardActionConfirm(){
+      if(!$('cardActionConfirmBackdrop')) return;
+      $('cardActionConfirmCancel').addEventListener('click',closeCardActionConfirm);
+      $('cardActionConfirmOk').addEventListener('click',confirmCardAction);
+    }
+    function duplicatePost(id){ openCardActionConfirm('duplicate',id); }
+    function performDuplicatePost(id){
       const post = state.posts.find(p=>p.id===id); if(!post) return;
       const copy = Object.assign({}, post, { id: generateId(), order: nextOrderForDate(post.date) });
       if(Array.isArray(post.channels)) copy.channels = post.channels.map(c=>({ channel:c.channel, types:(c.types||[]).slice(), places:(c.places||[]).slice() }));
@@ -1586,18 +1634,14 @@
       saveState(); buildCalendar(); render();
       pushUndo({ type:'create', posts:[copy.id] }); redoStack = [];
     }
-
-    // exclui uma única postagem, com confirmação e possibilidade de desfazer (Ctrl+Z)
-    function deletePost(id){
+    function deletePost(id){ openCardActionConfirm('delete',id); }
+    function performDeletePost(id){
       const idx = state.posts.findIndex(p=>p.id===id); if(idx===-1) return;
-      if(!confirm('Excluir esta postagem?')) return;
       const [removed] = state.posts.splice(idx,1);
       saveState(); buildCalendar(); render();
       pushUndo({ type:'delete', posts:[removed] }); redoStack = [];
-      // se a postagem excluída era a que estava aberta no modal de edição, fecha o modal
       if(isEditing && editingId===id){ closeModal(); closeEditState(); }
     }
-
     // apaga de uma vez todas as postagens do mês atualmente visível no calendário — "resetar o
     // mês do zero". Ignora os filtros ativos (apaga tudo do mês, filtrado ou não, pra realmente
     // começar do zero) e pode ser desfeito com Ctrl+Z logo em seguida, como qualquer exclusão
@@ -2043,6 +2087,7 @@
       // postagem nova ainda não existe — não há o que duplicar/excluir
       if($('modalMenuBtn')) $('modalMenuBtn').style.display = 'none';
       renderIntelValidation(null);
+      updateCommemorativePostTypeUI();
       $('mTitle').focus();
     }
 
@@ -2063,8 +2108,9 @@
       }
     }
 
-    function saveModal(){
+    function saveModal(options){
       const title = $('mTitle').value.trim() || 'Untitled';
+      const openInstitutionalEditor=!!(options && options.openInstitutionalEditor);
       const date = $('mDate').value;
       if(!date){ alert('Escolha uma data'); return; }
       const place = [...new Set(Array.from(document.querySelectorAll('input[name="mPlace"]:checked')).map(n=>n.value))];
@@ -2074,7 +2120,11 @@
       // recebe o primeiro status configurado e collab desligado; ao editar, ambos são preservados
       const defaultStatus = (APP_SETTINGS.statuses[0] && APP_SETTINGS.statuses[0].name) || 'Rascunho';
       const notes = $('mNotes').value.trim();
-      const briefingLink = $('mBriefingLink').value.trim();
+      const commemorativePostType=commemorativeEditoriaIsSelected() && $('mCommemorativePostType') ? $('mCommemorativePostType').value : '';
+      const isInstitutionalCommemorative=commemorativePostType==='institutional';
+      if(openInstitutionalEditor && !isInstitutionalCommemorative){ alert('Selecione o tipo Institucional para abrir a template de Datas comemorativas.'); return; }
+      if(openInstitutionalEditor && !brandHasCommemorativeEditorShortcut()){ alert('Esta marca ainda não possui uma template institucional de Datas comemorativas configurada no Editor de Posts.'); return; }
+      const briefingLink = isInstitutionalCommemorative ? '' : $('mBriefingLink').value.trim();
       const referencesLink = $('mReferencesLink').value.trim();
       const artsLink = $('mArtsLink').value.trim();
       const imageLink = $('mImageLink').value.trim();
@@ -2082,7 +2132,7 @@
       const nets = Array.from(document.querySelectorAll('.mNet:checked')).map(n=>n.value);
       const editorias = Array.from(document.querySelectorAll('.mEditoria:checked')).map(e=>e.value);
       const products = selectedProducts.slice();
-      const noProduct = $('mNoProduct') ? $('mNoProduct').checked : false;
+      const noProduct = ($('mNoProduct') ? $('mNoProduct').checked : false) || isInstitutionalCommemorative;
       if(nets.length===0){ alert('Selecione pelo menos uma rede'); return; }
       if(place.length===0){ alert('Selecione pelo menos um formato'); return; }
       if(isEditing && editingId){
@@ -2095,6 +2145,7 @@
         post.title = title; post.date = date; post.notes = notes;
         post.briefingLink = briefingLink; post.referencesLink = referencesLink; post.artsLink = artsLink;
         post.imageLink = imageLink; post.imageNotes = imageNotes; post.noProduct = noProduct;
+        post.commemorativePostType = commemorativePostType || undefined;
         post.referenceImages = editingReferenceImages.slice();
         post.editoria = editorias; post.products = products; delete post.productCode; delete post.productName;
         // redes, formato e tipo são sempre reconstruídos a partir do que está marcado no modal —
@@ -2109,6 +2160,7 @@
         pushUndo({ type:'edit', id: pid, before });
         redoStack = [];
         closeEditState();
+        if(openInstitutionalEditor) openInstitutionalCommemorativeEditor(date,title);
         return;
       }
 
@@ -2119,7 +2171,7 @@
         channels: nets.map(net=>({ channel: net, types: [type], places: place.slice() })),
         status: defaultStatus, notes, briefingLink, referencesLink, artsLink, imageLink, imageNotes,
         referenceImages: editingReferenceImages.slice(),
-        noProduct, collab: false, color: null, editoria: editorias, products: products.slice(), order: nextOrderForDate(date)
+        noProduct, commemorativePostType: commemorativePostType || undefined, collab: false, color: null, editoria: editorias, products: products.slice(), order: nextOrderForDate(date)
       };
       state.posts.push(p);
       saveState();
@@ -2129,6 +2181,7 @@
       pushUndo({ type:'create', posts: [p.id] });
       // uma nova ação invalida o histórico de refazer
       redoStack = [];
+      if(openInstitutionalEditor) { openInstitutionalCommemorativeEditor(date,title); return; }
       // limpa o modal para a próxima criação
       $('mTitle').value=''; $('mNotes').value=''; $('mBriefingLink').value=''; $('mReferencesLink').value=''; $('mArtsLink').value='';
       $('mImageLink').value=''; $('mImageNotes').value='';
@@ -2227,11 +2280,15 @@
     const DISMATAL_DEFAULT_EDITORIAS = [
       { name:'Datas comemorativas', color:'#db2777' }
     ];
+    const DWT_DEFAULT_EDITORIAS = [
+      { name:'Datas comemorativas', color:'#AB2328' }
+    ];
     const EDITORIAS_BY_BRAND = {
       '': VONDER_DEFAULT_EDITORIAS,
       '__ferramentas-gerais': FG_DEFAULT_EDITORIAS,
       '__osten-ferragens': OSTEN_FERRAGENS_DEFAULT_EDITORIAS,
-      '__dismatal': DISMATAL_DEFAULT_EDITORIAS
+      '__dismatal': DISMATAL_DEFAULT_EDITORIAS,
+      '__dwt': DWT_DEFAULT_EDITORIAS
     };
     const DEFAULT_SETTINGS = {
       TARGET: 3,
@@ -3675,6 +3732,7 @@
       // marca as editorias da postagem
       document.querySelectorAll('.mEditoria').forEach(e=>{ e.checked = false; });
       if(post.editoria){ const arr = Array.isArray(post.editoria)?post.editoria:[post.editoria]; arr.forEach(ed=>{ const el = Array.from(document.querySelectorAll('.mEditoria')).find(x=>x.value===ed); if(el) el.checked = true; }); }
+      if($('mCommemorativePostType')) $('mCommemorativePostType').value = post.commemorativePostType || 'custom';
       $('mProductName').value = '';
       selectedProducts = getPostProducts(post).slice();
       renderSelectedProducts();
@@ -3914,6 +3972,8 @@
     });
     if($('mTitle')) $('mTitle').addEventListener('input', refreshModalDynamic);
     if($('mDate')) $('mDate').addEventListener('input', refreshModalDynamic);
+    if($('mCommemorativePostType')) $('mCommemorativePostType').addEventListener('change', refreshModalDynamic);
+    if($('mOpenInstitutionalCommemorativeEditorBtn')) $('mOpenInstitutionalCommemorativeEditorBtn').addEventListener('click', ()=> saveModal({openInstitutionalEditor:true}));
     if($('mArtsLink')) $('mArtsLink').addEventListener('input', refreshModalDynamic);
     if($('mReferencesLink')) $('mReferencesLink').addEventListener('input', refreshModalDynamic);
     // ============================================================
@@ -4413,9 +4473,11 @@
     wireIntelValidation();
     wireCaptionGenerator();
     wireRemoveProductConfirm();
+    wireCardActionConfirm();
     wireClearContentBtn();
     wireModalDismiss('settingsBackdrop', closeSettings);
     wireModalDismiss('filtersBackdrop', closeFilters);
+    wireModalDismiss('cardActionConfirmBackdrop', closeCardActionConfirm, '#cardActionConfirmCloseBtn');
     // modal "Aplicar editoria ao mês" — o "‹" do cabeçalho e o "X" fazem a mesma coisa (fecham
     // este modal e revelam a lista de editorias, que continua aberta por baixo, em Configurações);
     // o "‹" existe separado só pra deixar explícito que é "voltar", não "cancelar sem salvar"
