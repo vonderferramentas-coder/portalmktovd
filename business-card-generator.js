@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 (function () {
   "use strict";
 
@@ -2033,3 +2034,2040 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
+=======
+(function () {
+  "use strict";
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function esc(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function clean(value) {
+    return String(value == null ? "" : value)
+      .replace(/\r\n/g, "\n")
+      .split("\n")
+      .map(function (line) {
+        return line.trim().replace(/[ \t]{2,}/g, " ");
+      })
+      .join("\n")
+      .trim();
+  }
+
+  function normalize(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  }
+
+  function escapeRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function safeFile(value) {
+    return normalize(value).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "cartao";
+  }
+
+  var VALID_DDDS = {
+    11:1,12:1,13:1,14:1,15:1,16:1,17:1,18:1,19:1,21:1,22:1,24:1,27:1,28:1,
+    31:1,32:1,33:1,34:1,35:1,37:1,38:1,41:1,42:1,43:1,44:1,45:1,46:1,47:1,48:1,49:1,
+    51:1,53:1,54:1,55:1,61:1,62:1,63:1,64:1,65:1,66:1,67:1,68:1,69:1,71:1,73:1,
+    74:1,75:1,77:1,79:1,81:1,82:1,83:1,84:1,85:1,86:1,87:1,88:1,89:1,91:1,92:1,
+    93:1,94:1,95:1,96:1,97:1,98:1,99:1
+  };
+
+  function phoneDigits(value, type) {
+    var digits = String(value || "").replace(/\D/g, "");
+    if ((digits.length === 12 || digits.length === 13) && digits.slice(0, 2) === "55") digits = digits.slice(2);
+    return digits.slice(0, type === "landline" ? 10 : 11);
+  }
+
+  function formatPhone(value, type) {
+    var digits = phoneDigits(value, type);
+    if (!digits) return "";
+    if (digits.length <= 2) return "(" + digits;
+    var ddd = digits.slice(0, 2);
+    var local = digits.slice(2);
+    var firstLength = local.length > 8 ? 5 : Math.min(4, local.length);
+    var first = local.slice(0, firstLength);
+    var second = local.slice(firstLength);
+    return "(" + ddd + ") " + first + (second ? "-" + second : "");
+  }
+
+  function validatePhone(value, type, required) {
+    var digits = phoneDigits(value, type);
+    var label = type === "landline" ? "Telefone fixo" : "Celular";
+    var expected = type === "landline" ? 10 : 11;
+    if (!digits) return { valid: !required, empty: true, message: required ? label + " não informado." : "DDD + 8 números" };
+    if (digits.length !== expected) return { valid: false, empty: false, message: label + " deve ter DDD + " + (expected - 2) + " números." };
+    if (!VALID_DDDS[digits.slice(0, 2)]) return { valid: false, empty: false, message: "DDD inválido. Confira os dois primeiros números." };
+    if (type === "mobile" && digits.charAt(2) !== "9") return { valid: false, empty: false, message: "Celular deve começar com 9 após o DDD." };
+    if (type === "landline" && !/[2-5]/.test(digits.charAt(2))) return { valid: false, empty: false, message: "Telefone fixo deve começar entre 2 e 5 após o DDD." };
+    return { valid: true, empty: false, message: type === "landline" ? "Telefone fixo válido" : "Celular válido" };
+  }
+
+  function activeBrand() {
+    var portal = window.PortalBrand || {};
+    var list = portal.list || [];
+    return list.find(function (item) { return item.id === portal.activeId; }) || list[0] || { id: "default", name: "VONDER", shortName: "VD", photo: "icons/icon_vonder.jpg" };
+  }
+
+  var brand = activeBrand();
+  var embeddedAssets = window.BusinessCardAssets || { logos: {} };
+
+  var BRAND_TEMPLATES = {
+    "default": { label: "Institucional VONDER", source: "Identidade exclusiva VONDER", accent: "#F6BE00", ink: "#171717", style: "diagonal", qr: { x: 1460, y: 680, size: 300 } },
+    "ferramentas-gerais": { label: "FG 90 × 50 mm", source: "Illustrator .ai preenchido", accent: "#005745", ink: "#706f6f", style: "fg", qr: { x: 1320, y: 580, size: 400 } },
+    "osten-ferragens": { label: "Institucional OSTEN", source: "Identidade exclusiva OSTEN", accent: "#ED8B00", ink: "#252525", style: "sidebar", qr: { x: 1460, y: 680, size: 300 } },
+    "dismatal": { label: "Institucional DISMATAL", source: "Identidade exclusiva DISMATAL", accent: "#FFED00", ink: "#181818", style: "stripe", qr: { x: 1460, y: 680, size: 300 } },
+    "toolmix": { label: "Institucional TOOLMIX", source: "Identidade exclusiva TOOLMIX", accent: "#F26522", ink: "#272727", style: "corner", qr: { x: 1460, y: 680, size: 300 } },
+    "dwt": { label: "Institucional DWT", source: "Identidade exclusiva DWT", accent: "#285C4D", secondary: "#AB2328", ink: "#262626", style: "split", qr: { x: 1460, y: 680, size: 300 } },
+    "nove54": { label: "Institucional NOVE54", source: "Identidade exclusiva NOVE54", accent: "#BD1D1D", ink: "#191919", style: "rail", qr: { x: 1460, y: 680, size: 300 } },
+    "grupo-ovd": { label: "GRUPO OVD 90 × 50 mm", source: "CorelDRAW .cdr preenchido", accent: "#000000", secondary: "#FFC20D", ink: "#000000", style: "ovd", qr: { x: 1260, y: 508, size: 500 } }
+  };
+
+  var template = BRAND_TEMPLATES[brand.id] || { label: "Institucional " + brand.name, source: "Identidade exclusiva da marca", accent: "#4b5563", ink: "#202124", style: "corner" };
+  var STORAGE_KEY = "business_card_generator_v1__" + brand.id;
+  var state = { records: [], activeId: null, currentStep: "import" };
+  var returnToImportTrigger = null;
+  var deleteConfirmTrigger = null;
+  var pendingDeleteAction = null;
+  var canvas = $("cardCanvas");
+  var ctx = canvas.getContext("2d");
+  var W = canvas.width;
+  var H = canvas.height;
+  var renderToken = 0;
+  var images = {};
+  var fields = {
+    logoVariant: $("fieldLogoVariant"),
+    name: $("fieldName"),
+    role: $("fieldRole"),
+    address: $("fieldAddress"),
+    landline: $("fieldLandline"),
+    phone: $("fieldPhone"),
+    email: $("fieldEmail"),
+    website: $("fieldWebsite")
+  };
+
+  // Garante que a Swiss721 (fonte dos arquivos editáveis originais) esteja carregada antes de
+  // qualquer desenho no canvas — sem isso, a 1ª renderização pode cair no fallback (Arial Narrow/Arial).
+  var fontsReady = (function () {
+    if (!window.FontFace || !document.fonts || !document.fonts.load) return Promise.resolve();
+    return Promise.all([
+      document.fonts.load("400 16px Swiss721"),
+      document.fonts.load("700 16px Swiss721")
+    ]).catch(function () {}).then(function () {
+      return document.fonts.ready;
+    }).catch(function () {});
+  })();
+
+  function uid() {
+    return "bc_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function recordFrom(obj) {
+    return {
+      id: uid(),
+      name: clean(obj.name),
+      nameRuns: obj.nameRuns || null,
+      role: clean(obj.role),
+      address: clean(obj.address),
+      landline: formatPhone(obj.landline, "landline"),
+      phone: formatPhone(obj.phone, "mobile"),
+      email: clean(obj.email),
+      website: clean(obj.website),
+      logoVariant: obj.logoVariant === "fg-ico" ? "fg-ico" : "fg",
+      selected: true,
+      reviewed: false,
+      approved: false,
+      issues: []
+    };
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.records));
+    } catch (e) {}
+  }
+
+  function load() {
+    try {
+      var parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      if (Array.isArray(parsed)) state.records = parsed.map(function (r) {
+        r.landline = formatPhone(r.landline, "landline");
+        r.phone = formatPhone(r.phone, "mobile");
+        return r;
+      });
+    } catch (e) {}
+    if (state.records.length) {
+      state.activeId = state.records[0].id;
+    }
+    showImport(false);
+  }
+
+  function current() {
+    return state.records.find(function (item) { return item.id === state.activeId; }) || null;
+  }
+
+  function showWorkspace() {
+    state.currentStep = "edit";
+    $("importPanel").hidden = true;
+    $("workspace").hidden = false;
+    $("exportBar").hidden = false;
+    renderAll();
+  }
+
+  function showImport(showExistingShortcut) {
+    state.currentStep = "import";
+    $("workspace").hidden = true;
+    $("exportBar").hidden = true;
+    $("importPanel").hidden = false;
+    $("backToWorkspace").hidden = !showExistingShortcut || !state.records.length;
+    updateFlow();
+  }
+
+  function toast(message) {
+    var el = $("toast");
+    el.textContent = message;
+    el.hidden = false;
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(function () { el.hidden = true; }, 3200);
+  }
+
+  function updateFlow() {
+    var any = state.records.length > 0;
+    var reviewed = any && state.records.some(function (r) { return r.reviewed; });
+    var approved = any && state.records.some(function (r) { return r.approved; });
+    document.querySelectorAll(".bc-flow-step").forEach(function (el) {
+      var step = el.getAttribute("data-step");
+      var complete = (step === "import" && any) || (step === "edit" && reviewed) || (step === "review" && approved);
+      var active = step === state.currentStep;
+      el.classList.toggle("is-complete", complete);
+      el.classList.toggle("is-active", active);
+    });
+  }
+
+  function renderAll() {
+    renderRecords();
+    renderEditor();
+    renderStats();
+    updateFlow();
+    renderCanvas(current());
+  }
+
+  function renderRecords() {
+    var list = $("recordsList");
+    $("recordsTitle").textContent = state.records.length + " " + (state.records.length === 1 ? "cartão" : "cartões");
+    list.innerHTML = state.records.map(function (r, index) {
+      var cls = "bc-record" + (r.id === state.activeId ? " is-active" : "") + (r.reviewed ? " is-reviewed" : "") + (r.approved ? " is-approved" : "");
+      return '<div class="' + cls + '" data-record="' + r.id + '" role="button" tabindex="0">' +
+        '<input type="checkbox" data-select="' + r.id + '" ' + (r.selected ? "checked" : "") + ' aria-label="Selecionar cartão ' + (index + 1) + '">' +
+        '<span><strong>' + (esc(r.name) || "Cartão sem nome") + '</strong><small>' + esc(r.role || "Cargo não informado") + '</small></span>' +
+        '<i class="bc-record-status" title="' + (r.approved ? "Aprovado" : r.reviewed ? "Revisado" : "Pendente") + '"></i>' +
+        '<button type="button" class="bc-record-delete" data-delete="' + r.id + '" title="Excluir colaborador" aria-label="Excluir cartão de ' + esc(r.name || "colaborador") + '">✕</button>' +
+        '</div>';
+    }).join("");
+    list.querySelectorAll("[data-record]").forEach(function (row) {
+      row.addEventListener("click", function (ev) {
+        if (ev.target.closest("[data-select],[data-delete]")) return;
+        state.activeId = row.getAttribute("data-record");
+        renderAll();
+      });
+      row.addEventListener("keydown", function (ev) {
+        if ((ev.key === "Enter" || ev.key === " ") && !ev.target.closest("[data-select],[data-delete]")) {
+          ev.preventDefault();
+          state.activeId = row.getAttribute("data-record");
+          renderAll();
+        }
+      });
+    });
+    list.querySelectorAll("[data-select]").forEach(function (check) {
+      check.addEventListener("change", function () {
+        var r = state.records.find(function (item) { return item.id === check.getAttribute("data-select"); });
+        if (r) {
+          r.selected = check.checked;
+          save();
+          renderRecords();
+          renderStats();
+        }
+      });
+    });
+    list.querySelectorAll("[data-delete]").forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        deleteRecord(btn.getAttribute("data-delete"));
+      });
+    });
+  }
+
+  function renderPhoneValidation(fieldName, type, showEmpty) {
+    var input = fields[fieldName];
+    var hint = $(fieldName === "landline" ? "landlineHint" : "phoneHint");
+    if (!input || !hint) return;
+    var result = validatePhone(input.value, type, fieldName === "phone");
+    var invalid = !result.valid && (!result.empty || showEmpty);
+    input.classList.toggle("is-invalid", invalid);
+    input.setAttribute("aria-invalid", invalid ? "true" : "false");
+    hint.classList.toggle("is-invalid", invalid);
+    if (invalid || (!result.empty && result.valid)) hint.textContent = result.message;
+    else hint.textContent = fieldName === "landline" ? "DDD + 8 números" : "DDD + 9 números";
+  }
+
+  function renderPhoneValidations(showEmpty) {
+    renderPhoneValidation("landline", "landline", showEmpty);
+    renderPhoneValidation("phone", "mobile", showEmpty);
+  }
+
+  function renderEditor() {
+    var r = current();
+    Object.keys(fields).forEach(function (key) {
+      fields[key].disabled = !r;
+      fields[key].value = r ? r[key] || "" : "";
+    });
+    $("editorTitle").textContent = r ? (r.name || "Cartão sem nome") : "Selecione um cartão";
+    renderNameBoldPicker(r);
+    renderPhoneValidations(!!(r && r.reviewed));
+    var approve = $("approveCurrent");
+    approve.disabled = !r || !r.reviewed || hasBlocking(r);
+    approve.checked = !!(r && r.approved);
+    renderIssues(r);
+  }
+
+  function renderIssues(r) {
+    var empty = $("reviewEmpty");
+    var list = $("issuesList");
+    if (!r || !r.reviewed) {
+      empty.hidden = false;
+      list.hidden = true;
+      empty.querySelector("p").textContent = "Execute a revisão antes de aprovar o cartão para exportação.";
+      return;
+    }
+    empty.hidden = true;
+    list.hidden = false;
+    if (!r.issues.length) {
+      list.innerHTML = '<div class="bc-issue is-ok"><span>✓</span><span>Nenhum problema encontrado. Faça a leitura final da arte e aprove o cartão.</span></div>';
+    } else {
+      list.innerHTML = r.issues.map(function (i, index) {
+        var fixBtn = i.fix ? '<button type="button" class="bc-issue-fix" data-issue-fix="' + index + '">Aplicar</button>' : '';
+        return '<div class="bc-issue ' + (i.level === "ok" ? "is-ok" : "") + '"><span>' + (i.blocking ? "!" : "•") + '</span><span class="bc-issue-text">' + esc(i.message) + '</span>' + fixBtn + '</div>';
+      }).join("");
+      list.querySelectorAll("[data-issue-fix]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          applyIssueFix(r, parseInt(btn.getAttribute("data-issue-fix"), 10));
+        });
+      });
+    }
+  }
+
+  // Seletor manual de negrito do nome — só faz sentido no cartão GRUPO OVD (drawOvd), que é
+  // o único template que desenha o nome em runs {texto,negrito}. Cada nome tem uma parte
+  // "fantasia" própria e sem regra fixa (ex.: "Ailton Ribeiro da Silva" → Ailton Silva;
+  // "Marlos José Camilli" → só Marlos), por isso a escolha fica a cargo de quem revisa o cartão.
+  function renderNameBoldPicker(r) {
+    var field = $("nameBoldField");
+    if (!field) return;
+    var show = !!r && template.style === "ovd";
+    field.hidden = !show;
+    if (!show) return;
+    var words = nameWordsWithBold(r);
+    var container = $("nameBoldWords");
+    if (!words.length) {
+      container.innerHTML = "";
+      return;
+    }
+    container.innerHTML = words.map(function (word, index) {
+      return '<button type="button" class="bc-name-bold-word' + (word.bold ? " is-bold" : "") +
+        '" data-word-index="' + index + '" aria-pressed="' + (word.bold ? "true" : "false") + '">' +
+        esc(word.text) + '</button>';
+    }).join("");
+    container.querySelectorAll("[data-word-index]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        toggleNameBoldWord(r, parseInt(btn.getAttribute("data-word-index"), 10));
+      });
+    });
+  }
+
+  function toggleNameBoldWord(r, wordIndex) {
+    var words = nameWordsWithBold(r);
+    var boldIndexes = [];
+    words.forEach(function (word, index) { if (word.bold) boldIndexes.push(index); });
+    var at = boldIndexes.indexOf(wordIndex);
+    if (at >= 0) boldIndexes.splice(at, 1);
+    else boldIndexes.push(wordIndex);
+    r.nameRuns = nameRunsFromBoldWords(r.name, words, boldIndexes);
+    r.reviewed = false;
+    r.approved = false;
+    r.issues = [];
+    save();
+    $("saveState").textContent = "Alterações salvas localmente";
+    renderRecords();
+    renderStats();
+    updateFlow();
+    renderCanvas(r);
+    renderIssues(r);
+    renderNameBoldPicker(r);
+    $("approveCurrent").disabled = true;
+    $("approveCurrent").checked = false;
+  }
+
+  function renderStats() {
+    var selected = state.records.filter(function (r) { return r.selected; }).length;
+    var approved = state.records.filter(function (r) { return r.approved; }).length;
+    $("selectionCount").textContent = selected + " selecionado" + (selected === 1 ? "" : "s");
+    $("selectAll").checked = state.records.length > 0 && selected === state.records.length;
+    $("selectAll").indeterminate = selected > 0 && selected < state.records.length;
+    $("approvedCount").textContent = approved + " de " + state.records.length + " aprovados";
+    $("exportCurrent").disabled = !current() || !current().approved;
+    $("exportSelected").disabled = !selected;
+    $("exportAll").disabled = !state.records.length;
+    $("deleteSelected").disabled = !selected;
+  }
+
+  function backToImportIfEmpty() {
+    if (state.records.length) return;
+    showImport(false);
+  }
+
+  function deleteRecord(id) {
+    var r = state.records.find(function (item) { return item.id === id; });
+    if (!r) return;
+    openDeleteConfirmModal(
+      "Excluir cartão?",
+      'Tem certeza que deseja excluir o cartão de "' + (r.name || "colaborador sem nome") + '"? Esta ação não pode ser desfeita.',
+      function () {
+        state.records = state.records.filter(function (item) { return item.id !== id; });
+        if (state.activeId === id) state.activeId = state.records.length ? state.records[0].id : null;
+        save();
+        backToImportIfEmpty();
+        renderAll();
+        toast("Cartão excluído.");
+      }
+    );
+  }
+
+  function deleteSelected() {
+    var selected = state.records.filter(function (r) { return r.selected; });
+    if (!selected.length) {
+      toast("Nenhum cartão selecionado.");
+      return;
+    }
+    var plural = selected.length === 1 ? "" : "s";
+    var pluralOes = selected.length === 1 ? "ão" : "ões";
+    openDeleteConfirmModal(
+      "Excluir cart" + pluralOes + "?",
+      "Tem certeza que deseja excluir " + selected.length + " cart" + pluralOes + " selecionado" + plural + "? Esta ação não pode ser desfeita.",
+      function () {
+        var ids = selected.map(function (r) { return r.id; });
+        state.records = state.records.filter(function (r) { return ids.indexOf(r.id) < 0; });
+        if (state.activeId && ids.indexOf(state.activeId) >= 0) state.activeId = state.records.length ? state.records[0].id : null;
+        save();
+        backToImportIfEmpty();
+        renderAll();
+        toast(selected.length + " cart" + pluralOes + " excluíd" + (selected.length === 1 ? "o" : "os") + ".");
+      }
+    );
+  }
+
+  function flashElement(el) {
+    if (!el) return;
+    el.classList.remove("bc-step-flash");
+    void el.offsetWidth;
+    el.classList.add("bc-step-flash");
+    setTimeout(function () { el.classList.remove("bc-step-flash"); }, 1000);
+  }
+
+  function goToStep(step) {
+    if (step === "import") {
+      if (state.currentStep !== "import" && state.records.length) openReturnToImportModal();
+      else {
+        showImport(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      return;
+    }
+    if (!state.records.length) {
+      toast("Importe uma planilha ou adicione um cartão manualmente primeiro.");
+      return;
+    }
+    $("importPanel").hidden = true;
+    $("workspace").hidden = false;
+    $("exportBar").hidden = false;
+    state.currentStep = step;
+    updateFlow();
+    if (step === "edit") {
+      var target = document.querySelector(".bc-editor-panel");
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        flashElement(target);
+      }
+    } else if (step === "review") {
+      var review = document.querySelector(".bc-review-card");
+      if (review) {
+        review.scrollIntoView({ behavior: "smooth", block: "center" });
+        flashElement(review);
+      }
+    } else if (step === "export") {
+      var bar = $("exportBar");
+      if (bar) {
+        bar.scrollIntoView({ behavior: "smooth", block: "end" });
+        flashElement(bar);
+      }
+    }
+  }
+
+  function openReturnToImportModal() {
+    var modal = $("returnToImportModal");
+    returnToImportTrigger = document.activeElement;
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    $("cancelReturnToImport").focus();
+  }
+
+  function closeReturnToImportModal() {
+    $("returnToImportModal").hidden = true;
+    document.body.style.overflow = "";
+    if (returnToImportTrigger && returnToImportTrigger.focus) returnToImportTrigger.focus();
+    returnToImportTrigger = null;
+  }
+
+  function confirmReturnToImport() {
+    closeReturnToImportModal();
+    state.records = [];
+    state.activeId = null;
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    showImport(false);
+    renderCanvas(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openDeleteConfirmModal(title, description, onConfirm) {
+    $("deleteConfirmTitle").textContent = title;
+    $("deleteConfirmDescription").textContent = description;
+    pendingDeleteAction = onConfirm;
+    deleteConfirmTrigger = document.activeElement;
+    $("deleteConfirmModal").hidden = false;
+    document.body.style.overflow = "hidden";
+    $("cancelDeleteConfirm").focus();
+  }
+
+  function closeDeleteConfirmModal() {
+    $("deleteConfirmModal").hidden = true;
+    document.body.style.overflow = "";
+    if (deleteConfirmTrigger && deleteConfirmTrigger.focus) deleteConfirmTrigger.focus();
+    deleteConfirmTrigger = null;
+    pendingDeleteAction = null;
+  }
+
+  function hasBlocking(r) {
+    return !!(r && r.issues && r.issues.some(function (i) { return i.blocking; }));
+  }
+
+  // Dicionário de acentuação: forma sem acento (chave de busca, sempre ASCII/minúscula) → forma
+  // correta. Cobre vocabulário comum de cargo, endereço e nomes próprios em cartões de visita.
+  // Como cada sugestão só vira correção com um clique manual em "Aplicar" (nunca automático), um
+  // dicionário mais amplo é seguro mesmo quando alguma entrada for ambígua fora de contexto.
+  var ACCENT_FIXES = [
+    { find: /\btecnico\b/, fix: "técnico", label: "“técnico”" },
+    { find: /\btecnica\b/, fix: "técnica", label: "“técnica”" },
+    { find: /\btecnicos\b/, fix: "técnicos", label: "“técnicos”" },
+    { find: /\btecnicas\b/, fix: "técnicas", label: "“técnicas”" },
+    { find: /\bantonio\b/, fix: "Antônio", label: "“Antônio”" },
+    { find: /\bsao\b/, fix: "São", label: "“São”" },
+    { find: /\bluis\b/, fix: "Luís", label: "“Luís”" },
+    { find: /\bendereco\b/, fix: "endereço", label: "“endereço”" },
+    { find: /\bgerencia\b/, fix: "gerência", label: "“gerência”" },
+    { find: /\beletrico\b/, fix: "elétrico", label: "“elétrico”" },
+    { find: /\beletrica\b/, fix: "elétrica", label: "“elétrica”" },
+    { find: /\beletronico\b/, fix: "eletrônico", label: "“eletrônico”" },
+    { find: /\beletronica\b/, fix: "eletrônica", label: "“eletrônica”" },
+    { find: /\bmecanico\b/, fix: "mecânico", label: "“mecânico”" },
+    { find: /\bmecanica\b/, fix: "mecânica", label: "“mecânica”" },
+    { find: /\bquimico\b/, fix: "químico", label: "“químico”" },
+    { find: /\bquimica\b/, fix: "química", label: "“química”" },
+    { find: /\bmedico\b/, fix: "médico", label: "“médico”" },
+    { find: /\bmedica\b/, fix: "médica", label: "“médica”" },
+    { find: /\bjuridico\b/, fix: "jurídico", label: "“jurídico”" },
+    { find: /\bjuridica\b/, fix: "jurídica", label: "“jurídica”" },
+    { find: /\blogistica\b/, fix: "logística", label: "“logística”" },
+    { find: /\bacademico\b/, fix: "acadêmico", label: "“acadêmico”" },
+    { find: /\bacademica\b/, fix: "acadêmica", label: "“acadêmica”" },
+    { find: /\bpublico\b/, fix: "público", label: "“público”" },
+    { find: /\bpublica\b/, fix: "pública", label: "“pública”" },
+    { find: /\bunico\b/, fix: "único", label: "“único”" },
+    { find: /\bunica\b/, fix: "única", label: "“única”" },
+    { find: /\bpratico\b/, fix: "prático", label: "“prático”" },
+    { find: /\bpratica\b/, fix: "prática", label: "“prática”" },
+    { find: /\bbasico\b/, fix: "básico", label: "“básico”" },
+    { find: /\bbasica\b/, fix: "básica", label: "“básica”" },
+    { find: /\bfisico\b/, fix: "físico", label: "“físico”" },
+    { find: /\bfisica\b/, fix: "física", label: "“física”" },
+    { find: /\bmanutencao\b/, fix: "manutenção", label: "“manutenção”" },
+    { find: /\bproducao\b/, fix: "produção", label: "“produção”" },
+    { find: /\badministracao\b/, fix: "administração", label: "“administração”" },
+    { find: /\bcomunicacao\b/, fix: "comunicação", label: "“comunicação”" },
+    { find: /\brecepcao\b/, fix: "recepção", label: "“recepção”" },
+    { find: /\boperacao\b/, fix: "operação", label: "“operação”" },
+    { find: /\boperacoes\b/, fix: "operações", label: "“operações”" },
+    { find: /\bpromocao\b/, fix: "promoção", label: "“promoção”" },
+    { find: /\bimportacao\b/, fix: "importação", label: "“importação”" },
+    { find: /\bexportacao\b/, fix: "exportação", label: "“exportação”" },
+    { find: /\bdistribuicao\b/, fix: "distribuição", label: "“distribuição”" },
+    { find: /\bconstrucao\b/, fix: "construção", label: "“construção”" },
+    { find: /\bfiscalizacao\b/, fix: "fiscalização", label: "“fiscalização”" },
+    { find: /\bregiao\b/, fix: "região", label: "“região”" },
+    { find: /\bregioes\b/, fix: "regiões", label: "“regiões”" },
+    { find: /\bassistencia\b/, fix: "assistência", label: "“assistência”" },
+    { find: /\bpresidencia\b/, fix: "presidência", label: "“presidência”" },
+    { find: /\bindependencia\b/, fix: "Independência", label: "“Independência”" },
+    { find: /\bfarmacia\b/, fix: "farmácia", label: "“farmácia”" },
+    { find: /\bfamilia\b/, fix: "família", label: "“família”" },
+    { find: /\bnumero\b/, fix: "número", label: "“número”" },
+    { find: /\bproximo\b/, fix: "próximo", label: "“próximo”" },
+    { find: /\bproxima\b/, fix: "próxima", label: "“próxima”" },
+    { find: /\barea\b/, fix: "área", label: "“área”" },
+    { find: /\bparana\b/, fix: "Paraná", label: "“Paraná”" },
+    { find: /\bgoias\b/, fix: "Goiás", label: "“Goiás”" },
+    { find: /\bceara\b/, fix: "Ceará", label: "“Ceará”" },
+    { find: /\bmaranhao\b/, fix: "Maranhão", label: "“Maranhão”" },
+    { find: /\brondonia\b/, fix: "Rondônia", label: "“Rondônia”" },
+    { find: /\bamapa\b/, fix: "Amapá", label: "“Amapá”" },
+    { find: /\bpiaui\b/, fix: "Piauí", label: "“Piauí”" },
+    { find: /\bjose\b/, fix: "José", label: "“José”" },
+    { find: /\bjoao\b/, fix: "João", label: "“João”" },
+    { find: /\bandre\b/, fix: "André", label: "“André”" },
+    { find: /\bmarcia\b/, fix: "Márcia", label: "“Márcia”" },
+    { find: /\bmonica\b/, fix: "Mônica", label: "“Mônica”" },
+    { find: /\bveronica\b/, fix: "Verônica", label: "“Verônica”" },
+    { find: /\bjessica\b/, fix: "Jéssica", label: "“Jéssica”" },
+    { find: /\bpatricia\b/, fix: "Patrícia", label: "“Patrícia”" },
+    { find: /\bclaudia\b/, fix: "Cláudia", label: "“Cláudia”" },
+    { find: /\blucia\b/, fix: "Lúcia", label: "“Lúcia”" },
+    { find: /\bsilvia\b/, fix: "Sílvia", label: "“Sílvia”" },
+    { find: /\bgloria\b/, fix: "Glória", label: "“Glória”" },
+    { find: /\bcesar\b/, fix: "César", label: "“César”" },
+    { find: /\bines\b/, fix: "Inês", label: "“Inês”" },
+    { find: /\bfelix\b/, fix: "Félix", label: "“Félix”" }
+  ];
+
+  var DUP_WORD_RE = /\b([A-Za-zÀ-ÖØ-öø-ÿ]+)\s+\1\b/gi;
+
+  // Pares singular/plural de substantivos e adjetivos comuns em cargos, usados para checar
+  // concordância de número entre palavras vizinhas no campo Cargo (ex.: "Auxiliares Administrativo").
+  // Comparação usa normalize() (sem acento, minúsculo), então funciona com ou sem acentuação.
+  // Formas canônicas (com acento correto) — a comparação com o texto digitado é feita via
+  // normalize() dos dois lados, então "tecnico"/"técnico" batem com a mesma entrada; o valor aqui
+  // é o que efetivamente entra no cartão quando o "Aplicar" é clicado.
+  var CARGO_NOUNS = [
+    ["auxiliar", "auxiliares"], ["assistente", "assistentes"], ["analista", "analistas"],
+    ["gerente", "gerentes"], ["coordenador", "coordenadores"], ["coordenadora", "coordenadoras"],
+    ["supervisor", "supervisores"], ["supervisora", "supervisoras"], ["diretor", "diretores"],
+    ["diretora", "diretoras"], ["consultor", "consultores"], ["consultora", "consultoras"],
+    ["representante", "representantes"], ["vendedor", "vendedores"], ["vendedora", "vendedoras"],
+    ["especialista", "especialistas"], ["estagiário", "estagiários"], ["estagiária", "estagiárias"],
+    ["comprador", "compradores"], ["compradora", "compradoras"], ["recepcionista", "recepcionistas"],
+    ["motorista", "motoristas"]
+  ];
+  var CARGO_ADJECTIVES = [
+    ["administrativo", "administrativos"], ["administrativa", "administrativas"],
+    ["financeiro", "financeiros"], ["financeira", "financeiras"],
+    ["comercial", "comerciais"], ["operacional", "operacionais"],
+    ["jurídico", "jurídicos"], ["jurídica", "jurídicas"],
+    ["industrial", "industriais"], ["hospitalar", "hospitalares"],
+    ["geral", "gerais"], ["regional", "regionais"], ["nacional", "nacionais"],
+    ["interno", "internos"], ["interna", "internas"], ["externo", "externos"], ["externa", "externas"],
+    ["técnico", "técnicos"], ["técnica", "técnicas"]
+  ];
+
+  // Reaplica no texto de troca (fix) o padrão de maiúsculas do trecho original encontrado —
+  // assim "TECNICO" vira "TÉCNICO", "Tecnico" vira "Técnico" e "tecnico" vira "técnico".
+  function matchCase(sample, replacement) {
+    if (sample === sample.toUpperCase()) return replacement.toUpperCase();
+    if (sample.charAt(0) === sample.charAt(0).toUpperCase()) return replacement.charAt(0).toUpperCase() + replacement.slice(1);
+    return replacement;
+  }
+
+  function applyAccentFix(r, rule) {
+    ["name", "role", "address"].forEach(function (key) {
+      var value = r[key];
+      if (!value) return;
+      var re = new RegExp(rule.find.source, "gi");
+      r[key] = value.replace(re, function (match) { return matchCase(match, rule.fix); });
+    });
+  }
+
+  // Botão "Aplicar" de uma sugestão de acentuação: corrige o texto direto no registro e roda a
+  // revisão de novo, o que já atualiza campos, canvas e a própria lista de pendências.
+  function applyIssueFix(r, issueIndex) {
+    var issue = r.issues[issueIndex];
+    if (!issue || !issue.fix) return;
+    applyAccentFix(r, issue.fix);
+    reviewRecord(r);
+  }
+
+  function reviewRecord(r) {
+    Object.keys(fields).forEach(function (key) { r[key] = clean(r[key]); });
+    var issues = [];
+    r.landline = formatPhone(r.landline, "landline");
+    r.phone = formatPhone(r.phone, "mobile");
+    if (!r.name) issues.push({ blocking: true, message: "Nome completo não informado." });
+    if (!r.role) issues.push({ blocking: true, message: "Cargo não informado." });
+    var landlineCheck = validatePhone(r.landline, "landline", false);
+    var mobileCheck = validatePhone(r.phone, "mobile", true);
+    if (!landlineCheck.valid) issues.push({ blocking: true, message: landlineCheck.message });
+    if (!mobileCheck.valid) issues.push({ blocking: true, message: mobileCheck.message });
+    if (!r.email) issues.push({ blocking: true, message: "E-mail não informado." });
+    if (r.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)) issues.push({ blocking: true, message: "Confira o formato do e-mail." });
+    if (r.website && !/[.]/.test(r.website)) issues.push({ blocking: false, message: "Confira o endereço do site: não foi encontrado um domínio completo." });
+    var scan = (r.name + " " + r.role + " " + r.address).toLowerCase();
+    // Palavras comuns em nome, cargo e endereço de cartão de visitas que costumam ser digitadas
+    // sem acento. Cada entrada só dispara quando a forma exata sem acento aparece — se a pessoa já
+    // escreveu certo, o regex não bate e nada é sugerido.
+    ACCENT_FIXES.forEach(function (rule) {
+      if (rule.find.test(scan)) issues.push({ blocking: false, message: "Possível ajuste de acentuação: confira " + rule.label + ".", fix: rule });
+    });
+    // Palavra repetida em sequência (ex.: "da da", "Rua Rua") — erro comum de copiar/colar.
+    var dupSeen = {};
+    var dupSource = [r.name, r.role, r.address].join(" ");
+    var dupMatch;
+    DUP_WORD_RE.lastIndex = 0;
+    while ((dupMatch = DUP_WORD_RE.exec(dupSource))) {
+      var dupWord = dupMatch[1];
+      var dupKey = dupWord.toLowerCase();
+      if (dupSeen[dupKey]) continue;
+      dupSeen[dupKey] = true;
+      issues.push({
+        blocking: false,
+        message: "Palavra repetida: confira “" + dupWord + " " + dupWord + "”.",
+        fix: { find: new RegExp("\\b" + escapeRegExp(dupWord) + "\\s+" + escapeRegExp(dupWord) + "\\b"), fix: dupWord }
+      });
+    }
+    // Concordância de número no cargo: substantivo e adjetivo próximos devem concordar no plural
+    // (ex.: "Auxiliares Administrativo" está errado — ou os dois no singular, ou os dois no plural).
+    var roleWords = [];
+    var roleWordRe = /[A-Za-zÀ-ÖØ-öø-ÿ]+/g;
+    var roleMatch;
+    while ((roleMatch = roleWordRe.exec(r.role))) roleWords.push({ text: roleMatch[0], key: normalize(roleMatch[0]) });
+    for (var wi = 0; wi < roleWords.length - 1; wi++) {
+      var nounWord = roleWords[wi];
+      var adjWord = roleWords[wi + 1];
+      var nounPair = CARGO_NOUNS.filter(function (p) { return normalize(p[0]) === nounWord.key || normalize(p[1]) === nounWord.key; })[0];
+      var adjPair = CARGO_ADJECTIVES.filter(function (p) { return normalize(p[0]) === adjWord.key || normalize(p[1]) === adjWord.key; })[0];
+      if (!nounPair || !adjPair) continue;
+      var nounIsPlural = nounWord.key === normalize(nounPair[1]);
+      var adjIsPlural = adjWord.key === normalize(adjPair[1]);
+      if (nounIsPlural === adjIsPlural) continue;
+      var correctAdj = nounIsPlural ? adjPair[1] : adjPair[0];
+      issues.push({
+        blocking: false,
+        message: "Possível erro de concordância: confira “" + nounWord.text + " " + correctAdj + "”.",
+        fix: { find: new RegExp("\\b" + escapeRegExp(adjWord.text) + "\\b"), fix: correctAdj }
+      });
+    }
+    if (/[ ]{2,}/.test(r.name + " " + r.role + " " + r.landline + " " + r.phone)) issues.push({ blocking: false, message: "Há espaços duplicados; a limpeza automática foi aplicada." });
+    r.reviewed = true;
+    r.approved = false;
+    r.issues = issues;
+    state.currentStep = "review";
+    save();
+    renderAll();
+    toast(issues.length ? issues.length + " ponto" + (issues.length === 1 ? "" : "s") + " para conferir." : "Revisão concluída sem alertas.");
+  }
+
+  function fieldChanged(ev) {
+    var r = current();
+    if (!r) return;
+    if (ev.target.name === "landline" || ev.target.name === "phone") {
+      ev.target.value = formatPhone(ev.target.value, ev.target.name === "landline" ? "landline" : "mobile");
+    }
+    r[ev.target.name] = ev.target.value;
+    r.reviewed = false;
+    r.approved = false;
+    r.issues = [];
+    save();
+    $("saveState").textContent = "Alterações salvas localmente";
+    renderRecords();
+    renderStats();
+    updateFlow();
+    renderCanvas(r);
+    renderIssues(r);
+    if (ev.target.name === "name") renderNameBoldPicker(r);
+    renderPhoneValidations(false);
+    $("approveCurrent").disabled = true;
+    $("approveCurrent").checked = false;
+  }
+
+  function headerIndex(headers, aliases) {
+    for (var i = 0; i < headers.length; i++) {
+      var h = normalize(headers[i]);
+      if (aliases.indexOf(h) >= 0) return i;
+    }
+    return -1;
+  }
+
+  // Lê o HTML de rich text que o SheetJS expõe por célula (cell.h — cada trecho com formatação
+  // diferente vira um <span>, o negrito vem como <b>) e devolve os trechos como {text,bold},
+  // juntando trechos vizinhos com o mesmo peso. É o único jeito de saber QUAIS palavras do nome
+  // estão em negrito na planilha — não dá pra deduzir isso só do texto puro.
+  function parseRichRunsFromHtml(html) {
+    var div = document.createElement("div");
+    div.innerHTML = html;
+    var runs = [];
+    (function walk(node, bold) {
+      node.childNodes.forEach(function (child) {
+        if (child.nodeType === 3) {
+          if (child.textContent) runs.push({ text: child.textContent, bold: bold });
+        } else if (child.nodeType === 1) {
+          walk(child, bold || child.tagName === "B" || child.tagName === "STRONG");
+        }
+      });
+    })(div, false);
+    var merged = [];
+    runs.forEach(function (run) {
+      var last = merged[merged.length - 1];
+      if (last && last.bold === run.bold) last.text += run.text;
+      else merged.push({ text: run.text, bold: run.bold });
+    });
+    return merged;
+  }
+
+  function importRows(rows, sheet) {
+    if (!rows || rows.length < 2) {
+      toast("A planilha não contém linhas de dados.");
+      return;
+    }
+    var headers = rows[0] || [];
+    var map = {
+      name: headerIndex(headers, ["nome", "nomecompleto", "name"]),
+      role: headerIndex(headers, ["cargo", "funcao", "função", "role"]),
+      address: headerIndex(headers, ["endereco", "address"]),
+      landline: headerIndex(headers, ["telefonefixo", "fixo", "telefonecomercial", "landline", "fone"]),
+      phone: headerIndex(headers, ["celular", "telefonecelular", "whatsapp", "mobile", "phone", "telefone", "fone"]),
+      email: headerIndex(headers, ["email", "correioeletronico"]),
+      website: headerIndex(headers, ["site", "website", "url"])
+    };
+    if (map.name < 0) {
+      toast("Não encontrei a coluna NOME na planilha.");
+      return;
+    }
+    var records = [];
+    for (var i = 1; i < rows.length; i++) {
+      var row = rows[i];
+      if (!row || !row.some(function (v) { return clean(v) !== ""; })) continue;
+      var obj = {};
+      Object.keys(map).forEach(function (key) { obj[key] = map[key] >= 0 ? row[map[key]] : ""; });
+      if (sheet && window.XLSX && map.name >= 0) {
+        var cell = sheet[XLSX.utils.encode_cell({ r: i, c: map.name })];
+        if (cell && cell.h) obj.nameRuns = parseRichRunsFromHtml(cell.h);
+      }
+      records.push(recordFrom(obj));
+    }
+    if (!records.length) {
+      toast("Nenhum cartão válido foi encontrado.");
+      return;
+    }
+    state.records = records;
+    state.activeId = records[0].id;
+    save();
+    showWorkspace();
+    toast(records.length + " cartões carregados da planilha.");
+  }
+
+  async function handleFile(file) {
+    if (!file) return;
+    if (!window.XLSX) {
+      toast("Leitor de Excel indisponível.");
+      return;
+    }
+    try {
+      var data = await file.arrayBuffer();
+      var workbook = XLSX.read(data, { type: "array", cellDates: false });
+      var sheet = workbook.Sheets[workbook.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+      importRows(rows, sheet);
+    } catch (e) {
+      console.error(e);
+      toast("Não foi possível ler a planilha. Confira o arquivo e tente novamente.");
+    }
+  }
+
+  function loadImage(src) {
+    if (images[src]) return images[src];
+    images[src] = new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { resolve(null); };
+      img.src = src;
+    });
+    return images[src];
+  }
+
+  var fgColorizedTemplates = {};
+  function colorizeFgTemplate(img) {
+    if (fgColorizedTemplates[img.src]) return fgColorizedTemplates[img.src];
+    var output = document.createElement("canvas");
+    output.width = img.width;
+    output.height = img.height;
+    var outputCtx = output.getContext("2d", { willReadFrequently: true });
+    outputCtx.drawImage(img, 0, 0);
+    var pixels = outputCtx.getImageData(0, 0, output.width, output.height);
+    var data = pixels.data;
+    // O PNG-base foi renderizado com #145344. Recompomos apenas os pixels verdes e sua
+    // suavização contra o branco para a cor digital aprovada #005745; o PDF usa CMYK 95/37/73/38, preservando logos e demais elementos.
+    var oldColor = [20, 83, 68];
+    var newColor = [0, 87, 69];
+    var vector = [235, 172, 187];
+    var norm = 235 * 235 + 172 * 172 + 187 * 187;
+    for (var i = 0; i < data.length; i += 4) {
+      var a = ((255 - data[i]) * vector[0] + (255 - data[i + 1]) * vector[1] + (255 - data[i + 2]) * vector[2]) / norm;
+      if (a <= .015 || a > 1.03) continue;
+      var pr = 255 - a * vector[0];
+      var pg = 255 - a * vector[1];
+      var pb = 255 - a * vector[2];
+      var distance = Math.abs(data[i] - pr) + Math.abs(data[i + 1] - pg) + Math.abs(data[i + 2] - pb);
+      if (distance < 18) {
+        data[i] = Math.round(255 + a * (newColor[0] - 255));
+        data[i + 1] = Math.round(255 + a * (newColor[1] - 255));
+        data[i + 2] = Math.round(255 + a * (newColor[2] - 255));
+      }
+    }
+    outputCtx.putImageData(pixels, 0, 0);
+    fgColorizedTemplates[img.src] = output;
+    return output;
+  }
+
+  function hexToRgb(hex) {
+    var h = String(hex || "#000000").replace("#", "");
+    if (h.length === 3) h = h.split("").map(function (c) { return c + c; }).join("");
+    var n = parseInt(h, 16) || 0;
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  function shade(hex, amount) {
+    var c = hexToRgb(hex);
+    function p(v) { return Math.max(0, Math.min(255, Math.round(v + (amount >= 0 ? (255 - v) * amount : v * amount)))); }
+    return "rgb(" + p(c.r) + "," + p(c.g) + "," + p(c.b) + ")";
+  }
+
+  function fitText(text, maxWidth, startSize, fontWeight) {
+    var size = startSize;
+    ctx.font = (fontWeight || 700) + " " + size + "px Swiss721,Arial Narrow,Arial,sans-serif";
+    while (size > 24 && ctx.measureText(text).width > maxWidth) {
+      size -= 2;
+      ctx.font = (fontWeight || 700) + " " + size + "px Swiss721,Arial Narrow,Arial,sans-serif";
+    }
+    return size;
+  }
+
+  function wrapText(text, maxWidth, maxLines) {
+    var source = String(text || "").split(/\n/);
+    var lines = [];
+    source.forEach(function (paragraph) {
+      var words = paragraph.split(/\s+/);
+      var line = "";
+      words.forEach(function (word) {
+        var test = line ? line + " " + word : word;
+        if (ctx.measureText(test).width > maxWidth && line) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = test;
+        }
+      });
+      if (line) lines.push(line);
+    });
+    return lines.slice(0, maxLines);
+  }
+
+  function vCardEscape(value) {
+    return clean(value).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+  }
+
+  function vCardPhone(value) {
+    var digits = clean(value).replace(/\D/g, "");
+    if (!digits) return "";
+    if (digits.length === 10 || digits.length === 11) digits = "55" + digits;
+    return "+" + digits;
+  }
+
+  function vCardUrl(value) {
+    var url = clean(value);
+    return url && !/^https?:\/\//i.test(url) ? "https://" + url : url;
+  }
+
+  function vCardName(value) {
+    var parts = clean(value).split(/\s+/).filter(Boolean);
+    if (parts.length < 2) return ";" + vCardEscape(value) + ";;;";
+    return vCardEscape(parts.pop()) + ";" + vCardEscape(parts.join(" ")) + ";;;";
+  }
+
+  function contactVCard(r) {
+    var lines = ["BEGIN:VCARD", "VERSION:3.0", "N:" + vCardName(r.name), "FN:" + vCardEscape(r.name), "ORG:" + vCardEscape(brand.name), "TITLE:" + vCardEscape(r.role)];
+    var landline = vCardPhone(r.landline);
+    var phone = vCardPhone(r.phone);
+    var url = vCardUrl(r.website);
+    if (landline) lines.push("TEL;TYPE=WORK,VOICE:" + landline);
+    if (phone) lines.push("TEL;TYPE=CELL:" + phone);
+    if (r.email) lines.push("EMAIL;TYPE=INTERNET:" + vCardEscape(r.email));
+    if (r.address) lines.push("ADR;TYPE=WORK:;;" + vCardEscape(r.address) + ";;;;");
+    if (url) lines.push("URL:" + vCardEscape(url));
+    lines.push("END:VCARD");
+    return lines.join("\r\n");
+  }
+
+  function drawContactQr(r, layout) {
+    if (!layout || !window.qrcode) return;
+    // UTF-8 preserva corretamente os acentos de nomes, cargos e endereços.
+    if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs["UTF-8"]) qrcode.stringToBytes = qrcode.stringToBytesFuncs["UTF-8"];
+    var qr = qrcode(0, "M");
+    qr.addData(contactVCard(r));
+    qr.make();
+    var modules = qr.getModuleCount();
+    var quiet = 4;
+    var total = modules + quiet * 2;
+    var x = layout.x;
+    var y = layout.y;
+    var size = layout.size;
+    ctx.save();
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(x, y, size, size);
+    ctx.fillStyle = "#000";
+    for (var row = 0; row < modules; row++) {
+      for (var col = 0; col < modules; col++) {
+        if (qr.isDark(row, col)) {
+          var x0 = x + Math.floor((col + quiet) * size / total);
+          var x1 = x + Math.ceil((col + quiet + 1) * size / total);
+          var y0 = y + Math.floor((row + quiet) * size / total);
+          var y1 = y + Math.ceil((row + quiet + 1) * size / total);
+          ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawContact(r, x, y, width, color) {
+    ctx.fillStyle = color;
+    ctx.textAlign = "left";
+    ctx.font = "400 42px Swiss721,Arial Narrow,Arial,sans-serif";
+    var address = wrapText(r.address, width, 2);
+    address.forEach(function (line, i) { ctx.fillText(line, x, y + i * 38); });
+    var phoneLine = [r.phone ? "Celular: " + r.phone : "", r.landline ? "Telefone: " + r.landline : ""].filter(Boolean).join("   |   ");
+    fitText(phoneLine, width, 42, 700);
+    ctx.fillText(phoneLine, x, y + 112);
+    ctx.font = "400 38px Swiss721,Arial Narrow,Arial,sans-serif";
+    var contact = [r.email, r.website].filter(Boolean).join("  |  ");
+    fitText(contact, width, 38, 400);
+    ctx.fillText(contact, x, y + 164);
+  }
+
+  // posição (px), tamanho de fonte (px) e cor abaixo replicam exatamente o arquivo de impressão
+  // (business-card-assets/source/fg-business-card.ai / .pdf, card 94×54mm a 20px/mm): Nome 11.5pt,
+  // Cargo 8.5pt e Endereço/Celular/E-mail·Site 7pt, todos na cor #4d4d4d (CMYK 0/0/0/70). Esses
+  // valores são fixos — não usam fitText/auto-encolhe — porque esse é o padrão gráfico aprovado
+  // para impressão e não pode variar conforme o texto digitado.
+  var FG_GRAY = "#4d4d4d";
+  var FG_SAFE_FROM_BLEED_MM = 6.36;
+  var FG_LOGICAL_PX_PER_MM = 20;
+  var FG_EXTRA_BLEED_MM = 1;
+  var FG_LEFT = (FG_SAFE_FROM_BLEED_MM - FG_EXTRA_BLEED_MM) * FG_LOGICAL_PX_PER_MM; // 107,2 px
+  var FG_RIGHT = 1880 + FG_EXTRA_BLEED_MM * FG_LOGICAL_PX_PER_MM - FG_SAFE_FROM_BLEED_MM * FG_LOGICAL_PX_PER_MM; // 1772,8 px
+  var FG_TEMPLATE_ORIGINAL_LEFT = 116;
+  // Transformação horizontal contínua: leva o alinhamento antigo de 116 px para 107,2 px e
+  // mantém a borda direita em 1880 px. Não existe segundo retângulo nem ponto de emenda.
+  var FG_TEMPLATE_SCALE_X = (1880 - FG_LEFT) / (1880 - FG_TEMPLATE_ORIGINAL_LEFT);
+  var FG_TEMPLATE_DRAW_X = FG_LEFT - FG_TEMPLATE_ORIGINAL_LEFT * FG_TEMPLATE_SCALE_X;
+  var FG_TEMPLATE_DRAW_WIDTH = 1880 * FG_TEMPLATE_SCALE_X;
+  var FG_LINE = 58.31;
+  var FG_INLINE_SEPARATOR = "\u2009|\u2009"; // espaço fino: compacto e legível
+
+  // Variação de logotipo por cartão: "fg" é o padrão institucional já usado; "fg-ico" acrescenta o
+  // selo ICO ao lado do logotipo (business-card-assets/source, arquivo cedido por Lucas). A escolha
+  // fica salva em cada registro (r.logoVariant), afetando somente o cartão selecionado. As duas
+  // imagens vêm embutidas em base64 (business-card-assets.js) — carregar por caminho relativo
+  // sob file:// "contamina" o canvas e impede a releitura de pixels (getImageData) na recolorização.
+  var FG_LOGO_VARIANTS = {
+    "fg": "business-card-assets/fg-template-600.png",
+    "fg-ico": "business-card-assets/fg-ico-template-600.png"
+  };
+  var fgAlignedTemplates = {};
+
+  function alignedFgTemplate(img) {
+    var key = img.src || "fg";
+    if (fgAlignedTemplates[key]) return fgAlignedTemplates[key];
+    var source = colorizeFgTemplate(img);
+    var output = document.createElement("canvas");
+    // Descarta a coluna branca técnica antes de qualquer reamostragem. Assim o filtro do canvas
+    // não consegue misturá-la ao verde e gerar brilho na extremidade direita.
+    output.width = Math.max(1, source.width - 1);
+    output.height = source.height;
+    var outputCtx = output.getContext("2d");
+    outputCtx.imageSmoothingEnabled = false;
+    outputCtx.drawImage(source, 0, 0);
+    fgAlignedTemplates[key] = output;
+    return output;
+  }
+
+  async function drawFg(r, token) {
+    var variant = r.logoVariant === "fg-ico" ? "fg-ico" : "fg";
+    var embeddedSrc = variant === "fg" ? embeddedAssets.fgTemplate : embeddedAssets.fgTemplateIco;
+    var templateSrc = embeddedSrc || FG_LOGO_VARIANTS[variant];
+    // QR, nome e cargo compartilham exatamente a mesma âncora direita: 6,36 mm desde a
+    // borda direita da sangra. O tamanho e a coordenada vertical do QR permanecem inalterados.
+    var fgQr = { x: FG_RIGHT - template.qr.size, y: template.qr.y, size: template.qr.size };
+    var bg = await loadImage(templateSrc);
+    if (token !== renderToken) return;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, W, H);
+    if (bg) {
+      var alignedBg = alignedFgTemplate(bg);
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(alignedBg, FG_TEMPLATE_DRAW_X, 0, FG_TEMPLATE_DRAW_WIDTH, H);
+      ctx.restore();
+    }
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(W * .75, H * .30, W * .23, H * .27);
+    ctx.fillRect(85, H * .64, fgQr.x - 160, H * .32);
+    ctx.fillStyle = FG_GRAY;
+    ctx.textAlign = "right";
+    ctx.font = "700 81.14px Swiss721,Arial Narrow,Arial,sans-serif";
+    ctx.fillText(r.name || "Nome", FG_RIGHT, 447.43);
+    ctx.font = "400 59.97px Swiss721,Arial Narrow,Arial,sans-serif";
+    ctx.fillText(r.role || "Cargo", FG_RIGHT, 517.95);
+    ctx.textAlign = "left";
+    ctx.font = "400 48.59px Swiss721,Arial Narrow,Arial,sans-serif";
+    var addressLines = wrapText(r.address, fgQr.x - FG_LEFT - 55, 2);
+    addressLines.forEach(function (line, i) { ctx.fillText(line, FG_LEFT, 805.18 + i * FG_LINE); });
+    // Telefones e E-mail/Site têm âncoras fixas no original. Nunca descem quando o endereço quebra.
+    var phoneLine = [r.phone ? "Celular: " + r.phone : "", r.landline ? "Telefone: " + r.landline : ""].filter(Boolean).join(FG_INLINE_SEPARATOR);
+    fitText(phoneLine, fgQr.x - FG_LEFT - 55, 48.59, 400);
+    ctx.fillText(phoneLine, FG_LEFT, 921.81);
+    ctx.font = "400 48.59px Swiss721,Arial Narrow,Arial,sans-serif";
+    var contact = [r.email, r.website].filter(Boolean).join(FG_INLINE_SEPARATOR);
+    ctx.fillText(contact, FG_LEFT, 980.12);
+    drawContactQr(r, fgQr);
+  }
+
+  // ==== GRUPO OVD (estilo "ovd") ====
+  // Réplica do arquivo CorelDRAW "Cartoes de Visitas OVD.cdr" (posições e fotos extraídas do
+  // PDF exportado por ele). Escala: nosso canvas lógico 1880×1080 representa a arte de 94×54mm
+  // (corte 90×50 + 2mm de sangria original), com origem no canto da FOLHA de impressão de
+  // 104×64mm (7mm de sangria contínua até a borda) — daí o deslocamento de 5mm (7−2) abaixo.
+  var OVD_PT_TO_PX = 20 * 25.4 / 72; // px de canvas por ponto PDF (20px/mm)
+  var OVD_ORIGIN_PX = 5 * 20; // 5mm (sangria da folha menos a já embutida na arte) em px
+  function ovdX(xPt) { return OVD_PT_TO_PX * xPt - OVD_ORIGIN_PX; }
+  function ovdY(yPt) { return H - (OVD_PT_TO_PX * yPt - OVD_ORIGIN_PX); }
+
+  // Desenha uma imagem usando a matriz de posicionamento (a,b,c,d,e,f) extraída literalmente
+  // do "cm" do PDF de referência — mesma convenção de matriz afim, só trocando a escala/origem.
+  function drawOvdPdfImage(img, a, b, c, d, e, f, opacity) {
+    if (!img) return;
+    var s = OVD_PT_TO_PX;
+    ctx.save();
+    ctx.globalAlpha = opacity == null ? 1 : opacity;
+    ctx.transform(s * a, -s * b, s * c, -s * d, ovdX(e), ovdY(f));
+    // O PDF desenha a linha 0 da imagem em v=1 (topo do quadrado unitário, espaço y-para-cima);
+    // o canvas desenha a linha 0 em v=0 (topo, y-para-baixo) — sem este flip local, toda imagem
+    // sai de cabeça pra baixo/deslocada em relação à posição exata do arquivo de referência.
+    ctx.translate(0, 1);
+    ctx.scale(1, -1);
+    ctx.drawImage(img, 0, 0, 1, 1);
+    ctx.restore();
+  }
+
+  function ovdBarRect(yPt1, yPt2) {
+    var y1 = ovdY(yPt1), y2 = ovdY(yPt2);
+    var top = Math.max(0, Math.min(y1, y2));
+    var bottom = Math.min(H, Math.max(y1, y2));
+    return [top, bottom - top];
+  }
+
+  // Telefone sai de formatPhone() como "(DDD) XXXX-XXXX" (padrão usado no resto do app), mas o
+  // cartão OVD mostra "DDD XXXXX XXXX" sem parênteses/traço, com o DDD normal e o resto em
+  // negrito — replicando a formatação da planilha (mesma regra pro FONE institucional e pro
+  // CELULAR pessoal). Reconstrói a partir dos dígitos, então não depende da pontuação de exibição.
+  function ovdPhoneRuns(value, prefix) {
+    var digits = String(value || "").replace(/\D/g, "");
+    var runs = prefix ? [{ text: prefix, bold: false }] : [];
+    if (!digits) return runs;
+    var ddd = digits.slice(0, 2);
+    var local = digits.slice(2);
+    var firstLength = local.length > 8 ? 5 : Math.min(4, local.length);
+    var rest = [local.slice(0, firstLength), local.slice(firstLength)].filter(Boolean).join(" ");
+    runs.push({ text: ddd + " ", bold: false });
+    runs.push({ text: rest, bold: true });
+    return runs;
+  }
+
+  // Sem negrito vindo da planilha (cartão criado manualmente ou importado de .csv), aplica um
+  // padrão razoável: primeiro e último nome em negrito, meio normal — não é garantia de bater
+  // com o que a pessoa realmente destaca, só evita o nome sair 100% sem ênfase nenhuma.
+  function ovdDefaultNameRuns(name) {
+    var text = String(name || "");
+    var words = text.split(" ");
+    if (words.length < 2) return [{ text: text, bold: true }];
+    var runs = [{ text: words[0], bold: true }];
+    if (words.length > 2) runs.push({ text: " " + words.slice(1, -1).join(" "), bold: false });
+    runs.push({ text: " " + words[words.length - 1], bold: true });
+    return runs;
+  }
+
+  // Runs "ativos" de um cartão: usa o negrito escolhido manualmente (r.nameRuns) enquanto ele
+  // ainda descrever o nome atual; senão cai no padrão automático (primeiro + último nome).
+  function ovdActiveNameRuns(r) {
+    return (r.nameRuns && r.nameRuns.length && r.nameRuns.map(function (x) { return x.text; }).join("") === r.name)
+      ? r.nameRuns
+      : ovdDefaultNameRuns(r.name);
+  }
+
+  // Expande runs {text,bold} num array de flags de negrito por caractere, na mesma ordem do
+  // texto concatenado — usado para descobrir se uma palavra específica do nome está em negrito.
+  function nameRunsToCharBold(runs) {
+    var flags = [];
+    runs.forEach(function (run) {
+      for (var i = 0; i < run.text.length; i++) flags.push(!!run.bold);
+    });
+    return flags;
+  }
+
+  // Divide r.name em palavras (preservando a posição de cada uma no texto original) e marca cada
+  // palavra como negrito ou não, a partir dos runs ativos do cartão. Base do seletor manual de
+  // negrito na tela de edição.
+  function nameWordsWithBold(r) {
+    var name = r.name || "";
+    var flags = nameRunsToCharBold(ovdActiveNameRuns(r));
+    var words = [];
+    var re = /\S+/g;
+    var match;
+    while ((match = re.exec(name))) {
+      words.push({ text: match[0], start: match.index, bold: !!flags[match.index] });
+    }
+    return words;
+  }
+
+  function appendNameRun(runs, text, bold) {
+    if (!text) return;
+    var last = runs[runs.length - 1];
+    if (last && last.bold === bold) last.text += text;
+    else runs.push({ text: text, bold: bold });
+  }
+
+  // Reconstrói os runs {text,bold} do nome inteiro a partir da lista de palavras e do conjunto
+  // de índices marcados como negrito, preservando os espaços/separadores originais entre elas.
+  function nameRunsFromBoldWords(name, words, boldIndexes) {
+    var runs = [];
+    var cursor = 0;
+    words.forEach(function (word, index) {
+      if (word.start > cursor) appendNameRun(runs, name.slice(cursor, word.start), false);
+      appendNameRun(runs, word.text, boldIndexes.indexOf(index) >= 0);
+      cursor = word.start + word.text.length;
+    });
+    if (cursor < name.length) appendNameRun(runs, name.slice(cursor), false);
+    return runs;
+  }
+
+  function drawOvdRuns(runs, x, y, sizePx, color) {
+    var cx = x;
+    ctx.textAlign = "left";
+    ctx.fillStyle = color;
+    runs.forEach(function (run) {
+      ctx.font = (run.bold ? "700 " : "400 ") + sizePx + "px Swiss721,Arial Narrow,Arial,sans-serif";
+      ctx.fillText(run.text, cx, y);
+      cx += ctx.measureText(run.text).width;
+    });
+    return cx;
+  }
+
+  function ovdRunsWidth(runs, sizePx) {
+    var total = 0;
+    runs.forEach(function (run) {
+      ctx.font = (run.bold ? "700 " : "400 ") + sizePx + "px Swiss721,Arial Narrow,Arial,sans-serif";
+      total += ctx.measureText(run.text).width;
+    });
+    return total;
+  }
+
+  async function drawOvd(r, token) {
+    var logo = await loadImage(embeddedAssets.ovdLogo || "business-card-assets/ovd-logo.png");
+    var toolWrench = await loadImage(embeddedAssets.ovdToolWrench || "business-card-assets/ovd-tool-wrench.png");
+    var toolDrillbit = await loadImage(embeddedAssets.ovdToolDrillbit || "business-card-assets/ovd-tool-drillbit.png");
+    var toolScrewdriver = await loadImage(embeddedAssets.ovdToolScrewdriver || "business-card-assets/ovd-tool-screwdriver.png");
+    var toolPliers = await loadImage(embeddedAssets.ovdToolPliers || "business-card-assets/ovd-tool-pliers.png");
+    if (token !== renderToken) return;
+
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, W, H);
+
+    // Fotos das ferramentas (posição e rotação idênticas ao arquivo da gráfica).
+    drawOvdPdfImage(toolWrench, -20.2346356, -48.7293190, 47.8899378, -19.8861084, 153.6332, 94.0803, 0.5);
+    drawOvdPdfImage(toolDrillbit, 60.1674419, 0, 0, 80.3255494, 125.4575, 9.6769);
+    drawOvdPdfImage(toolScrewdriver, -0.0000001, -68.7113759, 8.6619437, -0.0000001, 179.2327, 94.7162, 0.4);
+    drawOvdPdfImage(toolPliers, 94.8452309, 0, 0, 55.4776504, 102.5639, 12.9421);
+
+    // Barra preta superior e inferior — sangram até a borda da folha (ver ovdBarRect/clamp).
+    ctx.fillStyle = "#000";
+    var topBar = ovdBarRect(125.4543, 169.9251);
+    ctx.fillRect(0, topBar[0], W, topBar[1]);
+    var bottomBar = ovdBarRect(10.1356, 32.4672);
+    ctx.fillRect(0, bottomBar[0], W, bottomBar[1]);
+
+    // Limites vetoriais medidos no PDF do Corel: 65,9010 × 35,6984 pt, ancorados em
+    // x=195,9874 pt e no topo y=153,5074 pt. Isso preserva escala e posição do original.
+    if (logo) {
+      ctx.drawImage(
+        logo,
+        ovdX(195.9874),
+        ovdY(153.5074),
+        65.9010 * OVD_PT_TO_PX,
+        35.6984 * OVD_PT_TO_PX
+      );
+    }
+
+    // O Corel usa um quadro externo de 25mm, linha preta de 0,25mm e QR recuado 1mm
+    // em cada lado (área interna de 23mm). A moldura é traçada por último para não ser
+    // coberta pelo fundo branco produzido por drawContactQr().
+    var qr = template.qr;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(qr.x, qr.y, qr.size, qr.size);
+    var qrInset = 20; // 1mm no canvas lógico (20px/mm)
+    drawContactQr(r, {
+      x: qr.x + qrInset,
+      y: qr.y + qrInset,
+      size: qr.size - qrInset * 2
+    });
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 5; // 0,25mm
+    ctx.strokeRect(qr.x, qr.y, qr.size, qr.size);
+
+    var left = ovdX(30.5847);
+    // Só usa os negritos escolhidos manualmente (ou vindos da planilha) se o texto deles ainda
+    // bater com o nome atual — se o cartão foi editado manualmente depois, cai no padrão
+    // automático em vez de mostrar negrito fora de lugar sobre um nome que já mudou.
+    drawOvdRuns(ovdActiveNameRuns(r), left, ovdY(107.2908), 9 * OVD_PT_TO_PX, "#000");
+    ctx.font = "400 " + (6.5 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+    ctx.fillStyle = "#000";
+    ctx.fillText((r.role || "").toUpperCase(), left, ovdY(98.6692));
+    if (r.phone) drawOvdRuns(ovdPhoneRuns(r.phone), left, ovdY(90.8946), 6.5 * OVD_PT_TO_PX, "#000");
+    if (r.email) {
+      ctx.font = "400 " + (6.5 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+      ctx.fillStyle = "#000";
+      ctx.fillText(r.email, left, ovdY(83.8732));
+    }
+
+    var addressLines = String(r.address || "").split(/\r\n|\r|\n/).filter(Boolean);
+    var lineY = ovdY(61.6187);
+    var lineStep = 7.9710 * OVD_PT_TO_PX;
+    addressLines.forEach(function (line) {
+      ctx.font = "400 " + (7 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+      ctx.fillStyle = "#000";
+      ctx.fillText(line, left, lineY);
+      lineY += lineStep;
+    });
+    if (r.landline) drawOvdRuns(ovdPhoneRuns(r.landline, "Fone "), left, lineY, 7 * OVD_PT_TO_PX, "#000");
+
+    // Site em negrito branco, ancorado pela direita no mesmo eixo da extremidade da
+    // chave de fenda (x=179,2327+8,6619437 pt no PDF do Corel). Se o endereço mudar,
+    // o texto cresce somente para a esquerda e nunca avança sobre o QR.
+    if (r.website) {
+      var siteSize = 6.5 * OVD_PT_TO_PX;
+      var siteRuns = [{ text: r.website, bold: true }];
+      var siteWidth = ovdRunsWidth(siteRuns, siteSize);
+      var siteRight = ovdX(187.8946437);
+      drawOvdRuns(siteRuns, siteRight - siteWidth, ovdY(24.2442), siteSize, "#fff");
+    }
+
+  }
+
+  function drawDecor(style, accent, secondary) {
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, W, H);
+    if (style === "diagonal") {
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(W * .48, 0);
+      ctx.lineTo(W * .31, H);
+      ctx.lineTo(0, H);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#171717";
+      ctx.fillRect(0, H * .78, W, H * .22);
+    } else if (style === "sidebar") {
+      ctx.fillStyle = accent;
+      ctx.fillRect(0, 0, W * .34, H);
+      ctx.fillStyle = shade(accent, -.22);
+      ctx.beginPath();
+      ctx.moveTo(W * .34, 0);
+      ctx.lineTo(W * .46, 0);
+      ctx.lineTo(W * .35, H);
+      ctx.lineTo(W * .24, H);
+      ctx.closePath();
+      ctx.fill();
+    } else if (style === "stripe") {
+      ctx.fillStyle = accent;
+      ctx.fillRect(0, 0, W, H * .31);
+      ctx.fillStyle = "#1c1c1c";
+      ctx.fillRect(0, H * .31, W, H * .055);
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.moveTo(W * .70, H);
+      ctx.lineTo(W, H * .62);
+      ctx.lineTo(W, H);
+      ctx.closePath();
+      ctx.fill();
+    } else if (style === "corner") {
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(W * .62, 0);
+      ctx.lineTo(W * .45, H * .36);
+      ctx.lineTo(0, H * .36);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = shade(accent, -.28);
+      ctx.beginPath();
+      ctx.moveTo(W * .75, H);
+      ctx.lineTo(W, H * .70);
+      ctx.lineTo(W, H);
+      ctx.closePath();
+      ctx.fill();
+    } else if (style === "split") {
+      ctx.fillStyle = accent;
+      ctx.fillRect(0, 0, W, H * .29);
+      ctx.fillStyle = secondary || "#AB2328";
+      ctx.fillRect(0, H * .29, W, H * .035);
+      ctx.fillRect(W * .94, 0, W * .06, H);
+    } else if (style === "rail") {
+      ctx.fillStyle = "#202124";
+      ctx.fillRect(0, 0, W * .30, H);
+      ctx.fillStyle = accent;
+      ctx.fillRect(W * .30, 0, W * .045, H);
+      ctx.beginPath();
+      ctx.moveTo(W * .76, H);
+      ctx.lineTo(W, H * .72);
+      ctx.lineTo(W, H);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillStyle = accent;
+      ctx.fillRect(0, 0, W, H * .25);
+      ctx.fillStyle = secondary || "#e4e4e4";
+      ctx.fillRect(0, H * .25, W, H * .035);
+      ctx.fillStyle = "#f1f1f1";
+      ctx.beginPath();
+      ctx.arc(W * .87, H * .80, W * .30, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  async function drawGeneric(r, token) {
+    drawDecor(template.style, template.accent, template.secondary);
+    var logoSource = (embeddedAssets.logos && embeddedAssets.logos[brand.id]) || brand.photo;
+    var img = logoSource ? await loadImage(logoSource) : null;
+    if (token !== renderToken) return;
+    var lightHeader = template.style === "stripe" || template.style === "group";
+    var logoX = 90, logoY = 70, logoW = 320, logoH = 145;
+    ctx.save();
+    ctx.fillStyle = lightHeader ? "#fff" : "rgba(255,255,255,.95)";
+    ctx.beginPath();
+    ctx.roundRect(logoX, logoY, logoW, logoH, 18);
+    ctx.fill();
+    if (img) {
+      var ratio = Math.min((logoW - 34) / img.width, (logoH - 26) / img.height);
+      var iw = img.width * ratio;
+      var ih = img.height * ratio;
+      ctx.drawImage(img, logoX + (logoW - iw) / 2, logoY + (logoH - ih) / 2, iw, ih);
+    } else {
+      ctx.fillStyle = template.ink;
+      ctx.textAlign = "center";
+      ctx.font = "700 64px Arial";
+      ctx.fillText(brand.shortName || brand.name, logoX + logoW / 2, logoY + 93);
+    }
+    ctx.restore();
+    var left = (template.style === "sidebar" || template.style === "rail") ? W * .42 : W * .51;
+    ctx.textAlign = "left";
+    ctx.fillStyle = template.ink;
+    var max = W - left - 100;
+    var size = fitText(r.name || "Nome", max, 78, 700);
+    ctx.font = "700 " + size + "px Swiss721,Arial Narrow,Arial,sans-serif";
+    ctx.fillText(r.name || "Nome", left, H * .39);
+    size = fitText(r.role || "Cargo", max, 44, 400);
+    ctx.font = "400 " + size + "px Swiss721,Arial Narrow,Arial,sans-serif";
+    ctx.fillStyle = shade(template.ink, .25);
+    ctx.fillText(r.role || "Cargo", left, H * .47);
+    var contactWidth = template.qr ? Math.max(320, template.qr.x - left - 45) : max;
+    drawContact(r, left, H * .62, contactWidth, template.ink);
+    drawContactQr(r, template.qr);
+  }
+
+  async function renderCanvas(r, targetCanvas, logicalSize) {
+    await fontsReady;
+    if (targetCanvas && targetCanvas !== canvas) {
+      var oldCanvas = canvas, oldCtx = ctx;
+      canvas = targetCanvas;
+      ctx = canvas.getContext("2d");
+      var physicalWidth = canvas.width, physicalHeight = canvas.height;
+      W = logicalSize ? logicalSize.width : physicalWidth;
+      H = logicalSize ? logicalSize.height : physicalHeight;
+      ctx.setTransform(physicalWidth / W, 0, 0, physicalHeight / H, 0, 0);
+      var localToken = ++renderToken;
+      if (template.style === "fg") await drawFg(r || recordFrom({}), localToken);
+      else if (template.style === "ovd") await drawOvd(r || recordFrom({}), localToken);
+      else await drawGeneric(r || recordFrom({}), localToken);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      canvas = oldCanvas;
+      ctx = oldCtx;
+      W = oldCanvas.width;
+      H = oldCanvas.height;
+      return;
+    }
+    var token = ++renderToken;
+    r = r || recordFrom({ name: "Nome", role: "Cargo" });
+    if (template.style === "fg") await drawFg(r, token);
+    else if (template.style === "ovd") await drawOvd(r, token);
+    else await drawGeneric(r, token);
+  }
+
+  function validateExport(records) {
+    if (!records.length) {
+      toast("Nenhum cartão foi selecionado.");
+      return false;
+    }
+    var pending = records.filter(function (r) { return !r.approved; });
+    if (pending.length) {
+      toast("Revise e aprove " + pending.length + " " + (pending.length === 1 ? "cartão" : "cartões") + " antes de exportar.");
+      return false;
+    }
+    return true;
+  }
+
+  function concatBytes(parts) {
+    var length = parts.reduce(function (total, part) { return total + part.length; }, 0);
+    var result = new Uint8Array(length);
+    var offset = 0;
+    parts.forEach(function (part) {
+      result.set(part, offset);
+      offset += part.length;
+    });
+    return result;
+  }
+
+  function base64ToBytes(value) {
+    var binary = atob(value), bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  function asciiBytes(value) {
+    return new TextEncoder().encode(value);
+  }
+
+  async function compressPdfStream(bytes) {
+    if (!window.CompressionStream) return { bytes: bytes, filter: "" };
+    try {
+      var stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate"));
+      return { bytes: new Uint8Array(await new Response(stream).arrayBuffer()), filter: " /Filter /FlateDecode" };
+    } catch (e) {
+      return { bytes: bytes, filter: "" };
+    }
+  }
+
+  // Cores institucionais com receita CMYK exata aprovada (independente da conversão RGB→CMYK
+  // genérica): verde FG (#005745) e amarelo GRUPO OVD (#FFC20D, pixel dominante do logo raster
+  // business-card-assets/ovd-logo.png). Cada entrada vira um vetor/norma pré-calculado usado para
+  // detectar tanto o pixel sólido quanto sua suavização contra o branco ao redor.
+  var BRAND_CMYK_RECIPES = [
+    { rgb: [0, 87, 69], cmyk: [.95, .37, .73, .38] },
+    { rgb: [255, 194, 13], cmyk: [0, .25, 1, 0] }
+  ].map(function (recipe) {
+    var vector = [255 - recipe.rgb[0], 255 - recipe.rgb[1], 255 - recipe.rgb[2]];
+    var norm = vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2];
+    return { cmyk: recipe.cmyk, vector: vector, norm: norm };
+  });
+
+  function canvasToCmyk(canvasElement) {
+    var rgba = canvasElement.getContext("2d").getImageData(0, 0, canvasElement.width, canvasElement.height).data;
+    var output = new Uint8Array(canvasElement.width * canvasElement.height * 4);
+    for (var source = 0, target = 0; source < rgba.length; source += 4, target += 4) {
+      var r = rgba[source], g = rgba[source + 1], b = rgba[source + 2];
+      var matched = false;
+      for (var i = 0; i < BRAND_CMYK_RECIPES.length; i++) {
+        var recipe = BRAND_CMYK_RECIPES[i];
+        var coverage = ((255 - r) * recipe.vector[0] + (255 - g) * recipe.vector[1] + (255 - b) * recipe.vector[2]) / recipe.norm;
+        if (coverage <= .015 || coverage > 1.03) continue;
+        var predictedR = 255 - coverage * recipe.vector[0];
+        var predictedG = 255 - coverage * recipe.vector[1];
+        var predictedB = 255 - coverage * recipe.vector[2];
+        if (Math.abs(r - predictedR) + Math.abs(g - predictedG) + Math.abs(b - predictedB) >= 18) continue;
+        output[target] = Math.round(255 * recipe.cmyk[0] * coverage);
+        output[target + 1] = Math.round(255 * recipe.cmyk[1] * coverage);
+        output[target + 2] = Math.round(255 * recipe.cmyk[2] * coverage);
+        output[target + 3] = Math.round(255 * recipe.cmyk[3] * coverage);
+        matched = true;
+        break;
+      }
+      if (matched) continue;
+      var red = r / 255, green = g / 255, blue = b / 255;
+      var k = 1 - Math.max(red, green, blue);
+      var denominator = 1 - k;
+      output[target] = denominator ? Math.round(255 * (1 - red - k) / denominator) : 0;
+      output[target + 1] = denominator ? Math.round(255 * (1 - green - k) / denominator) : 0;
+      output[target + 2] = denominator ? Math.round(255 * (1 - blue - k) / denominator) : 0;
+      output[target + 3] = Math.round(255 * k);
+    }
+    return output;
+  }
+
+  // Arte calibrada: cartão de 90 × 50 mm de corte + 2 mm de sangria original = 94 × 54 mm em
+  // pontos PDF (1pt = 1/72in, 1in = 25.4mm). Este é o canvas 1880 × 1080 já aprovado — nunca
+  // deve ser redimensionado nem ter suas posições internas recalculadas.
+  var DESIGN_WIDTH_PT = 266.456693;
+  var DESIGN_HEIGHT_PT = 153.070866;
+  var TRIM_WIDTH_MM = 90;
+  var TRIM_HEIGHT_MM = 50;
+  // Especificação final: 3 mm de sangra (96 × 56 mm) centralizados em uma folha branca de
+  // 104 × 64 mm. Portanto há 4 mm de margem branca por lado, além da sangra. Como a arte
+  // aprovada já contém 2 mm, apenas 1 mm adicional é criado por continuidade das bordas.
+  var TARGET_BLEED_MM = 3;
+  var BLEED_EXTRA_MM = 1;
+  var SHEET_MARGIN_MM = 4;
+  var PAGE_WIDTH_MM = TRIM_WIDTH_MM + 2 * (TARGET_BLEED_MM + SHEET_MARGIN_MM);
+  var PAGE_HEIGHT_MM = TRIM_HEIGHT_MM + 2 * (TARGET_BLEED_MM + SHEET_MARGIN_MM);
+  // Vão entre a marca de corte e o canto real do corte, e espessura do traço — replicam o arquivo
+  // de referência acima (marcas de corte reais, não a marca magenta que é só guia de tela).
+  var MARK_GAP_MM = 2;
+  var MARK_WIDTH_PT = 0.3;
+  // Resolução de exportação e perfil de cor de destino exigidos pela gráfica.
+  var EXPORT_DPI = 600;
+  var OUTPUT_PROFILE_NAME = "Coated FOGRA39 \\(ISO 12647-2:2004\\)";
+
+  function mmToCanvasPx(mm, totalMm, pixels) {
+    return Math.round(mm / totalMm * pixels);
+  }
+
+  // Compõe a folha final diretamente nas posições físicas pedidas. A área fora de 96 × 56 mm
+  // fica branca; dentro dela, o 1 mm adicional repete somente os pixels externos da arte.
+  function composePrintSheet(source) {
+    var out = document.createElement("canvas");
+    out.width = Math.round(PAGE_WIDTH_MM / 25.4 * EXPORT_DPI);
+    out.height = Math.round(PAGE_HEIGHT_MM / 25.4 * EXPORT_DPI);
+    var octx = out.getContext("2d");
+    octx.fillStyle = "#fff";
+    octx.fillRect(0, 0, out.width, out.height);
+
+    var bleedLeft = mmToCanvasPx(SHEET_MARGIN_MM, PAGE_WIDTH_MM, out.width);
+    var bleedTop = mmToCanvasPx(SHEET_MARGIN_MM, PAGE_HEIGHT_MM, out.height);
+    var artLeft = mmToCanvasPx(SHEET_MARGIN_MM + BLEED_EXTRA_MM, PAGE_WIDTH_MM, out.width);
+    var artTop = mmToCanvasPx(SHEET_MARGIN_MM + BLEED_EXTRA_MM, PAGE_HEIGHT_MM, out.height);
+    var artRight = mmToCanvasPx(PAGE_WIDTH_MM - SHEET_MARGIN_MM - BLEED_EXTRA_MM, PAGE_WIDTH_MM, out.width);
+    var artBottom = mmToCanvasPx(PAGE_HEIGHT_MM - SHEET_MARGIN_MM - BLEED_EXTRA_MM, PAGE_HEIGHT_MM, out.height);
+    var bleedRight = mmToCanvasPx(PAGE_WIDTH_MM - SHEET_MARGIN_MM, PAGE_WIDTH_MM, out.width);
+    var bleedBottom = mmToCanvasPx(PAGE_HEIGHT_MM - SHEET_MARGIN_MM, PAGE_HEIGHT_MM, out.height);
+    var artWidth = artRight - artLeft;
+    var artHeight = artBottom - artTop;
+    // O PNG-base da FG traz uma única coluna branca residual no extremo direito (fora da arte
+    // útil exportada pelo Illustrator). Se essa coluna for usada como amostra, ela vira uma
+    // faixa clara de 1 mm ao criar a sangra. Ignoramos somente esse pixel técnico na FG.
+    var sourceCropWidth = template.style === "fg" ? Math.max(1, source.width - 1) : source.width;
+    var sourceRightX = sourceCropWidth - 1;
+    // A arte FG já chega renderizada nos pixels finais de impressão. Desligar a interpolação
+    // nesta composição impede qualquer halo entre o verde sólido e a margem branca.
+    if (template.style === "fg") octx.imageSmoothingEnabled = false;
+
+    octx.drawImage(source, 0, 0, 1, 1, bleedLeft, bleedTop, artLeft - bleedLeft, artTop - bleedTop);
+    octx.drawImage(source, sourceRightX, 0, 1, 1, artRight, bleedTop, bleedRight - artRight, artTop - bleedTop);
+    octx.drawImage(source, 0, source.height - 1, 1, 1, bleedLeft, artBottom, artLeft - bleedLeft, bleedBottom - artBottom);
+    octx.drawImage(source, sourceRightX, source.height - 1, 1, 1, artRight, artBottom, bleedRight - artRight, bleedBottom - artBottom);
+    octx.drawImage(source, 0, 0, sourceCropWidth, 1, artLeft, bleedTop, artWidth, artTop - bleedTop);
+    octx.drawImage(source, 0, source.height - 1, sourceCropWidth, 1, artLeft, artBottom, artWidth, bleedBottom - artBottom);
+    octx.drawImage(source, 0, 0, 1, source.height, bleedLeft, artTop, artLeft - bleedLeft, artHeight);
+    octx.drawImage(source, sourceRightX, 0, 1, source.height, artRight, artTop, bleedRight - artRight, artHeight);
+    octx.drawImage(source, 0, 0, sourceCropWidth, source.height, artLeft, artTop, artWidth, artHeight);
+    return out;
+  }
+
+  // Desenha as 8 marcas de corte (cruzes nos 4 cantos) no conteúdo do PDF, replicando a
+  // geometria do arquivo de referência da gráfica: cada marca vai da borda da folha até
+  // MARK_GAP_MM antes do canto real do corte, nunca tocando a arte.
+  function cropMarksContent(widthPt, heightPt) {
+    var trimWidthPt = TRIM_WIDTH_MM / 25.4 * 72;
+    var trimHeightPt = TRIM_HEIGHT_MM / 25.4 * 72;
+    var bleedXPt = (widthPt - trimWidthPt) / 2;
+    var bleedYPt = (heightPt - trimHeightPt) / 2;
+    var gapPt = MARK_GAP_MM / 25.4 * 72;
+    var innerXPt = bleedXPt - gapPt;
+    var innerYPt = bleedYPt - gapPt;
+    var segments = [
+      [0, bleedYPt, innerXPt, bleedYPt],
+      [0, heightPt - bleedYPt, innerXPt, heightPt - bleedYPt],
+      [widthPt - innerXPt, bleedYPt, widthPt, bleedYPt],
+      [widthPt - innerXPt, heightPt - bleedYPt, widthPt, heightPt - bleedYPt],
+      [bleedXPt, 0, bleedXPt, innerYPt],
+      [widthPt - bleedXPt, 0, widthPt - bleedXPt, innerYPt],
+      [bleedXPt, heightPt - innerYPt, bleedXPt, heightPt],
+      [widthPt - bleedXPt, heightPt - innerYPt, widthPt - bleedXPt, heightPt]
+    ];
+    // Preto puro #000000 convertido para CMYK 0/0/0/100, como especificado para as linhas.
+    var lines = ["q", "0 0 0 1 K", MARK_WIDTH_PT + " w"];
+    segments.forEach(function (s) {
+      lines.push(s[0] + " " + s[1] + " m", s[2] + " " + s[3] + " l", "S");
+    });
+    lines.push("Q");
+    return lines.join("\n") + "\n";
+  }
+
+  // Reamostra o canvas (renderizado em alta resolução para nitidez na tela) para os pixels
+  // exatos que resultam em EXPORT_DPI no tamanho físico real do cartão.
+  function dpiScaledCanvas(source, widthPt, heightPt, dpi) {
+    var width = Math.ceil(widthPt / 72 * dpi);
+    var height = Math.ceil(heightPt / 72 * dpi);
+    if (source.width === width && source.height === height) return source;
+    var target = document.createElement("canvas");
+    target.width = width;
+    target.height = height;
+    var targetCtx = target.getContext("2d");
+    targetCtx.imageSmoothingEnabled = true;
+    if ("imageSmoothingQuality" in targetCtx) targetCtx.imageSmoothingQuality = "high";
+    targetCtx.drawImage(source, 0, 0, width, height);
+    return target;
+  }
+
+  async function buildCmykPdf(canvasElement, widthPt, heightPt) {
+    var exportCanvas = dpiScaledCanvas(canvasElement, widthPt, heightPt, EXPORT_DPI);
+    var image = await compressPdfStream(canvasToCmyk(exportCanvas));
+    var profileBytes = base64ToBytes(window.BusinessCardPrintProfile || "");
+    if (!profileBytes.length) throw new Error("Perfil ICC CoatedFOGRA39 não carregado.");
+    var profile = await compressPdfStream(profileBytes);
+    var content = asciiBytes("q\n" + widthPt + " 0 0 " + heightPt + " 0 0 cm\n/Im0 Do\nQ\n" + cropMarksContent(widthPt, heightPt));
+    var trimWidthPt = TRIM_WIDTH_MM / 25.4 * 72;
+    var trimHeightPt = TRIM_HEIGHT_MM / 25.4 * 72;
+    var trimXPt = (widthPt - trimWidthPt) / 2;
+    var trimYPt = (heightPt - trimHeightPt) / 2;
+    var bleedInsetPt = SHEET_MARGIN_MM / 25.4 * 72;
+    var pageBoxes = " /TrimBox [" + trimXPt + " " + trimYPt + " " + (widthPt - trimXPt) + " " + (heightPt - trimYPt) + "] /BleedBox [" + bleedInsetPt + " " + bleedInsetPt + " " + (widthPt - bleedInsetPt) + " " + (heightPt - bleedInsetPt) + "]";
+    var objects = [
+      asciiBytes("<< /Type /Catalog /Pages 2 0 R /OutputIntents [6 0 R] >>"),
+      asciiBytes("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
+      asciiBytes("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + widthPt + " " + heightPt + "]" + pageBoxes + " /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>"),
+      concatBytes([
+        asciiBytes("<< /Type /XObject /Subtype /Image /Width " + exportCanvas.width + " /Height " + exportCanvas.height + " /ColorSpace /DeviceCMYK /BitsPerComponent 8" + image.filter + " /Length " + image.bytes.length + " >>\nstream\n"),
+        image.bytes,
+        asciiBytes("\nendstream")
+      ]),
+      concatBytes([
+        asciiBytes("<< /Length " + content.length + " >>\nstream\n"),
+        content,
+        asciiBytes("endstream")
+      ]),
+      // Declara o perfil de saída Coated FOGRA39 e liga o OutputIntent ao binário ICC
+      // incorporado no objeto seguinte, permitindo sua leitura efetiva pelo RIP da gráfica.
+      asciiBytes("<< /Type /OutputIntent /S /GTS_PDFX /OutputConditionIdentifier (FOGRA39) /OutputCondition (" + OUTPUT_PROFILE_NAME + ") /RegistryName (http://www.color.org) /Info (" + OUTPUT_PROFILE_NAME + ") /DestOutputProfile 7 0 R >>"),
+      concatBytes([
+        asciiBytes("<< /N 4 /Alternate /DeviceCMYK" + profile.filter + " /Length " + profile.bytes.length + " >>\nstream\n"),
+        profile.bytes,
+        asciiBytes("\nendstream")
+      ])
+    ];
+    var parts = [asciiBytes("%PDF-1.4\n% CMYK print file - " + EXPORT_DPI + " DPI\n")];
+    var offsets = [0];
+    var length = parts[0].length;
+    objects.forEach(function (object, index) {
+      offsets[index + 1] = length;
+      var wrapped = concatBytes([asciiBytes((index + 1) + " 0 obj\n"), object, asciiBytes("\nendobj\n")]);
+      parts.push(wrapped);
+      length += wrapped.length;
+    });
+    var xrefOffset = length;
+    var xref = "xref\n0 " + (objects.length + 1) + "\n0000000000 65535 f \n";
+    for (var i = 1; i <= objects.length; i++) xref += String(offsets[i]).padStart(10, "0") + " 00000 n \n";
+    xref += "trailer\n<< /Size " + (objects.length + 1) + " /Root 1 0 R >>\nstartxref\n" + xrefOffset + "\n%%EOF\n";
+    var bytes = concatBytes(parts.concat([asciiBytes(xref)]));
+    return {
+      output: function (type) {
+        if (type === "arraybuffer") return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+        if (type === "blob") return new Blob([bytes], { type: "application/pdf" });
+        return bytes;
+      },
+      save: function (name) {
+        triggerBlob(new Blob([bytes], { type: "application/pdf" }), name);
+      }
+    };
+  }
+
+  async function cardPdfDoc(record) {
+    var scratch = document.createElement("canvas");
+    scratch.width = Math.ceil(DESIGN_WIDTH_PT / 72 * EXPORT_DPI);
+    scratch.height = Math.ceil(DESIGN_HEIGHT_PT / 72 * EXPORT_DPI);
+    // Renderiza diretamente nos pixels finais de impressão, mantendo o sistema lógico 1880 × 1080
+    // para preservar todas as posições aprovadas sem uma etapa posterior de ampliação.
+    await renderCanvas(record, scratch, { width: 1880, height: 1080 });
+    // A folha final preserva a arte central, cria 1 mm extra de sangra e mantém 4 mm brancos
+    // ao redor. As marcas vetoriais são acrescentadas depois, diretamente no conteúdo do PDF.
+    var printSheet = composePrintSheet(scratch);
+    var pageWidthPt = PAGE_WIDTH_MM / 25.4 * 72;
+    var pageHeightPt = PAGE_HEIGHT_MM / 25.4 * 72;
+    return buildCmykPdf(printSheet, pageWidthPt, pageHeightPt);
+  }
+
+  function triggerBlob(blob, name) {
+    var a = document.createElement("a");
+    var u = URL.createObjectURL(blob);
+    a.href = u;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(u); }, 1200);
+  }
+
+  var ZIP_CRC_TABLE = (function () {
+    var table = [];
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = (c & 1) ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      table[n] = c >>> 0;
+    }
+    return table;
+  })();
+
+  function zipCrc(bytes) {
+    var crc = 0xffffffff;
+    for (var i = 0; i < bytes.length; i++) crc = ZIP_CRC_TABLE[(crc ^ bytes[i]) & 255] ^ (crc >>> 8);
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  function zipHeader(size) {
+    var bytes = new Uint8Array(size);
+    var view = new DataView(bytes.buffer);
+    return {
+      bytes: bytes,
+      u16: function (offset, value) { view.setUint16(offset, value, true); },
+      u32: function (offset, value) { view.setUint32(offset, value >>> 0, true); }
+    };
+  }
+
+  function zipDate() {
+    var d = new Date();
+    var year = Math.max(1980, d.getFullYear());
+    return {
+      time: (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1),
+      date: ((year - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()
+    };
+  }
+
+  function makeZip(files) {
+    var encoder = new TextEncoder();
+    var stamp = zipDate();
+    var locals = [];
+    var centrals = [];
+    var offset = 0;
+    files.forEach(function (file) {
+      var name = encoder.encode(file.name);
+      var data = file.data;
+      var crc = zipCrc(data);
+      var local = zipHeader(30);
+      local.u32(0, 0x04034b50);
+      local.u16(4, 20);
+      local.u16(6, 0x800);
+      local.u16(8, 0);
+      local.u16(10, stamp.time);
+      local.u16(12, stamp.date);
+      local.u32(14, crc);
+      local.u32(18, data.length);
+      local.u32(22, data.length);
+      local.u16(26, name.length);
+      local.u16(28, 0);
+      locals.push(local.bytes, name, data);
+      var central = zipHeader(46);
+      central.u32(0, 0x02014b50);
+      central.u16(4, 20);
+      central.u16(6, 20);
+      central.u16(8, 0x800);
+      central.u16(10, 0);
+      central.u16(12, stamp.time);
+      central.u16(14, stamp.date);
+      central.u32(16, crc);
+      central.u32(20, data.length);
+      central.u32(24, data.length);
+      central.u16(28, name.length);
+      central.u16(30, 0);
+      central.u16(32, 0);
+      central.u16(34, 0);
+      central.u16(36, 0);
+      central.u32(38, 0);
+      central.u32(42, offset);
+      centrals.push(central.bytes, name);
+      offset += 30 + name.length + data.length;
+    });
+    var centralSize = centrals.reduce(function (total, part) { return total + part.length; }, 0);
+    var end = zipHeader(22);
+    end.u32(0, 0x06054b50);
+    end.u16(4, 0);
+    end.u16(6, 0);
+    end.u16(8, files.length);
+    end.u16(10, files.length);
+    end.u32(12, centralSize);
+    end.u32(16, offset);
+    end.u16(20, 0);
+    return new Blob(locals.concat(centrals, [end.bytes]), { type: "application/zip" });
+  }
+
+  function uniqueFileName(base, used) {
+    var name = base, n = 2;
+    while (used[name]) {
+      name = base + "-" + n;
+      n++;
+    }
+    used[name] = true;
+    return name;
+  }
+
+  async function exportPdf(records, label) {
+    if (!validateExport(records)) return;
+    if (records.length === 1) {
+      toast("Preparando cartão…");
+      var doc = await cardPdfDoc(records[0]);
+      doc.save(safeFile(records[0].name) + ".pdf");
+      toast("PDF gerado com sucesso.");
+      return;
+    }
+    // cada cartão vira um PDF individual (nome = nome completo da pessoa), não mais páginas de
+    // um único PDF — assim cada arquivo pode ir separado pra gráfica/participante; agrupamos
+    // tudo num ZIP só pra facilitar o download em lote
+    toast("Preparando " + records.length + " cartões em PDFs individuais…");
+    var used = {};
+    var files = [];
+    for (var i = 0; i < records.length; i++) {
+      var recordDoc = await cardPdfDoc(records[i]);
+      var name = uniqueFileName(safeFile(records[i].name), used);
+      files.push({ name: name + ".pdf", data: new Uint8Array(recordDoc.output("arraybuffer")) });
+    }
+    var zip = makeZip(files);
+    var zipName = safeFile(brand.name) + "-" + label + "-" + records.length + "-cartoes";
+    triggerBlob(zip, zipName + ".zip");
+    toast("ZIP com " + records.length + " PDFs gerado com sucesso.");
+  }
+
+  function addManual() {
+    var r = recordFrom({ name: "", role: "", address: "", landline: "", phone: "", email: "", website: "" });
+    state.records.push(r);
+    state.activeId = r.id;
+    save();
+    showWorkspace();
+  }
+
+  // Criar cartão manualmente a partir da etapa "Criar ou Importar" começa uma lista nova — não
+  // soma ao que já existia (diferente de "Adicionar cartão manualmente" dentro do workspace, que
+  // complementa um lote em andamento).
+  function startManualCard() {
+    var r = recordFrom({ name: "", role: "", address: "", landline: "", phone: "", email: "", website: "" });
+    state.records = [r];
+    state.activeId = r.id;
+    save();
+    showWorkspace();
+  }
+
+  function loadDemo() {
+    var demo = [
+      { name: "Mariana Alves", role: "Supervisora de Vendas Externas", address: "Av. Antônio Gazzola, 1001 | Jardim Corazza\nItu | SP | CEP 13301-245", landline: "(11) 3333-4444", phone: "(11) 99999-0000", email: "mariana.alves@empresa.com.br", website: "www.empresa.com.br" },
+      { name: "Lucas Ribeiro", role: "Especialista de Produtos", address: "Rua Voluntários da Pátria, 3223 | São Geraldo\nPorto Alegre | RS | CEP 90230-011", phone: "(51) 98888-0000", email: "lucas.ribeiro@empresa.com.br", website: "www.empresa.com.br" }
+    ];
+    state.records = demo.map(recordFrom);
+    state.activeId = state.records[0].id;
+    save();
+    showWorkspace();
+  }
+
+  function init() {
+    $("brandName").textContent = brand.name;
+    $("brandDot").textContent = brand.shortName || brand.name.slice(0, 3).toUpperCase();
+    $("miniBrand").textContent = brand.shortName || brand.name.slice(0, 3).toUpperCase();
+    $("logoVariantField").hidden = template.style !== "fg";
+    $("spreadsheetFile").addEventListener("change", function () { handleFile(this.files[0]); this.value = ""; });
+    $("startManual").addEventListener("click", startManualCard);
+    $("addRecord").addEventListener("click", addManual);
+    $("deleteSelected").addEventListener("click", deleteSelected);
+    $("backToWorkspace").addEventListener("click", function () { goToStep("edit"); });
+    $("cancelReturnToImport").addEventListener("click", closeReturnToImportModal);
+    $("cancelReturnToImportIcon").addEventListener("click", closeReturnToImportModal);
+    $("confirmReturnToImport").addEventListener("click", confirmReturnToImport);
+    $("returnToImportModal").addEventListener("click", function (ev) { if (ev.target === this) closeReturnToImportModal(); });
+    $("cancelDeleteConfirm").addEventListener("click", closeDeleteConfirmModal);
+    $("cancelDeleteConfirmIcon").addEventListener("click", closeDeleteConfirmModal);
+    $("confirmDeleteConfirm").addEventListener("click", function () {
+      var action = pendingDeleteAction;
+      closeDeleteConfirmModal();
+      if (action) action();
+    });
+    $("deleteConfirmModal").addEventListener("click", function (ev) { if (ev.target === this) closeDeleteConfirmModal(); });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key !== "Escape") return;
+      if (!$("returnToImportModal").hidden) closeReturnToImportModal();
+      if (!$("deleteConfirmModal").hidden) closeDeleteConfirmModal();
+    });
+    document.querySelectorAll(".bc-flow-step").forEach(function (el) {
+      el.addEventListener("click", function () { goToStep(el.getAttribute("data-step")); });
+      el.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          goToStep(el.getAttribute("data-step"));
+        }
+      });
+    });
+    Object.keys(fields).forEach(function (key) { fields[key].addEventListener("input", fieldChanged); });
+    $("reviewCurrent").addEventListener("click", function () { var r = current(); if (r) reviewRecord(r); });
+    $("approveCurrent").addEventListener("change", function () {
+      var r = current();
+      if (!r) return;
+      if (this.checked && (!r.reviewed || hasBlocking(r))) {
+        this.checked = false;
+        return;
+      }
+      r.approved = this.checked;
+      state.currentStep = this.checked ? "export" : "review";
+      save();
+      renderRecords();
+      renderStats();
+      updateFlow();
+    });
+    $("selectAll").addEventListener("change", function () {
+      var value = this.checked;
+      state.records.forEach(function (r) { r.selected = value; });
+      save();
+      renderRecords();
+      renderStats();
+    });
+    $("exportCurrent").addEventListener("click", function () { var r = current(); exportPdf(r ? [r] : [], "individual"); });
+    $("exportSelected").addEventListener("click", function () { exportPdf(state.records.filter(function (r) { return r.selected; }), "selecionados"); });
+    $("exportAll").addEventListener("click", function () { exportPdf(state.records, "lote-completo"); });
+    load();
+    if (!state.records.length) renderCanvas(null);
+    else renderAll();
+  }
+
+  window.BusinessCardGenerator = {
+    loadDemo: loadDemo,
+    importRows: importRows,
+    exportPdf: exportPdf,
+    createPdf: cardPdfDoc,
+    buildVCard: contactVCard,
+    formatPhone: formatPhone,
+    validatePhone: validatePhone,
+    deleteRecord: deleteRecord,
+    deleteSelected: deleteSelected,
+    goToStep: goToStep,
+    getState: function () { return state; }
+  };
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();
+>>>>>>> ffe515d (Auto-sync: 2026-08-31 12:00:14)

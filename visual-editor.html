@@ -391,6 +391,17 @@
       </div>
     </div>
 
+    <!-- Escolha específica da Osten ao clicar em uma data comemorativa -->
+    <div id="ostenCommemorativeChoiceBackdrop" class="modal-backdrop">
+      <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="ostenCommemorativeChoiceTitle">
+        <div class="modal-header">
+          <div class="modal-header-title"><h2 id="ostenCommemorativeChoiceTitle">Como deseja continuar?</h2></div>
+          <div class="modal-header-actions"><button type="button" id="ostenCommemorativeChoiceCloseBtn" class="modal-close" aria-label="Fechar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg></button></div>
+        </div>
+        <div class="modal-body"><p id="ostenCommemorativeChoiceMessage" style="margin:0;font-size:13px;line-height:1.55;color:var(--text)"></p></div>
+        <div class="modal-footer"><button type="button" id="ostenCommemorativeCreateBriefing" class="btn ghost">Criar card para briefing</button><button type="button" id="ostenCommemorativeOpenEditor" class="btn">Abrir editor de posts</button></div>
+      </div>
+    </div>
     <!-- Modal de Criar/Editar postagem: campos de publicação, salvamento, tipo, produto(s), redes sociais, produção, sugestões e conteúdo -->
     <div id="modalBackdrop" class="modal-backdrop">
       <div class="modal" role="dialog" aria-modal="true">
