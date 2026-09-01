@@ -11,6 +11,10 @@ name: Reconstruir histórico de seguidores
 # nunca sobrescrevem um dia que o coletor já mediu de fato.
 
 on:
+  # Roda depois da coleta diária. Refaz a janela dos últimos 29 dias, então dias que
+  # entraram estimados são substituídos por medição assim que a Meta libera o dado.
+  schedule:
+    - cron: '40 11 * * *'
   workflow_dispatch:
 
 permissions:
@@ -121,7 +125,7 @@ jobs:
           # errado de uma tentativa passada.
           historico = {
               item['date']: item for item in doc.get('history', [])
-              if item.get('source') != 'reconstruido'
+              if item.get('source') not in ('reconstruido', 'estimado')
           }
 
           # Conferência: o follower_count mede as entradas do mesmo dia por outro caminho.
@@ -135,6 +139,25 @@ jobs:
           # caminhada para trás é encadeada. Melhor recusar do que publicar série torta.
           esperados = sorted(referencia)[1:]
           faltando = [dia for dia in esperados if dia not in {item['date'] for item in saldos}]
+
+          # O insights de follows/unfollows atrasa até 48h, então o dia mais recente costuma
+          # faltar — e um buraco trava a cadeia inteira. Quando o follower_count já tem as
+          # ENTRADAS daquele dia, só as saídas precisam ser inferidas, pela proporção medida
+          # nos demais dias. Vale para um ou dois dias; mais que isso deixa de ser um remendo
+          # e vira uma série inventada, e aí é melhor recusar e esperar.
+          proporcoes = sorted(item['sairam'] / item['entraram'] for item in saldos if item['entraram'])
+          proporcao = proporcoes[len(proporcoes) // 2] if proporcoes else None
+          estimados = []
+          if faltando and proporcao is not None and len(faltando) <= 2:
+              for dia in list(faltando):
+                  entradas = referencia.get(dia)
+                  if not entradas:
+                      continue
+                  saidas = round(entradas * proporcao)
+                  saldos.append({'date': dia, 'entraram': entradas, 'sairam': saidas,
+                                 'saldo': entradas - saidas, 'estimado': True})
+                  estimados.append(dia)
+                  faltando.remove(dia)
 
           divergentes = []
           for item in saldos:
@@ -185,9 +208,13 @@ jobs:
           for dia, valor in sorted(reconstruidos.items()):
               existente = historico.get(dia)
               # Nunca sobrescreve medição real do coletor.
-              if existente and existente.get('source') != 'reconstruido':
+              if existente and existente.get('source') not in ('reconstruido', 'estimado'):
                   continue
-              historico[dia] = {'date': dia, 'followers': {'Instagram': int(valor)}, 'source': 'reconstruido'}
+              historico[dia] = {
+                  'date': dia,
+                  'followers': {'Instagram': int(valor)},
+                  'source': 'estimado' if dia in set(estimados) else 'reconstruido'
+              }
               novos += 1
 
           doc['version'] = 1
@@ -203,14 +230,19 @@ jobs:
                if ancora_exata else
                "⚠️ Saldo parcial de hoje indisponível: a série pode estar deslocada em até um dia de crescimento."),
               f"Dias reconstruídos: **{novos}**",
+              (f"⚠️ Saídas estimadas em {len(estimados)} dia(s) ({', '.join(estimados)}), "
+               f"pela proporção mediana de {proporcao:.1%} medida nos demais. "
+               "Esses dias se corrigem sozinhos quando a Meta liberar o dado."
+               if estimados else "Todos os dias vieram medidos."),
               f"Série agora começa em **{primeiro['date']}** com **{primeiro['followers']['Instagram']:,}**".replace(',', '.'),
               '', '| Dia | Entraram | Confere (follower_count) | Saíram | Saldo | Total reconstruído |',
               '|---|---:|---:|---:|---:|---:|'
           ]
           for item in saldos:
               conferencia = referencia.get(item['date'], '—')
+              marca = ' ⚠️ estimado' if item.get('estimado') else ''
               resumo.append(
-                  f"| {item['date']} | {item['entraram']} | {conferencia} | {item['sairam']} "
+                  f"| {item['date']}{marca} | {item['entraram']} | {conferencia} | {item['sairam']} "
                   f"| {item['saldo']} | {reconstruidos[item['date']]} |"
               )
           Path('resumo.md').write_text('\n'.join(resumo) + '\n', encoding='utf-8')
