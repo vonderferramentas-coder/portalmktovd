@@ -27,11 +27,38 @@
   const deltaClass = value => value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral';
   const signed = value => (value > 0 ? '+' : '') + format(value);
   let selectedNetwork = 'all';
-  const recordDates = data.map((_,i)=>new Date(2025,11+i,1).toISOString().slice(0,10));
-  el('startDate').value = recordDates[0]; el('endDate').value = recordDates.at(-1);
+  // A série é mensal ('set/26'); converter o rótulo em data real permite que o filtro de
+  // período compare de verdade, em vez de só disparar uma re-renderização sem efeito.
+  const labelToDate = label => {
+    const [month, year] = String(label).split('/');
+    return new Date(Date.UTC(2000 + Number(year), MONTHS.indexOf(month), 1));
+  };
+  const monthEnd = date => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
+  const toInput = date => date.toISOString().slice(0,10);
+  const fromInput = value => { const [y,m,d] = value.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
 
-  el('monthFilter').innerHTML = data.map((row,index) => `<option value="${index}">${row[0]}</option>`).join('');
-  el('monthFilter').value = data.length - 1;
+  // um mês entra no período se ele se sobrepõe ao intervalo, não só se começa dentro dele
+  function rowsInRange() {
+    const startValue = el('startDate').value, endValue = el('endDate').value;
+    if (!startValue || !endValue) return data.slice();
+    const start = fromInput(startValue), end = fromInput(endValue);
+    return data.filter(row => {
+      const from = labelToDate(row[0]);
+      return from <= end && monthEnd(from) >= start;
+    });
+  }
+
+  function refreshMonthOptions() {
+    el('monthFilter').innerHTML = data.map((row,index) => `<option value="${index}">${row[0]}</option>`).join('');
+    el('monthFilter').value = Math.max(0, data.length - 1);
+  }
+  function resetRange() {
+    if (!data.length) { el('startDate').value = ''; el('endDate').value = ''; return; }
+    el('startDate').value = toInput(labelToDate(data[0][0]));
+    el('endDate').value = toInput(monthEnd(labelToDate(data.at(-1)[0])));
+  }
+  refreshMonthOptions();
+  resetRange();
   document.querySelector('.page-subtitle').textContent = `Acompanhe a evolução da comunidade da ${brand.name || 'marca'} em cada canal.`;
 
   function renderPlatforms(last, previous, hasPrev) {
@@ -56,9 +83,11 @@
 
   function render() {
     if (!data.length) return renderEmpty();
-    const end = Number(el('monthFilter').value);
     const ids = selectedIds();
-    const rows = data.slice(0,end + 1);
+    const rows = rowsInRange();
+    if (!rows.length) return renderEmpty('Nenhuma medição no período selecionado.');
+    // o seletor de mês acompanha o fim do período, para os três controles concordarem
+    el('monthFilter').value = data.indexOf(rows.at(-1));
     const last = rows.at(-1);
     const hasPrev = rows.length > 1;
     const previous = hasPrev ? rows.at(-2) : last;
@@ -104,15 +133,56 @@
     renderPlatforms(last,previous,hasPrev);
     document.querySelector('thead tr').innerHTML = `<th>Período</th>${ids.map(index=>`<th>${networks[index].name}</th>`).join('')}<th>Total</th>`;
     el('table').innerHTML = rows.slice().reverse().map(row => `<tr><td>${row[0]}</td>${ids.map(index=>`<td>${Number(row[index+1]||0) ? format(row[index+1]) : '—'}</td>`).join('')}<td><strong>${format(sum(row,ids))}</strong></td></tr>`).join('');
+    renderGoal(last, rows, ids);
+  }
+
+  // Compara o total atual das redes selecionadas com a meta cadastrada e projeta quando
+  // ela seria atingida no ritmo medido dentro do período visível.
+  function renderGoal(last, rows, ids) {
+    const entries = ids
+      .map(index => ({ index, network: networks[index], goal: goals[networks[index].name] }))
+      .filter(item => item.goal && Number(item.goal.target) > 0);
+    const reset = text => {
+      el('goalSummary').textContent = text;
+      el('goalStatus').textContent = 'Meta';
+      ['goalTotal','goalRemaining','goalProjection'].forEach(id => el(id).textContent = '—');
+    };
+    if (!last || !entries.length) return reset('Nenhuma meta cadastrada para esta seleção.');
+
+    const target = entries.reduce((total,item) => total + Number(item.goal.target), 0);
+    const current = entries.reduce((total,item) => total + Number(last[item.index+1] || 0), 0);
+    const remaining = target - current;
+    const deadline = entries.map(item => item.goal.deadline).filter(Boolean).sort()[0];
+    const names = entries.map(item => item.network.name).join(', ');
+    el('goalSummary').textContent = `${names}: ${format(current)} de ${format(target)}${deadline ? ` até ${deadline.split('-').reverse().join('/')}` : ''}.`;
+    el('goalTotal').textContent = format(target);
+    el('goalRemaining').textContent = remaining > 0 ? format(remaining) : 'Meta atingida';
+    if (remaining <= 0) {
+      el('goalStatus').textContent = 'Atingida';
+      el('goalProjection').textContent = 'Concluída';
+      return;
+    }
+    const span = rows.length - 1;
+    const gained = entries.reduce((total,item) => total + (Number(last[item.index+1]||0) - Number(rows[0][item.index+1]||0)), 0);
+    const perMonth = span > 0 ? gained / span : 0;
+    if (perMonth <= 0) {
+      el('goalProjection').textContent = '—';
+      el('goalStatus').textContent = span > 0 ? 'Sem crescimento' : 'Ritmo indisponível';
+      return;
+    }
+    const eta = labelToDate(last[0]);
+    eta.setUTCMonth(eta.getUTCMonth() + Math.ceil(remaining / perMonth));
+    el('goalProjection').textContent = `${MONTHS[eta.getUTCMonth()]}/${String(eta.getUTCFullYear()).slice(-2)}`;
+    el('goalStatus').textContent = deadline ? (eta <= fromInput(deadline) ? 'No ritmo' : 'Atrasada') : 'Projeção';
   }
 
   // Antes da primeira coleta não há número nenhum para mostrar. Em vez de zeros que
   // parecem medição, o painel diz explicitamente que está aguardando dado.
-  function renderEmpty() {
+  function renderEmpty(message) {
     el('totalLabel').textContent = 'Comunidade total';
     el('total').textContent = '—';
     el('growth').className = 'growth-line';
-    el('growth').textContent = 'Aguardando a primeira coleta';
+    el('growth').textContent = message || 'Aguardando a primeira coleta';
     ['newFollowers','avg','bestChannel'].forEach(id => { el(id).textContent = '—'; el(id).className = 'neutral'; });
     el('growthPeriod').textContent = '—';
     el('scorePeriod').textContent = '—';
@@ -122,17 +192,54 @@
     el('channelContext').textContent = 'Todas';
     el('legend').innerHTML = '';
     el('chartY').innerHTML = '';
-    el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">Nenhuma medição registrada ainda.<br>O número do Instagram aparece após a primeira coleta automática; os demais canais podem ser lançados em "Registrar número".</p>`;
+    el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">${message || 'Nenhuma medição registrada ainda.<br>O número do Instagram aparece após a primeira coleta automática; os demais canais podem ser lançados em "Registrar número".'}</p>`;
     el('platforms').innerHTML = networks.map(network => `<div class="platform" style="cursor:default"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${noDataLabel(network)}</small></span><span class="platform-delta"><strong class="neutral">—</strong></span></div>`).join('');
-    el('table').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted)">Nenhuma medição registrada.</td></tr>`;
+    el('table').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted)">${message || 'Nenhuma medição registrada.'}</td></tr>`;
+    renderGoal(null, [], []);
   }
 
   const goalsKey = 'social_followers_goals_' + (brand.id || 'default');
   const goals = JSON.parse(localStorage.getItem(goalsKey) || '{}');
-  if (brand.id === 'default' && !goals.Instagram) { goals.Instagram = { target:1000000, deadline:'2027-09-30' }; localStorage.setItem(goalsKey,JSON.stringify(goals)); }
-  const applyRange=()=>render(); el('startDate').addEventListener('change',applyRange); el('endDate').addEventListener('change',applyRange); el('quick30').addEventListener('click',()=>{el('startDate').value=recordDates[Math.max(0,recordDates.length-2)];el('endDate').value=recordDates.at(-1);render()}); el('quickMonth').addEventListener('click',()=>{el('startDate').value=recordDates.at(-1);el('endDate').value=recordDates.at(-1);render()});
-  el('addGoal').addEventListener('click', () => { const network = prompt('Rede social para a meta (Instagram, Facebook, YouTube ou TikTok):'); if (!network) return; const target = Number(prompt('Meta total de seguidores:')); const deadline = prompt('Data limite (AAAA-MM-DD):'); if (!Number.isFinite(target)||!deadline) return; goals[network] = {target,deadline}; localStorage.setItem(goalsKey,JSON.stringify(goals)); render(); });
-  el('monthFilter').addEventListener('change',render);
+  el('startDate').addEventListener('change', render);
+  el('endDate').addEventListener('change', render);
+  // escolher o mês move o fim do período; o início só se ajusta se tiver ficado depois dele
+  el('monthFilter').addEventListener('change', () => {
+    const row = data[Number(el('monthFilter').value)];
+    if (row) {
+      const from = labelToDate(row[0]);
+      el('endDate').value = toInput(monthEnd(from));
+      if (el('startDate').value && fromInput(el('startDate').value) > monthEnd(from)) el('startDate').value = toInput(from);
+    }
+    render();
+  });
+  el('quick30').addEventListener('click', () => {
+    const end = data.length ? monthEnd(labelToDate(data.at(-1)[0])) : new Date();
+    const start = new Date(end);
+    start.setUTCDate(start.getUTCDate() - 30);
+    el('startDate').value = toInput(start);
+    el('endDate').value = toInput(end);
+    render();
+  });
+  el('quickMonth').addEventListener('click', () => {
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    el('startDate').value = toInput(start);
+    el('endDate').value = toInput(monthEnd(start));
+    render();
+  });
+  el('addGoal').addEventListener('click', () => {
+    const answer = prompt('Rede social para a meta (Instagram, Facebook, YouTube ou TikTok):');
+    if (!answer) return;
+    const network = networks.find(item => item.name.toLowerCase() === answer.trim().toLowerCase());
+    if (!network) return alert('Rede não encontrada.');
+    const target = Number(prompt(`Meta total de seguidores para ${network.name}:`));
+    if (!Number.isFinite(target) || target <= 0) return;
+    const deadline = prompt('Data limite (AAAA-MM-DD):');
+    if (!deadline || !/^\d{4}-\d{2}-\d{2}$/.test(deadline.trim())) return alert('Data inválida. Use o formato AAAA-MM-DD.');
+    goals[network.name] = { target, deadline: deadline.trim() };
+    localStorage.setItem(goalsKey, JSON.stringify(goals));
+    render();
+  });
   el('addMeasurement').addEventListener('click',() => {
     const channel = prompt('Rede social: Instagram, Facebook, YouTube ou TikTok');
     if (!channel) return;
@@ -145,8 +252,8 @@
     if (!row) { row = data.length ? data.at(-1).slice() : [label,0,0,0,0]; row[0] = label; data.push(row); }
     row[index+1] = value;
     localStorage.setItem(dataKey,JSON.stringify(data));
-    el('monthFilter').innerHTML = data.map((item,rowIndex)=>`<option value="${rowIndex}">${item[0]}</option>`).join('');
-    el('monthFilter').value = data.length - 1;
+    refreshMonthOptions();
+    resetRange();
     render();
   });
   render();
