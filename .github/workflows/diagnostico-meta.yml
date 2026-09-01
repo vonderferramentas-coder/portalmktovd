@@ -60,10 +60,24 @@ jobs:
 
           # Um único dia, resposta curta o bastante para aparecer inteira: é o que decide se
           # dá para obter as saídas dia a dia (reconstrução exata) ou só o total do período.
+          # Em uma linha só o resumo do GitHub corta a resposta na horizontal e a parte que
+          # interessa fica fora da tela; formatado com jq, cada campo cai em sua própria linha.
           DIA_INICIO="$(date -u -d '3 days ago' +%s)"
           DIA_FIM="$(date -u -d '2 days ago' +%s)"
-          consultar "follows_and_unfollows — janela de UM dia, resposta completa" \
-            "$API/$META_INSTAGRAM_ID/insights?metric=follows_and_unfollows&period=day&metric_type=total_value&breakdown=follow_type&since=$DIA_INICIO&until=$DIA_FIM"
+          {
+            echo "### follows_and_unfollows — UM dia, formatado"
+            echo ''
+            echo '```json'
+          } >> "$GITHUB_STEP_SUMMARY"
+          curl -sS --max-time 30 -H "Authorization: Bearer $META_PAGE_ACCESS_TOKEN" \
+            "$API/$META_INSTAGRAM_ID/insights?metric=follows_and_unfollows&period=day&metric_type=total_value&breakdown=follow_type&since=$DIA_INICIO&until=$DIA_FIM" \
+            | jq '.' 2>/dev/null | head -c 4000 >> "$GITHUB_STEP_SUMMARY" \
+            || echo 'Resposta não é JSON válido.' >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo ''
+            echo '```'
+            echo ''
+          } >> "$GITHUB_STEP_SUMMARY"
 
           echo "Se as três últimas responderem com erro de permissão, falta o escopo" >> "$GITHUB_STEP_SUMMARY"
           echo "\`instagram_manage_insights\` no app da Meta. Se responderem com dados," >> "$GITHUB_STEP_SUMMARY"
