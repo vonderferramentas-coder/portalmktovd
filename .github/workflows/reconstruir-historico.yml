@@ -52,6 +52,15 @@ jobs:
 
           # Um dia por consulta: com janela de 24h a resposta traz o total daquele dia,
           # separado em quem entrou (FOLLOWER) e quem saiu (NON_FOLLOWER).
+          # Os '?' são necessários: num dia sem dados a Meta devolve "data": [], e sem eles
+          # o jq aborta ao iterar sobre null, derrubando a coleta inteira por causa de um
+          # único dia vazio. Lê a variável $resposta de quem chama.
+          extrair() {
+            printf '%s' "$resposta" \
+              | jq -r --arg tipo "$1" '[.data[]?.total_value?.breakdowns[]?.results[]? | select(.dimension_values[0]==$tipo) | .value] | first // empty' \
+              2>/dev/null || true
+          }
+
           echo '[]' > saldos.json
           anterior=''
           while read -r limite; do
@@ -62,14 +71,6 @@ jobs:
               inicio=$((anterior + 1))
               resposta="$(curl -sS -H "$AUTH" \
                 "$API/$META_INSTAGRAM_ID/insights?metric=follows_and_unfollows&period=day&metric_type=total_value&breakdown=follow_type&since=$inicio&until=$fim")"
-              # Os '?' são necessários: num dia sem dados a Meta devolve "data": [], e sem
-              # eles o jq aborta ao iterar sobre null, derrubando a coleta inteira por
-              # causa de um único dia vazio.
-              extrair() {
-                printf '%s' "$resposta" \
-                  | jq -r --arg tipo "$1" '[.data[]?.total_value?.breakdowns[]?.results[]? | select(.dimension_values[0]==$tipo) | .value] | first // empty' \
-                  2>/dev/null || true
-              }
               entraram="$(extrair FOLLOWER)"
               sairam="$(extrair NON_FOLLOWER)"
               if [ -n "$entraram" ] && [ -n "$sairam" ]; then
@@ -86,6 +87,22 @@ jobs:
           done < limites.txt
 
           echo "Dias com saldo apurado: $(jq 'length' saldos.json)"
+
+          # A âncora é o total de AGORA, mas o último dia da série terminou horas atrás.
+          # Sem descontar o que entrou desde então, a curva inteira sobe um dia de ganho.
+          echo '{}' > parcial.json
+          if [ -n "$anterior" ]; then
+            resposta="$(curl -sS -H "$AUTH" \
+              "$API/$META_INSTAGRAM_ID/insights?metric=follows_and_unfollows&period=day&metric_type=total_value&breakdown=follow_type&since=$((anterior + 1))&until=$(date -u +%s)")"
+            e="$(extrair FOLLOWER)"
+            s="$(extrair NON_FOLLOWER)"
+            if [ -n "$e" ] && [ -n "$s" ]; then
+              jq -n --argjson e "$e" --argjson s "$s" '{entraram:$e, sairam:$s, saldo:($e-$s)}' > parcial.json
+              echo "Saldo parcial de hoje: $((e - s))"
+            else
+              echo 'Saldo parcial de hoje indisponível; a âncora ficará com o desvio de um dia.'
+            fi
+          fi
 
       - name: Reconstruir os totais e mesclar
         run: |
@@ -152,8 +169,13 @@ jobs:
 
           # Caminha do dia mais recente para o mais antigo. O total do dia anterior é o
           # total do dia menos o saldo do dia seguinte.
+          # Do fim do último dia da série até agora já houve crescimento. Descontá-lo evita
+          # que a curva inteira suba um dia de ganho.
+          parcial = json.loads(Path('parcial.json').read_text())
+          ancora_exata = 'saldo' in parcial
+
           saldos.sort(key=lambda item: item['date'])
-          total = atual
+          total = atual - parcial.get('saldo', 0)
           reconstruidos = {}
           for item in reversed(saldos):
               reconstruidos[item['date']] = total
@@ -177,6 +199,9 @@ jobs:
           resumo = [
               '## Reconstrução concluída', '',
               f"Total de referência hoje: **{atual:,}**".replace(',', '.'),
+              (f"Saldo parcial de hoje descontado da âncora: **{parcial['saldo']}**"
+               if ancora_exata else
+               "⚠️ Saldo parcial de hoje indisponível: a série pode estar deslocada em até um dia de crescimento."),
               f"Dias reconstruídos: **{novos}**",
               f"Série agora começa em **{primeiro['date']}** com **{primeiro['followers']['Instagram']:,}**".replace(',', '.'),
               '', '| Dia | Entraram | Confere (follower_count) | Saíram | Saldo | Total reconstruído |',
