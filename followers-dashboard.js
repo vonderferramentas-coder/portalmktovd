@@ -59,6 +59,7 @@
 
   function buildSeries(published, manual) {
     const byDate = new Map();
+    const insightsByDate = new Map();
     const put = (date, network, value) => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(value)) return;
       if (!byDate.has(date)) byDate.set(date, {});
@@ -67,6 +68,7 @@
     ((published && published.history) || []).forEach(entry => {
       if (!entry || !entry.date) return;
       Object.keys(entry.followers || {}).forEach(network => put(entry.date, network, Number(entry.followers[network])));
+      if (entry.insights && typeof entry.insights === 'object') insightsByDate.set(entry.date, entry.insights);
     });
     Object.keys(manual || {}).forEach(date => {
       Object.keys(manual[date] || {}).forEach(network => put(date, network, Number(manual[date][network])));
@@ -78,7 +80,7 @@
     return Array.from(byDate.keys()).sort().map(date => {
       const measured = byDate.get(date);
       Object.keys(measured).forEach(network => { carried[network] = measured[network]; });
-      return { date, values: Object.assign({}, carried), measured };
+      return { date, values: Object.assign({}, carried), measured, insights: insightsByDate.get(date) || {} };
     });
   }
 
@@ -192,6 +194,7 @@
     renderPlatforms(points, nets, currentPoint);
     renderTable(points, nets, grain);
     renderIndicators(points, nets, periodDeltas, net, rate, perDay, span);
+    renderInsights(points);
     renderComparatives(points, nets, periodDeltas);
     renderGoal(currentPoint, current, nets, periodDeltas, perDay);
   }
@@ -310,6 +313,29 @@
     setTone('ytd', ytd || 0);
   }
 
+  function renderInsights(points) {
+    const daily = points.map(point => point.insights && point.insights.Instagram).filter(insight => insight && Number.isFinite(Number(insight.follows)) && Number.isFinite(Number(insight.unfollows)));
+    const blank = message => {
+      ['grossFollows','unfollows','insightNet','reach','followConversion','avgFollows'].forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = 'neutral'; });
+      setText('insightsSummary', message);
+      setText('insightsPeriod', 'Aguardando');
+    };
+    if (!daily.length) return blank('Aguardando a importação dos Insights da Meta para os dias fechados.');
+    const follows = daily.reduce((sum, item) => sum + Number(item.follows), 0);
+    const left = daily.reduce((sum, item) => sum + Number(item.unfollows), 0);
+    const net = follows - left;
+    const reachValues = daily.map(item => Number(item.reach)).filter(Number.isFinite);
+    const reach = reachValues.reduce((sum, value) => sum + value, 0);
+    const conversion = reach ? follows / reach * 100 : null;
+    setText('grossFollows', signed(follows)); setTone('grossFollows', follows);
+    setText('unfollows', signed(-left)); setTone('unfollows', -left);
+    setText('insightNet', signed(net)); setTone('insightNet', net);
+    setText('reach', reachValues.length ? format(reach) : '—');
+    setText('followConversion', conversion === null ? '—' : `${conversion.toFixed(2).replace('.', ',')}%`);
+    setText('avgFollows', `${decimal(follows / daily.length)}/dia`); setTone('avgFollows', follows);
+    setText('insightsSummary', `Dados confirmados pela Meta em ${daily.length} dia${daily.length === 1 ? '' : 's'} fechado${daily.length === 1 ? '' : 's'} no período.`);
+    setText('insightsPeriod', `${daily.length} dia${daily.length === 1 ? '' : 's'}`);
+  }
   function renderComparatives(points, nets, periodDeltas) {
     const last = points[points.length - 1];
     const compareBack = days => {
@@ -447,7 +473,7 @@
     el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">${message}<br>O Instagram é coletado automaticamente uma vez por dia; os demais canais podem ser lançados em "Registrar número".</p>`;
     el('platforms').innerHTML = NETWORKS.map(network => `<div class="platform" style="cursor:default"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${network.connected ? 'Aguardando coleta' : 'Sem API conectada'}</small></span><span class="platform-delta"><strong class="neutral">—</strong></span></div>`).join('');
     el('table').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted)">${message}</td></tr>`;
-    ['netGrowth','growthRate','dailyRate','bestDay','worstDay','ma7','ma30','mtd','ytd','cmpDay','cmpWeek','cmpMonth','cmpPeriod','cmpAccel','cmpWeekday']
+    ['netGrowth','growthRate','dailyRate','bestDay','worstDay','ma7','ma30','mtd','ytd','cmpDay','cmpWeek','cmpMonth','cmpPeriod','cmpAccel','cmpWeekday','grossFollows','unfollows','insightNet','reach','followConversion','avgFollows']
       .forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = ''; });
     renderGoal({ values:{} }, 0, activeNetworks(), [], null);
   }
