@@ -10,6 +10,8 @@
   const brand = (window.PortalBrand && (window.PortalBrand.list || []).find(item => item.id === window.PortalBrand.activeId)) || {};
   const brandKey = brand.id || 'default';
   const SOURCE = 'data/social-followers.json';
+  const LIVE_SOURCE = 'data/social-followers-live.json';
+  const AUTO_REFRESH_MS = 60000;
   const MAX_BUCKETS = 60;
 
   ['social_followers_', 'social_followers_goals_', 'social_followers_v2_', 'social_followers_goals_v2_']
@@ -27,6 +29,7 @@
     { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected:false }
   ];
   const MONTHS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const WEEKDAYS = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
 
   // Tudo em UTC: as datas vêm do workflow em UTC e converter para o fuso local deslocaria
@@ -47,14 +50,17 @@
   const percent = value => `${value > 0 ? '+' : ''}${value.toFixed(1).replace('.', ',')}%`;
   const decimal = value => Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 
-  let selectedNetwork = 'all';
-  let series = [];   // pontos diários com valor arrastado para a frente
+  let selectedNetwork = '0';
+  let series = [];   // pontos diários fechados, com valor arrastado para a frente
   let goals = read(goalsKey, {});
+  let liveSnapshot = null;
+  let initialized = false;
 
   // ---------------------------------------------------------------- dados
 
   function buildSeries(published, manual) {
     const byDate = new Map();
+    const insightsByDate = new Map();
     const put = (date, network, value) => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(value)) return;
       if (!byDate.has(date)) byDate.set(date, {});
@@ -63,6 +69,7 @@
     ((published && published.history) || []).forEach(entry => {
       if (!entry || !entry.date) return;
       Object.keys(entry.followers || {}).forEach(network => put(entry.date, network, Number(entry.followers[network])));
+      if (entry.insights && typeof entry.insights === 'object') insightsByDate.set(entry.date, entry.insights);
     });
     Object.keys(manual || {}).forEach(date => {
       Object.keys(manual[date] || {}).forEach(network => put(date, network, Number(manual[date][network])));
@@ -74,12 +81,18 @@
     return Array.from(byDate.keys()).sort().map(date => {
       const measured = byDate.get(date);
       Object.keys(measured).forEach(network => { carried[network] = measured[network]; });
-      return { date, values: Object.assign({}, carried), measured };
+      return { date, values: Object.assign({}, carried), measured, insights: insightsByDate.get(date) || {} };
     });
   }
 
   const activeNetworks = () => selectedNetwork === 'all' ? NETWORKS : [NETWORKS[Number(selectedNetwork)]];
   const totalAt = (point, nets) => nets.reduce((sum, network) => sum + (Number.isFinite(point.values[network.name]) ? point.values[network.name] : 0), 0);
+  const currentValues = point => {
+    const values = Object.assign({}, point.values);
+    const instagram = liveSnapshot && liveSnapshot.platforms && liveSnapshot.platforms.Instagram;
+    if (instagram && Number.isFinite(Number(instagram.followers))) values.Instagram = Number(instagram.followers);
+    return values;
+  };
 
   // Só conta a variação de canais que já tinham valor conhecido no ponto anterior: a
   // primeira medição de um canal é um saldo inicial, não um ganho de seguidores.
@@ -126,8 +139,9 @@
 
   function render() {
     const nets = activeNetworks();
-    const grain = el('grain').value;
     const from = el('startDate').value, to = el('endDate').value;
+    const spanForGrain = from && to ? Math.max(1, dayDiff(from, to)) : Math.max(1, series.length - 1);
+    const grain = spanForGrain > 180 ? 'month' : spanForGrain > 60 ? 'week' : 'day';
     const points = (from && to) ? inRange(series, from, to) : series.slice();
 
     if (!points.length) {
@@ -138,7 +152,8 @@
     const last = points[points.length - 1];
     const first = points[0];
     const active = selectedNetwork === 'all' ? null : NETWORKS[Number(selectedNetwork)];
-    const current = totalAt(last, nets);
+    const currentPoint = { values: currentValues(last) };
+    const current = totalAt(currentPoint, nets);
     const periodDeltas = deltas(points, nets);
     const net = periodDeltas.reduce((sum, item) => sum + item.delta, 0);
     const span = Math.max(1, dayDiff(first.date, last.date));
@@ -178,42 +193,78 @@
     el('channelContext').innerHTML = active ? `<img src="${active.icon}" alt=""> ${active.name}` : 'Todas';
 
     renderChart(points, nets, grain);
-    renderPlatforms(points, nets);
+    renderPlatforms(points, nets, currentPoint);
     renderTable(points, nets, grain);
     renderIndicators(points, nets, periodDeltas, net, rate, perDay, span);
+    renderInsights(points);
     renderComparatives(points, nets, periodDeltas);
-    renderGoal(last, current, nets, periodDeltas, perDay);
+    renderGoal(currentPoint, current, nets, periodDeltas, perDay);
   }
 
   function renderChart(points, nets, grain) {
     const buckets = aggregate(points, grain);
     const plotted = nets.filter(network => buckets.some(item => Number.isFinite(item.point.values[network.name])));
     el('legend').innerHTML = plotted.map(network => `<span><i style="background:${network.color}"></i>${network.name}</span>`).join('');
-    const values = buckets.flatMap(item => plotted.map(network => item.point.values[network.name] || 0));
-    const max = Math.max(1, ...values);
-    el('chartY').innerHTML = [max, max * .66, max * .33, 0]
-      .map(value => `<span>${value >= 1000 ? Math.round(value/1000) + ' mil' : format(Math.round(value))}</span>`).join('');
-    // com muitos pontos os rótulos não cabem lado a lado: mostra um a cada N e aperta o
-    // espaçamento, em vez de deixar o gráfico transbordar para fora do card
+    const values = buckets.flatMap(item => plotted.map(network => item.point.values[network.name]).filter(Number.isFinite));
+    const minimum = Math.min(...values, 0), maximum = Math.max(1, ...values);
+    const spread = Math.max(1, maximum - minimum);
+    const lower = Math.max(0, minimum - spread * .16), upper = maximum + spread * .16;
+    const scaleY = value => 252 - ((value - lower) / Math.max(1, upper - lower) * 252);
+    const scaleX = index => buckets.length < 2 ? 500 : index / (buckets.length - 1) * 1000;
+    el('chartY').innerHTML = [upper, upper - (upper - lower) / 3, upper - (upper - lower) * 2 / 3, lower]
+      .map(value => `<span>${value >= 1000 ? (value / 1000).toFixed(1).replace('.', ',') + ' mil' : format(Math.round(value))}</span>`).join('');
     const every = Math.ceil(buckets.length / 12);
-    el('bars').className = buckets.length > 20 ? 'bars dense' : 'bars';
-    el('bars').innerHTML = buckets.map((item, index) => {
-      const stack = plotted
-        .filter(network => Number.isFinite(item.point.values[network.name]) && item.point.values[network.name] > 0)
-        .map(network => `<i title="${network.name}: ${format(item.point.values[network.name])}" style="background:${network.color};height:${Math.max(1, item.point.values[network.name] / max * 100)}%"></i>`)
-        .join('');
-      const showLabel = buckets.length <= 12 || index % every === 0 || index === buckets.length - 1;
-      return `<div class="m" title="${item.label}"><div class="st">${stack}</div><small>${showLabel ? item.label : ''}</small></div>`;
+    const seriesLines = plotted.map(network => {
+      const coordinates = buckets.map((item, index) => {
+        const value = item.point.values[network.name];
+        return Number.isFinite(value) ? `${scaleX(index).toFixed(1)},${scaleY(value).toFixed(1)}` : null;
+      }).filter(Boolean).join(' ');
+      return `<polyline class="line-series" points="${coordinates}" stroke="${network.color}"/>`;
     }).join('');
+    const dots = plotted.flatMap(network => buckets.map((item, index) => {
+      const value = item.point.values[network.name];
+      if (!Number.isFinite(value)) return '';
+      return `<circle class="line-point" cx="${scaleX(index).toFixed(1)}" cy="${scaleY(value).toFixed(1)}" r="8" fill="${network.color}" data-index="${index}" data-network="${network.name}" tabindex="0" role="button" aria-label="Ver dados de ${network.name} em ${shortDate(item.point.date)}"/>`;
+    })).join('');
+    const labels = buckets.map((item, index) => {
+      const show = buckets.length <= 12 || index % every === 0 || index === buckets.length - 1;
+      return show ? `<span style="left:${scaleX(index) / 10}%">${item.label}</span>` : '';
+    }).join('');
+    el('bars').className = 'line-chart';
+    el('bars').innerHTML = `<svg class="line-chart-svg" viewBox="0 0 1000 252" preserveAspectRatio="none" aria-label="Evolução de seguidores">${seriesLines}${dots}</svg><div class="line-labels">${labels}</div><div class="chart-tooltip" id="chartTooltip" role="status" hidden></div>`;
+    const tooltip = el('chartTooltip');
+    const hideTooltip = () => { tooltip.hidden = true; };
+    const showTooltip = (event, point) => {
+      const item = buckets[Number(point.dataset.index)];
+      const network = plotted.find(entry => entry.name === point.dataset.network);
+      const value = item.point.values[network.name];
+      const previous = series.filter(entry => entry.date < item.point.date).pop();
+      const daily = previous && Number.isFinite(previous.values[network.name]) ? value - previous.values[network.name] : null;
+      tooltip.innerHTML = `<strong>${network.name} · ${shortDate(item.point.date)}</strong><span>Seguidores: <b>${format(value)}</b></span><span>Novos no dia: <b class="${daily === null ? 'neutral' : daily > 0 ? 'positive' : daily < 0 ? 'negative' : 'neutral'}">${daily === null ? '—' : signed(daily)}</b></span>`;
+      tooltip.hidden = false;
+      const rect = el('bars').getBoundingClientRect();
+      const pointerX = event.clientX || (rect.left + point.getBoundingClientRect().left - rect.left);
+      const pointerY = event.clientY || (point.getBoundingClientRect().top + point.getBoundingClientRect().height / 2);
+      tooltip.style.left = `${Math.max(8, Math.min(rect.width - 174, pointerX - rect.left + 12))}px`;
+      tooltip.style.top = `${Math.max(8, Math.min(rect.height - 88, pointerY - rect.top - 74))}px`;
+    };
+    const chart = el('bars');
+    chart.addEventListener('pointerleave', hideTooltip);
+    chart.querySelectorAll('.line-point').forEach(point => {
+      point.addEventListener('pointerenter', event => showTooltip(event, point));
+      point.addEventListener('pointermove', event => showTooltip(event, point));
+      point.addEventListener('pointerleave', hideTooltip);
+      point.addEventListener('focus', event => showTooltip(event, point));
+      point.addEventListener('blur', hideTooltip);
+    });
     const note = document.querySelector('.chart-card .head p.muted');
     if (note) {
       const grainName = grain === 'month' ? 'mês' : grain === 'week' ? 'semana' : 'dia';
-      note.textContent = `Por ${grainName}${points.length > MAX_BUCKETS && grain === 'day' ? ` · últimos ${MAX_BUCKETS} pontos` : ''}`;
+      note.textContent = `Passe o mouse sobre um ponto para ver os dados · por ${grainName}`;
     }
   }
-
-  function renderPlatforms(points, nets) {
-    const last = points[points.length - 1];
+  function renderPlatforms(points, nets, currentPoint) {
+    const last = currentPoint || points[points.length - 1];
     const first = points[0];
     const chip = (value, delta, comparable) => comparable
       ? `<strong class="${delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral'}">${signed(delta)}</strong><small>no período</small>`
@@ -221,22 +272,20 @@
     const allTotal = totalAt(last, NETWORKS);
     const allDelta = allTotal - totalAt(first, NETWORKS);
     const comparableAll = points.length > 1;
-    const buttons = [`<button type="button" class="platform ${selectedNetwork === 'all' ? 'selected' : ''}" data-network="all"><span class="all-networks-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M10 19V5M16 19v-7M22 19V2"/></svg></span><span class="platform-copy"><strong>Todas as redes</strong><small>${format(allTotal)} seguidores</small></span><span class="platform-delta">${chip(allTotal, allDelta, comparableAll)}</span><span class="platform-chevron">›</span></button>`]
-      .concat(NETWORKS.map((network, index) => {
-        const value = last.values[network.name];
-        const before = first.values[network.name];
-        const known = Number.isFinite(value);
-        const detail = known ? `${format(value)} seguidores` : (network.connected ? 'Aguardando coleta' : 'Sem API conectada');
-        const comparable = known && Number.isFinite(before) && points.length > 1;
-        return `<button type="button" class="platform ${String(index) === selectedNetwork ? 'selected' : ''}" data-network="${index}"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${detail}</small></span><span class="platform-delta">${chip(value, known ? value - before : 0, comparable)}</span><span class="platform-chevron">›</span></button>`;
-      })).join('');
+    const buttons = NETWORKS.map((network, index) => {
+      const value = last.values[network.name];
+      const before = first.values[network.name];
+      const known = Number.isFinite(value);
+      const detail = known ? `${format(value)} seguidores` : (network.connected ? 'Aguardando coleta' : 'Sem API conectada');
+      const comparable = known && Number.isFinite(before) && points.length > 1;
+      return `<button type="button" class="platform ${String(index) === selectedNetwork ? 'selected' : ''}" data-network="${index}"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${detail}</small></span><span class="platform-delta">${chip(value, known ? value - before : 0, comparable)}</span><span class="platform-chevron">›</span></button>`;
+    }).concat([`<button type="button" class="platform ${selectedNetwork === 'all' ? 'selected' : ''}" data-network="all"><span class="all-networks-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M10 19V5M16 19v-7M22 19V2"/></svg></span><span class="platform-copy"><strong>Todas as redes</strong><small>${format(allTotal)} seguidores</small></span><span class="platform-delta">${chip(allTotal, allDelta, comparableAll)}</span><span class="platform-chevron">›</span></button>`]).join('');
     el('platforms').innerHTML = buttons;
     el('platforms').querySelectorAll('[data-network]').forEach(button => button.addEventListener('click', () => {
       selectedNetwork = button.dataset.network;
       render();
     }));
   }
-
   function renderTable(points, nets, grain) {
     const buckets = aggregate(points, grain).slice().reverse();
     document.querySelector('thead tr').innerHTML = `<th>Período</th>${nets.map(network => `<th>${network.name}</th>`).join('')}<th>Total</th>`;
@@ -299,6 +348,29 @@
     setTone('ytd', ytd || 0);
   }
 
+  function renderInsights(points) {
+    const daily = points.map(point => point.insights && point.insights.Instagram).filter(insight => insight && Number.isFinite(Number(insight.follows)) && Number.isFinite(Number(insight.unfollows)));
+    const blank = message => {
+      ['grossFollows','unfollows','insightNet','reach','followConversion','avgFollows'].forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = 'neutral'; });
+      setText('insightsSummary', message);
+      setText('insightsPeriod', 'Aguardando');
+    };
+    if (!daily.length) return blank('Aguardando a importação dos Insights da Meta para os dias fechados.');
+    const follows = daily.reduce((sum, item) => sum + Number(item.follows), 0);
+    const left = daily.reduce((sum, item) => sum + Number(item.unfollows), 0);
+    const net = follows - left;
+    const reachValues = daily.map(item => Number(item.reach)).filter(Number.isFinite);
+    const reach = reachValues.reduce((sum, value) => sum + value, 0);
+    const conversion = reach ? follows / reach * 100 : null;
+    setText('grossFollows', signed(follows)); setTone('grossFollows', follows);
+    setText('unfollows', signed(-left)); setTone('unfollows', -left);
+    setText('insightNet', signed(net)); setTone('insightNet', net);
+    setText('reach', reachValues.length ? format(reach) : '—');
+    setText('followConversion', conversion === null ? '—' : `${conversion.toFixed(2).replace('.', ',')}%`);
+    setText('avgFollows', `${decimal(follows / daily.length)}/dia`); setTone('avgFollows', follows);
+    setText('insightsSummary', `Dados confirmados pela Meta em ${daily.length} dia${daily.length === 1 ? '' : 's'} fechado${daily.length === 1 ? '' : 's'} no período.`);
+    setText('insightsPeriod', `${daily.length} dia${daily.length === 1 ? '' : 's'}`);
+  }
   function renderComparatives(points, nets, periodDeltas) {
     const last = points[points.length - 1];
     const compareBack = days => {
@@ -436,7 +508,7 @@
     el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">${message}<br>O Instagram é coletado automaticamente uma vez por dia; os demais canais podem ser lançados em "Registrar número".</p>`;
     el('platforms').innerHTML = NETWORKS.map(network => `<div class="platform" style="cursor:default"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${network.connected ? 'Aguardando coleta' : 'Sem API conectada'}</small></span><span class="platform-delta"><strong class="neutral">—</strong></span></div>`).join('');
     el('table').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted)">${message}</td></tr>`;
-    ['netGrowth','growthRate','dailyRate','bestDay','worstDay','ma7','ma30','mtd','ytd','cmpDay','cmpWeek','cmpMonth','cmpPeriod','cmpAccel','cmpWeekday']
+    ['netGrowth','growthRate','dailyRate','bestDay','worstDay','ma7','ma30','mtd','ytd','cmpDay','cmpWeek','cmpMonth','cmpPeriod','cmpAccel','cmpWeekday','grossFollows','unfollows','insightNet','reach','followConversion','avgFollows']
       .forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = ''; });
     renderGoal({ values:{} }, 0, activeNetworks(), [], null);
   }
@@ -445,25 +517,100 @@
 
   function resetRange() {
     if (!series.length) { el('startDate').value = ''; el('endDate').value = ''; return; }
-    el('startDate').value = series[0].date;
-    el('endDate').value = series[series.length - 1].date;
+    applyPreset('30', false);
   }
-  function setRange(from, to) { el('startDate').value = from; el('endDate').value = to; render(); }
+  function setRange(from, to, shouldRender = true) {
+    el('startDate').value = from;
+    el('endDate').min = from;
+    el('endDate').value = to;
+    if (shouldRender) render();
+  }
   const lastDate = () => series.length ? series[series.length - 1].date : iso(new Date());
+  const labels = { '7':'Últimos 7 dias', '15':'Últimos 15 dias', '30':'Últimos 30 dias', month:'Este mês', year:'Este ano', custom:'Personalizado' };
+  const periodMenu = el('periodMenu'), periodTrigger = el('periodTrigger'), customRange = el('customRange');
+  const actionsMenu = el('actionsMenu'), actionsTrigger = el('actionsTrigger');
+  const closeMenus = () => {
+    periodMenu.hidden = true; periodTrigger.setAttribute('aria-expanded', 'false');
+    actionsMenu.hidden = true; actionsTrigger.setAttribute('aria-expanded', 'false');
+  };
+  const openPeriod = () => { actionsMenu.hidden = true; actionsTrigger.setAttribute('aria-expanded', 'false'); periodMenu.hidden = false; periodTrigger.setAttribute('aria-expanded', 'true'); };
+  const applyPreset = (range, shouldRender = true) => {
+    const end = lastDate(); let from = end;
+    if (/^\d+$/.test(range)) from = iso(addDays(parse(end), -(Number(range) - 1)));
+    if (range === 'month') { const day = parse(end); from = iso(new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1))); }
+    if (range === 'year') { const day = parse(end); from = `${day.getUTCFullYear()}-01-01`; }
+    setRange(from, end, shouldRender);
+    const label = /^\d+$/.test(range)
+      ? `${labels[range]} · ${shortDate(from)} a ${shortDate(end)}`
+      : range === 'month' ? `${labels.month} · ${MONTH_NAMES[parse(end).getUTCMonth()]}`
+      : range === 'year' ? `${labels.year} · ${parse(end).getUTCFullYear()}`
+      : labels[range];
+    setText('periodLabel', label);
+    customRange.hidden = true;
+    document.querySelectorAll('[data-range]').forEach(button => button.classList.toggle('is-active', button.dataset.range === range));
+  };
+  document.querySelectorAll('[data-range]').forEach(button => button.addEventListener('click', () => {
+    const range = button.dataset.range;
+    if (range === 'custom') {
+      customRange.hidden = false;
+      setText('periodLabel', labels.custom);
+      document.querySelectorAll('[data-range]').forEach(item => item.classList.toggle('is-active', item === button));
+      el('startDate').value = '';
+      el('endDate').value = '';
+      el('endDate').disabled = true;
+      el('endDate').removeAttribute('min');
+      el('startDate').focus();
+      return;
+    }
+    applyPreset(range);
+    closeMenus();
+  }));
+  periodTrigger.addEventListener('click', () => periodMenu.hidden ? openPeriod() : closeMenus());
+  actionsTrigger.addEventListener('click', () => {
+    const opening = actionsMenu.hidden;
+    closeMenus();
+    if (opening) { actionsMenu.hidden = false; actionsTrigger.setAttribute('aria-expanded', 'true'); }
+  });
+  document.addEventListener('click', event => { if (!el('periodControl').contains(event.target) && !el('actionsControl').contains(event.target)) closeMenus(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenus(); });
+  el('startDate').addEventListener('change', () => {
+    const start = el('startDate').value;
+    if (!start) return;
+    el('endDate').min = start;
+    if (el('endDate').value && el('endDate').value < start) el('endDate').value = '';
+    el('endDate').disabled = false;
+    el('endDate').focus();
+  });
+  el('endDate').addEventListener('change', () => {
+    const start = el('startDate').value, end = el('endDate').value;
+    if (!start || !end || end < start) return;
+    setText('periodLabel', `${shortDate(start)} a ${shortDate(end)}`);
+    closeMenus();
+    render();
+  });
 
-  el('grain').addEventListener('change', render);
-  el('startDate').addEventListener('change', render);
-  el('endDate').addEventListener('change', render);
-  el('quick7').addEventListener('click', () => setRange(iso(addDays(parse(lastDate()), -6)), lastDate()));
-  el('quick30').addEventListener('click', () => setRange(iso(addDays(parse(lastDate()), -29)), lastDate()));
-  el('quickMonth').addEventListener('click', () => {
-    const day = parse(lastDate());
-    setRange(iso(new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1))), lastDate());
-  });
-  el('quickYear').addEventListener('click', () => {
-    const day = parse(lastDate());
-    setRange(`${day.getUTCFullYear()}-01-01`, lastDate());
-  });
+  // ---------------------------------------------------------------- explicação do workflow
+
+  const workflowInfo = el('workflowInfoBackdrop');
+  const workflowTrigger = el('workflowInfoTrigger');
+  let workflowLastFocus = null;
+  const closeWorkflowInfo = () => {
+    if (!workflowInfo) return;
+    workflowInfo.style.display = 'none';
+    workflowInfo.setAttribute('aria-hidden', 'true');
+    if (workflowLastFocus) workflowLastFocus.focus();
+  };
+  const openWorkflowInfo = () => {
+    if (!workflowInfo) return;
+    workflowLastFocus = document.activeElement;
+    workflowInfo.style.display = 'flex';
+    workflowInfo.setAttribute('aria-hidden', 'false');
+    el('workflowInfoClose').focus();
+  };
+  if (workflowTrigger) workflowTrigger.addEventListener('click', openWorkflowInfo);
+  if (workflowInfo) workflowInfo.addEventListener('click', event => { if (event.target === workflowInfo) closeWorkflowInfo(); });
+  ['workflowInfoClose', 'workflowInfoDone'].forEach(id => { const button = el(id); if (button) button.addEventListener('click', closeWorkflowInfo); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && workflowInfo && workflowInfo.style.display === 'flex') closeWorkflowInfo(); });
 
   el('addGoal').addEventListener('click', () => {
     const answer = prompt('Rede social para a meta (Instagram, Facebook, YouTube ou TikTok):');
@@ -496,26 +643,40 @@
 
   // ---------------------------------------------------------------- carga
 
+  function fetchJson(source) {
+    return fetch(source + '?v=' + Date.now(), { cache: 'no-store' })
+      .then(response => response.ok ? response.json() : null)
+      .catch(() => null);
+  }
+
   function load() {
     const manual = read(manualKey, {});
-    return fetch(SOURCE + '?v=' + Date.now(), { cache: 'no-store' })
-      .then(response => response.ok ? response.json() : null)
-      .catch(() => null)
-      .then(published => {
+    return Promise.all([fetchJson(SOURCE), fetchJson(LIVE_SOURCE)])
+      .then(([published, live]) => {
         series = buildSeries(published, manual);
-        refreshSubtitle(published);
-        resetRange();
+        liveSnapshot = live;
+        refreshSubtitle(published, live);
+        if (!initialized) { resetRange(); initialized = true; }
         render();
       });
   }
 
-  function refreshSubtitle(published) {
+  function refreshSubtitle(published, live) {
     const subtitle = document.querySelector('.page-subtitle');
     if (!subtitle) return;
-    const stamp = published && published.updatedAt ? new Date(published.updatedAt) : null;
-    const when = stamp && !isNaN(stamp) ? ` Última coleta em ${stamp.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}.` : '';
-    subtitle.textContent = `Acompanhe a evolução da comunidade da ${brand.name || 'marca'} em cada canal.${when}`;
+    subtitle.textContent = `Acompanhe a evolução da comunidade da ${brand.name || 'marca'} em cada canal.`;
+    const status = el('dataStatus');
+    if (!status) return;
+    const stamp = live && live.updatedAt ? new Date(live.updatedAt) : null;
+    if (!stamp || isNaN(stamp)) {
+      status.textContent = 'Histórico diário fechado · aguardando o primeiro snapshot ao vivo da Meta.';
+      return;
+    }
+    const minutes = Math.max(0, Math.round((Date.now() - stamp.getTime()) / 60000));
+    const relative = minutes < 1 ? 'agora mesmo' : minutes === 1 ? 'há 1 min' : `há ${minutes} min`;
+    status.textContent = `Snapshot atual da Meta: ${relative} (${stamp.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}) · histórico e métricas usam dias fechados.`;
   }
 
   load();
+  window.setInterval(load, AUTO_REFRESH_MS);
 })();

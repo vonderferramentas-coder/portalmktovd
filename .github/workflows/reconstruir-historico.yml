@@ -46,6 +46,9 @@ jobs:
           curl -sS --fail -H "$AUTH" \
             "$API/$META_INSTAGRAM_ID/insights?metric=follower_count&period=day&since=$SINCE&until=$UNTIL" \
             -o fronteiras.json
+          curl -sS --fail -H "$AUTH" \
+            "$API/$META_INSTAGRAM_ID/insights?metric=reach&period=day&since=$SINCE&until=$UNTIL" \
+            -o alcance.json
 
           jq -r '.data[0].values[].end_time' fronteiras.json > limites.txt
           echo "Dias retornados pela Meta: $(wc -l < limites.txt)"
@@ -117,6 +120,7 @@ jobs:
 
           atual = json.loads(Path('atual.json').read_text())['followers_count']
           saldos = json.loads(Path('saldos.json').read_text())
+          alcance = {item['end_time'][:10]: item['value'] for item in json.loads(Path('alcance.json').read_text()).get('data', [{}])[0].get('values', [])}
           caminho = Path('data/social-followers.json')
           doc = json.loads(caminho.read_text(encoding='utf-8')) if caminho.exists() else {'version': 1, 'history': []}
 
@@ -137,7 +141,9 @@ jobs:
           }
           # Um dia faltando desloca o total de todos os dias anteriores a ele, porque a
           # caminhada para trás é encadeada. Melhor recusar do que publicar série torta.
-          esperados = sorted(referencia)[1:]
+          # A Meta pode devolver o último período ainda aberto com valor 0; ele não é
+          # ausência de crescimento e não pode bloquear a reconstrução dos dias fechados.
+          esperados = sorted(dia for dia, valor in referencia.items() if valor > 0)[1:]
           faltando = [dia for dia in esperados if dia not in {item['date'] for item in saldos}]
 
           # O insights de follows/unfollows atrasa até 48h, então o dia mais recente costuma
@@ -205,19 +211,32 @@ jobs:
               total -= item['saldo']
 
           novos = 0
+          metricas = {item['date']: item for item in saldos}
           for dia, valor in sorted(reconstruidos.items()):
               existente = historico.get(dia)
-              # Nunca sobrescreve medição real do coletor.
-              if existente and existente.get('source') not in ('reconstruido', 'estimado'):
-                  continue
-              historico[dia] = {
-                  'date': dia,
-                  'followers': {'Instagram': int(valor)},
-                  'source': 'estimado' if dia in set(estimados) else 'reconstruido'
+              medida = metricas[dia]
+              insights = {
+                  'follows': int(medida['entraram']),
+                  'unfollows': int(medida['sairam']),
+                  'net': int(medida['saldo']),
               }
-              novos += 1
+              if dia in alcance:
+                  insights['reach'] = int(alcance[dia])
+              # Medição real mantém seu total; a ela são adicionados apenas os Insights.
+              if existente and existente.get('source') not in ('reconstruido', 'estimado'):
+                  entrada = dict(existente)
+              else:
+                  entrada = {
+                      'date': dia,
+                      'followers': {'Instagram': int(valor)},
+                      'source': 'estimado' if dia in set(estimados) else 'reconstruido'
+                  }
+                  novos += 1
+              entrada['insights'] = dict(entrada.get('insights') or {})
+              entrada['insights']['Instagram'] = insights
+              historico[dia] = entrada
 
-          doc['version'] = 1
+          doc['version'] = 2
           doc['history'] = [historico[dia] for dia in sorted(historico)][-730:]
           doc['updatedAt'] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
           caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
