@@ -31,6 +31,7 @@
   const MONTHS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const WEEKDAYS = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+  const DEFAULT_GOALS = { Instagram: { target: 1000000, deadline: '2027-09-30' } };
 
   // Tudo em UTC: as datas vêm do workflow em UTC e converter para o fuso local deslocaria
   // medições para o dia anterior.
@@ -52,7 +53,7 @@
 
   let selectedNetwork = '0';
   let series = [];   // pontos diários fechados, com valor arrastado para a frente
-  let goals = read(goalsKey, {});
+  let goals = Object.assign({}, DEFAULT_GOALS, read(goalsKey, {}));
   let liveSnapshot = null;
   let initialized = false;
 
@@ -206,7 +207,7 @@
     const plotted = nets.filter(network => buckets.some(item => Number.isFinite(item.point.values[network.name])));
     el('legend').innerHTML = plotted.map(network => `<span><i style="background:${network.color}"></i>${network.name}</span>`).join('');
     const values = buckets.flatMap(item => plotted.map(network => item.point.values[network.name]).filter(Number.isFinite));
-    const minimum = Math.min(...values, 0), maximum = Math.max(1, ...values);
+    const minimum = Math.min(...values), maximum = Math.max(...values);
     const spread = Math.max(1, maximum - minimum);
     const lower = Math.max(0, minimum - spread * .16), upper = maximum + spread * .16;
     const scaleY = value => 252 - ((value - lower) / Math.max(1, upper - lower) * 252);
@@ -248,10 +249,12 @@
       tooltip.style.left = `${Math.max(8, Math.min(rect.width - 174, pointerX - rect.left + 12))}px`;
       tooltip.style.top = `${Math.max(8, Math.min(rect.height - 88, pointerY - rect.top - 74))}px`;
     };
-    el('bars').querySelectorAll('.line-point').forEach(point => {
-      point.addEventListener('mouseenter', event => showTooltip(event, point));
-      point.addEventListener('mousemove', event => showTooltip(event, point));
-      point.addEventListener('mouseleave', hideTooltip);
+    const chart = el('bars');
+    chart.addEventListener('pointerleave', hideTooltip);
+    chart.querySelectorAll('.line-point').forEach(point => {
+      point.addEventListener('pointerenter', event => showTooltip(event, point));
+      point.addEventListener('pointermove', event => showTooltip(event, point));
+      point.addEventListener('pointerleave', hideTooltip);
       point.addEventListener('focus', event => showTooltip(event, point));
       point.addEventListener('blur', hideTooltip);
     });
