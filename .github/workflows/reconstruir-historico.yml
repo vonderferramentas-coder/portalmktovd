@@ -48,7 +48,7 @@ jobs:
 
           # Referência independente: o follower_count mede as mesmas entradas por dia.
           # Serve para conferir a reconstrução antes de gravar qualquer coisa.
-          jq '[.data[0].values[].value] | add' fronteiras.json > entradas_referencia.txt
+          jq '[.data[0].values[]?.value] | add // 0' fronteiras.json > entradas_referencia.txt
 
           # Um dia por consulta: com janela de 24h a resposta traz o total daquele dia,
           # separado em quem entrou (FOLLOWER) e quem saiu (NON_FOLLOWER).
@@ -62,8 +62,16 @@ jobs:
               inicio=$((anterior + 1))
               resposta="$(curl -sS -H "$AUTH" \
                 "$API/$META_INSTAGRAM_ID/insights?metric=follows_and_unfollows&period=day&metric_type=total_value&breakdown=follow_type&since=$inicio&until=$fim")"
-              entraram="$(printf '%s' "$resposta" | jq -r '[.data[0].total_value.breakdowns[0].results[] | select(.dimension_values[0]=="FOLLOWER") | .value] | first // empty')"
-              sairam="$(printf '%s' "$resposta" | jq -r '[.data[0].total_value.breakdowns[0].results[] | select(.dimension_values[0]=="NON_FOLLOWER") | .value] | first // empty')"
+              # Os '?' são necessários: num dia sem dados a Meta devolve "data": [], e sem
+              # eles o jq aborta ao iterar sobre null, derrubando a coleta inteira por
+              # causa de um único dia vazio.
+              extrair() {
+                printf '%s' "$resposta" \
+                  | jq -r --arg tipo "$1" '[.data[]?.total_value?.breakdowns[]?.results[]? | select(.dimension_values[0]==$tipo) | .value] | first // empty' \
+                  2>/dev/null || true
+              }
+              entraram="$(extrair FOLLOWER)"
+              sairam="$(extrair NON_FOLLOWER)"
               if [ -n "$entraram" ] && [ -n "$sairam" ]; then
                 dia="$(date -u -d "$limite" +%F)"
                 jq --arg d "$dia" --argjson e "$entraram" --argjson s "$sairam" \
@@ -71,6 +79,7 @@ jobs:
                 mv tmp.json saldos.json
               else
                 echo "Sem dado utilizável para o dia que termina em $limite"
+                printf 'Resposta recebida: %s\n' "${resposta:0:300}"
               fi
             fi
             anterior="$fim"
@@ -105,6 +114,11 @@ jobs:
               item['end_time'][:10]: item['value']
               for item in json.loads(Path('fronteiras.json').read_text())['data'][0]['values']
           }
+          # Um dia faltando desloca o total de todos os dias anteriores a ele, porque a
+          # caminhada para trás é encadeada. Melhor recusar do que publicar série torta.
+          esperados = sorted(referencia)[1:]
+          faltando = [dia for dia in esperados if dia not in {item['date'] for item in saldos}]
+
           divergentes = []
           for item in saldos:
               esperado = referencia.get(item['date'])
@@ -114,16 +128,23 @@ jobs:
               if desvio > 0.15:
                   divergentes.append((item['date'], item['entraram'], esperado, desvio))
 
-          if divergentes:
-              linhas = [
-                  '## Reconstrução recusada', '',
-                  'As entradas apuradas não batem com o `follower_count` do mesmo dia, que mede',
-                  'a mesma coisa por outro caminho. Nada foi gravado; o arquivo ficou apenas com',
-                  'as medições reais do coletor.', '',
-                  '| Dia | follows_and_unfollows | follower_count | Desvio |', '|---|---:|---:|---:|'
-              ]
-              for dia, obtido, esperado, desvio in divergentes[:15]:
-                  linhas.append(f'| {dia} | {obtido} | {esperado} | {desvio:.0%} |')
+          if divergentes or faltando:
+              linhas = ['## Reconstrução recusada', '']
+              if faltando:
+                  linhas += [
+                      f'**{len(faltando)} dia(s) sem saldo apurado:** {", ".join(faltando[:10])}.',
+                      'Como o total de cada dia é calculado a partir do dia seguinte, um buraco',
+                      'desloca tudo o que vem antes dele.', ''
+                  ]
+              if divergentes:
+                  linhas += [
+                      'As entradas apuradas não batem com o `follower_count` do mesmo dia, que mede',
+                      'a mesma coisa por outro caminho.', '',
+                      '| Dia | follows_and_unfollows | follower_count | Desvio |', '|---|---:|---:|---:|'
+                  ]
+                  for dia, obtido, esperado, desvio in divergentes[:15]:
+                      linhas.append(f'| {dia} | {obtido} | {esperado} | {desvio:.0%} |')
+              linhas += ['', 'Nada foi gravado; o arquivo ficou apenas com as medições reais do coletor.']
               doc['history'] = [historico[dia] for dia in sorted(historico)][-730:]
               caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
               Path('resumo.md').write_text('\n'.join(linhas) + '\n', encoding='utf-8')
