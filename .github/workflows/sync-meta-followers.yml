@@ -1,0 +1,75 @@
+name: Sincronizar seguidores Meta
+
+on:
+  schedule:
+    - cron: '17 11 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-instagram:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Consultar seguidores do Instagram
+        id: meta
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_INSTAGRAM_ID: '17841403154695997'
+        run: |
+          set -euo pipefail
+          test -n "$META_PAGE_ACCESS_TOKEN"
+          curl --fail --silent --show-error --get \
+            "https://graph.facebook.com/v26.0/$META_INSTAGRAM_ID" \
+            --data-urlencode 'fields=followers_count,username' \
+            --data-urlencode "access_token=$META_PAGE_ACCESS_TOKEN" \
+            --output meta-response.json
+          FOLLOWERS="$(jq -er '.followers_count | numbers' meta-response.json)"
+          USERNAME="$(jq -er '.username | strings' meta-response.json)"
+          echo "followers=$FOLLOWERS" >> "$GITHUB_OUTPUT"
+          echo "username=$USERNAME" >> "$GITHUB_OUTPUT"
+
+      - name: Atualizar histórico público
+        env:
+          FOLLOWERS: ${{ steps.meta.outputs.followers }}
+          USERNAME: ${{ steps.meta.outputs.username }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          path = Path('data/social-followers.json')
+          path.parent.mkdir(parents=True, exist_ok=True)
+          document = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'version': 1, 'history': []}
+          today = datetime.now(timezone.utc).date().isoformat()
+          followers = int(os.environ['FOLLOWERS'])
+          username = os.environ['USERNAME']
+          history = [item for item in document.get('history', []) if item.get('date') != today]
+          history.append({'date': today, 'followers': {'Instagram': followers}})
+          history.sort(key=lambda item: item['date'])
+          document.update({
+              'version': 1,
+              'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+              'platforms': {'Instagram': {'accountId': '17841403154695997', 'username': username, 'followers': followers}},
+              'history': history[-730:]
+          })
+          path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Publicar novo snapshot
+        run: |
+          if git diff --quiet -- data/social-followers.json; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/social-followers.json
+          git commit -m 'chore: atualizar seguidores Meta'
+          git push
+

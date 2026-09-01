@@ -37,10 +37,10 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
 $key = isset($_GET['k']) ? $_GET['k'] : '';
-$isValidKey = ($key === 'brands') || preg_match('/^(posts|settings|intel)(__[a-z0-9-]{1,40})?$/', $key);
+$isValidKey = ($key === 'brands') || preg_match('/^(posts|settings|intel|followers|follower_goals)(__[a-z0-9-]{1,40})?$/', $key);
 if(!$isValidKey){
     http_response_code(400);
-    echo json_encode(['error' => 'chave inválida (use k=posts, k=settings, k=intel, k=brands, ou uma dessas com sufixo __{brandId})']);
+    echo json_encode(['error' => 'chave inválida (use k=posts, k=settings, k=intel, k=followers, k=follower_goals, k=brands, ou uma dessas com sufixo __{brandId})']);
     exit;
 }
 
