@@ -46,6 +46,10 @@ jobs:
           jq -r '.data[0].values[].end_time' fronteiras.json > limites.txt
           echo "Dias retornados pela Meta: $(wc -l < limites.txt)"
 
+          # Referência independente: o follower_count mede as mesmas entradas por dia.
+          # Serve para conferir a reconstrução antes de gravar qualquer coisa.
+          jq '[.data[0].values[].value] | add' fronteiras.json > entradas_referencia.txt
+
           # Um dia por consulta: com janela de 24h a resposta traz o total daquele dia,
           # separado em quem entrou (FOLLOWER) e quem saiu (NON_FOLLOWER).
           echo '[]' > saldos.json
@@ -53,8 +57,11 @@ jobs:
           while read -r limite; do
             fim="$(date -u -d "$limite" +%s)"
             if [ -n "$anterior" ]; then
+              # +1 segundo: o 'until' da Meta é inclusivo, então uma janela que começa
+              # exatamente na fronteira do dia anterior devolve dois dias somados.
+              inicio=$((anterior + 1))
               resposta="$(curl -sS -H "$AUTH" \
-                "$API/$META_INSTAGRAM_ID/insights?metric=follows_and_unfollows&period=day&metric_type=total_value&breakdown=follow_type&since=$anterior&until=$fim")"
+                "$API/$META_INSTAGRAM_ID/insights?metric=follows_and_unfollows&period=day&metric_type=total_value&breakdown=follow_type&since=$inicio&until=$fim")"
               entraram="$(printf '%s' "$resposta" | jq -r '[.data[0].total_value.breakdowns[0].results[] | select(.dimension_values[0]=="FOLLOWER") | .value] | first // empty')"
               sairam="$(printf '%s' "$resposta" | jq -r '[.data[0].total_value.breakdowns[0].results[] | select(.dimension_values[0]=="NON_FOLLOWER") | .value] | first // empty')"
               if [ -n "$entraram" ] && [ -n "$sairam" ]; then
@@ -82,7 +89,45 @@ jobs:
           saldos = json.loads(Path('saldos.json').read_text())
           caminho = Path('data/social-followers.json')
           doc = json.loads(caminho.read_text(encoding='utf-8')) if caminho.exists() else {'version': 1, 'history': []}
-          historico = {item['date']: item for item in doc.get('history', [])}
+
+          # Descarta reconstruções anteriores antes de qualquer coisa: se esta rodada não
+          # passar na conferência, o arquivo fica só com medição real, e não com número
+          # errado de uma tentativa passada.
+          historico = {
+              item['date']: item for item in doc.get('history', [])
+              if item.get('source') != 'reconstruido'
+          }
+
+          # Conferência: o follower_count mede as entradas do mesmo dia por outro caminho.
+          # Se os dois discordarem muito, a janela de consulta está errada — foi assim que
+          # a primeira tentativa dobrou todos os números — e nada deve ser gravado.
+          referencia = {
+              item['end_time'][:10]: item['value']
+              for item in json.loads(Path('fronteiras.json').read_text())['data'][0]['values']
+          }
+          divergentes = []
+          for item in saldos:
+              esperado = referencia.get(item['date'])
+              if esperado is None or esperado == 0:
+                  continue
+              desvio = abs(item['entraram'] - esperado) / esperado
+              if desvio > 0.15:
+                  divergentes.append((item['date'], item['entraram'], esperado, desvio))
+
+          if divergentes:
+              linhas = [
+                  '## Reconstrução recusada', '',
+                  'As entradas apuradas não batem com o `follower_count` do mesmo dia, que mede',
+                  'a mesma coisa por outro caminho. Nada foi gravado; o arquivo ficou apenas com',
+                  'as medições reais do coletor.', '',
+                  '| Dia | follows_and_unfollows | follower_count | Desvio |', '|---|---:|---:|---:|'
+              ]
+              for dia, obtido, esperado, desvio in divergentes[:15]:
+                  linhas.append(f'| {dia} | {obtido} | {esperado} | {desvio:.0%} |')
+              doc['history'] = [historico[dia] for dia in sorted(historico)][-730:]
+              caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+              Path('resumo.md').write_text('\n'.join(linhas) + '\n', encoding='utf-8')
+              raise SystemExit(0)
 
           # Caminha do dia mais recente para o mais antigo. O total do dia anterior é o
           # total do dia menos o saldo do dia seguinte.
@@ -113,10 +158,15 @@ jobs:
               f"Total de referência hoje: **{atual:,}**".replace(',', '.'),
               f"Dias reconstruídos: **{novos}**",
               f"Série agora começa em **{primeiro['date']}** com **{primeiro['followers']['Instagram']:,}**".replace(',', '.'),
-              '', '| Dia | Entraram | Saíram | Saldo | Total reconstruído |', '|---|---:|---:|---:|---:|'
+              '', '| Dia | Entraram | Confere (follower_count) | Saíram | Saldo | Total reconstruído |',
+              '|---|---:|---:|---:|---:|---:|'
           ]
           for item in saldos:
-              resumo.append(f"| {item['date']} | {item['entraram']} | {item['sairam']} | {item['saldo']} | {reconstruidos[item['date']]} |")
+              conferencia = referencia.get(item['date'], '—')
+              resumo.append(
+                  f"| {item['date']} | {item['entraram']} | {conferencia} | {item['sairam']} "
+                  f"| {item['saldo']} | {reconstruidos[item['date']]} |"
+              )
           Path('resumo.md').write_text('\n'.join(resumo) + '\n', encoding='utf-8')
           PY
           cat resumo.md >> "$GITHUB_STEP_SUMMARY"
