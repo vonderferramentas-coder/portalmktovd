@@ -1,0 +1,63 @@
+name: Diagnóstico da API Meta
+
+# Só descobre o que o token atual alcança e escreve o resultado no resumo da execução.
+# Não altera arquivo nenhum e não faz commit. O token vai no cabeçalho Authorization,
+# e não na URL, para não aparecer em log de erro do curl.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar o que o token alcança
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_INSTAGRAM_ID: '17841403154695997'
+        run: |
+          set -uo pipefail
+          API="https://graph.facebook.com/v26.0"
+          SINCE="$(date -u -d '29 days ago' +%s)"
+          UNTIL="$(date -u -d 'yesterday' +%s)"
+
+          consultar () {
+            titulo="$1"
+            url="$2"
+            {
+              echo "### $titulo"
+              echo ''
+              echo '```json'
+            } >> "$GITHUB_STEP_SUMMARY"
+            if resposta="$(curl -sS --max-time 30 -H "Authorization: Bearer $META_PAGE_ACCESS_TOKEN" "$url")"; then
+              printf '%s\n' "$resposta" | head -c 4000 >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo 'A chamada falhou antes de receber resposta.' >> "$GITHUB_STEP_SUMMARY"
+            fi
+            {
+              echo ''
+              echo '```'
+              echo ''
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          echo "## O que o token alcança hoje" >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo "Janela consultada: 29 dias até ontem (o dia corrente não é aceito pela Meta)." >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+
+          consultar "Campos básicos (já em uso hoje)" \
+            "$API/$META_INSTAGRAM_ID?fields=username,followers_count,media_count"
+
+          consultar "follows_and_unfollows — separa quem entrou de quem saiu" \
+            "$API/$META_INSTAGRAM_ID/insights?metric=follows_and_unfollows&period=day&metric_type=total_value&breakdown=follow_type&since=$SINCE&until=$UNTIL"
+
+          consultar "follower_count — novos seguidores por dia (métrica legada)" \
+            "$API/$META_INSTAGRAM_ID/insights?metric=follower_count&period=day&since=$SINCE&until=$UNTIL"
+
+          consultar "reach — para conferir se insights respondem de modo geral" \
+            "$API/$META_INSTAGRAM_ID/insights?metric=reach&period=day&since=$SINCE&until=$UNTIL"
+
+          echo "Se as três últimas responderem com erro de permissão, falta o escopo" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`instagram_manage_insights\` no app da Meta. Se responderem com dados," >> "$GITHUB_STEP_SUMMARY"
+          echo "dá para importar até 30 dias de histórico de follows e unfollows." >> "$GITHUB_STEP_SUMMARY"
