@@ -6,7 +6,7 @@
   const brandId = (activeBrand && activeBrand.id) || 'default';
   if (brandId !== 'default') return;
 
-  const storageKey = 'social_followers_' + brandId;
+  const storageKey = 'social_followers_v2_' + brandId;
   // rótulo no mesmo formato da série ('ago/26'); Intl em pt-BR devolve "ago. de 26" e não casa
   const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   const monthLabel = isoDate => {
