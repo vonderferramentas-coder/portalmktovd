@@ -1,0 +1,134 @@
+name: Reconstruir histórico de seguidores
+
+# Carga única. A Meta não guarda o total de seguidores ao longo do tempo, mas guarda,
+# por dia, quantas contas entraram e quantas saíram. Sabendo o total de hoje, dá para
+# caminhar para trás: total de ontem = total de hoje menos o saldo de hoje.
+#
+# As fronteiras de dia vêm do próprio follower_count (end_time às 07:00 UTC, meia-noite
+# no fuso da conta), para que a janela consultada case exatamente com o dia da Meta.
+#
+# Os pontos reconstruídos ficam marcados com "source": "reconstruido" no arquivo, e
+# nunca sobrescrevem um dia que o coletor já mediu de fato.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Coletar saldo diário na Meta
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_INSTAGRAM_ID: '17841403154695997'
+        run: |
+          set -euo pipefail
+          API="https://graph.facebook.com/v26.0"
+          AUTH="Authorization: Bearer $META_PAGE_ACCESS_TOKEN"
+
+          # Total de agora: é a âncora de onde a caminhada para trás começa.
+          curl -sS --fail -H "$AUTH" "$API/$META_INSTAGRAM_ID?fields=followers_count" -o atual.json
+          jq -er '.followers_count | numbers' atual.json > /dev/null
+
+          # Fronteiras de dia autoritativas, direto da Meta.
+          SINCE="$(date -u -d '29 days ago' +%s)"
+          UNTIL="$(date -u -d 'yesterday' +%s)"
+          curl -sS --fail -H "$AUTH" \
+            "$API/$META_INSTAGRAM_ID/insights?metric=follower_count&period=day&since=$SINCE&until=$UNTIL" \
+            -o fronteiras.json
+
+          jq -r '.data[0].values[].end_time' fronteiras.json > limites.txt
+          echo "Dias retornados pela Meta: $(wc -l < limites.txt)"
+
+          # Um dia por consulta: com janela de 24h a resposta traz o total daquele dia,
+          # separado em quem entrou (FOLLOWER) e quem saiu (NON_FOLLOWER).
+          echo '[]' > saldos.json
+          anterior=''
+          while read -r limite; do
+            fim="$(date -u -d "$limite" +%s)"
+            if [ -n "$anterior" ]; then
+              resposta="$(curl -sS -H "$AUTH" \
+                "$API/$META_INSTAGRAM_ID/insights?metric=follows_and_unfollows&period=day&metric_type=total_value&breakdown=follow_type&since=$anterior&until=$fim")"
+              entraram="$(printf '%s' "$resposta" | jq -r '[.data[0].total_value.breakdowns[0].results[] | select(.dimension_values[0]=="FOLLOWER") | .value] | first // empty')"
+              sairam="$(printf '%s' "$resposta" | jq -r '[.data[0].total_value.breakdowns[0].results[] | select(.dimension_values[0]=="NON_FOLLOWER") | .value] | first // empty')"
+              if [ -n "$entraram" ] && [ -n "$sairam" ]; then
+                dia="$(date -u -d "$limite" +%F)"
+                jq --arg d "$dia" --argjson e "$entraram" --argjson s "$sairam" \
+                  '. + [{date:$d, entraram:$e, sairam:$s, saldo:($e-$s)}]' saldos.json > tmp.json
+                mv tmp.json saldos.json
+              else
+                echo "Sem dado utilizável para o dia que termina em $limite"
+              fi
+            fi
+            anterior="$fim"
+          done < limites.txt
+
+          echo "Dias com saldo apurado: $(jq 'length' saldos.json)"
+
+      - name: Reconstruir os totais e mesclar
+        run: |
+          python3 - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          atual = json.loads(Path('atual.json').read_text())['followers_count']
+          saldos = json.loads(Path('saldos.json').read_text())
+          caminho = Path('data/social-followers.json')
+          doc = json.loads(caminho.read_text(encoding='utf-8')) if caminho.exists() else {'version': 1, 'history': []}
+          historico = {item['date']: item for item in doc.get('history', [])}
+
+          # Caminha do dia mais recente para o mais antigo. O total do dia anterior é o
+          # total do dia menos o saldo do dia seguinte.
+          saldos.sort(key=lambda item: item['date'])
+          total = atual
+          reconstruidos = {}
+          for item in reversed(saldos):
+              reconstruidos[item['date']] = total
+              total -= item['saldo']
+
+          novos = 0
+          for dia, valor in sorted(reconstruidos.items()):
+              existente = historico.get(dia)
+              # Nunca sobrescreve medição real do coletor.
+              if existente and existente.get('source') != 'reconstruido':
+                  continue
+              historico[dia] = {'date': dia, 'followers': {'Instagram': int(valor)}, 'source': 'reconstruido'}
+              novos += 1
+
+          doc['version'] = 1
+          doc['history'] = [historico[dia] for dia in sorted(historico)][-730:]
+          doc['updatedAt'] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+          caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          primeiro = doc['history'][0]
+          resumo = [
+              '## Reconstrução concluída', '',
+              f"Total de referência hoje: **{atual:,}**".replace(',', '.'),
+              f"Dias reconstruídos: **{novos}**",
+              f"Série agora começa em **{primeiro['date']}** com **{primeiro['followers']['Instagram']:,}**".replace(',', '.'),
+              '', '| Dia | Entraram | Saíram | Saldo | Total reconstruído |', '|---|---:|---:|---:|---:|'
+          ]
+          for item in saldos:
+              resumo.append(f"| {item['date']} | {item['entraram']} | {item['sairam']} | {item['saldo']} | {reconstruidos[item['date']]} |")
+          Path('resumo.md').write_text('\n'.join(resumo) + '\n', encoding='utf-8')
+          PY
+          cat resumo.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar
+        run: |
+          git add data/social-followers.json
+          if git diff --cached --quiet -- data/social-followers.json; then
+            echo 'Nada mudou.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: reconstruir histórico de seguidores a partir dos insights'
+          git push
