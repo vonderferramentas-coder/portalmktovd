@@ -141,7 +141,9 @@ jobs:
           }
           # Um dia faltando desloca o total de todos os dias anteriores a ele, porque a
           # caminhada para trás é encadeada. Melhor recusar do que publicar série torta.
-          esperados = sorted(referencia)[1:]
+          # A Meta pode devolver o último período ainda aberto com valor 0; ele não é
+          # ausência de crescimento e não pode bloquear a reconstrução dos dias fechados.
+          esperados = sorted(dia for dia, valor in referencia.items() if valor > 0)[1:]
           faltando = [dia for dia in esperados if dia not in {item['date'] for item in saldos}]
 
           # O insights de follows/unfollows atrasa até 48h, então o dia mais recente costuma
