@@ -236,7 +236,8 @@
       const value = item.point.values[network.name];
       if (!Number.isFinite(value)) return '';
       return `<button type="button" class="line-point" style="left:${scaleX(index) / 10}%;top:${scaleY(value).toFixed(1)}px;background:${network.color}" data-index="${index}" data-network="${network.name}" aria-label="Ver dados de ${network.name} em ${shortDate(item.point.date)}"></button>`;
-    })).join('');    const labels = buckets.map((item, index) => {
+    })).join('');
+    const labels = buckets.map((item, index) => {
       const show = buckets.length <= 12 || index % every === 0 || index === buckets.length - 1;
       return show ? `<span style="left:${scaleX(index) / 10}%">${item.label}</span>` : '';
     }).join('');
@@ -497,7 +498,8 @@
 
     const eta = addDays(referenceDate, Math.ceil(remaining / pace));
     setText('goalProjection', `${String(eta.getUTCDate()).padStart(2,'0')}/${String(eta.getUTCMonth()+1).padStart(2,'0')}/${eta.getUTCFullYear()}`);
-    setText('goalStatus', eta <= parse(deadline) ? 'No ritmo' : 'Atrasada');  }
+    setText('goalStatus', eta <= parse(deadline) ? 'No ritmo' : 'Atrasada');
+  }
 
   function renderEmpty(message) {
     setText('totalLabel', 'Comunidade total');
