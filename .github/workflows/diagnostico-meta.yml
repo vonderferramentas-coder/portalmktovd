@@ -58,6 +58,13 @@ jobs:
           consultar "reach — para conferir se insights respondem de modo geral" \
             "$API/$META_INSTAGRAM_ID/insights?metric=reach&period=day&since=$SINCE&until=$UNTIL"
 
+          # Um único dia, resposta curta o bastante para aparecer inteira: é o que decide se
+          # dá para obter as saídas dia a dia (reconstrução exata) ou só o total do período.
+          DIA_INICIO="$(date -u -d '3 days ago' +%s)"
+          DIA_FIM="$(date -u -d '2 days ago' +%s)"
+          consultar "follows_and_unfollows — janela de UM dia, resposta completa" \
+            "$API/$META_INSTAGRAM_ID/insights?metric=follows_and_unfollows&period=day&metric_type=total_value&breakdown=follow_type&since=$DIA_INICIO&until=$DIA_FIM"
+
           echo "Se as três últimas responderem com erro de permissão, falta o escopo" >> "$GITHUB_STEP_SUMMARY"
           echo "\`instagram_manage_insights\` no app da Meta. Se responderem com dados," >> "$GITHUB_STEP_SUMMARY"
           echo "dá para importar até 30 dias de histórico de follows e unfollows." >> "$GITHUB_STEP_SUMMARY"
