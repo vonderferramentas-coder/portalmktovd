@@ -18,10 +18,9 @@
     .then(response => response.ok ? response.json() : null)
     .then(remote => {
       if (!remote || !Array.isArray(remote.history) || !remote.history.length) return;
-      const raw = localStorage.getItem(storageKey);
-      if (!raw) return;
-      const rows = JSON.parse(raw);
-      if (!Array.isArray(rows) || !rows.length) return;
+      let rows;
+      try { rows = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch (error) { rows = []; }
+      if (!Array.isArray(rows)) rows = [];
       let changed = false;
       remote.history.forEach(entry => {
         const followers = Number(entry && entry.followers && entry.followers.Instagram);
@@ -29,9 +28,11 @@
         const label = monthLabel(entry.date);
         let row = rows.find(item => item[0] === label);
         if (!row) {
-          row = rows.at(-1).slice();
-          row[0] = label;
+          // Mês novo começa zerado: só o Instagram tem coleta automática, e os demais
+          // canais não devem herdar o número do mês anterior como se fosse medição.
+          row = [label, 0, 0, 0, 0];
           rows.push(row);
+          changed = true;
         }
         if (Number(row[1]) !== followers) {
           row[1] = followers;
