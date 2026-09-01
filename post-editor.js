@@ -246,9 +246,10 @@ function chooseCatalogProduct(item){
 function productMatchRank(item,q,qc){
  if(q&&normalizeText(item.name||'').indexOf(q)===0)return 0;
  if(qc&&catalogCodes(item).some(function(v){return normalizeCode(v.code).indexOf(qc)===0}))return 0;
+ if(qc&&item.codeFG&&normalizeCode(item.codeFG).indexOf(qc)===0)return 0;
  return 1;
 }
-function matchingProducts(query){var q=normalizeText(query.trim()),qc=normalizeCode(query);var results=catalog.filter(function(item){var codeHit=qc&&catalogCodes(item).some(function(v){return normalizeCode(v.code).includes(qc)});return!q||normalizeText(item.name).includes(q)||codeHit}).sort(function(a,b){return productMatchRank(a,q,qc)-productMatchRank(b,q,qc)});return q?results:results.slice(0,10)}
+function matchingProducts(query){var q=normalizeText(query.trim()),qc=normalizeCode(query);var results=catalog.filter(function(item){var codeHit=qc&&(catalogCodes(item).some(function(v){return normalizeCode(v.code).includes(qc)})||(item.codeFG&&normalizeCode(item.codeFG).includes(qc)));return!q||normalizeText(item.name).includes(q)||codeHit}).sort(function(a,b){return productMatchRank(a,q,qc)-productMatchRank(b,q,qc)});return q?results:results.slice(0,10)}
 function renderCatalogResults(){
  var query=$('#catalogSearch').value,matches=matchingProducts(query),box=$('#catalogResults');
  catalogFocus=Math.min(catalogFocus,Math.max(0,matches.length-1));

@@ -843,21 +843,22 @@
     // catálogo de produtos cadastrado em Configurações + catálogo mestre (data/catalog-vonder.json).
     // Itens manuais de Configurações têm prioridade quando o código se repete nos dois.
     function productCandidates(){
-      const manual = (APP_SETTINGS.catalog||[]).map(item=> ({ code:item.code||'', name:item.name }));
+      const manual = (APP_SETTINGS.catalog||[]).map(item=> ({ code:item.code||'', name:item.name, codeFG:item.codeFG||'' }));
       const seen = new Set(manual.map(item=> item.code).filter(Boolean));
       const fromMaster = masterCatalog
         .filter(item=> !item.code || !seen.has(item.code))
-        .map(item=> ({ code:item.code||'', name:item.name }));
+        .map(item=> ({ code:item.code||'', name:item.name, codeFG:item.codeFG||'' }));
       return manual.concat(fromMaster);
     }
 
-    // resultados que começam pelo termo buscado (no nome ou no código) vêm antes dos que só
-    // contêm o termo em outro ponto — ex.: buscar "aspirador" mostra "Aspirador de pó..." antes
-    // de "Escova para aspirador"
+    // resultados que começam pelo termo buscado (no nome ou em algum código, OVD ou FG) vêm antes
+    // dos que só contêm o termo em outro ponto — ex.: buscar "aspirador" mostra "Aspirador de
+    // pó..." antes de "Escova para aspirador"
     function productMatchRank(item, q, qCode){
       const name = normalizeStr(item.name||'');
       if(q && name.startsWith(q)) return 0;
       if(qCode && item.code && normalizeCode(item.code).startsWith(qCode)) return 0;
+      if(qCode && item.codeFG && normalizeCode(item.codeFG).startsWith(qCode)) return 0;
       return 1;
     }
 
@@ -914,7 +915,9 @@
       const qCode = normalizeCode(query.trim());
       const matches = productCandidates().filter(item=>
         !selectedProducts.some(p=> item.code ? p.code===item.code : p.name===item.name) &&
-        (normalizeStr(item.name).includes(q) || (item.code && (normalizeStr(item.code).includes(q) || normalizeCode(item.code).includes(qCode))))
+        (normalizeStr(item.name).includes(q)
+          || (item.code && (normalizeStr(item.code).includes(q) || normalizeCode(item.code).includes(qCode)))
+          || (item.codeFG && (normalizeStr(item.codeFG).includes(q) || normalizeCode(item.codeFG).includes(qCode))))
       ).sort((a,b)=> productMatchRank(a,q,qCode) - productMatchRank(b,q,qCode));
       if(matches.length===0){
         box.innerHTML = `<div class="autocomplete-item ac-manual"><span class="ac-name">+ Adicionar "${escapeHtml(query.trim())}" (sem catálogo)</span></div>`;
@@ -2021,7 +2024,10 @@
       const query = normalizeStr(rawQuery.trim());
       if(!query){ box.innerHTML = `<div class="search-hint">Digite para buscar em todas as postagens.</div>`; return; }
       const matches = state.posts.filter(p=>{
-        const productsText = getPostProducts(p).map(pr=> `${pr.code||''} ${pr.name||''}`).join(' ');
+        const productsText = getPostProducts(p).map(pr=>{
+          const details = productDetailsByCode(pr.code);
+          return `${pr.code||''} ${pr.name||''} ${(details&&details.codeFG)||''}`;
+        }).join(' ');
         const haystack = normalizeStr([p.title, p.notes, productsText].filter(Boolean).join(' '));
         return haystack.includes(query);
       }).sort((a,b)=> (b.date||'').localeCompare(a.date||'')).slice(0, 30);
@@ -3426,7 +3432,9 @@
           const qCode = normalizeCode(query.trim());
           const matches = productCandidates().filter(cand=>
             !row.products.some(p=> cand.code ? p.code===cand.code : p.name===cand.name) &&
-            (normalizeStr(cand.name).includes(q) || (cand.code && (normalizeStr(cand.code).includes(q) || normalizeCode(cand.code).includes(qCode))))
+            (normalizeStr(cand.name).includes(q)
+              || (cand.code && (normalizeStr(cand.code).includes(q) || normalizeCode(cand.code).includes(qCode)))
+              || (cand.codeFG && (normalizeStr(cand.codeFG).includes(q) || normalizeCode(cand.codeFG).includes(qCode))))
           ).sort((a,b)=> productMatchRank(a,q,qCode) - productMatchRank(b,q,qCode));
           if(matches.length===0){
             sugg.innerHTML = `<div class="autocomplete-item ac-manual"><span class="ac-name">+ Adicionar "${escapeHtml(query.trim())}" (sem catálogo)</span></div>`;
