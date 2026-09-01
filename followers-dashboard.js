@@ -10,6 +10,8 @@
   const brand = (window.PortalBrand && (window.PortalBrand.list || []).find(item => item.id === window.PortalBrand.activeId)) || {};
   const brandKey = brand.id || 'default';
   const SOURCE = 'data/social-followers.json';
+  const LIVE_SOURCE = 'data/social-followers-live.json';
+  const AUTO_REFRESH_MS = 60000;
   const MAX_BUCKETS = 60;
 
   ['social_followers_', 'social_followers_goals_', 'social_followers_v2_', 'social_followers_goals_v2_']
@@ -48,8 +50,10 @@
   const decimal = value => Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 
   let selectedNetwork = 'all';
-  let series = [];   // pontos diários com valor arrastado para a frente
+  let series = [];   // pontos diários fechados, com valor arrastado para a frente
   let goals = read(goalsKey, {});
+  let liveSnapshot = null;
+  let initialized = false;
 
   // ---------------------------------------------------------------- dados
 
@@ -80,6 +84,12 @@
 
   const activeNetworks = () => selectedNetwork === 'all' ? NETWORKS : [NETWORKS[Number(selectedNetwork)]];
   const totalAt = (point, nets) => nets.reduce((sum, network) => sum + (Number.isFinite(point.values[network.name]) ? point.values[network.name] : 0), 0);
+  const currentValues = point => {
+    const values = Object.assign({}, point.values);
+    const instagram = liveSnapshot && liveSnapshot.platforms && liveSnapshot.platforms.Instagram;
+    if (instagram && Number.isFinite(Number(instagram.followers))) values.Instagram = Number(instagram.followers);
+    return values;
+  };
 
   // Só conta a variação de canais que já tinham valor conhecido no ponto anterior: a
   // primeira medição de um canal é um saldo inicial, não um ganho de seguidores.
@@ -138,7 +148,8 @@
     const last = points[points.length - 1];
     const first = points[0];
     const active = selectedNetwork === 'all' ? null : NETWORKS[Number(selectedNetwork)];
-    const current = totalAt(last, nets);
+    const currentPoint = { values: currentValues(last) };
+    const current = totalAt(currentPoint, nets);
     const periodDeltas = deltas(points, nets);
     const net = periodDeltas.reduce((sum, item) => sum + item.delta, 0);
     const span = Math.max(1, dayDiff(first.date, last.date));
@@ -178,11 +189,11 @@
     el('channelContext').innerHTML = active ? `<img src="${active.icon}" alt=""> ${active.name}` : 'Todas';
 
     renderChart(points, nets, grain);
-    renderPlatforms(points, nets);
+    renderPlatforms(points, nets, currentPoint);
     renderTable(points, nets, grain);
     renderIndicators(points, nets, periodDeltas, net, rate, perDay, span);
     renderComparatives(points, nets, periodDeltas);
-    renderGoal(last, current, nets, periodDeltas, perDay);
+    renderGoal(currentPoint, current, nets, periodDeltas, perDay);
   }
 
   function renderChart(points, nets, grain) {
@@ -212,8 +223,8 @@
     }
   }
 
-  function renderPlatforms(points, nets) {
-    const last = points[points.length - 1];
+  function renderPlatforms(points, nets, currentPoint) {
+    const last = currentPoint || points[points.length - 1];
     const first = points[0];
     const chip = (value, delta, comparable) => comparable
       ? `<strong class="${delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral'}">${signed(delta)}</strong><small>no período</small>`
@@ -496,26 +507,40 @@
 
   // ---------------------------------------------------------------- carga
 
+  function fetchJson(source) {
+    return fetch(source + '?v=' + Date.now(), { cache: 'no-store' })
+      .then(response => response.ok ? response.json() : null)
+      .catch(() => null);
+  }
+
   function load() {
     const manual = read(manualKey, {});
-    return fetch(SOURCE + '?v=' + Date.now(), { cache: 'no-store' })
-      .then(response => response.ok ? response.json() : null)
-      .catch(() => null)
-      .then(published => {
+    return Promise.all([fetchJson(SOURCE), fetchJson(LIVE_SOURCE)])
+      .then(([published, live]) => {
         series = buildSeries(published, manual);
-        refreshSubtitle(published);
-        resetRange();
+        liveSnapshot = live;
+        refreshSubtitle(published, live);
+        if (!initialized) { resetRange(); initialized = true; }
         render();
       });
   }
 
-  function refreshSubtitle(published) {
+  function refreshSubtitle(published, live) {
     const subtitle = document.querySelector('.page-subtitle');
     if (!subtitle) return;
-    const stamp = published && published.updatedAt ? new Date(published.updatedAt) : null;
-    const when = stamp && !isNaN(stamp) ? ` Última coleta em ${stamp.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}.` : '';
-    subtitle.textContent = `Acompanhe a evolução da comunidade da ${brand.name || 'marca'} em cada canal.${when}`;
+    subtitle.textContent = `Acompanhe a evolução da comunidade da ${brand.name || 'marca'} em cada canal.`;
+    const status = el('dataStatus');
+    if (!status) return;
+    const stamp = live && live.updatedAt ? new Date(live.updatedAt) : null;
+    if (!stamp || isNaN(stamp)) {
+      status.textContent = 'Histórico diário fechado · aguardando o primeiro snapshot ao vivo da Meta.';
+      return;
+    }
+    const minutes = Math.max(0, Math.round((Date.now() - stamp.getTime()) / 60000));
+    const relative = minutes < 1 ? 'agora mesmo' : minutes === 1 ? 'há 1 min' : `há ${minutes} min`;
+    status.textContent = `Snapshot atual da Meta: ${relative} (${stamp.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}) · histórico e métricas usam dias fechados.`;
   }
 
   load();
+  window.setInterval(load, AUTO_REFRESH_MS);
 })();

@@ -2,7 +2,11 @@ name: Sincronizar seguidores Meta
 
 on:
   schedule:
-    - cron: '17 11 * * *'
+    # Snapshot a cada 15 min. O dashboard mostra o horário efetivo, pois o
+    # GitHub pode atrasar uma execução agendada.
+    - cron: '*/15 * * * *'
+    # Fechamento diário às 23:55 de São Paulo (02:55 UTC).
+    - cron: '55 2 * * *'
   workflow_dispatch:
 
 permissions:
@@ -28,51 +32,66 @@ jobs:
             --data-urlencode 'fields=followers_count,username' \
             --data-urlencode "access_token=$META_PAGE_ACCESS_TOKEN" \
             --output meta-response.json
-          FOLLOWERS="$(jq -er '.followers_count | numbers' meta-response.json)"
-          USERNAME="$(jq -er '.username | strings' meta-response.json)"
-          echo "followers=$FOLLOWERS" >> "$GITHUB_OUTPUT"
-          echo "username=$USERNAME" >> "$GITHUB_OUTPUT"
+          echo "followers=$(jq -er '.followers_count | numbers' meta-response.json)" >> "$GITHUB_OUTPUT"
+          echo "username=$(jq -er '.username | strings' meta-response.json)" >> "$GITHUB_OUTPUT"
 
-      - name: Atualizar histórico público
+      - name: Atualizar snapshot público
         env:
           FOLLOWERS: ${{ steps.meta.outputs.followers }}
           USERNAME: ${{ steps.meta.outputs.username }}
         run: |
           python3 - <<'PY'
-          import json
-          import os
+          import json, os
           from datetime import datetime, timezone
           from pathlib import Path
 
+          path = Path('data/social-followers-live.json')
+          document = {
+              'version': 2,
+              'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+              'source': 'meta_graph_api',
+              'platforms': {'Instagram': {
+                  'accountId': '17841403154695997',
+                  'username': os.environ['USERNAME'],
+                  'followers': int(os.environ['FOLLOWERS'])
+              }}
+          }
+          path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Fechar histórico diário
+        if: github.event.schedule == '55 2 * * *' || github.event_name == 'workflow_dispatch'
+        env:
+          FOLLOWERS: ${{ steps.meta.outputs.followers }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timedelta, timezone
+          from pathlib import Path
+
           path = Path('data/social-followers.json')
-          path.parent.mkdir(parents=True, exist_ok=True)
-          document = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'version': 1, 'history': []}
-          today = datetime.now(timezone.utc).date().isoformat()
-          followers = int(os.environ['FOLLOWERS'])
-          username = os.environ['USERNAME']
-          history = [item for item in document.get('history', []) if item.get('date') != today]
-          history.append({'date': today, 'followers': {'Instagram': followers}})
+          document = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'version': 2, 'history': []}
+          # A execução ocorre às 02:55 UTC, equivalente a 23:55 em São Paulo.
+          closing_date = (datetime.now(timezone.utc) - timedelta(hours=3)).date().isoformat()
+          history = [item for item in document.get('history', []) if item.get('date') != closing_date]
+          history.append({'date': closing_date, 'followers': {'Instagram': int(os.environ['FOLLOWERS'])}})
           history.sort(key=lambda item: item['date'])
           document.update({
-              'version': 1,
+              'version': 2,
               'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
-              'platforms': {'Instagram': {'accountId': '17841403154695997', 'username': username, 'followers': followers}},
               'history': history[-730:]
           })
           path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
-      - name: Publicar novo snapshot
+      - name: Publicar dados atualizados
         run: |
-          # git add antes da comparação: o snapshot é um arquivo novo na primeira
-          # execução, e `git diff` sozinho ignora arquivos ainda não rastreados.
-          git add data/social-followers.json
-          if git diff --cached --quiet -- data/social-followers.json; then
-            echo 'Número de seguidores inalterado; nada a publicar.'
+          git add data/social-followers.json data/social-followers-live.json
+          if git diff --cached --quiet -- data/social-followers.json data/social-followers-live.json; then
+            echo 'Nenhuma alteração para publicar.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'chore: atualizar seguidores Meta'
+          git commit -m 'chore: atualizar snapshot Meta'
           git push
-
