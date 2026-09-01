@@ -9,6 +9,11 @@
 
   const brand = (window.PortalBrand && (window.PortalBrand.list || []).find(item => item.id === window.PortalBrand.activeId)) || {};
   const brandKey = brand.id || 'default';
+  // 'default' é o id fixo da VONDER (ver DEFAULT_BRANDS em portal-shell.js) — hoje é a única
+  // marca com coleta automática pela API da Meta. As demais marcas ainda não têm integração
+  // própria, então não devem herdar os números nem as metas/projeções da VONDER: usam este
+  // sinal para não buscar os arquivos publicados e mostrar uma mensagem de "não conectado".
+  const isVonder = brandKey === 'default';
   const SOURCE = 'data/social-followers.json';
   const LIVE_SOURCE = 'data/social-followers-live.json';
   const AUTO_REFRESH_MS = 60000;
@@ -23,7 +28,7 @@
   const write = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch (error) { /* sem storage */ } };
 
   const NETWORKS = [
-    { name:'Instagram', color:'#E94683', icon:'icons/instagram.svg', connected:true },
+    { name:'Instagram', color:'#E94683', icon:'icons/instagram.svg', connected:isVonder },
     { name:'Facebook',  color:'#287BE0', icon:'icons/facebook.svg',  connected:false },
     { name:'YouTube',   color:'#F04444', icon:'icons/youtube.svg',   connected:false },
     { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected:false }
@@ -31,6 +36,8 @@
   const MONTHS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const WEEKDAYS = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+  // Meta padrão da VONDER: só se aplica à própria VONDER (ver isVonder acima), nunca às demais marcas.
+  const DEFAULT_GOALS = { Instagram: { target: 1000000, deadline: '2027-09-30' } };
 
   // Tudo em UTC: as datas vêm do workflow em UTC e converter para o fuso local deslocaria
   // medições para o dia anterior.
@@ -52,7 +59,7 @@
 
   let selectedNetwork = '0';
   let series = [];   // pontos diários fechados, com valor arrastado para a frente
-  let goals = read(goalsKey, {});
+  let goals = Object.assign({}, isVonder ? DEFAULT_GOALS : {}, read(goalsKey, {}));
   let liveSnapshot = null;
   let initialized = false;
 
@@ -145,14 +152,18 @@
     const points = (from && to) ? inRange(series, from, to) : series.slice();
 
     if (!points.length) {
-      renderEmpty(series.length ? 'Nenhuma medição no período selecionado.' : 'Aguardando a primeira coleta.');
+      const message = !isVonder
+        ? 'A integração de redes sociais desta marca ainda não foi conectada.'
+        : (series.length ? 'Nenhuma medição no período selecionado.' : 'Aguardando a primeira coleta.');
+      renderEmpty(message);
       return;
     }
 
     const last = points[points.length - 1];
     const first = points[0];
     const active = selectedNetwork === 'all' ? null : NETWORKS[Number(selectedNetwork)];
-    const currentPoint = { values: currentValues(last) };
+    const useLiveSnapshot = last.date === lastDate();
+    const currentPoint = { date: last.date, values: useLiveSnapshot ? currentValues(last) : Object.assign({}, last.values) };
     const current = totalAt(currentPoint, nets);
     const periodDeltas = deltas(points, nets);
     const net = periodDeltas.reduce((sum, item) => sum + item.delta, 0);
@@ -206,7 +217,7 @@
     const plotted = nets.filter(network => buckets.some(item => Number.isFinite(item.point.values[network.name])));
     el('legend').innerHTML = plotted.map(network => `<span><i style="background:${network.color}"></i>${network.name}</span>`).join('');
     const values = buckets.flatMap(item => plotted.map(network => item.point.values[network.name]).filter(Number.isFinite));
-    const minimum = Math.min(...values, 0), maximum = Math.max(1, ...values);
+    const minimum = Math.min(...values), maximum = Math.max(...values);
     const spread = Math.max(1, maximum - minimum);
     const lower = Math.max(0, minimum - spread * .16), upper = maximum + spread * .16;
     const scaleY = value => 252 - ((value - lower) / Math.max(1, upper - lower) * 252);
@@ -224,14 +235,13 @@
     const dots = plotted.flatMap(network => buckets.map((item, index) => {
       const value = item.point.values[network.name];
       if (!Number.isFinite(value)) return '';
-      return `<circle class="line-point" cx="${scaleX(index).toFixed(1)}" cy="${scaleY(value).toFixed(1)}" r="8" fill="${network.color}" data-index="${index}" data-network="${network.name}" tabindex="0" role="button" aria-label="Ver dados de ${network.name} em ${shortDate(item.point.date)}"/>`;
-    })).join('');
-    const labels = buckets.map((item, index) => {
+      return `<button type="button" class="line-point" style="left:${scaleX(index) / 10}%;top:${scaleY(value).toFixed(1)}px;background:${network.color}" data-index="${index}" data-network="${network.name}" aria-label="Ver dados de ${network.name} em ${shortDate(item.point.date)}"></button>`;
+    })).join('');    const labels = buckets.map((item, index) => {
       const show = buckets.length <= 12 || index % every === 0 || index === buckets.length - 1;
       return show ? `<span style="left:${scaleX(index) / 10}%">${item.label}</span>` : '';
     }).join('');
     el('bars').className = 'line-chart';
-    el('bars').innerHTML = `<svg class="line-chart-svg" viewBox="0 0 1000 252" preserveAspectRatio="none" aria-label="Evolução de seguidores">${seriesLines}${dots}</svg><div class="line-labels">${labels}</div><div class="chart-tooltip" id="chartTooltip" role="status" hidden></div>`;
+    el('bars').innerHTML = `<svg class="line-chart-svg" viewBox="0 0 1000 252" preserveAspectRatio="none" aria-label="Evolução de seguidores">${seriesLines}</svg>${dots}<div class="line-labels">${labels}</div><div class="chart-tooltip" id="chartTooltip" role="status" hidden></div>`;
     const tooltip = el('chartTooltip');
     const hideTooltip = () => { tooltip.hidden = true; };
     const showTooltip = (event, point) => {
@@ -454,42 +464,40 @@
       return;
     }
 
-    const today = parse(last.date);
+    const referenceDate = parse(last.date);
     const daysToDeadline = deadline ? dayDiff(last.date, deadline) : null;
-    setText('goalNeeded', daysToDeadline && daysToDeadline > 0 ? `${decimal(remaining / daysToDeadline)}/dia` : '—');
+    if (!daysToDeadline || daysToDeadline <= 0) {
+      setText('goalNeeded', 'Prazo encerrado');
+      ['goalPace','goalMonthly','goalEndMonth','goalEndYear','goalProjection'].forEach(id => setText(id, '—'));
+      setText('goalStatus', 'Prazo encerrado');
+      return;
+    }
 
-    // ritmo atual: média móvel de 7 dias quando existir, senão a média do período
-    const recent = periodDeltas.slice(-7);
-    const pace = recent.length >= 7 ? recent.reduce((sum, item) => sum + item.delta, 0) / 7 : perDay;
+    // Todas as projeções usam o último total que aparece no filtro e a média do período selecionado.
+    const requiredDaily = remaining / daysToDeadline;
+    const pace = perDay;
+    setText('goalNeeded', `${decimal(requiredDaily)}/dia`);
     if (pace === null || pace <= 0) {
       setText('goalPace', pace === null ? '—' : `${decimal(pace)}/dia`);
-      setText('goalMonthly', '—');
-      setText('goalEndMonth', '—');
-      setText('goalEndYear', '—');
-      setText('goalProjection', '—');
-      setText('goalStatus', pace === null ? 'Ritmo indisponível' : 'Sem crescimento');
+      ['goalMonthly','goalEndMonth','goalEndYear','goalProjection'].forEach(id => setText(id, '—'));
+      setText('goalStatus', pace === null ? 'Dados insuficientes' : 'Sem crescimento');
       return;
     }
     setText('goalPace', `${decimal(pace)}/dia`);
 
-    const monthlyNeed = daysToDeadline && daysToDeadline > 0 ? remaining / (daysToDeadline / 30.44) : null;
-    const monthStart = iso(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)));
-    const opening = series.filter(point => point.date < monthStart).pop();
-    const doneThisMonth = opening ? current - totalAt(opening, nets) : null;
-    setText('goalMonthly', monthlyNeed === null || doneThisMonth === null
-      ? '—'
-      : `${signed(doneThisMonth)} de ${signed(monthlyNeed)}`);
-    if (monthlyNeed !== null && doneThisMonth !== null) setTone('goalMonthly', doneThisMonth - monthlyNeed);
+    const monthlyNeed = requiredDaily * 30.44;
+    const monthlyPace = pace * 30.44;
+    setText('goalMonthly', `${signed(monthlyPace)} de ${signed(monthlyNeed)}`);
+    setTone('goalMonthly', monthlyPace - monthlyNeed);
 
-    const daysLeftInMonth = dayDiff(last.date, iso(monthEnd(today)));
-    const daysLeftInYear = dayDiff(last.date, `${today.getUTCFullYear()}-12-31`);
+    const daysLeftInMonth = dayDiff(last.date, iso(monthEnd(referenceDate)));
+    const daysLeftInYear = dayDiff(last.date, `${referenceDate.getUTCFullYear()}-12-31`);
     setText('goalEndMonth', format(Math.round(current + pace * Math.max(0, daysLeftInMonth))));
     setText('goalEndYear', format(Math.round(current + pace * Math.max(0, daysLeftInYear))));
 
-    const eta = addDays(today, Math.ceil(remaining / pace));
+    const eta = addDays(referenceDate, Math.ceil(remaining / pace));
     setText('goalProjection', `${String(eta.getUTCDate()).padStart(2,'0')}/${String(eta.getUTCMonth()+1).padStart(2,'0')}/${eta.getUTCFullYear()}`);
-    setText('goalStatus', deadline ? (eta <= parse(deadline) ? 'No ritmo' : 'Atrasada') : 'Projeção');
-  }
+    setText('goalStatus', eta <= parse(deadline) ? 'No ritmo' : 'Atrasada');  }
 
   function renderEmpty(message) {
     setText('totalLabel', 'Comunidade total');
@@ -651,7 +659,10 @@
 
   function load() {
     const manual = read(manualKey, {});
-    return Promise.all([fetchJson(SOURCE), fetchJson(LIVE_SOURCE)])
+    // Fora da VONDER não há coleta própria: nunca busca os arquivos publicados pelo workflow
+    // da VONDER, para nenhuma outra marca herdar seus números nem projeções.
+    const fetches = isVonder ? [fetchJson(SOURCE), fetchJson(LIVE_SOURCE)] : [Promise.resolve(null), Promise.resolve(null)];
+    return Promise.all(fetches)
       .then(([published, live]) => {
         series = buildSeries(published, manual);
         liveSnapshot = live;
@@ -667,6 +678,10 @@
     subtitle.textContent = `Acompanhe a evolução da comunidade da ${brand.name || 'marca'} em cada canal.`;
     const status = el('dataStatus');
     if (!status) return;
+    if (!isVonder) {
+      status.textContent = 'Esta marca ainda não tem uma rede social conectada. Os números e metas de outras marcas nunca aparecem aqui.';
+      return;
+    }
     const stamp = live && live.updatedAt ? new Date(live.updatedAt) : null;
     if (!stamp || isNaN(stamp)) {
       status.textContent = 'Histórico diário fechado · aguardando o primeiro snapshot ao vivo da Meta.';
