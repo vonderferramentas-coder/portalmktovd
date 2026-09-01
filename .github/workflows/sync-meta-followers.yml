@@ -64,12 +64,15 @@ jobs:
 
       - name: Publicar novo snapshot
         run: |
-          if git diff --quiet -- data/social-followers.json; then
+          # git add antes da comparação: o snapshot é um arquivo novo na primeira
+          # execução, e `git diff` sozinho ignora arquivos ainda não rastreados.
+          git add data/social-followers.json
+          if git diff --cached --quiet -- data/social-followers.json; then
+            echo 'Número de seguidores inalterado; nada a publicar.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/social-followers.json
           git commit -m 'chore: atualizar seguidores Meta'
           git push
 
