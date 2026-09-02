@@ -2,7 +2,8 @@
   'use strict';
   var green='#005745', red='#f20d0d';
   function value(id,fallback){var el=document.getElementById(id);return el&&el.value.trim()?el.value.trim():(fallback||'')}
-  function rounded(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+  // Curva desenhada explicitamente: evita que o arcTo herde um caminho anterior e gere pontas triangulares.
+  function rounded(ctx,x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
   function titleFont(ctx,size){ctx.font='700 italic '+size+'px "Swiss721Editor","Arial Narrow",Impact,sans-serif'}
   function wrap(ctx,text,width){var words=String(text||'PRODUTO').toUpperCase().split(/\s+/),out=[],line='';words.forEach(function(word){var test=(line+' '+word).trim();if(line&&ctx.measureText(test).width>width){out.push(line);line=word}else line=test});if(line)out.push(line);return out.slice(0,2)}
   function drawBrand(ctx,state,helpers,x,y,w,h){rounded(ctx,x,y,w,h,14);ctx.fillStyle='#fff';ctx.fill();if(state.customAssets.brandLogo)helpers.contain(ctx,state.customAssets.brandLogo,[x+18,y+16,w-36,h-32])}
@@ -23,10 +24,13 @@
     rounded(ctx,isStory?785:788,ruleY+42,245,62,28);ctx.fillStyle=green;ctx.fill();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 italic 25px "Arial Narrow",Arial,sans-serif';ctx.fillText('Cód.: '+code,isStory?907:910,ruleY+73);
     if(state.productDrawable){ctx.save();ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=22;ctx.shadowOffsetY=12;api.helpers.contain(ctx,state.productDrawable,isStory?[46,620,710,690]:[42,430,620,560]);ctx.restore()}
     drawPrice(ctx,t,isStory);
-    var footerH=isStory?170:160,footerY=t.h-footerH;ctx.fillStyle=green;ctx.fillRect(0,footerY,t.w,footerH);ctx.fillStyle='#fff';ctx.textAlign='left';ctx.textBaseline='middle';ctx.font='700 italic '+(isStory?45:38)+'px "Arial Narrow",Arial,sans-serif';ctx.fillText('FG.com.br',isStory?78:90,footerY+footerH/2);ctx.textAlign='right';ctx.font='18px Arial,sans-serif';var note=value('ecommerceValidity','Oferta exclusiva para o site! Válida enquanto durarem os estoques promocionais.');ctx.fillText(note,t.w-50,footerY+footerH/2);
+    var footerY=isStory?1701:1126,footerH=t.h-footerY,logoBox=isStory?[73,1622,100,143]:[90,1044,99,142];ctx.fillStyle=green;ctx.fillRect(0,footerY,t.w,footerH);
+    if(state.customAssets.fgLogo)api.helpers.contain(ctx,state.customAssets.fgLogo,logoBox);
+    ctx.fillStyle='#fff';ctx.textAlign='left';ctx.textBaseline='top';ctx.font='700 italic 38px "Swiss721Editor","Arial Narrow",Arial,sans-serif';ctx.fillText('.com.br',isStory?175:196,isStory?1710:1138);
+    ctx.textAlign='right';ctx.font='18px "Arial Narrow",Arial,sans-serif';var note=value('ecommerceValidity','Oferta exclusiva para o site! Válida enquanto durarem os estoques promocionais.');ctx.fillText(note,isStory?1033:1001,isStory?1728:1150);
   }
   global.POST_EDITOR_CUSTOM_PRESETS=global.POST_EDITOR_CUSTOM_PRESETS||{};
   var all=global.POST_EDITOR_CUSTOM_PRESETS['__ferramentas-gerais']||{};
-  all['Post E-commerce']={footerColor:green,supportsBrandVariant:true,supportsCodes:true,supportsProductCutout:true,ecommerce:true,renderer:renderer};
+  all['Post E-commerce']={footerColor:green,supportsBrandVariant:true,supportsCodes:true,supportsProductCutout:true,ecommerce:true,assetSources:{fgLogo:'post-editor-assets/fg-ecommerce/fg-logo.png'},renderer:renderer};
   global.POST_EDITOR_CUSTOM_PRESETS['__ferramentas-gerais']=all;
 })(window);
