@@ -87,3 +87,12 @@
 #eventPrefixField[hidden]{display:none!important}
 
 #eventTitleSizeField{margin-top:10px}#eventTitleSizeField label{display:flex;justify-content:space-between;align-items:center}#eventTitleSizeField output{font-weight:700;color:var(--accent-ink)}#eventTitleSizeField input{width:100%;accent-color:var(--accent)}#eventTitleSizeField[hidden]{display:none!important}
+
+.pe-offer-import{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.pe-offer-import button,.pe-sku-options button{border:1px solid var(--accent-ink);border-radius:9px;background:var(--accent-weak);color:var(--accent-ink);font:800 11px var(--font-ui);padding:9px 10px;cursor:pointer}.pe-offer-import button:disabled{opacity:.6;cursor:wait}.pe-sku-options{display:grid;gap:8px;margin:-2px 0 16px}.pe-sku-options button{text-align:left;background:var(--surface-muted);border-color:var(--border);font-weight:600}.pe-sku-options button:hover{border-color:var(--accent-ink);background:var(--accent-weak)}.pe-sku-options strong,.pe-sku-options small{display:block}.pe-sku-options strong{font-size:13px;color:var(--text)}.pe-sku-options small{margin-top:3px;color:var(--muted);font-size:11px}.pe-modal-single{grid-template-columns:1fr}
+
+.pe-fg-offer-import{margin:0 0 16px;padding:13px;border:1px solid var(--accent-ink);border-radius:12px;background:var(--accent-weak)}.pe-fg-offer-import label{margin:0 0 7px;font-size:11px;font-weight:800;color:var(--accent-ink)}.pe-fg-offer-import small{display:block;margin-top:6px;color:var(--muted);font-size:10px}
+
+#catalogSearchArea[hidden],#catalogMeta[hidden],#catalogResults[hidden]{display:none!important}
+.pe-fg-offer-import{padding:16px;border-color:var(--accent-ink);background:linear-gradient(135deg,var(--accent-weak),var(--surface-muted));box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}.pe-offer-import{align-items:center}.pe-offer-import input{width:100%;min-width:0;height:42px;border:1px solid var(--border);border-radius:9px;background:var(--surface-muted);color:var(--text);font:13px var(--font-ui);padding:0 12px;outline:none}.pe-offer-import input::placeholder{color:var(--muted)}.pe-offer-import input:focus{border-color:var(--accent-ink);box-shadow:0 0 0 3px var(--accent-weak)}.pe-offer-import button{min-height:42px;background:var(--accent-weak)}.pe-fg-offer-import small{color:var(--text-faint)}
+
+#layoutModeField[hidden],#moveTargetField[hidden],#moveModeControls[hidden]{display:none!important}

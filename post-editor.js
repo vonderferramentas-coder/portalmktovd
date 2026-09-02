@@ -145,6 +145,13 @@ function catalogCodes(item){
  if(raw)raw.slice(0,2).forEach(function(entry){if(typeof entry==='string')out.push({code:entry,label:''});else if(entry&&entry.code)out.push({code:entry.code,label:entry.label||entry.name||entry.variant||''})});
  if(!out.length&&item&&item.code)out.push({code:item.code,label:item.variant||''});return out
 }
+// Código que vai pra arte. Na FERRAMENTAS GERAIS é o do e-commerce da FG (codeFG, 7 dígitos), não o
+// código Vonder do catálogo — esse continua saindo de catalogCodes() porque é ele que busca a foto no
+// proxy (CATALOG_PHOTO_SLUG mapeia fg → vonder). Os 49 produtos sem codeFG caem no código do catálogo.
+function editorCodes(item){
+ if(CATALOG_SLUG==='fg'&&item&&item.codeFG)return[{code:String(item.codeFG),label:item.variant||''}];
+ return catalogCodes(item)
+}
 function editorNameFor(item){var title=item&&(item.title||item.shortName),sub=item&&(item.subtitle||item.shortDescription||item.descriptionShort);if(title)return title+(sub?'\n'+sub:'');var parsed=splitName(item&&item.name);return parsed.title+(parsed.sub?'\n'+parsed.sub:'')}
 var FLOW_STEP_ORDER={editoria:0,choose:1,edit:2};
 var currentFlowMode='editoria',maxFlowOrder=0,pendingLeaveEditTarget=null;
@@ -193,9 +200,9 @@ function chooseEditoria(editoria){
  var brandBadgeColorField=$('#brandBadgeColorField');if(brandBadgeColorField)brandBadgeColorField.hidden=preset.supportsBrandBadgeColor===false;
  var suggestionsSection=$('#compositionSuggestionsSection');if(suggestionsSection)suggestionsSection.hidden=preset.supportsCompositionSuggestions===false;
  var usesCodes=preset.supportsCodes!==false,usesCutout=preset.supportsProductCutout!==false,isCommemorative=!!preset.commemorative;
- $('#codeControls').hidden=!usesCodes;$('#selectedProductCode').hidden=!usesCodes;$('#productDrop').hidden=!usesCutout;$('#removeWhiteField').hidden=!usesCutout;var ecommerceField=$('#ecommercePricing');if(ecommerceField)ecommerceField.hidden=!preset.ecommerce;
+ $('#codeControls').hidden=!usesCodes;$('#selectedProductCode').hidden=!usesCodes;$('#productDrop').hidden=!usesCutout;$('#removeWhiteField').hidden=!usesCutout;var ecommerceField=$('#ecommercePricing');if(ecommerceField)ecommerceField.hidden=!preset.ecommerce;var fgEcommerce=BRAND_SUFFIX==='__ferramentas-gerais'&&preset.ecommerce,fgOfferImport=$('#fgOfferProductImport');if(fgOfferImport)fgOfferImport.hidden=!fgEcommerce;['#catalogSearchArea','#catalogMeta','#catalogResults'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});['#layoutModeField','#moveTargetField','#moveModeControls'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});state.moveEnabled=true;state.priceMoveOnly=fgEcommerce;var stageMoveHint=$('#stageMoveHint');if(stageMoveHint)stageMoveHint.textContent=fgEcommerce?'Arraste a box de preço ou a foto de fundo para reposicionar':'Arraste direto sobre a arte para reposicionar';var chooserDescription=$('#productChooserDescription');if(chooserDescription)chooserDescription.textContent=fgEcommerce?'Cole o link da oferta da FG para preencher os dados comerciais automaticamente.':'Busque no catálogo ou cole o link da oferta da FG para preencher os dados comerciais automaticamente.';
  $('#commemorativeFields').hidden=!isCommemorative;if($('#eventPrefixField'))$('#eventPrefixField').hidden=!!preset.singleCommemorativeText;if($('#eventTitleSizeField')){$('#eventTitleSizeField').hidden=!preset.titleSizeControl;if(preset.titleSizeControl){['Feed','Story'].forEach(function(format){var input=$('#eventTitleSize'+format),output=$('#eventTitleSize'+format+'Out');if(input)input.value=100;if(output)output.value='100%'})}}$('#selectedProductSummary').hidden=isCommemorative;$('#productNameLabel').textContent=isCommemorative?(preset.singleCommemorativeText?'Texto da data comemorativa':'Título da data comemorativa'):'Nome completo';
- $('#detailsSectionTitle').textContent=isCommemorative?'Data comemorativa':'Produto';$('#detailsSectionHint').textContent=isCommemorative?(preset.singleCommemorativeText?'Data, mês e texto editáveis':'Data, mês e título editáveis'):'Dados preenchidos pelo catálogo, mas editáveis';
+ $('#detailsSectionTitle').textContent=isCommemorative?'Data comemorativa':'Produto';$('#detailsSectionHint').textContent=isCommemorative?(preset.singleCommemorativeText?'Data, mês e texto editáveis':'Data, mês e título editáveis'):'Dados preenchidos pelo catálogo, mas editáveis';var imageHint=$('#imageSectionHint');if(imageHint)imageHint.textContent=usesCutout?'Envie a cena e, se tiver, o produto recortado':'A imagem oficial do produto é carregada junto com a oferta';
  // Editorias com skipProductChooser (ex: Datas comemorativas) nunca passam pela etapa "Escolher
  // produto" — o passo 2 do topo e o "Tamanho do destaque" (que só se aplica ao destaque de
  // produto/logo movível, inexistente nesse preset) somem do fluxo pra essa editoria.
@@ -222,16 +229,16 @@ function setProductFilePreviewFromFile(file){
  var reader=new FileReader();reader.onload=function(){setProductFilePreview(reader.result,file.name+' · clique para alterar')};reader.readAsDataURL(file)
 }
 function updateSelectedSummary(item,manual){
- var thumb=$('#selectedProductThumb');thumb.innerHTML='＋';$('#selectedProductName').textContent=manual?'Produto manual':(item.name||'Produto sem nome');$('#selectedProductCode').textContent=manual?'Sem vínculo com o catálogo':(catalogCodes(item).map(function(v){return v.code}).join(' · ')||'Sem código');
+ var thumb=$('#selectedProductThumb');thumb.innerHTML='＋';$('#selectedProductName').textContent=manual?'Produto manual':(item.name||'Produto sem nome');$('#selectedProductCode').textContent=manual?'Sem vínculo com o catálogo':(editorCodes(item).map(function(v){return v.code}).join(' · ')||'Sem código');
  var urls=!manual&&itemThumbnailUrls(item);if(urls&&urls.length){var im=document.createElement('img');im.alt='';thumb.innerHTML='';thumb.appendChild(im);setImgWithFallback(im,urls,function(){thumb.textContent='＋'})}
 }
 function showEditor(item,manual){updateSelectedSummary(item||{},!!manual);setFlow('edit');setTimeout(function(){drawAll()},0)}
 function chooseManualProduct(){
- selectedProduct=null;$('#productName').value='';$('#productCode').value='';$('#productCode2').value='';$('#codeCount').value='1';selectBrandLogo('VONDER',true);state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;setProductFilePreview('','PNG transparente ou foto em fundo branco');$('#backgroundFileName').textContent='Clique ou arraste uma imagem';syncCodeFields();showEditor({},true);drawAll();status('Preencha os dados e envie as imagens',false)
+ selectedProduct=null;$('#productName').value='';$('#productCode').value='';$('#productCode2').value='';$('#codeCount').value='1';selectBrandLogo('VONDER');state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;setProductFilePreview('','PNG transparente ou foto em fundo branco');$('#backgroundFileName').textContent='Clique ou arraste uma imagem';syncCodeFields();showEditor({},true);drawAll();status('Preencha os dados e envie as imagens',false)
 }
 function chooseCatalogProduct(item){
- selectedProduct=item;var codes=catalogCodes(item);$('#productName').value=editorNameFor(item);$('#productCode').value=codes[0]?codes[0].code:'';$('#productCode2').value=codes[1]?codes[1].code:'';$('#codeVariant1').value=(codes[0]&&codes[0].label)||'110 V~';$('#codeVariant2').value=(codes[1]&&codes[1].label)||'220 V~';$('#codeCount').value=codes.length>1?'2':'1';syncCodeFields();
- selectBrandLogo(normalizeBrandVariant(item.brandVariant)||(/vonder\s*plus/i.test(item.name||'')?'Vonder_plus':'VONDER'),true);
+ selectedProduct=item;var codes=editorCodes(item);$('#productName').value=editorNameFor(item);$('#productCode').value=codes[0]?codes[0].code:'';$('#productCode2').value=codes[1]?codes[1].code:'';$('#codeVariant1').value=(codes[0]&&codes[0].label)||'110 V~';$('#codeVariant2').value=(codes[1]&&codes[1].label)||'220 V~';$('#codeCount').value=codes.length>1?'2':'1';syncCodeFields();
+ selectBrandLogo(normalizeBrandVariant(item.brandVariant)||(/vonder\s*plus/i.test(item.name||'')?'Vonder_plus':'VONDER'));
  state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};var thumbUrls=itemThumbnailUrls(item);setProductFilePreview(thumbUrls[0],'Carregada automaticamente · clique para alterar',thumbUrls.slice(1));showEditor(item,false);drawAll();
  var bgUrl=itemBackgroundUrl(item);if(bgUrl){$('#backgroundFileName').textContent='Foto de aplicação do catálogo';loadImage(bgUrl).then(function(im){if(selectedProduct!==item)return;
   if(!im.exportSafe){$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Essa foto de aplicação não pode ser usada automaticamente (o servidor de origem não libera para exportação) — envie manualmente abaixo',false);return}
@@ -259,7 +266,7 @@ function renderCatalogResults(){
  $('#catalogStatus').textContent=catalog.length?(query?matches.length+' produto'+(matches.length===1?' encontrado':'s encontrados'):catalog.length.toLocaleString('pt-BR')+' produtos disponíveis'):'Nenhum produto cadastrado nesta marca';
  if(!catalog.length){box.innerHTML='<div class="pe-catalog-empty"><strong>O catálogo ainda está vazio</strong>Cadastre produtos em Configurações no calendário ou continue sem catálogo.</div>';return}
  if(!matches.length){box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong>Tente buscar apenas uma parte do nome ou os números do código.</div>';return}
- box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length;return'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(catalogCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('');
+ box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length;return'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(editorCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('');
  $$('#catalogResults [data-catalog-index]').forEach(function(btn){
   var item=matches[Number(btn.dataset.catalogIndex)];
   btn.addEventListener('click',function(){chooseCatalogProduct(item)});
@@ -319,6 +326,7 @@ var BRAND_LOGO_CACHE={};
 function displayBrandName(name){return String(name||'').replace(/_/g,' ')}
 // compatibilidade com o antigo valor de item.brandVariant salvo no catálogo ('vonder'/'vonder-plus')
 function normalizeBrandVariant(value){if(!value)return null;if(/^vonder-plus$/i.test(value))return'Vonder_plus';if(/^vonder$/i.test(value))return'VONDER';return value}
+function brandLogoForOffer(brand,title){var target=normalizeText(String(brand||'')),exact=target&&BRAND_MANIFEST.filter(function(name){return normalizeText(displayBrandName(name))===target})[0];if(exact)return exact;if(target)return null;var haystack=normalizeText(String(title||'')),matches=BRAND_MANIFEST.filter(function(name){var candidate=normalizeText(displayBrandName(name));return candidate.length>1&&new RegExp('(^|[^a-z0-9])'+candidate.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'($|[^a-z0-9])').test(haystack)});matches.sort(function(a,b){return normalizeText(displayBrandName(b)).length-normalizeText(displayBrandName(a)).length});return matches[0]||null}
 function loadBrandLogoImage(name){
  if(!name)return Promise.resolve(null);
  if(BRAND_LOGO_CACHE[name])return BRAND_LOGO_CACHE[name];
@@ -332,10 +340,10 @@ function loadBrandLogoImage(name){
  }).then(function(dataUri){return loadImage(dataUri)});
  BRAND_LOGO_CACHE[name]=p;return p
 }
-// skipRedraw evita um drawAll() extra quando quem chamou já vai chamar drawAll() em seguida
-// (chooseManualProduct/chooseCatalogProduct) — o redraw de verdade sempre acontece assim que a
-// imagem carrega, via a Promise abaixo.
-function selectBrandLogo(name,skipRedraw){
+// O logo carrega de forma assíncrona, então o drawAll() de quem chamou (chooseManualProduct/
+// chooseCatalogProduct) sempre roda antes da imagem existir. Por isso o redraw daqui, quando ela
+// termina de carregar, é obrigatório: sem ele a arte fica sem o logo até algo redesenhar por acaso.
+function selectBrandLogo(name){
  state.brandLogoName=name;
  var nameEl=$('#brandLogoName');if(nameEl)nameEl.textContent=displayBrandName(name);
  var thumb=$('#brandLogoThumb');
@@ -344,7 +352,7 @@ function selectBrandLogo(name,skipRedraw){
   if(state.brandLogoName!==name)return;
   var thumbImg=$('#brandLogoThumb img');if(thumbImg)thumbImg.src=img.src;
   state.customAssets.brandLogo=img;
-  if(!skipRedraw)drawAll()
+  drawAll()
  }).catch(function(){
   if(state.brandLogoName===name)status('Não foi possível carregar o logo de '+displayBrandName(name),false)
  })
@@ -379,18 +387,20 @@ function drawPlaceholder(ctx,t){
 // limita o deslocamento de arraste (bgDx/bgDy) pra imagem desenhada com largura/altura w×h
 // nunca deixar de cobrir o quadro w0×h0 — sem isso, arrastar no zoom mínimo (onde a imagem só
 // encosta nas bordas, sem sobra) expõe canvas vazio/transparente pra fora da arte. Uma margem
-// mínima de folga (COVER_PAN_MARGIN) garante que sempre sobre um pouco de espaço pra arrastar
-// nos dois eixos, mesmo quando a proporção da imagem bate quase exata com a do quadro — do
-// contrário o eixo "exato" fica travado em 0 (folga zero) e o outro quase sem espaço.
-var COVER_PAN_MARGIN=1.06;
+// mínima de folga.
 function clampOffset(d,size,frameSize){var slack=Math.max(0,(size-frameSize)/2);return Math.max(-slack,Math.min(slack,d))}
 // zoom nunca pode ir abaixo de 1 (o necessário pra cobrir 100% do frame): a imagem de fundo
 // sempre cobre o quadro inteiro, nunca aparece fundo auxiliar/blur, e o arraste (clampOffset)
-// atua só sobre essa imagem real, nunca sobre uma camada de preenchimento separada.
-function drawCover(ctx,img,t,format){
- var cover=Math.max(t.w/img.width,t.h/img.height)*COVER_PAN_MARGIN,p=state.format[format],zoom=Math.max(1,state.bgZoom[format]);
+// atua só sobre essa imagem real, nunca sobre uma camada de preenchimento separada. Em 100% a
+// escala é exatamente a de cobertura, então o recorte é o menor possível — quem precisar de folga
+// pra arrastar nos dois eixos aumenta o zoom.
+// visibleH: altura que de fato precisa ser coberta. Presets com rodapé opaco (faixa que tampa a
+// base da arte) passam o topo do rodapé, senão a foto seria ampliada e travada por causa de uma
+// faixa que ninguém enxerga — o que corta imagem à toa e engessa o arraste.
+function drawCover(ctx,img,t,format,visibleH){
+ var frameH=visibleH>0?visibleH:t.h,cover=Math.max(t.w/img.width,frameH/img.height),p=state.format[format],zoom=Math.max(1,state.bgZoom[format]);
  ctx.save();ctx.beginPath();ctx.rect(0,0,t.w,t.h);ctx.clip();
- var s=cover*zoom,w=img.width*s,h=img.height*s,dx=clampOffset(p.bgDx,w,t.w),dy=clampOffset(p.bgDy,h,t.h),x=(t.w-w)/2+dx,y=(t.h-h)/2+dy;ctx.drawImage(img,x,y,w,h);
+ var s=cover*zoom,w=img.width*s,h=img.height*s,dx=clampOffset(p.bgDx,w,t.w),dy=clampOffset(p.bgDy,h,frameH),x=(t.w-w)/2+dx,y=(frameH-h)/2+dy;ctx.drawImage(img,x,y,w,h);
  ctx.restore()
 }
 function roundRect(ctx,x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
@@ -527,19 +537,19 @@ function flashMoveTarget(format,cap,hit,canvasRect,box){
  var scale=canvasRect.width/canvases[format].width,x=0,y=0,w=canvasRect.width,h=canvasRect.height;
  if(hit&&box){x=box[0]*scale;y=box[1]*scale;w=box[2]*scale;h=box[3]*scale}
  el.style.left=x+'px';el.style.top=y+'px';el.style.width=w+'px';el.style.height=h+'px';
- el.querySelector('span').textContent=hit?'Destaque selecionado':'Fundo selecionado';
+ el.querySelector('span').textContent=hit?(state.priceMoveOnly?'Preço selecionado':'Destaque selecionado'):'Fundo selecionado';
  el.classList.toggle('is-background',!hit);
  el.classList.remove('is-firing');void el.offsetWidth;el.classList.add('is-firing')
 }
 $$('[data-move-mode]').forEach(function(b){b.addEventListener('click',function(){setMoveMode(b.dataset.moveMode)})});$('#moveTarget').addEventListener('change',function(){setMoveMode($('#moveTarget').value)});
 Object.keys(canvases).forEach(function(format){
- var c=canvases[format],cap=format[0].toUpperCase()+format.slice(1),zoomInput=$('#backgroundZoom'+cap),zoomOut=$('#backgroundZoom'+cap+'Out'),drag=null;
- c.addEventListener('pointerdown',function(e){drag={x:e.clientX,y:e.clientY};c.setPointerCapture(e.pointerId)});
- c.addEventListener('pointermove',function(e){if(!drag)return;var scale=c.width/c.getBoundingClientRect().width,dx=(e.clientX-drag.x)*scale,dy=(e.clientY-drag.y)*scale;drag={x:e.clientX,y:e.clientY};if($('#moveTarget').value==='background'){state.format[format].bgDx+=dx;state.format[format].bgDy+=dy}else{state.format[format].overlayDx+=dx;state.format[format].overlayDy+=dy}drawAll()});
- ['pointerup','pointercancel'].forEach(function(ev){c.addEventListener(ev,function(){drag=null})});
+ var c=canvases[format],cap=format[0].toUpperCase()+format.slice(1),zoomInput=$('#backgroundZoom'+cap),zoomOut=$('#backgroundZoom'+cap+'Out'),drag=null,dragTarget=null;
+ c.addEventListener('pointerdown',function(e){if(!state.moveEnabled)return;drag={x:e.clientX,y:e.clientY};dragTarget=$('#moveTarget').value;c.setPointerCapture(e.pointerId)});
+ c.addEventListener('pointermove',function(e){if(!drag)return;var scale=c.width/c.getBoundingClientRect().width,dx=(e.clientX-drag.x)*scale,dy=(e.clientY-drag.y)*scale;drag={x:e.clientX,y:e.clientY};if(dragTarget==='background'){state.format[format].bgDx+=dx;state.format[format].bgDy+=dy}else{state.format[format].overlayDx+=dx;state.format[format].overlayDy+=dy}drawAll()});
+ ['pointerup','pointercancel'].forEach(function(ev){c.addEventListener(ev,function(){drag=null;dragTarget=null})});
  c.addEventListener('dblclick',function(e){
-  var rect=c.getBoundingClientRect(),scaleX=c.width/rect.width,scaleY=c.height/rect.height,px=(e.clientX-rect.left)*scaleX,py=(e.clientY-rect.top)*scaleY,destaqueBox=unionBox(lastProductBox[format],lastBadgeBox[format]),hit=boxHit(destaqueBox,px,py);
-  setMoveMode(hit?'overlay':'background');status(hit?'Arraste para mover o destaque':'Arraste para mover o fundo',false);
+  if(!state.moveEnabled)return;var rect=c.getBoundingClientRect(),scaleX=c.width/rect.width,scaleY=c.height/rect.height,px=(e.clientX-rect.left)*scaleX,py=(e.clientY-rect.top)*scaleY,destaqueBox=state.priceMoveOnly?lastProductBox[format]:unionBox(lastProductBox[format],lastBadgeBox[format]),hit=boxHit(destaqueBox,px,py);
+  setMoveMode(hit?'overlay':'background');status(hit?'Box de preço selecionada para mover':'Fundo selecionado para mover',false);
   flashMoveTarget(format,cap,hit,rect,destaqueBox)
  });
  c.addEventListener('wheel',function(e){
@@ -560,9 +570,33 @@ if(INCOMING_COMM){var incomingEditoria=EDITORIAS.filter(function(e){return /come
 var embedded=window.POST_EDITOR_ASSETS||{};loadImage(embedded.product||'post-editor-assets/demo-product.png').then(function(im){if(!selectedProduct&&!state.product&&$('#editorWorkspace').hidden)state.productDrawable=im;drawAll();try{canvases.feed.toDataURL('image/jpeg',.1);document.body.dataset.exportReady='true';status('Editor pronto',false)}catch(e){document.body.dataset.exportReady='false';status('Prévia pronta; exportação bloqueada pelo navegador',false)}}).catch(function(){drawAll();status('Editor aberto; alguns elementos não carregaram',false)});
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawAll);else drawAll();
 window.PostEditor={redraw:drawAll,state:state,chooseProduct:chooseCatalogProduct,getCatalog:function(){return catalog.slice()},makeZip:makeZip,exportBaseName:exportBaseName};
+
+
+
+
+
+
+
+// Importação de ofertas FG: o site é estático, então consulta exclusivamente o auxiliar local
+// iniciado pelo "Abrir Calendario.cmd". O resultado é sempre revisável nos campos da oferta.
+(function(){
+ var button=$('#importEcommerceOffer'),urlField=$('#ecommerceProductUrl'),modal=$('#offerSkuModal');if(!button||!urlField||!modal)return;
+ function money(value){return Number(value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+ function importStatus(message){var el=$('#fgOfferImportStatus');if(el)el.textContent=message}
+ function sameCommercialOffer(a,b){return Number(a.price)===Number(b.price)&&Number(a.listPrice||0)===Number(b.listPrice||0)&&Number(a.discountPercent||0)===Number(b.discountPercent||0)&&!!a.available===!!b.available}
+ function offerCta(sku){if(sku.offerCta)return sku.offerCta;var price=Number(sku.price),old=Number(sku.listPrice);return old>price?Math.round((old-price)*100/old)+'% OFF':'APROVEITE!'}
+ function applySku(offer,sku,dual){
+  if(currentFlowMode!=='edit')chooseManualProduct();
+  $('#productName').value=offer.title||$('#productName').value;var importedBrand=brandLogoForOffer(offer.brand,offer.title),brandHint=$('#brandLogoSummary small');if(importedBrand){selectBrandLogo(importedBrand);$('#brandLogoName').textContent=offer.brand||displayBrandName(importedBrand).toUpperCase();if(brandHint)brandHint.textContent=offer.brand?'Preenchida automaticamente da oferta FG':'Identificada automaticamente pelo título da oferta'}else if(offer.brand){state.brandLogoName=offer.brand;state.customAssets.brandLogo=null;$('#brandLogoName').textContent=offer.brand;$('#brandLogoThumb').textContent='＋';if(brandHint)brandHint.textContent='Logo ainda não disponível — selecione manualmente'}$('#productCode').value=sku.sku||'';$('#codeVariant1').value=sku.variation||'';
+  $('#codeCount').value=dual?'2':'1';if(dual){var other=offer.skus[1];$('#productCode2').value=other.sku||'';$('#codeVariant2').value=other.variation||''}else{$('#productCode2').value=''}
+  $('#ecommercePrice').value=money(sku.price);$('#ecommerceOldPrice').value=sku.listPrice?money(sku.listPrice):'';$('#ecommercePriceMode').value=sku.listPrice?'de-por':'por';$('#ecommerceDiscount').value=sku.discountPercent>0?Math.round(sku.discountPercent)+'% OFF':'';$('#ecommerceCta').value=offerCta(sku);syncCodeFields();$('#ecommercePriceMode').dispatchEvent(new Event('change'));drawAll();status('Oferta FG carregada. Revise os dados antes de baixar.',false)
+
+ }
+ function close(){modal.hidden=true}
+ $('#offerSkuModalCancel').addEventListener('click',close);modal.addEventListener('click',function(ev){if(ev.target===modal)close()});
+ function chooseSku(offer){var box=$('#offerSkuOptions');$('#offerSkuModalDesc').textContent='Os SKUs possuem condições comerciais diferentes. Escolha qual oferta será divulgada; a arte terá apenas um código.';box.innerHTML='';offer.skus.forEach(function(sku){var item=document.createElement('button');item.type='button';item.innerHTML='<strong>'+escapeHtml(sku.variation||'SKU '+sku.sku)+' · Cód. '+escapeHtml(sku.sku)+'</strong><small>Por R$ '+money(sku.price)+(sku.listPrice?' · De R$ '+money(sku.listPrice):'')+(sku.available?'':' · indisponível')+'</small>';item.addEventListener('click',function(){close();applySku(offer,sku,false)});box.appendChild(item)});modal.hidden=false
+ }
+ button.addEventListener('click',function(){var url=urlField.value.trim();if(!url){urlField.focus();status('Cole o link da oferta da FG para continuar.',false);return};button.disabled=true;button.textContent='Consultando…';importStatus('Consultando a oferta no site da FG…');status('Consultando oferta no site da FG…',true);fetch('https://ecommerce-fg.vonderferramentas.workers.dev/product-offer?url='+encodeURIComponent(url)).then(function(res){return res.json().then(function(data){if(!res.ok)throw new Error(data.error||'Não foi possível consultar a oferta.');return data})}).then(function(offer){var skus=(offer.skus||[]).filter(function(s){return s.available});if(!skus.length)throw new Error('Nenhum SKU disponível foi encontrado.');offer.skus=skus;if(skus.length>1&&!skus.every(function(s){return sameCommercialOffer(s,skus[0])})){importStatus('Escolha um SKU para continuar.');chooseSku(offer)}else{applySku(offer,skus[0],skus.length>1)}}).catch(function(err){var message=err.message||'Não foi possível consultar a oferta.';importStatus(message);status(message,false)}).finally(function(){button.disabled=false;button.textContent='Puxar dados'})
+ })
 })();
-
-
-
-
-
+})();

@@ -18,8 +18,8 @@
 
     const $ = id => document.getElementById(id);
     const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    // Mês inicial exibido (contexto atual do projeto). Navegação livre a partir daqui.
-    let viewDate = new Date(2026,7,18);
+    // Abre sempre no mês vigente; a navegação continua livre a partir daqui.
+    let viewDate = new Date();
     let activeTabs = []; // redes selecionadas no filtro rápido da toolbar; vazio = "Todas"
     let currentView = 'month'; // 'month' | 'biweek' | 'week' | 'list'
     // alturas das células do dia capturadas por buildCalendar() logo antes de reconstruir o grid;

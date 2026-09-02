@@ -56,8 +56,10 @@
     return{size:size,lines:lines}}
   function codeFont(ctx,size){ctx.font='500 '+size+'px "Korolev Medium","Arial Narrow",Arial,sans-serif'}
   function drawCodeBox(ctx,x,y,w,text,size){rounded(ctx,x,y,w,62,28);ctx.fillStyle=green;ctx.fill();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';codeFont(ctx,size);ctx.fillText(text,x+w/2,y+32)}
-  function renderer(api){var ctx=api.ctx,t=api.t,state=api.state,isStory=api.format==='story',name=api.productName||'NOME DO PRODUTO',codes=[value('productCode','0000000'),value('productCode2','0000000')],dual=(document.getElementById('codeCount')||{}).value==='2';
-    if(state.background)api.helpers.drawCover(ctx,state.background,t,api.format);else api.helpers.drawPlaceholder(ctx,t);
+  function renderer(api){var ctx=api.ctx,t=api.t,state=api.state,isStory=api.format==='story',name=api.productName||'NOME DO PRODUTO',codes=[value('productCode','0000000'),value('productCode2','0000000')],dual=(document.getElementById('codeCount')||{}).value==='2',footerY=isStory?1701:1126;
+    // A faixa verde do rodapé é opaca, então a foto só precisa cobrir até o topo dela: passar footerY
+    // evita ampliar (e cortar) a imagem por causa de uma área que o rodapé tampa de qualquer jeito.
+    if(state.background)api.helpers.drawCover(ctx,state.background,t,api.format,footerY);else api.helpers.drawPlaceholder(ctx,t);
     var shadeH=isStory?420:300,shade=ctx.createLinearGradient(0,0,0,shadeH);shade.addColorStop(0,'rgba(0,0,0,.70)');shade.addColorStop(.6,'rgba(0,0,0,.55)');shade.addColorStop(.85,'rgba(0,0,0,.25)');shade.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=shade;ctx.fillRect(0,0,t.w,shadeH);
     var brandY=isStory?190:94,titleW=RIGHT-TITLE_X;
     drawBrand(ctx,state,api.helpers,LEFT,brandY,BRAND_W,BRAND_H);
@@ -79,7 +81,7 @@
     // duas dividem a largura da régua e usam o mesmo corpo de texto, reduzido até caber na mais cheia.
     var codeY=ruleY+42,codeW=dual?256:245,
         codeTexts=dual?['Cód. '+value('codeVariant1','110 V~')+': '+codes[0],'Cód. '+value('codeVariant2','220 V~')+': '+codes[1]]:['Cód.: '+codes[0]],
-        codeSize=22;
+        codeSize=26;
     codeFont(ctx,codeSize);while(codeSize>13&&codeTexts.some(function(txt){return ctx.measureText(txt).width>codeW-32})){codeSize--;codeFont(ctx,codeSize)}
     if(dual){drawCodeBox(ctx,RIGHT-codeW*2-21,codeY,codeW,codeTexts[0],codeSize);drawCodeBox(ctx,RIGHT-codeW,codeY,codeW,codeTexts[1],codeSize)}
     else drawCodeBox(ctx,RIGHT-codeW,codeY,codeW,codeTexts[0],codeSize);
@@ -87,7 +89,7 @@
     drawPrice(ctx,t,isStory,api);
     // A caixa do logo FG usa a proporção exata do PNG (100x145) pra que o contain não centralize nada
     // e a borda esquerda caia exatamente em LEFT — a mesma da caixa branca da marca lá em cima.
-    var footerY=isStory?1701:1126,footerH=t.h-footerY;ctx.fillStyle=green;ctx.fillRect(0,footerY,t.w,footerH);
+    var footerH=t.h-footerY;ctx.fillStyle=green;ctx.fillRect(0,footerY,t.w,footerH);
     if(state.customAssets.fgLogo)api.helpers.contain(ctx,state.customAssets.fgLogo,[LEFT,footerY-82,98,142]);
     ctx.fillStyle='#fff';ctx.textAlign='left';ctx.textBaseline='top';ctx.font='700 italic 38px "Swiss721Editor","Arial Narrow",Arial,sans-serif';ctx.fillText('.com.br',LEFT+106,footerY+12);
     ctx.textAlign='right';ctx.font='400 18px "Swiss721Editor","Arial Narrow",Arial,sans-serif';var date=value('ecommerceValidity'),parts=date?date.split('-'):null,until=parts?parts[2]+'/'+parts[1]+'/'+parts[0]:'--/--/----',legalY=footerY+24;ctx.fillText('Oferta exclusiva para o site! Válida até '+until,RIGHT,legalY);ctx.fillText('ou enquanto durarem os estoques promocionais.',RIGHT,legalY+24);

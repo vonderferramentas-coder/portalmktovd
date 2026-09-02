@@ -1,5 +1,6 @@
 @echo off
 start "Proxy de imagens VONDER" /min powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0product-image-proxy.ps1"
+start "Coletor de ofertas FG" /min powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0fg-offer-proxy.ps1"
 rem Aguarda o auxiliar realmente responder. Um atraso fixo podia abrir o editor antes dele
 rem em computadores mais lentos, deixando a foto apenas na miniatura e fora do post.
 for /l %%i in (1,1,12) do (
