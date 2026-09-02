@@ -536,7 +536,7 @@
     if (shouldRender) render();
   }
   const lastDate = () => series.length ? series[series.length - 1].date : iso(new Date());
-  const labels = { '7':'Últimos 7 dias', '15':'Últimos 15 dias', '30':'Últimos 30 dias', month:'Este mês', year:'Este ano', custom:'Personalizado' };
+  const labels = { '7':'Últimos 7 dias', '15':'Últimos 15 dias', '30':'Últimos 30 dias', month:'Este mês', year:'Este ano', all:'Desde o início', custom:'Personalizado' };
   const periodMenu = el('periodMenu'), periodTrigger = el('periodTrigger'), customRange = el('customRange');
   const actionsMenu = el('actionsMenu'), actionsTrigger = el('actionsTrigger');
   const closeMenus = () => {
@@ -549,11 +549,13 @@
     if (/^\d+$/.test(range)) from = iso(addDays(parse(end), -(Number(range) - 1)));
     if (range === 'month') { const day = parse(end); from = iso(new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1))); }
     if (range === 'year') { const day = parse(end); from = `${day.getUTCFullYear()}-01-01`; }
+    if (range === 'all') { from = series.length ? series[0].date : end; }
     setRange(from, end, shouldRender);
     const label = /^\d+$/.test(range)
       ? `${labels[range]} · ${shortDate(from)} a ${shortDate(end)}`
       : range === 'month' ? `${labels.month} · ${MONTH_NAMES[parse(end).getUTCMonth()]}`
       : range === 'year' ? `${labels.year} · ${parse(end).getUTCFullYear()}`
+      : range === 'all' ? `${labels.all} · ${shortDate(from)} a ${shortDate(end)}`
       : labels[range];
     setText('periodLabel', label);
     customRange.hidden = true;
