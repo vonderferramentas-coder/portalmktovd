@@ -232,3 +232,18 @@ Um teste real com uma conta de perfil `user` (Monique) encontrou dois problemas 
 | Data | Alteração | Responsável |
 |---|---|---|
 | 03/09/2026 | Corrigido card de administração visível para qualquer usuário em `index.html` (`[hidden]` sem efeito por causa do `display:flex` do `.tool-card`) e o logout forçado/sem mensagem ao negar acesso por perfil incompatível. | Equipe de Marketing / manutenção do portal |
+
+### Redefinição de senha pelo próprio usuário
+
+Até aqui, quem não era administrador não tinha nenhuma forma de trocar a própria senha pelo portal (a área de administração, único lugar com esse tipo de ação, é restrita a admins). A barra de conta no rodapé da sidebar (`#portalAccountBar`, em `portal-shell.js`) passou de um simples indicador com botão de sair para um gatilho clicável que abre um menu para cima (reaproveita o posicionamento de popover já usado pelo seletor de marca, só que ancorado embaixo em vez de embaixo do topo) com dois itens:
+
+- **Redefinir senha** — abre um modal de confirmação centralizado (mesmo padrão visual `.modal-backdrop`/`.modal` usado em outros modais do portal) mostrando o e-mail da própria conta antes de disparar `window.PortalFirebase.requestPasswordReset(email)` (que chama `sendPasswordResetEmail` do Firebase Auth) — evita o envio acidental de um e-mail de redefinição com um clique só.
+- **Sair** — mesmo logout de sempre.
+
+O ícone de sair isolado continua também na própria barra, como atalho de um clique (com `stopPropagation` para não abrir o menu ao mesmo tempo).
+
+Os dois itens do menu usam classes próprias (`.portal-account-menu-item`, com um `.portal-account-menu-divider` — linha fina de 1px — entre eles) em vez de reaproveitar o estilo de "pílula" com fundo arredondado da lista de marcas: a ideia é que leiam como itens de um submenu (lista), não como botões soltos. Testado em claro e escuro via Chrome headless.
+
+| Data | Alteração | Responsável |
+|---|---|---|
+| 03/09/2026 | Barra de conta da sidebar virou um menu dropdown (Redefinir senha / Sair) com itens em estilo submenu, mais modal de confirmação antes do envio do e-mail de redefinição — dá ao perfil `user` uma forma própria de trocar a senha. | Equipe de Marketing / manutenção do portal |
