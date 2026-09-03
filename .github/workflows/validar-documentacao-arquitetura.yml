@@ -1,0 +1,46 @@
+name: Validar documentação de arquitetura
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  architecture-documentation:
+    name: Validar documentação de arquitetura
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Exigir atualização para mudanças de integração
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "pull_request" ]; then base="$BASE_SHA"; else base="$BEFORE_SHA"; fi
+          if ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            echo 'Não há commit-base válido para comparar; validação não aplicável neste evento.'
+            exit 0
+          fi
+          changed="$(git diff --name-only "$base" "$HEAD_SHA")"
+          printf '%s\n' "$changed"
+          if ! printf '%s\n' "$changed" | grep -Eq '^(sync-backend\.js|cloudflare-worker\.js|api\.php|product-image\.php|product-image-proxy\.ps1|fg-offer-proxy\.ps1|\.github/workflows/.*\.ya?ml)$'; then
+            echo 'Nenhum arquivo principal de integração foi alterado.'
+            exit 0
+          fi
+          if printf '%s\n' "$changed" | grep -Fxq 'docs/ARQUITETURA-E-INTEGRACOES.md'; then
+            echo 'Documentação de arquitetura atualizada juntamente com a integração.'
+            exit 0
+          fi
+          echo 'Mudança em integração detectada sem atualização de docs/ARQUITETURA-E-INTEGRACOES.md.' >&2
+          echo 'Atualize o documento com finalidade, dados, autenticação, riscos e operação.' >&2
+          exit 1

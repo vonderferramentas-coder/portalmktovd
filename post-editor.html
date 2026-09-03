@@ -2,7 +2,10 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Editor de Posts</title>
-<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="post-editor.css">
+<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="post-editor.css"><link rel="stylesheet" href="auth.css">
+  <script>document.documentElement.classList.add('auth-pending');</script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="auth-guard.js"></script>
 </head><body><div class="portal-shell"><aside class="portal-sidebar" id="portalSidebar"></aside><main class="portal-main pe-page">
 <header class="pe-header"><div><span class="pe-kicker">Editor de Posts</span><h1>Editor rápido de posts</h1><p id="editorIntro">Primeiro, escolha qual editoria você vai postar.</p></div><a class="pe-back" href="visual-editor.html">← Voltar ao calendário</a></header>
 <nav class="pe-flow" aria-label="Etapas do editor"><div class="pe-flow-step is-active" data-flow-step="editoria"><span>1</span><div><strong>Escolher editoria</strong><small>Qual linha de conteúdo</small></div></div><i></i><div class="pe-flow-step" data-flow-step="choose"><span>2</span><div><strong>Escolher produto</strong><small>Nome ou código no catálogo</small></div></div><i id="flowSepChoose"></i><div class="pe-flow-step" data-flow-step="edit"><span id="flowStepEditNumber">3</span><div><strong>Editar e baixar</strong><small>Revise a composição final</small></div></div></nav>
@@ -38,4 +41,3 @@
 </div>
 </main></div>
 <script src="sync-backend.js"></script><script src="portal-shell.js"></script><script src="post-editor-assets.js"></script><script src="post-editor-assets/brands-manifest.js"></script><script src="post-editor-assets/brands-js/Osten_fundo_laranja.js"></script><script src="post-editor-assets/brands-js/Dismatal.js"></script><script src="post-editor-assets/brands-js/DWT SLOGAN B.js"></script><script src="post-editor-assets/fg-lancamentos-assets.js"></script><script src="post-editor-fg-lancamentos.js"></script><script src="post-editor-fg-ecommerce.js"></script><script src="post-editor-osten-datas-comemorativas.js"></script><script src="post-editor-dismatal-datas-comemorativas.js"></script><script src="post-editor-dwt-datas-comemorativas.js"></script><script src="catalog-provider.js"></script><script src="post-editor.js"></script></body></html>
-

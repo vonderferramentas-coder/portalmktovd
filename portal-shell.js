@@ -392,7 +392,10 @@
     { href:'post-editor.html', label:'Editor de Posts', icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/><path d="m14 18 3-3"/>' },
     { href:'business-card-generator.html', label:'Gerador de Cartões', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h5M7 14h3M15.5 10.5h2M15.5 14h2"/>' },
     { href:'followers-dashboard.html', label:'Redes sociais', icon:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>' },
-    { href:'intelligence-center.html', label:'Central de Inteligência', icon:'<path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/><path d="M9 18h6"/><path d="M10 22h4"/>' }
+    { href:'intelligence-center.html', label:'Central de Inteligência', icon:'<path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/><path d="M9 18h6"/><path d="M10 22h4"/>' },
+    // visível só a administradores — o item nasce escondido (ver renderNavHtml) e é revelado
+    // por auth-guard.js quando confirma o perfil, igual ao card [data-admin-only] de index.html
+    { href:'admin-users.html', label:'Usuários e acessos', icon:'<path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6Z"/>', adminOnly:true }
   ];
   function currentPageFile(){
     return (location.pathname.split('/').pop() || 'index.html');
@@ -401,7 +404,8 @@
     const cur = currentPageFile();
     return `<nav class="portal-nav">${NAV_ITEMS.map(item=>{
       const active = cur === item.href;
-      return `<a href="${item.href}" class="portal-nav-item${active?' active':''}">${svgIcon(item.icon)}<span>${escapeHtml(item.label)}</span></a>`;
+      const adminAttrs = item.adminOnly ? ' data-admin-only hidden' : '';
+      return `<a href="${item.href}" class="portal-nav-item${active?' active':''}"${adminAttrs}>${svgIcon(item.icon)}<span>${escapeHtml(item.label)}</span></a>`;
     }).join('')}</nav>`;
   }
 
@@ -510,6 +514,24 @@
     document.addEventListener('mousedown', onDocClickClosePopover);
     window.addEventListener('scroll', closeBrandPopover, true);
     window.addEventListener('resize', closeBrandPopover);
+  }
+
+  // ============================================================
+  // BARRA DE CONTA — linha única no rodapé da sidebar, com quem está logado e o botão de sair.
+  // Nome/e-mail só são conhecidos depois que auth-guard.js confirma a sessão (portal-shell.js
+  // roda antes disso, ver topo do arquivo) — por isso nasce com um texto neutro e é preenchida
+  // de fora, em #portalProfileInfo; a página inteira já fica escondida por auth-pending até lá,
+  // então não há flash de conteúdo vazio. O botão "Sair" chama window.PortalFirebase.logout() —
+  // exposto por firebase-client.js — em vez de um import, porque este arquivo é um script
+  // clássico (não módulo) de propósito: a marca ativa precisa ficar disponível de forma síncrona
+  // pros scripts que vêm depois dele.
+  // ============================================================
+  function wireLogoutButton(){
+    const btn = $('portalLogoutBtn'); if(!btn) return;
+    btn.addEventListener('click', async ()=>{
+      try{ if(window.PortalFirebase) await window.PortalFirebase.logout(); }catch(e){}
+      location.replace('login.html');
+    });
   }
 
   // ============================================================
@@ -749,7 +771,12 @@
         ${renderNavHtml()}
       </div>
       <div style="margin-top:auto">
-        <button type="button" class="portal-nav-item" id="portalSettingsBtn">${svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>')}<span>Configurações</span></button>
+        <div class="portal-account-bar">
+          <span class="portal-account-avatar">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 14)}</span>
+          <span class="portal-account-info"><span class="portal-account-name" id="portalProfileName">Conta</span><span class="portal-account-email" id="portalProfileEmail"></span></span>
+          <button type="button" class="portal-account-logout" id="portalLogoutBtn" title="Sair" aria-label="Sair">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}</button>
+        </div>
+        <button type="button" class="portal-nav-item" id="portalSettingsBtn" style="margin-top:6px">${svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>')}<span>Configurações</span></button>
       </div>
     `;
     renderBrandTrigger();
@@ -758,6 +785,7 @@
     $('portalBrandTrigger').addEventListener('click', ()=>{ brandPopoverOpen ? closeBrandPopover() : openBrandPopover(); });
     $('portalCollapseBtn').addEventListener('click', toggleSidebarCollapsed);
     $('portalSettingsBtn').addEventListener('click', openPortalSettingsModal);
+    wireLogoutButton();
   }
 
   renderSidebar();

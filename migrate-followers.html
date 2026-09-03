@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Migrar dados de seguidores</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
+  <script>document.documentElement.classList.add('auth-pending');</script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="auth-guard.js"></script>
+</head>
+<body data-auth-role="admin">
+  <div class="portal-shell">
+    <aside class="portal-sidebar" id="portalSidebar"></aside>
+    <main class="portal-main"><div class="container auth-page">
+      <section class="auth-card admin-card">
+        <p class="auth-eyebrow">Administração · etapa controlada</p>
+        <h1>Migrar seguidores para área protegida</h1>
+        <p class="auth-copy">Esta ação copia o histórico e o último snapshot da Meta para o Firestore. Ela não exclui nem altera os arquivos públicos de origem.</p>
+        <div class="auth-notice" id="migrationSummary">Verificando a cópia disponível…</div>
+        <button class="btn btn-primary" type="button" id="migrateButton" disabled>Copiar e validar no Firestore</button>
+        <p class="auth-helper">Após validar esta cópia, a próxima etapa será alterar a automação para atualizar somente o Firestore e, com aprovação explícita, retirar os arquivos públicos.</p>
+      </section>
+    </div></main>
+  </div>
+  <script src="portal-shell.js"></script>
+  <script type="module" src="migrate-followers.js"></script>
+</body>
+</html>

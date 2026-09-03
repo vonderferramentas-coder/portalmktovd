@@ -14,8 +14,7 @@
   // própria, então não devem herdar os números nem as metas/projeções da VONDER: usam este
   // sinal para não buscar os arquivos publicados e mostrar uma mensagem de "não conectado".
   const isVonder = brandKey === 'default';
-  const SOURCE = 'data/social-followers.json';
-  const LIVE_SOURCE = 'data/social-followers-live.json';
+  const FOLLOWERS_STORE_KEY = 'followers-vonder-v1';
   const AUTO_REFRESH_MS = 60000;
   const MAX_BUCKETS = 60;
 
@@ -655,22 +654,37 @@
 
   // ---------------------------------------------------------------- carga
 
-  function fetchJson(source) {
-    return fetch(source + '?v=' + Date.now(), { cache: 'no-store' })
-      .then(response => response.ok ? response.json() : null)
-      .catch(() => null);
+  function protectedFollowers() {
+    if (!isVonder) return Promise.resolve({ published: null, live: null });
+    const gateway = window.PortalFirebase;
+    if (!gateway || typeof gateway.readPortalStore !== 'function') {
+      return Promise.reject(new Error('A conexão segura com os dados ainda não está pronta.'));
+    }
+    return gateway.readPortalStore(FOLLOWERS_STORE_KEY).then(record => {
+      const payload = record && record.v;
+      if (!payload || !payload.published) {
+        throw new Error('Os dados de seguidores ainda não foram migrados para a área protegida.');
+      }
+      return { published: payload.published, live: payload.live || null };
+    });
   }
 
   function load() {
     const manual = read(manualKey, {});
-    // Fora da VONDER não há coleta própria: nunca busca os arquivos publicados pelo workflow
-    // da VONDER, para nenhuma outra marca herdar seus números nem projeções.
-    const fetches = isVonder ? [fetchJson(SOURCE), fetchJson(LIVE_SOURCE)] : [Promise.resolve(null), Promise.resolve(null)];
-    return Promise.all(fetches)
-      .then(([published, live]) => {
+    // Fora da VONDER não há coleta própria: nunca busca dados de outra marca.
+    return protectedFollowers()
+      .then(({ published, live }) => {
         series = buildSeries(published, manual);
         liveSnapshot = live;
         refreshSubtitle(published, live);
+        if (!initialized) { resetRange(); initialized = true; }
+        render();
+      })
+      .catch(error => {
+        const status = el('dataStatus');
+        if (status) status.textContent = error.message || 'Não foi possível carregar os dados protegidos.';
+        series = buildSeries(null, manual);
+        liveSnapshot = null;
         if (!initialized) { resetRange(); initialized = true; }
         render();
       });
@@ -696,6 +710,10 @@
     status.textContent = `Snapshot atual da Meta: ${relative} (${stamp.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}) · histórico e métricas usam dias fechados.`;
   }
 
-  load();
+  // auth-guard.js é um módulo adiado: ele só define window.PortalFirebase depois que este
+  // script (clássico, executado durante o parsing) já rodou. Por isso aguardamos o aviso
+  // disparado ao final de firebase-client.js antes de tentar ler a área protegida.
+  if (!isVonder || window.PortalFirebase) load();
+  else window.addEventListener('portal-firebase-ready', load, { once: true });
   window.setInterval(load, AUTO_REFRESH_MS);
 })();

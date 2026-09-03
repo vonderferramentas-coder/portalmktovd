@@ -107,20 +107,26 @@ var CATALOG_THUMB_WIDTH=160;
 var CATALOG_PRODUCT_WIDTH=1600;
 function productImageUrl(code,width){var digits=normalizeCode(code);if(!digits)return'';return'product-image.php?code='+encodeURIComponent(digits)+'&v=4'+(width?'&w='+width:'')}
 function localProductImageUrl(code,width){var digits=normalizeCode(code);if(!digits)return'';return'http://127.0.0.1:8765/product-image?code='+encodeURIComponent(digits)+'&v=4'+(width?'&w='+width:'')}
-// o helper local (rodado pelo "Abrir Calendario.cmd") é sempre tentado como fallback, mesmo
-// no site publicado (GitHub Pages, que não executa o PHP do proxy) — sem ele o recorte
-// automático simplesmente não tinha nenhuma origem que funcionasse por lá. Só faz efeito em
-// quem estiver com o auxiliar local rodando (loadExportSafeImage já ignora o resto quando a
-// conexão é recusada, caindo no aviso "envie a foto manualmente"); pra quem não tiver, o
-// Chrome pode pedir a permissão de "Acessar dispositivos na rede local" — aceito como troca
-// deliberada em favor do recorte automático funcionar direto do link publicado.
+// mesmo proxy CORS público usado pelo coletor de ofertas FG (ver cloudflare-worker.js), com uma
+// rota extra pra foto de produto — funciona em qualquer origem (GitHub Pages incluído) sem
+// depender do auxiliar local nem de PHP no host. Não reduz o tamanho da foto (sem 'w'), então só
+// entra pro recorte automático (CATALOG_PRODUCT_WIDTH), nunca pras miniaturas do catálogo.
+function workerProductImageUrl(code){var digits=normalizeCode(code);if(!digits)return'';return'https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code='+encodeURIComponent(digits)}
+// o helper local (rodado pelo "Abrir Calendario.cmd") continua sendo tentado como último
+// fallback, inclusive no site publicado (GitHub Pages) — útil quando o worker estiver fora do
+// ar. Só faz efeito em quem estiver com o auxiliar local rodando (loadExportSafeImage ignora o
+// resto quando a conexão é recusada); pra quem não tiver, o Chrome pode pedir a permissão de
+// "Acessar dispositivos na rede local" ao tentar — inofensivo, só afeta essa última tentativa.
 function itemImageUrls(item,width){
  var codes=catalogCodes(item),code=codes[0]&&codes[0].code,direct=(item&&(item.imageUrl||item.image||item.photo))||'',urls=[];
- // Em file:// o PHP da pasta não é executado. O helper local devolve a foto com CORS;
- // quando há servidor web, o PHP continua sendo a primeira opção. A URL direta (foto em
- // tamanho real, sem redimensionar) fica como último fallback pra quando nenhum proxy
+ // O worker (CORS público, funciona em qualquer origem) é a fonte principal do recorte
+ // automático — só entra aqui pra essa largura porque ele não redimensiona (ver
+ // workerProductImageUrl). Em file:// o PHP da pasta não é executado. O helper local devolve
+ // a foto com CORS; quando há servidor web, o PHP continua sendo a próxima opção. A URL direta
+ // (foto em tamanho real, sem redimensionar) fica como último fallback pra quando nenhum proxy
  // responder — e nunca será desenhada se contaminar o canvas.
  if(CATALOG_PHOTO_SLUG==='vonder'&&code){
+  if(width===CATALOG_PRODUCT_WIDTH)urls.push(workerProductImageUrl(code));
   if(location.protocol==='file:')urls.push(localProductImageUrl(code,width));else urls.push(productImageUrl(code,width));
   urls.push(localProductImageUrl(code,width))
  }
@@ -247,7 +253,7 @@ function chooseCatalogProduct(item){
  var urls=itemImageUrls(item,CATALOG_PRODUCT_WIDTH);if(!urls.length){status('Dados preenchidos; envie a foto do produto',false);return}status(bgUrl?'Carregando produto e foto de aplicação…':'Carregando e recortando a foto do catálogo…',true);$('#productFileName').textContent='Foto do catálogo · '+(codes[0]?codes[0].code:'produto')+' · clique para alterar';
  loadExportSafeImage(urls).then(function(im){if(selectedProduct!==item)return;
   state.product=im;$('#productFileName').textContent='Foto do catálogo carregada · clique para alterar';$('#removeWhite').checked=!hasTransparency(im);updateProduct()
- }).catch(function(){if(selectedProduct!==item)return;var localHint=location.protocol==='file:'?' Abra pelo arquivo “Abrir Calendario.cmd” para ativar o recorte automático.':'';status('Dados preenchidos; não foi possível carregar a foto automaticamente.'+localHint,false);$('#productFileName').textContent='Foto visível, mas o recorte automático precisa do lançador'})
+ }).catch(function(err){if(selectedProduct!==item)return;console.warn('[post-editor] recorte automático falhou para',codes[0]&&codes[0].code,'—',err&&err.message,urls);status('Dados preenchidos; não foi possível carregar a foto automaticamente. Verifique a conexão e tente novamente, ou envie a foto manualmente.',false);$('#productFileName').textContent='Foto visível, mas o recorte automático falhou'})
 }
 // resultados que começam pelo termo buscado (no nome ou em algum código) vêm antes dos que só
 // contêm o termo em outro ponto — ex.: buscar "aspirador" mostra "Aspirador de pó..." antes de
@@ -304,16 +310,17 @@ function loadImage(src){return new Promise(function(resolve,reject){
 })}
 function loadExportSafeImage(urls){return new Promise(function(resolve,reject){
  var list=(urls||[]).filter(Boolean),local=list.filter(function(url){return /^http:\/\/127\.0\.0\.1:8765\//.test(url)}),others=list.filter(function(url){return local.indexOf(url)<0}),round=0;
- // O lançador inicia o auxiliar de imagens e abre o calendário em seguida. Em máquinas
- // mais lentas, o editor podia pedir a foto durante essa pequena janela de inicialização:
- // a miniatura externa aparecia, mas o canvas desistia na primeira conexão recusada. Tenta
- // novamente apenas o endereço local (barato e seguro para exportação) antes dos fallbacks.
  function tryList(candidates){return new Promise(function(ok,fail){var index=0;function next(){if(index>=candidates.length){fail(new Error('Nenhuma origem exportável'));return}loadImage(candidates[index++]).then(function(im){if(im.exportSafe)ok(im);else next()}).catch(next)}next()})}
+ // O worker/PHP (others) não dependem de nada rodando na máquina do usuário, então vão
+ // primeiro e sem espera. O auxiliar local (127.0.0.1:8765, iniciado pelo "Abrir
+ // Calendario.cmd") só entra como último recurso — com retentativas, porque o lançador abre
+ // o navegador logo depois de iniciar o auxiliar, e em máquinas mais lentas o editor pode
+ // pedir a foto durante essa pequena janela antes dele responder.
  function tryLocal(){
-  if(!local.length||round>=5)return tryList(others);
+  if(!local.length||round>=5)return Promise.reject(new Error('Nenhuma origem exportável'));
   return tryList(local).catch(function(){var delay=[250,500,900,1400,2200][round++];return new Promise(function(done){setTimeout(done,delay)}).then(tryLocal)})
  }
- tryLocal().then(resolve,reject)
+ tryList(others).catch(tryLocal).then(resolve,reject)
 })}
 // ============================================================
 // MARCA NO CABEÇALHO — biblioteca de logos em post-editor-assets/brands/*.svg (centenas de

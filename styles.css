@@ -54,6 +54,9 @@
        (usado no menu lateral de Configurações), só que como links <a> em vez de <button> */
     .portal-nav{display:flex;flex-direction:column;gap:2px}
     .portal-nav-item{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:var(--radius-sm);color:var(--muted);font-weight:700;font-size:13px;text-decoration:none;transition:background .12s,color .12s}
+    /* [hidden] some vencer o display:flex acima — a regra nativa do navegador pra [hidden] tem
+       prioridade mais baixa que qualquer seletor do autor, então precisa ser repetida aqui */
+    .portal-nav-item[hidden]{display:none}
     .portal-nav-item svg{flex-shrink:0}
     .portal-nav-item:hover{background:var(--surface-muted);color:var(--text)}
     .portal-nav-item.active{background:var(--accent-weak);color:var(--accent-ink)}
@@ -78,6 +81,16 @@
     .portal-brand-trigger-body{flex:1;min-width:0}
     .portal-brand-trigger-name{font-size:13.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .portal-brand-trigger-chevron{flex-shrink:0;display:flex;color:var(--text-faint)}
+
+    /* Barra de conta no rodapé da sidebar: quem está logado + botão de sair, sempre em uma
+       única linha (o nome+e-mail truncam com reticências antes de empurrar o botão) */
+    .portal-account-bar{display:flex;align-items:center;gap:8px;width:100%;padding:6px 7px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--card)}
+    .portal-account-avatar{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--surface-muted);color:var(--muted);display:flex;align-items:center;justify-content:center}
+    .portal-account-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+    .portal-account-name{font-size:11.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .portal-account-email{font-size:10px;font-weight:300;font-style:italic;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .portal-account-logout{flex-shrink:0;width:26px;height:26px;padding:0;display:flex;align-items:center;justify-content:center;border:0;border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
+    .portal-account-logout:hover{background:var(--danger-bg);color:var(--danger)}
 
     /* Textos que somem ao recolher a sidebar: em vez de display:none (que troca de estado na
        hora, dessincronizado da largura da sidebar animando), encolhem/desaparecem juntos com
@@ -120,7 +133,8 @@
     .portal-sidebar.collapsed .portal-logo-text,
     .portal-sidebar.collapsed .portal-nav-item span,
     .portal-sidebar.collapsed .portal-brand-trigger-body,
-    .portal-sidebar.collapsed .portal-brand-trigger-chevron{max-width:0;opacity:0;transition:max-width .2s ease,opacity .08s ease}
+    .portal-sidebar.collapsed .portal-brand-trigger-chevron,
+    .portal-sidebar.collapsed .portal-account-info{max-width:0;opacity:0;transition:max-width .2s ease,opacity .08s ease}
     /* o "gap" do flex ainda reserva espaço ao redor de um filho escondido via max-width:0 —
        sem zerar o gap aqui, o ícone visível (logo/avatar) fica puxado pra esquerda, fora do
        centro real da coluna de ícones, e cada linha desalinha numa medida diferente */
@@ -128,11 +142,13 @@
     .portal-sidebar.collapsed .portal-nav-item{justify-content:center;gap:0}
     .portal-sidebar.collapsed .portal-brand-trigger{width:auto;margin:0 auto;justify-content:center;gap:0;padding:5px;border-color:transparent;background:transparent}
     .portal-sidebar.collapsed .portal-brand-trigger:hover{background:var(--surface-muted)}
+    .portal-sidebar.collapsed .portal-account-bar{width:auto;margin:0 auto;gap:0;padding:5px;border-color:transparent;background:transparent}
 
     @media (max-width:760px){
       .portal-sidebar{width:72px;padding:14px 10px}
       .portal-topbar{flex-direction:column;gap:10px}
-      .portal-logo-text,.portal-nav-item span,.portal-brand-trigger-body,.portal-brand-trigger-chevron{max-width:0;opacity:0}
+      .portal-logo-text,.portal-nav-item span,.portal-brand-trigger-body,.portal-brand-trigger-chevron,.portal-account-info{max-width:0;opacity:0}
+      .portal-account-bar{width:auto;margin:0 auto;gap:0;padding:5px;border-color:transparent;background:transparent}
       .portal-logo{gap:0}
       .portal-nav-item{justify-content:center;gap:0}
       .portal-brand-trigger{width:auto;margin:0 auto;justify-content:center;gap:0;padding:5px;border-color:transparent;background:transparent}
@@ -202,9 +218,9 @@
     label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
     /* input:not([type]) cobre campos de texto sem o atributo type explícito no HTML (o navegador já
        trata como texto, mas o seletor [type=text] só bate se o atributo estiver presente) */
-    input[type=text],input:not([type]),input[type=date],input[type=number],select,textarea{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--card);color:var(--text);transition:border-color .12s,box-shadow .12s}
+    input[type=text],input[type=email],input[type=password],input:not([type]),input[type=date],input[type=number],select,textarea{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--card);color:var(--text);transition:border-color .12s,box-shadow .12s}
     /* controles de uma linha só (não o textarea, que precisa crescer em altura) ficam todos com a mesma altura */
-    input[type=text],input:not([type]),input[type=date],input[type=number],select{height:var(--control-h);padding:0 10px}
+    input[type=text],input[type=email],input[type=password],input:not([type]),input[type=date],input[type=number],select{height:var(--control-h);padding:0 10px}
     input[type=color]{border:1px solid var(--border);border-radius:var(--radius-sm);height:var(--control-h);padding:2px;width:44px;cursor:pointer;flex-shrink:0}
     input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent-ink);box-shadow:0 0 0 3px var(--accent-weak)}
 

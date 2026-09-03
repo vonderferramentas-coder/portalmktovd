@@ -15,6 +15,10 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .imp-stat{display:inline-block;margin-right:22px;font-size:13px;color:var(--muted)}
 .imp-stat b{display:block;font-size:22px;color:var(--text)}
 </style>
+  <link rel="stylesheet" href="auth.css">
+  <script>document.documentElement.classList.add('auth-pending');</script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="auth-guard.js"></script>
 </head>
 <body>
 <div class="imp-card">
