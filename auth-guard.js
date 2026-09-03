@@ -8,11 +8,19 @@ async function deny(message) {
   loginUrl.searchParams.set('reason', message || 'access');
   location.replace(loginUrl.href);
 }
+// Falta de permissão (perfil autenticado, só não é o exigido nesta página) não é falha de
+// sessão: deslogar aqui derrubava a pessoa do portal inteiro por clicar num link que nem
+// deveria estar visível para ela, e sem nenhuma mensagem — parecia um loop travado. Aqui só
+// avisa e manda de volta ao início, mantendo a sessão.
+function denyPermission() {
+  alert('Você não tem permissão para acessar esta área.');
+  location.replace(new URL('index.html', location.href).href);
+}
 try {
   await waitForAuthState();
   const context = await currentContext();
   const requiredRole = body.dataset.authRole;
-  if (requiredRole && context.profile.role !== requiredRole) await deny('permission');
+  if (requiredRole && context.profile.role !== requiredRole) denyPermission();
   else {
     body.dataset.authenticated = 'true'; body.dataset.userRole = context.profile.role; document.documentElement.classList.remove('auth-pending');
     if (context.profile.role === 'admin') document.querySelectorAll('[data-admin-only]').forEach(el => { el.hidden = false; });

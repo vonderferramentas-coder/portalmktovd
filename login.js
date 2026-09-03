@@ -1,9 +1,13 @@
 import { signInWithEmail, signInWithGoogle, requestPasswordReset } from './firebase-client.js';
 const $ = id => document.getElementById(id);
 const form = $('loginForm'), email = $('email'), password = $('password'), message = $('authMessage');
-const next = new URLSearchParams(location.search).get('next');
+const params = new URLSearchParams(location.search);
+const next = params.get('next');
 const destination = next && /^[-a-z0-9_./]+\.html(?:\?.*)?$/i.test(next) ? next : 'index.html';
 function show(text, kind = 'error') { message.textContent = text; message.className = 'auth-message show' + (kind === 'success' ? ' success' : ''); }
+const reason = params.get('reason');
+if (reason === 'pending') show('Sua conta foi autenticada, mas ainda não foi liberada por um administrador.');
+else if (reason === 'access') show('Sua sessão expirou ou não pôde ser confirmada. Faça login novamente.');
 function setBusy(busy) { ['emailSubmit','googleSubmit','resetPassword'].forEach(id => { $(id).disabled = busy; }); }
 function friendly(error) {
   const code = error && error.code;

@@ -221,3 +221,14 @@ A revisão do restante do fluxo de migração (`migrate-followers.js`, `firestor
 | Data | Alteração | Responsável |
 |---|---|---|
 | 03/09/2026 | Login com Google oculto na tela (mantido no código); menu lateral com item de administração visível só para admins e barra de conta/logout em todas as páginas protegidas; `admin-users.html` unificado com a sidebar do portal; adicionada edição de usuário para corrigir documentos do Firestore arquivados sob o UID errado. | Equipe de Marketing / manutenção do portal |
+
+### Correções após o primeiro uso em produção com uma conta não administradora
+
+Um teste real com uma conta de perfil `user` (Monique) encontrou dois problemas que só apareciam fora do ambiente de teste:
+
+- O card "Usuários e acessos" na página inicial (`index.html`) usava `data-admin-only hidden`, mas `.tool-card` define `display:flex` no CSS — a mesma armadilha do botão do Google em `login.html` e do item do menu lateral (a regra nativa do navegador para `[hidden]` perde para qualquer `display` definido pelo autor). Resultado: o card ficava visível para **qualquer** pessoa logada, não só administradores. Corrigido com `.tool-card[hidden]{display:none}` em `index.css`.
+- Ao clicar nesse card sendo `user`, `auth-guard.js` negava o acesso a `admin-users.html` e — como qualquer negação de acesso — **deslogava a pessoa do portal inteiro** antes de mandar para `login.html`, que por sua vez nunca lia o parâmetro de motivo do redirecionamento. Resultado prático: tela de login sem nenhuma mensagem e a necessidade de logar de novo a cada tentativa, parecendo um travamento. Corrigido: falta de permissão para uma página específica agora só avisa (`alert`) e volta para `index.html`, sem encerrar a sessão; a mensagem de motivo passou a aparecer de fato em `login.html` para os casos que continuam exigindo login de novo (sessão expirada ou conta ainda pendente de aprovação).
+
+| Data | Alteração | Responsável |
+|---|---|---|
+| 03/09/2026 | Corrigido card de administração visível para qualquer usuário em `index.html` (`[hidden]` sem efeito por causa do `display:flex` do `.tool-card`) e o logout forçado/sem mensagem ao negar acesso por perfil incompatível. | Equipe de Marketing / manutenção do portal |
