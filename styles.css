@@ -82,15 +82,20 @@
     .portal-brand-trigger-name{font-size:13.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .portal-brand-trigger-chevron{flex-shrink:0;display:flex;color:var(--text-faint)}
 
-    /* Barra de conta no rodapé da sidebar: quem está logado + botão de sair, sempre em uma
-       única linha (o nome+e-mail truncam com reticências antes de empurrar o botão) */
-    .portal-account-bar{display:flex;align-items:center;gap:8px;width:100%;padding:6px 7px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--card)}
+    /* Barra de conta no rodapé da sidebar: quem está logado, sempre em uma única linha (o
+       nome+e-mail truncam com reticências antes de empurrar o ícone de sair). A barra inteira é
+       clicável (abre o menu com Redefinir senha/Sair pra cima, ver portal-shell.js) — o ícone de
+       sair dentro dela é só um atalho e usa stopPropagation pra não abrir o menu junto. */
+    .portal-account-bar{display:flex;align-items:center;gap:8px;width:100%;padding:6px 7px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--card);cursor:pointer;transition:border-color .12s,background .12s}
+    .portal-account-bar:hover{background:var(--surface-muted)}
+    .portal-account-bar.open{border-color:var(--accent-ink);box-shadow:0 0 0 2px var(--accent-weak)}
     .portal-account-avatar{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--surface-muted);color:var(--muted);display:flex;align-items:center;justify-content:center}
     .portal-account-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
     .portal-account-name{font-size:11.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .portal-account-email{font-size:10px;font-weight:300;font-style:italic;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .portal-account-logout{flex-shrink:0;width:26px;height:26px;padding:0;display:flex;align-items:center;justify-content:center;border:0;border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
-    .portal-account-logout:hover{background:var(--danger-bg);color:var(--danger)}
+    .portal-account-btn{flex-shrink:0;width:26px;height:26px;padding:0;display:flex;align-items:center;justify-content:center;border:0;border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
+    .portal-account-btn:hover{background:var(--surface-muted);color:var(--text)}
+    #portalLogoutBtn:hover{background:var(--danger-bg);color:var(--danger)}
 
     /* Textos que somem ao recolher a sidebar: em vez de display:none (que troca de estado na
        hora, dessincronizado da largura da sidebar animando), encolhem/desaparecem juntos com
@@ -118,6 +123,11 @@
     .portal-brand-divider{height:1px;background:var(--border);margin:6px 2px}
     .portal-brand-add{display:flex;align-items:center;gap:8px;width:100%;padding:8px;border:0;background:transparent;color:var(--accent-ink);font-weight:700;font-size:12.5px;border-radius:var(--radius-sm);cursor:pointer;font-family:inherit}
     .portal-brand-add:hover{background:var(--accent-weak)}
+    .portal-account-menu{padding:4px;width:200px}
+    .portal-account-menu-item{display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border:0;background:transparent;color:var(--text);font-size:12.5px;font-weight:500;font-family:inherit;border-radius:5px;cursor:pointer;text-align:left}
+    .portal-account-menu-item:hover{background:var(--surface-muted)}
+    .portal-account-menu-item.danger:hover{background:var(--danger-bg);color:var(--danger)}
+    .portal-account-menu-divider{height:1px;background:var(--border);margin:3px 6px}
 
     /* Upload de foto de perfil no modal "Nova marca" */
     .portal-brand-photo-upload{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px dashed var(--border-strong);border-radius:var(--radius-sm);cursor:pointer;font-size:12.5px;font-weight:700;color:var(--muted);transition:background .12s,border-color .12s}
@@ -142,13 +152,18 @@
     .portal-sidebar.collapsed .portal-nav-item{justify-content:center;gap:0}
     .portal-sidebar.collapsed .portal-brand-trigger{width:auto;margin:0 auto;justify-content:center;gap:0;padding:5px;border-color:transparent;background:transparent}
     .portal-sidebar.collapsed .portal-brand-trigger:hover{background:var(--surface-muted)}
-    .portal-sidebar.collapsed .portal-account-bar{width:auto;margin:0 auto;gap:0;padding:5px;border-color:transparent;background:transparent}
+    /* recolhida, os 3 ícones (avatar + 2 botões) não cabem lado a lado nos 72px — empilha.
+       max-width:0 (regra acima) só zera a largura; numa pilha vertical isso não tira a altura
+       do texto invisível, então precisa de display:none aqui pra não sobrar um vão entre os ícones */
+    .portal-sidebar.collapsed .portal-account-bar{flex-direction:column;width:auto;margin:0 auto;gap:4px;padding:5px;border-color:transparent;background:transparent}
+    .portal-sidebar.collapsed .portal-account-info{display:none}
 
     @media (max-width:760px){
       .portal-sidebar{width:72px;padding:14px 10px}
       .portal-topbar{flex-direction:column;gap:10px}
       .portal-logo-text,.portal-nav-item span,.portal-brand-trigger-body,.portal-brand-trigger-chevron,.portal-account-info{max-width:0;opacity:0}
-      .portal-account-bar{width:auto;margin:0 auto;gap:0;padding:5px;border-color:transparent;background:transparent}
+      .portal-account-bar{flex-direction:column;width:auto;margin:0 auto;gap:4px;padding:5px;border-color:transparent;background:transparent}
+      .portal-account-info{display:none}
       .portal-logo{gap:0}
       .portal-nav-item{justify-content:center;gap:0}
       .portal-brand-trigger{width:auto;margin:0 auto;justify-content:center;gap:0;padding:5px;border-color:transparent;background:transparent}

@@ -517,21 +517,128 @@
   }
 
   // ============================================================
-  // BARRA DE CONTA — linha única no rodapé da sidebar, com quem está logado e o botão de sair.
-  // Nome/e-mail só são conhecidos depois que auth-guard.js confirma a sessão (portal-shell.js
-  // roda antes disso, ver topo do arquivo) — por isso nasce com um texto neutro e é preenchida
-  // de fora, em #portalProfileInfo; a página inteira já fica escondida por auth-pending até lá,
-  // então não há flash de conteúdo vazio. O botão "Sair" chama window.PortalFirebase.logout() —
-  // exposto por firebase-client.js — em vez de um import, porque este arquivo é um script
-  // clássico (não módulo) de propósito: a marca ativa precisa ficar disponível de forma síncrona
-  // pros scripts que vêm depois dele.
+  // BARRA DE CONTA — linha única no rodapé da sidebar, com quem está logado. Nome/e-mail só são
+  // conhecidos depois que auth-guard.js confirma a sessão (portal-shell.js roda antes disso, ver
+  // topo do arquivo) — por isso nasce com texto neutro e é preenchida de fora, em
+  // #portalProfileName/#portalProfileEmail (e no data-user-email do <body>, usado pela
+  // confirmação de redefinir senha); a página inteira já fica escondida por auth-pending até lá,
+  // então não há flash de conteúdo vazio.
+  //
+  // A barra inteira é clicável e abre um menu pra CIMA (fica no rodapé, ver
+  // positionPopoverAbove) com "Redefinir senha" e "Sair" — igual ao seletor de marca no topo da
+  // sidebar, só que ancorado embaixo. O ícone de sair continua também solto na própria barra,
+  // como atalho de um clique só; por isso seu clique precisa de stopPropagation, senão abriria o
+  // menu por cima ao mesmo tempo que desloga. Ambos chamam window.PortalFirebase.* — exposto por
+  // firebase-client.js — em vez de um import, porque este arquivo é um script clássico (não
+  // módulo) de propósito: a marca ativa precisa ficar disponível de forma síncrona pros scripts
+  // que vêm depois dele.
   // ============================================================
-  function wireLogoutButton(){
-    const btn = $('portalLogoutBtn'); if(!btn) return;
-    btn.addEventListener('click', async ()=>{
-      try{ if(window.PortalFirebase) await window.PortalFirebase.logout(); }catch(e){}
-      location.replace('login.html');
+  async function doLogout(){
+    try{ if(window.PortalFirebase) await window.PortalFirebase.logout(); }catch(e){}
+    location.replace('login.html');
+  }
+
+  let accountMenuOpen = false;
+  let accountMenuEl = null;
+
+  function closeAccountMenu(){
+    if(accountMenuEl && accountMenuEl.parentNode) accountMenuEl.parentNode.removeChild(accountMenuEl);
+    accountMenuEl = null;
+    accountMenuOpen = false;
+    const bar = $('portalAccountBar');
+    if(bar){ bar.setAttribute('aria-expanded', 'false'); bar.classList.remove('open'); }
+    document.removeEventListener('mousedown', onDocClickCloseAccountMenu);
+    window.removeEventListener('scroll', closeAccountMenu, true);
+    window.removeEventListener('resize', closeAccountMenu);
+  }
+  function onDocClickCloseAccountMenu(ev){
+    const bar = $('portalAccountBar');
+    if(accountMenuEl && accountMenuEl.contains(ev.target)) return;
+    if(bar && bar.contains(ev.target)) return;
+    closeAccountMenu();
+  }
+  function openAccountMenu(){
+    const bar = $('portalAccountBar'); if(!bar) return;
+    accountMenuEl = document.createElement('div');
+    accountMenuEl.className = 'portal-brand-popover portal-account-menu';
+    accountMenuEl.innerHTML = `<button type="button" class="portal-account-menu-item" id="portalResetPasswordRow">${svgIcon('<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>', 15)}<span>Redefinir senha</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item danger" id="portalMenuLogoutBtn">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}<span>Sair</span></button>`;
+    document.body.appendChild(accountMenuEl);
+    positionPopoverAbove(accountMenuEl, bar);
+    accountMenuEl.querySelector('#portalResetPasswordRow').addEventListener('click', ()=>{ closeAccountMenu(); openResetPasswordModal(); });
+    accountMenuEl.querySelector('#portalMenuLogoutBtn').addEventListener('click', ()=>{ closeAccountMenu(); doLogout(); });
+    bar.setAttribute('aria-expanded', 'true');
+    bar.classList.add('open');
+    accountMenuOpen = true;
+    document.addEventListener('mousedown', onDocClickCloseAccountMenu);
+    window.addEventListener('scroll', closeAccountMenu, true);
+    window.addEventListener('resize', closeAccountMenu);
+  }
+  function positionPopoverAbove(el, anchor){
+    const r = anchor.getBoundingClientRect();
+    el.style.left = `${r.left}px`;
+    el.style.bottom = `${window.innerHeight - r.top + 6}px`;
+  }
+  function wireAccountBar(){
+    const bar = $('portalAccountBar'); if(!bar) return;
+    bar.addEventListener('click', ()=>{ accountMenuOpen ? closeAccountMenu() : openAccountMenu(); });
+    bar.addEventListener('keydown', ev=>{ if(ev.key==='Enter' || ev.key===' '){ ev.preventDefault(); accountMenuOpen ? closeAccountMenu() : openAccountMenu(); } });
+    const logoutBtn = $('portalLogoutBtn');
+    if(logoutBtn) logoutBtn.addEventListener('click', ev=>{ ev.stopPropagation(); doLogout(); });
+  }
+
+  // ============================================================
+  // MODAL "REDEFINIR SENHA" — confirmação antes de disparar o e-mail (mesmo padrão
+  // .modal-backdrop/.modal do resto do app). Único jeito de trocar senha para quem não é admin
+  // (a área de administração é só pra quem já é admin) — reaproveita o mesmo e-mail de
+  // redefinição que "Esqueci minha senha" usa em login.html, só que sem precisar sair da sessão.
+  // ============================================================
+  let resetPasswordModalEl = null;
+  function buildResetPasswordModal(){
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.id = 'resetPasswordBackdrop';
+    backdrop.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2>Redefinir senha</h2>
+        <div class="modal-header-actions">
+          <button type="button" class="modal-close" aria-label="Fechar">${svgIcon('<path d="M18 6 6 18"/><path d="M6 6l12 12"/>', 15)}</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p>Enviaremos um e-mail para <strong id="resetPasswordEmail"></strong> com um link seguro para você definir uma nova senha.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="cancelResetPassword" class="btn ghost">Cancelar</button>
+        <button type="button" id="confirmResetPassword" class="btn">Confirmar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(backdrop);
+    const close = ()=>{ backdrop.style.display = 'none'; };
+    backdrop.addEventListener('click', ev=>{ if(ev.target===backdrop) close(); });
+    backdrop.querySelector('.modal-close').addEventListener('click', close);
+    backdrop.querySelector('#cancelResetPassword').addEventListener('click', close);
+    backdrop.querySelector('#confirmResetPassword').addEventListener('click', async ()=>{
+      const email = document.body.dataset.userEmail;
+      const btn = backdrop.querySelector('#confirmResetPassword');
+      if(!email || !window.PortalFirebase) { close(); return; }
+      btn.disabled = true;
+      try{
+        await window.PortalFirebase.requestPasswordReset(email);
+        close();
+        alert('Enviamos um link para redefinir sua senha para ' + email + '.');
+      }catch(e){
+        close();
+        alert('Não foi possível enviar o link agora. Tente novamente em instantes.');
+      }finally{
+        btn.disabled = false;
+      }
     });
+    return backdrop;
+  }
+  function openResetPasswordModal(){
+    if(!resetPasswordModalEl) resetPasswordModalEl = buildResetPasswordModal();
+    resetPasswordModalEl.querySelector('#resetPasswordEmail').textContent = document.body.dataset.userEmail || '';
+    resetPasswordModalEl.style.display = 'flex';
   }
 
   // ============================================================
@@ -771,10 +878,10 @@
         ${renderNavHtml()}
       </div>
       <div style="margin-top:auto">
-        <div class="portal-account-bar">
+        <div class="portal-account-bar" id="portalAccountBar" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
           <span class="portal-account-avatar">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 14)}</span>
           <span class="portal-account-info"><span class="portal-account-name" id="portalProfileName">Conta</span><span class="portal-account-email" id="portalProfileEmail"></span></span>
-          <button type="button" class="portal-account-logout" id="portalLogoutBtn" title="Sair" aria-label="Sair">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}</button>
+          <button type="button" class="portal-account-btn" id="portalLogoutBtn" title="Sair" aria-label="Sair">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}</button>
         </div>
         <button type="button" class="portal-nav-item" id="portalSettingsBtn" style="margin-top:6px">${svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>')}<span>Configurações</span></button>
       </div>
@@ -785,7 +892,7 @@
     $('portalBrandTrigger').addEventListener('click', ()=>{ brandPopoverOpen ? closeBrandPopover() : openBrandPopover(); });
     $('portalCollapseBtn').addEventListener('click', toggleSidebarCollapsed);
     $('portalSettingsBtn').addEventListener('click', openPortalSettingsModal);
-    wireLogoutButton();
+    wireAccountBar();
   }
 
   renderSidebar();

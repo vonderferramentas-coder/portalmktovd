@@ -22,7 +22,7 @@ try {
   const requiredRole = body.dataset.authRole;
   if (requiredRole && context.profile.role !== requiredRole) denyPermission();
   else {
-    body.dataset.authenticated = 'true'; body.dataset.userRole = context.profile.role; document.documentElement.classList.remove('auth-pending');
+    body.dataset.authenticated = 'true'; body.dataset.userRole = context.profile.role; body.dataset.userEmail = context.user.email; document.documentElement.classList.remove('auth-pending');
     if (context.profile.role === 'admin') document.querySelectorAll('[data-admin-only]').forEach(el => { el.hidden = false; });
     const profileNameEl = document.getElementById('portalProfileName');
     if (profileNameEl) profileNameEl.textContent = context.profile.name || context.user.email;

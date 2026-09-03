@@ -129,5 +129,5 @@ export async function writePortalStore(key, value, expectedVersion) {
 
 export { app, auth, db, profileFor, audit };
 
-window.PortalFirebase = { readPortalStore, writePortalStore, currentContext, logout };
+window.PortalFirebase = { readPortalStore, writePortalStore, currentContext, logout, requestPasswordReset };
 window.dispatchEvent(new Event('portal-firebase-ready'));
