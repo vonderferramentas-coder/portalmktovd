@@ -1,30 +1,48 @@
 <!doctype html>
 <html lang="pt-BR">
+
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Entrar — Portal de Mídias</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Urbanist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="auth.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Urbanist:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
 </head>
+
 <body class="auth-page">
   <main class="auth-shell" aria-labelledby="loginTitle">
     <div class="auth-brand"><span class="auth-brand-mark" aria-hidden="true">◆</span><span>Portal de Mídias</span></div>
     <section class="auth-card">
-      <p class="auth-eyebrow">Acesso seguro</p><h1 id="loginTitle">Entre no seu espaço de trabalho</h1>
-      <p class="auth-description">Use seu e-mail corporativo. O acesso aos conteúdos internos depende de aprovação da administração.</p>
+      <p class="auth-eyebrow">Acesso seguro</p>
+      <h1 id="loginTitle">Entre no seu espaço de trabalho</h1>
+      <p class="auth-description">Use seu e-mail corporativo. O acesso aos conteúdos internos depende de aprovação da
+        administração.</p>
       <p class="auth-message" id="authMessage" role="alert"></p>
       <form class="auth-form" id="loginForm">
-        <div class="auth-field"><label for="email">E-mail corporativo</label><input id="email" type="email" autocomplete="email" required placeholder="nome@empresa.com"></div>
-        <div class="auth-field"><label for="password">Senha</label><div class="auth-input-wrap"><input id="password" type="password" autocomplete="current-password" required placeholder="Sua senha"><button class="auth-password-toggle" id="passwordToggle" type="button" aria-label="Mostrar senha" title="Mostrar senha">◉</button></div></div>
+        <div class="auth-field"><label for="email">E-mail corporativo</label><input id="email" type="email"
+            autocomplete="email" required placeholder="nome@empresa.com"></div>
+        <div class="auth-field"><label for="password">Senha</label>
+          <div class="auth-input-wrap"><input id="password" type="password" autocomplete="current-password" required
+              placeholder="Sua senha"><button class="auth-password-toggle" id="passwordToggle" type="button"
+              aria-label="Mostrar senha" title="Mostrar senha">◉</button></div>
+        </div>
         <button class="btn auth-submit" id="emailSubmit" type="submit">Entrar</button>
       </form>
       <div class="auth-divider" hidden>ou</div>
-      <button class="auth-google" id="googleSubmit" type="button" hidden><span aria-hidden="true">G</span>Entrar com Google</button>
-      <div class="auth-help"><button class="auth-link" id="resetPassword" type="button">Esqueci minha senha</button></div>
+      <button class="auth-google" id="googleSubmit" type="button" hidden><span aria-hidden="true">G</span>Entrar com
+        Google</button>
+      <div class="auth-help"><button class="auth-link" id="resetPassword" type="button">Esqueci minha senha</button>
+      </div>
     </section>
     <p class="auth-footer">Acesso monitorado. Não compartilhe suas credenciais.</p>
   </main>
-  <script src="firebase-config.js"></script><script type="module" src="login.js"></script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="login.js"></script>
 </body>
+
 </html>

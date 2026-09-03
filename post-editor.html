@@ -1,43 +1,292 @@
 <!doctype html>
 <html lang="pt-BR">
+
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Editor de Posts</title>
-<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="post-editor.css"><link rel="stylesheet" href="auth.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Editor de Posts</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="post-editor.css">
+  <link rel="stylesheet" href="auth.css">
   <script>document.documentElement.classList.add('auth-pending');</script>
   <script src="firebase-config.js"></script>
   <script type="module" src="auth-guard.js"></script>
-</head><body><div class="portal-shell"><aside class="portal-sidebar" id="portalSidebar"></aside><main class="portal-main pe-page">
-<header class="pe-header"><div><span class="pe-kicker">Editor de Posts</span><h1>Editor rápido de posts</h1><p id="editorIntro">Primeiro, escolha qual editoria você vai postar.</p></div><a class="pe-back" href="visual-editor.html">← Voltar ao calendário</a></header>
-<nav class="pe-flow" aria-label="Etapas do editor"><div class="pe-flow-step is-active" data-flow-step="editoria"><span>1</span><div><strong>Escolher editoria</strong><small>Qual linha de conteúdo</small></div></div><i></i><div class="pe-flow-step" data-flow-step="choose"><span>2</span><div><strong>Escolher produto</strong><small>Nome ou código no catálogo</small></div></div><i id="flowSepChoose"></i><div class="pe-flow-step" data-flow-step="edit"><span id="flowStepEditNumber">3</span><div><strong>Editar e baixar</strong><small>Revise a composição final</small></div></div></nav>
-<section class="pe-chooser" id="editoriaChooser">
-  <div class="pe-chooser-card">
-    <span class="pe-chooser-kicker">Etapa 1 de 3</span><h2>Qual editoria você vai postar?</h2><p>Cada editoria tem seu próprio preset de composição. As editorias ainda sem preset configurado aparecem desabilitadas, como "Em breve".</p>
-    <div class="pe-editoria-grid" id="editoriaGrid"></div>
+</head>
+
+<body>
+  <div class="portal-shell">
+    <aside class="portal-sidebar" id="portalSidebar"></aside>
+    <main class="portal-main pe-page">
+      <header class="pe-header">
+        <div><span class="pe-kicker">Editor de Posts</span>
+          <h1>Editor rápido de posts</h1>
+          <p id="editorIntro">Primeiro, escolha qual editoria você vai postar.</p>
+        </div><a class="pe-back" href="visual-editor.html">← Voltar ao calendário</a>
+      </header>
+      <nav class="pe-flow" aria-label="Etapas do editor">
+        <div class="pe-flow-step is-active" data-flow-step="editoria"><span>1</span>
+          <div><strong>Escolher editoria</strong><small>Qual linha de conteúdo</small></div>
+        </div><i></i>
+        <div class="pe-flow-step" data-flow-step="choose"><span>2</span>
+          <div><strong>Escolher produto</strong><small>Nome ou código no catálogo</small></div>
+        </div><i id="flowSepChoose"></i>
+        <div class="pe-flow-step" data-flow-step="edit"><span id="flowStepEditNumber">3</span>
+          <div><strong>Editar e baixar</strong><small>Revise a composição final</small></div>
+        </div>
+      </nav>
+      <section class="pe-chooser" id="editoriaChooser">
+        <div class="pe-chooser-card">
+          <span class="pe-chooser-kicker">Etapa 1 de 3</span>
+          <h2>Qual editoria você vai postar?</h2>
+          <p>Cada editoria tem seu próprio preset de composição. As editorias ainda sem preset configurado aparecem
+            desabilitadas, como "Em breve".</p>
+          <div class="pe-editoria-grid" id="editoriaGrid"></div>
+        </div>
+      </section>
+      <section class="pe-chooser" id="productChooser" hidden>
+        <div class="pe-chooser-card">
+          <span class="pe-chooser-kicker">Etapa 2 de 3</span>
+          <div class="pe-selected-editoria" id="selectedEditoriaBarChoose"><span class="pe-editoria-dot"
+              id="selectedEditoriaDotChoose"></span><strong id="selectedEditoriaNameChoose">Editoria</strong><button
+              id="changeEditoriaChoose" type="button">Trocar</button></div>
+          <h2>Qual produto será divulgado?</h2>
+          <p id="productChooserDescription">Busque no catálogo ou cole o link da oferta da FG para preencher os dados
+            comerciais automaticamente.</p>
+          <div class="pe-fg-offer-import" id="fgOfferProductImport" hidden><label for="ecommerceProductUrl">Link da
+              oferta na FG</label>
+            <div class="pe-offer-import"><input id="ecommerceProductUrl" type="url" inputmode="url"
+                placeholder="https://www.fg.com.br/.../p"><button id="importEcommerceOffer" type="button">Puxar
+                dados</button></div><small id="fgOfferImportStatus">Importa nome, SKU, variação, preço e
+              disponibilidade.</small>
+          </div>
+          <div class="pe-catalog-search" id="catalogSearchArea"><span aria-hidden="true">⌕</span><input
+              id="catalogSearch" type="search" autocomplete="off" placeholder="Ex.: Lavadora ou 68.64.160.001"
+              aria-label="Buscar produto no catálogo"><kbd>Enter</kbd></div>
+          <div class="pe-catalog-meta" id="catalogMeta"><span id="catalogStatus">Carregando catálogo…</span><button
+              id="manualProduct" type="button">Continuar sem catálogo</button></div>
+          <div class="pe-catalog-results" id="catalogResults" role="listbox" aria-label="Produtos encontrados"></div>
+        </div>
+      </section>
+      <div class="pe-layout" id="editorWorkspace" hidden>
+        <aside class="pe-panel">
+          <div class="pe-selected-editoria" id="selectedEditoriaBarEdit"><span class="pe-editoria-dot"
+              id="selectedEditoriaDotEdit"></span><strong id="selectedEditoriaNameEdit">Editoria</strong><button
+              id="changeEditoriaEdit" type="button">Trocar</button></div>
+          <section class="pe-section">
+            <div class="pe-step"><span>1</span>
+              <div><strong id="detailsSectionTitle">Produto</strong><small id="detailsSectionHint">Dados preenchidos
+                  pelo catálogo, mas editáveis</small></div>
+            </div>
+            <div class="pe-selected-product" id="selectedProductSummary">
+              <div class="pe-selected-thumb" id="selectedProductThumb">＋</div>
+              <div><strong id="selectedProductName">Produto manual</strong><small id="selectedProductCode">Sem vínculo
+                  com o catálogo</small></div><button id="changeProduct" type="button">Trocar</button>
+            </div>
+            <div id="commemorativeFields" hidden>
+              <div class="pe-grid-fields">
+                <div><label for="eventDay">Dia</label><input id="eventDay" inputmode="numeric" maxlength="2" value="01">
+                </div>
+                <div><label for="eventMonth">Mês</label><input id="eventMonth" maxlength="12" value="JANEIRO"></div>
+              </div>
+              <div id="eventPrefixField"><label for="eventPrefix">Chamada</label><input id="eventPrefix" maxlength="20"
+                  value="Dia do"></div>
+            </div><label for="productName" id="productNameLabel">Nome completo</label><textarea id="productName"
+              rows="3"></textarea><small class="pe-field-hint" id="commemorativeTitleHint" hidden>Use Enter para
+              escolher onde o título quebra de linha.</small>
+            <div id="eventTitleSizeField" class="pe-format-zooms" hidden>
+              <div><label for="eventTitleSizeFeed">Tamanho do texto — Feed <output
+                    id="eventTitleSizeFeedOut">100%</output></label><input id="eventTitleSizeFeed" type="range" min="70"
+                  max="130" value="100" step="1"></div>
+              <div><label for="eventTitleSizeStory">Tamanho do texto — Story <output
+                    id="eventTitleSizeStoryOut">100%</output></label><input id="eventTitleSizeStory" type="range"
+                  min="70" max="130" value="100" step="1"></div>
+            </div>
+            <div id="codeControls"><label for="codeCount">Quantidade de códigos</label><select id="codeCount">
+                <option value="1">1 código</option>
+                <option value="2">2 códigos</option>
+              </select>
+              <div class="pe-code-row" id="codeRow1">
+                <div class="pe-code-variant" id="codeVariantField1" hidden><label for="codeVariant1">Variação
+                    1</label><input id="codeVariant1" value="110 V~"></div>
+                <div><label for="productCode" id="productCodeLabel">Código</label><input id="productCode"></div>
+              </div>
+              <div class="pe-code-row is-dual" id="codeRow2" hidden>
+                <div><label for="codeVariant2">Variação 2</label><input id="codeVariant2" value="220 V~"></div>
+                <div><label for="productCode2">Código 2</label><input id="productCode2"></div>
+              </div>
+            </div>
+            <div id="brandVariantField" hidden><label>Marca no cabeçalho</label>
+              <div class="pe-selected-product" id="brandLogoSummary">
+                <div class="pe-selected-thumb" id="brandLogoThumb">＋</div>
+                <div><strong id="brandLogoName">VONDER</strong><small>Preenchida automaticamente pelo cadastro do
+                    produto</small></div><button id="changeBrandLogo" type="button">Trocar</button>
+              </div>
+              <div id="brandLogoPicker" hidden>
+                <div class="pe-catalog-search"><span aria-hidden="true">⌕</span><input id="brandLogoSearch"
+                    type="search" autocomplete="off" placeholder="Buscar marca (ex.: VONDER, 3M...)"
+                    aria-label="Buscar marca"></div>
+                <div class="pe-catalog-results" id="brandLogoResults" role="listbox" aria-label="Marcas disponíveis">
+                </div>
+              </div><small class="pe-field-hint">Selecione a marca do produto anunciado — usada no logo do
+                cabeçalho.</small>
+              <div id="brandBadgeColorField"><label for="brandBadgeColor">Cor de fundo da marca</label><input
+                  id="brandBadgeColor" type="color" value="#fbc400"></div>
+            </div>
+          </section>
+          <section class="pe-section" id="ecommercePricing" hidden>
+            <div class="pe-step"><span>2</span>
+              <div><strong>Oferta</strong><small>Revise os dados importados ou ajuste manualmente</small></div>
+            </div><label for="ecommercePriceMode">Formato do preço</label><select id="ecommercePriceMode">
+              <option value="por">Somente “Por”</option>
+              <option value="de-por">“De” e “Por”</option>
+              <option value="desconto">Desconto e “Por”</option>
+            </select>
+            <div id="ecommerceOldPriceField" hidden><label for="ecommerceOldPrice">Preço “De”</label><input
+                id="ecommerceOldPrice" inputmode="decimal" value="599,90" placeholder="Ex.: 599,90"></div>
+            <div class="pe-grid-fields">
+              <div><label for="ecommercePrice">Preço “Por”</label><input id="ecommercePrice" inputmode="decimal"
+                  value="469,90" placeholder="Ex.: 469,90"></div>
+              <div id="ecommerceDiscountField" hidden><label for="ecommerceDiscount">Desconto</label><input
+                  id="ecommerceDiscount" value="20% OFF" placeholder="Ex.: 20% OFF"></div>
+            </div><label for="ecommerceCta">Chamada da oferta</label><input id="ecommerceCta" value="APROVEITE!"
+              maxlength="22"><label for="ecommerceValidity">Último dia da oferta</label><input id="ecommerceValidity"
+              type="date"><small class="pe-field-hint">O restante do texto legal é fixo e será incluído
+              automaticamente.</small>
+          </section>
+          <section class="pe-section">
+            <div class="pe-step"><span>3</span>
+              <div><strong>Imagens</strong><small id="imageSectionHint">Envie a cena e, se tiver, o produto
+                  recortado</small></div>
+            </div><label class="pe-drop" id="backgroundDrop" for="backgroundFile"><input id="backgroundFile" type="file"
+                accept="image/*"><span class="pe-drop-icon">＋</span><strong>Foto de fundo</strong><small
+                id="backgroundFileName">Clique ou arraste uma imagem</small></label><label
+              class="pe-drop pe-drop-secondary" id="productDrop" for="productFile"><input id="productFile" type="file"
+                accept="image/*"><img class="pe-drop-preview" id="productFilePreview" alt="Prévia do produto"
+                hidden><span class="pe-drop-icon">＋</span><strong>Produto recortado <em>opcional</em></strong><small
+                id="productFileName">PNG transparente ou foto em fundo branco</small></label><label class="pe-check"
+              id="removeWhiteField"><input id="removeWhite" type="checkbox" checked> Remover fundo branco do
+              produto</label>
+          </section>
+          <section class="pe-section">
+            <div class="pe-step"><span>3</span>
+              <div><strong>Composição</strong><small>Ajustes opcionais antes de baixar</small></div>
+            </div>
+            <div class="pe-grid-fields">
+              <div id="layoutModeField"><label for="layoutMode">Layout</label><select id="layoutMode">
+                  <option value="auto">Automático</option>
+                  <option value="left">Logo à esquerda</option>
+                  <option value="stacked">Produto acima</option>
+                  <option value="right">Logo à direita</option>
+                </select></div>
+              <div id="moveTargetField"><label for="moveTarget">Arrastar</label><select id="moveTarget">
+                  <option value="background">Imagem de fundo</option>
+                  <option value="overlay">Logo e produto</option>
+                </select></div>
+            </div>
+            <div class="pe-format-zooms">
+              <div><label for="backgroundZoomFeed">Zoom do Feed <output
+                    id="backgroundZoomFeedOut">100%</output></label><input id="backgroundZoomFeed" type="range"
+                  min="100" max="180" value="100"></div>
+              <div><label for="backgroundZoomStory">Zoom do Story <output
+                    id="backgroundZoomStoryOut">100%</output></label><input id="backgroundZoomStory" type="range"
+                  min="100" max="180" value="100"></div>
+            </div>
+            <div id="overlayScaleField"><label for="overlayScale">Tamanho do destaque <output
+                  id="overlayScaleOut">100%</output></label><input id="overlayScale" type="range" min="70" max="135"
+                value="100"></div>
+            <div class="pe-actions-row"><button id="autoCompose" type="button">✦ Recalcular composição</button><button
+                id="resetPosition" type="button">↺ Centralizar</button></div>
+          </section>
+          <section class="pe-section pe-suggestions-section" id="compositionSuggestionsSection">
+            <div class="pe-section-heading">
+              <div><strong>Sugestões de composição</strong><small>Escolha um ponto de partida e continue
+                  ajustando</small></div><button id="generateCompositions" type="button">✦ Gerar 3 opções</button>
+            </div>
+            <div class="pe-composition-options" id="compositionOptions" hidden><button type="button"
+                data-composition="balanced"><span
+                  class="pe-option-icon">◫</span><strong>Equilibrada</strong><small>Enquadramento
+                  seguro</small></button><button type="button" data-composition="product"><span
+                  class="pe-option-icon">⬒</span><strong>Produto em destaque</strong><small>Mais presença
+                  visual</small></button><button type="button" data-composition="full"><span
+                  class="pe-option-icon">▣</span><strong>Preenchimento total</strong><small>Story sem
+                  bordas</small></button></div>
+          </section>
+          <div class="pe-downloads"><button class="pe-primary" id="downloadBoth" type="button">↓ Baixar pacote
+              ZIP</button><small class="pe-download-hint">Feed + Story com nomes padronizados</small>
+            <div><button id="downloadFeed" type="button">Feed JPG</button><button id="downloadStory" type="button">Story
+                JPG</button></div>
+          </div>
+          <div class="pe-status" id="editorStatus"><span class="pe-status-dot"></span><span>Editor pronto</span></div>
+        </aside>
+        <section class="pe-stage">
+          <div class="pe-stage-toolbar">
+            <div><strong>Pré-visualização</strong><small id="stageMoveHint">Arraste direto sobre a arte para
+                reposicionar</small></div>
+            <div class="pe-segmented" id="moveModeControls"><button class="is-active" data-move-mode="background"
+                type="button">Mover fundo</button><button data-move-mode="overlay" type="button">Mover destaque</button>
+            </div>
+          </div>
+          <div class="pe-previews">
+            <article class="pe-preview-card">
+              <div class="pe-card-head">
+                <div><strong>Feed</strong><small>1080 × 1350 px</small></div><button data-download="feed"
+                  type="button">Baixar</button>
+              </div>
+              <div class="pe-canvas-wrap"><canvas id="feedCanvas" width="1080" height="1350"
+                  data-format="feed"></canvas>
+                <div class="pe-move-flash" id="moveFlashFeed"><span></span></div>
+              </div>
+            </article>
+            <article class="pe-preview-card pe-story-card">
+              <div class="pe-card-head">
+                <div><strong>Story</strong><small>1080 × 1920 px</small></div><button data-download="story"
+                  type="button">Baixar</button>
+              </div>
+              <div class="pe-canvas-wrap"><canvas id="storyCanvas" width="1080" height="1920"
+                  data-format="story"></canvas>
+                <div class="pe-move-flash" id="moveFlashStory"><span></span></div>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
+      <div class="pe-modal-overlay" id="offerSkuModal" hidden>
+        <div class="pe-modal" role="dialog" aria-modal="true" aria-labelledby="offerSkuModalTitle">
+          <h3 id="offerSkuModalTitle">Escolha a oferta que será divulgada</h3>
+          <p id="offerSkuModalDesc"></p>
+          <div class="pe-sku-options" id="offerSkuOptions"></div>
+          <div class="pe-modal-actions pe-modal-single"><button type="button" id="offerSkuModalCancel">Cancelar</button>
+          </div>
+        </div>
+      </div>
+      <div class="pe-modal-overlay" id="confirmLeaveEdit" hidden>
+        <div class="pe-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmLeaveEditTitle"
+          aria-describedby="confirmLeaveEditDesc">
+          <h3 id="confirmLeaveEditTitle">Voltar e perder as edições?</h3>
+          <p id="confirmLeaveEditDesc">A composição feita até aqui ainda não foi salva. Se você voltar agora, esse
+            progresso será perdido.</p>
+          <div class="pe-modal-actions"><button type="button" id="confirmLeaveEditCancel">Continuar
+              editando</button><button type="button" class="pe-modal-danger" id="confirmLeaveEditOk">Voltar mesmo
+              assim</button></div>
+        </div>
+      </div>
+    </main>
   </div>
-</section>
-<section class="pe-chooser" id="productChooser" hidden>
-  <div class="pe-chooser-card">
-    <span class="pe-chooser-kicker">Etapa 2 de 3</span>
-    <div class="pe-selected-editoria" id="selectedEditoriaBarChoose"><span class="pe-editoria-dot" id="selectedEditoriaDotChoose"></span><strong id="selectedEditoriaNameChoose">Editoria</strong><button id="changeEditoriaChoose" type="button">Trocar</button></div>
-    <h2>Qual produto será divulgado?</h2><p id="productChooserDescription">Busque no catálogo ou cole o link da oferta da FG para preencher os dados comerciais automaticamente.</p><div class="pe-fg-offer-import" id="fgOfferProductImport" hidden><label for="ecommerceProductUrl">Link da oferta na FG</label><div class="pe-offer-import"><input id="ecommerceProductUrl" type="url" inputmode="url" placeholder="https://www.fg.com.br/.../p"><button id="importEcommerceOffer" type="button">Puxar dados</button></div><small id="fgOfferImportStatus">Importa nome, SKU, variação, preço e disponibilidade.</small></div><div class="pe-catalog-search" id="catalogSearchArea"><span aria-hidden="true">⌕</span><input id="catalogSearch" type="search" autocomplete="off" placeholder="Ex.: Lavadora ou 68.64.160.001" aria-label="Buscar produto no catálogo"><kbd>Enter</kbd></div>
-    <div class="pe-catalog-meta" id="catalogMeta"><span id="catalogStatus">Carregando catálogo…</span><button id="manualProduct" type="button">Continuar sem catálogo</button></div>
-    <div class="pe-catalog-results" id="catalogResults" role="listbox" aria-label="Produtos encontrados"></div>
-  </div>
-</section>
-<div class="pe-layout" id="editorWorkspace" hidden><aside class="pe-panel">
-<div class="pe-selected-editoria" id="selectedEditoriaBarEdit"><span class="pe-editoria-dot" id="selectedEditoriaDotEdit"></span><strong id="selectedEditoriaNameEdit">Editoria</strong><button id="changeEditoriaEdit" type="button">Trocar</button></div>
-<section class="pe-section"><div class="pe-step"><span>1</span><div><strong id="detailsSectionTitle">Produto</strong><small id="detailsSectionHint">Dados preenchidos pelo catálogo, mas editáveis</small></div></div><div class="pe-selected-product" id="selectedProductSummary"><div class="pe-selected-thumb" id="selectedProductThumb">＋</div><div><strong id="selectedProductName">Produto manual</strong><small id="selectedProductCode">Sem vínculo com o catálogo</small></div><button id="changeProduct" type="button">Trocar</button></div><div id="commemorativeFields" hidden><div class="pe-grid-fields"><div><label for="eventDay">Dia</label><input id="eventDay" inputmode="numeric" maxlength="2" value="01"></div><div><label for="eventMonth">Mês</label><input id="eventMonth" maxlength="12" value="JANEIRO"></div></div><div id="eventPrefixField"><label for="eventPrefix">Chamada</label><input id="eventPrefix" maxlength="20" value="Dia do"></div></div><label for="productName" id="productNameLabel">Nome completo</label><textarea id="productName" rows="3"></textarea><small class="pe-field-hint" id="commemorativeTitleHint" hidden>Use Enter para escolher onde o título quebra de linha.</small><div id="eventTitleSizeField" class="pe-format-zooms" hidden><div><label for="eventTitleSizeFeed">Tamanho do texto — Feed <output id="eventTitleSizeFeedOut">100%</output></label><input id="eventTitleSizeFeed" type="range" min="70" max="130" value="100" step="1"></div><div><label for="eventTitleSizeStory">Tamanho do texto — Story <output id="eventTitleSizeStoryOut">100%</output></label><input id="eventTitleSizeStory" type="range" min="70" max="130" value="100" step="1"></div></div><div id="codeControls"><label for="codeCount">Quantidade de códigos</label><select id="codeCount"><option value="1">1 código</option><option value="2">2 códigos</option></select><div class="pe-code-row" id="codeRow1"><div class="pe-code-variant" id="codeVariantField1" hidden><label for="codeVariant1">Variação 1</label><input id="codeVariant1" value="110 V~"></div><div><label for="productCode" id="productCodeLabel">Código</label><input id="productCode"></div></div><div class="pe-code-row is-dual" id="codeRow2" hidden><div><label for="codeVariant2">Variação 2</label><input id="codeVariant2" value="220 V~"></div><div><label for="productCode2">Código 2</label><input id="productCode2"></div></div></div><div id="brandVariantField" hidden><label>Marca no cabeçalho</label><div class="pe-selected-product" id="brandLogoSummary"><div class="pe-selected-thumb" id="brandLogoThumb">＋</div><div><strong id="brandLogoName">VONDER</strong><small>Preenchida automaticamente pelo cadastro do produto</small></div><button id="changeBrandLogo" type="button">Trocar</button></div><div id="brandLogoPicker" hidden><div class="pe-catalog-search"><span aria-hidden="true">⌕</span><input id="brandLogoSearch" type="search" autocomplete="off" placeholder="Buscar marca (ex.: VONDER, 3M...)" aria-label="Buscar marca"></div><div class="pe-catalog-results" id="brandLogoResults" role="listbox" aria-label="Marcas disponíveis"></div></div><small class="pe-field-hint">Selecione a marca do produto anunciado — usada no logo do cabeçalho.</small><div id="brandBadgeColorField"><label for="brandBadgeColor">Cor de fundo da marca</label><input id="brandBadgeColor" type="color" value="#fbc400"></div></div></section>
-<section class="pe-section" id="ecommercePricing" hidden><div class="pe-step"><span>2</span><div><strong>Oferta</strong><small>Revise os dados importados ou ajuste manualmente</small></div></div><label for="ecommercePriceMode">Formato do preço</label><select id="ecommercePriceMode"><option value="por">Somente “Por”</option><option value="de-por">“De” e “Por”</option><option value="desconto">Desconto e “Por”</option></select><div id="ecommerceOldPriceField" hidden><label for="ecommerceOldPrice">Preço “De”</label><input id="ecommerceOldPrice" inputmode="decimal" value="599,90" placeholder="Ex.: 599,90"></div><div class="pe-grid-fields"><div><label for="ecommercePrice">Preço “Por”</label><input id="ecommercePrice" inputmode="decimal" value="469,90" placeholder="Ex.: 469,90"></div><div id="ecommerceDiscountField" hidden><label for="ecommerceDiscount">Desconto</label><input id="ecommerceDiscount" value="20% OFF" placeholder="Ex.: 20% OFF"></div></div><label for="ecommerceCta">Chamada da oferta</label><input id="ecommerceCta" value="APROVEITE!" maxlength="22"><label for="ecommerceValidity">Último dia da oferta</label><input id="ecommerceValidity" type="date"><small class="pe-field-hint">O restante do texto legal é fixo e será incluído automaticamente.</small></section>
-<section class="pe-section"><div class="pe-step"><span>3</span><div><strong>Imagens</strong><small id="imageSectionHint">Envie a cena e, se tiver, o produto recortado</small></div></div><label class="pe-drop" id="backgroundDrop" for="backgroundFile"><input id="backgroundFile" type="file" accept="image/*"><span class="pe-drop-icon">＋</span><strong>Foto de fundo</strong><small id="backgroundFileName">Clique ou arraste uma imagem</small></label><label class="pe-drop pe-drop-secondary" id="productDrop" for="productFile"><input id="productFile" type="file" accept="image/*"><img class="pe-drop-preview" id="productFilePreview" alt="Prévia do produto" hidden><span class="pe-drop-icon">＋</span><strong>Produto recortado <em>opcional</em></strong><small id="productFileName">PNG transparente ou foto em fundo branco</small></label><label class="pe-check" id="removeWhiteField"><input id="removeWhite" type="checkbox" checked> Remover fundo branco do produto</label></section>
-<section class="pe-section"><div class="pe-step"><span>3</span><div><strong>Composição</strong><small>Ajustes opcionais antes de baixar</small></div></div><div class="pe-grid-fields"><div id="layoutModeField"><label for="layoutMode">Layout</label><select id="layoutMode"><option value="auto">Automático</option><option value="left">Logo à esquerda</option><option value="stacked">Produto acima</option><option value="right">Logo à direita</option></select></div><div id="moveTargetField"><label for="moveTarget">Arrastar</label><select id="moveTarget"><option value="background">Imagem de fundo</option><option value="overlay">Logo e produto</option></select></div></div><div class="pe-format-zooms"><div><label for="backgroundZoomFeed">Zoom do Feed <output id="backgroundZoomFeedOut">100%</output></label><input id="backgroundZoomFeed" type="range" min="100" max="180" value="100"></div><div><label for="backgroundZoomStory">Zoom do Story <output id="backgroundZoomStoryOut">100%</output></label><input id="backgroundZoomStory" type="range" min="100" max="180" value="100"></div></div><div id="overlayScaleField"><label for="overlayScale">Tamanho do destaque <output id="overlayScaleOut">100%</output></label><input id="overlayScale" type="range" min="70" max="135" value="100"></div><div class="pe-actions-row"><button id="autoCompose" type="button">✦ Recalcular composição</button><button id="resetPosition" type="button">↺ Centralizar</button></div></section>
-<section class="pe-section pe-suggestions-section" id="compositionSuggestionsSection"><div class="pe-section-heading"><div><strong>Sugestões de composição</strong><small>Escolha um ponto de partida e continue ajustando</small></div><button id="generateCompositions" type="button">✦ Gerar 3 opções</button></div><div class="pe-composition-options" id="compositionOptions" hidden><button type="button" data-composition="balanced"><span class="pe-option-icon">◫</span><strong>Equilibrada</strong><small>Enquadramento seguro</small></button><button type="button" data-composition="product"><span class="pe-option-icon">⬒</span><strong>Produto em destaque</strong><small>Mais presença visual</small></button><button type="button" data-composition="full"><span class="pe-option-icon">▣</span><strong>Preenchimento total</strong><small>Story sem bordas</small></button></div></section><div class="pe-downloads"><button class="pe-primary" id="downloadBoth" type="button">↓ Baixar pacote ZIP</button><small class="pe-download-hint">Feed + Story com nomes padronizados</small><div><button id="downloadFeed" type="button">Feed JPG</button><button id="downloadStory" type="button">Story JPG</button></div></div><div class="pe-status" id="editorStatus"><span class="pe-status-dot"></span><span>Editor pronto</span></div>
-</aside><section class="pe-stage"><div class="pe-stage-toolbar"><div><strong>Pré-visualização</strong><small id="stageMoveHint">Arraste direto sobre a arte para reposicionar</small></div><div class="pe-segmented" id="moveModeControls"><button class="is-active" data-move-mode="background" type="button">Mover fundo</button><button data-move-mode="overlay" type="button">Mover destaque</button></div></div><div class="pe-previews"><article class="pe-preview-card"><div class="pe-card-head"><div><strong>Feed</strong><small>1080 × 1350 px</small></div><button data-download="feed" type="button">Baixar</button></div><div class="pe-canvas-wrap"><canvas id="feedCanvas" width="1080" height="1350" data-format="feed"></canvas><div class="pe-move-flash" id="moveFlashFeed"><span></span></div></div></article><article class="pe-preview-card pe-story-card"><div class="pe-card-head"><div><strong>Story</strong><small>1080 × 1920 px</small></div><button data-download="story" type="button">Baixar</button></div><div class="pe-canvas-wrap"><canvas id="storyCanvas" width="1080" height="1920" data-format="story"></canvas><div class="pe-move-flash" id="moveFlashStory"><span></span></div></div></article></div></section></div>
-<div class="pe-modal-overlay" id="offerSkuModal" hidden><div class="pe-modal" role="dialog" aria-modal="true" aria-labelledby="offerSkuModalTitle"><h3 id="offerSkuModalTitle">Escolha a oferta que será divulgada</h3><p id="offerSkuModalDesc"></p><div class="pe-sku-options" id="offerSkuOptions"></div><div class="pe-modal-actions pe-modal-single"><button type="button" id="offerSkuModalCancel">Cancelar</button></div></div></div><div class="pe-modal-overlay" id="confirmLeaveEdit" hidden>
-  <div class="pe-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmLeaveEditTitle" aria-describedby="confirmLeaveEditDesc">
-    <h3 id="confirmLeaveEditTitle">Voltar e perder as edições?</h3>
-    <p id="confirmLeaveEditDesc">A composição feita até aqui ainda não foi salva. Se você voltar agora, esse progresso será perdido.</p>
-    <div class="pe-modal-actions"><button type="button" id="confirmLeaveEditCancel">Continuar editando</button><button type="button" class="pe-modal-danger" id="confirmLeaveEditOk">Voltar mesmo assim</button></div>
-  </div>
-</div>
-</main></div>
-<script src="sync-backend.js"></script><script src="portal-shell.js"></script><script src="post-editor-assets.js"></script><script src="post-editor-assets/brands-manifest.js"></script><script src="post-editor-assets/brands-js/Osten_fundo_laranja.js"></script><script src="post-editor-assets/brands-js/Dismatal.js"></script><script src="post-editor-assets/brands-js/DWT SLOGAN B.js"></script><script src="post-editor-assets/fg-lancamentos-assets.js"></script><script src="post-editor-fg-lancamentos.js"></script><script src="post-editor-fg-ecommerce.js"></script><script src="post-editor-osten-datas-comemorativas.js"></script><script src="post-editor-dismatal-datas-comemorativas.js"></script><script src="post-editor-dwt-datas-comemorativas.js"></script><script src="catalog-provider.js"></script><script src="post-editor.js"></script></body></html>
+  <script src="sync-backend.js"></script>
+  <script src="portal-shell.js"></script>
+  <script src="post-editor-assets.js"></script>
+  <script src="post-editor-assets/brands-manifest.js"></script>
+  <script src="post-editor-assets/brands-js/Osten_fundo_laranja.js"></script>
+  <script src="post-editor-assets/brands-js/Dismatal.js"></script>
+  <script src="post-editor-assets/brands-js/DWT SLOGAN B.js"></script>
+  <script src="post-editor-assets/fg-lancamentos-assets.js"></script>
+  <script src="post-editor-fg-lancamentos.js"></script>
+  <script src="post-editor-fg-ecommerce.js"></script>
+  <script src="post-editor-osten-datas-comemorativas.js"></script>
+  <script src="post-editor-dismatal-datas-comemorativas.js"></script>
+  <script src="post-editor-dwt-datas-comemorativas.js"></script>
+  <script src="catalog-provider.js"></script>
+  <script src="post-editor.js"></script>
+</body>
+
+</html>

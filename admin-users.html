@@ -1,3 +1,82 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Usuários e acessos</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Urbanist:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="auth.css"><script>document.documentElement.classList.add('auth-pending');</script><script src="firebase-config.js"></script><script type="module" src="auth-guard.js"></script></head>
-<body data-auth-role="admin"><div class="portal-shell"><aside class="portal-sidebar" id="portalSidebar"></aside><main class="portal-main"><div class="admin-shell"><section class="admin-intro"><p class="auth-eyebrow">Administração</p><h1>Usuários e acessos</h1><p>Gerencie quem pode acessar as informações internas do portal.</p></section><div class="admin-grid"><section class="card admin-form-card"><p><a class="btn ghost small" href="migrate-followers.html">Migrar dados de seguidores</a></p><h2>Novo usuário</h2><p class="muted">A pessoa receberá um e-mail seguro para definir a própria senha.</p><p id="adminMessage" class="auth-message" role="alert"></p><form id="createUserForm" class="auth-form"><div class="auth-field"><label for="newName">Nome</label><input id="newName" required type="text"></div><div class="auth-field"><label for="newEmail">E-mail corporativo</label><input id="newEmail" required type="email"></div><div class="auth-field"><label for="newRole">Perfil</label><select id="newRole"><option value="user">Usuário</option><option value="admin">Administrador</option></select></div><button class="btn" type="submit">Criar e enviar convite</button></form></section><section class="card admin-list-card"><div class="admin-list-head"><div><h2>Acessos cadastrados</h2><p class="muted">Status e último acesso são atualizados pelo portal.</p></div><button class="btn ghost small" id="refreshUsers" type="button">Atualizar</button></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th><th>Último acesso</th><th>Ações</th></tr></thead><tbody id="userRows"><tr><td colspan="6" class="muted">Carregando usuários…</td></tr></tbody></table></div></section></div></div></main></div><script src="portal-shell.js"></script><script type="module" src="admin-users.js"></script></body></html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Usuários e acessos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Urbanist:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="auth.css">
+    <script>document.documentElement.classList.add('auth-pending');</script>
+    <script src="firebase-config.js"></script>
+    <script type="module" src="auth-guard.js"></script>
+</head>
+
+<body data-auth-role="admin">
+    <div class="portal-shell">
+        <aside class="portal-sidebar" id="portalSidebar"></aside>
+        <main class="portal-main">
+            <div class="admin-shell">
+                <section class="admin-intro">
+                    <p class="auth-eyebrow">Administração</p>
+                    <h1>Usuários e acessos</h1>
+                    <p>Gerencie quem pode acessar as informações internas do portal.</p>
+                </section>
+                <div class="admin-grid">
+                    <section class="card admin-form-card">
+                        <p><a class="btn ghost small" href="migrate-followers.html">Migrar dados de seguidores</a></p>
+                        <h2>Novo usuário</h2>
+                        <p class="muted">A pessoa receberá um e-mail seguro para definir a própria senha.</p>
+                        <p id="adminMessage" class="auth-message" role="alert"></p>
+                        <form id="createUserForm" class="auth-form">
+                            <div class="auth-field"><label for="newName">Nome</label><input id="newName" required
+                                    type="text"></div>
+                            <div class="auth-field"><label for="newEmail">E-mail corporativo</label><input id="newEmail"
+                                    required type="email"></div>
+                            <div class="auth-field"><label for="newRole">Perfil</label><select id="newRole">
+                                    <option value="user">Usuário</option>
+                                    <option value="admin">Administrador</option>
+                                </select></div><button class="btn" type="submit">Criar e enviar convite</button>
+                        </form>
+                    </section>
+                    <section class="card admin-list-card">
+                        <div class="admin-list-head">
+                            <div>
+                                <h2>Acessos cadastrados</h2>
+                                <p class="muted">Status e último acesso são atualizados pelo portal.</p>
+                            </div><button class="btn ghost small" id="refreshUsers" type="button">Atualizar</button>
+                        </div>
+                        <div class="admin-table-wrap">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>E-mail</th>
+                                        <th>Perfil</th>
+                                        <th>Status</th>
+                                        <th>Último acesso</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userRows">
+                                    <tr>
+                                        <td colspan="6" class="muted">Carregando usuários…</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="portal-shell.js"></script>
+    <script type="module" src="admin-users.js"></script>
+</body>
+
+</html>
