@@ -16,6 +16,7 @@
   const isVonder = brandKey === 'default';
   const FOLLOWERS_STORE_KEY = 'followers-vonder-v1';
   const POSTS_STORE_KEY = 'posts-vonder-v1';
+  const POSTS_DISPLAY_LIMIT = 10;
   const AUTO_REFRESH_MS = 60000;
   const MAX_BUCKETS = 60;
 
@@ -520,6 +521,7 @@
 
   function renderPosts() {
     const grid = el('postsGrid'), tableWrap = el('postsTableWrap'), summary = el('postsSummary'), sortWrap = el('postsSort');
+    renderPostsStats();
     if (!grid) return;
     if (!isVonder) {
       if (summary) summary.textContent = 'Esta marca ainda não tem posts conectados.';
@@ -542,16 +544,54 @@
       return;
     }
     const sorted = postsData.slice().sort((a, b) => postSortValue(b, postsSort) - postSortValue(a, postsSort));
+    const displayed = sorted.slice(0, POSTS_DISPLAY_LIMIT);
     const activeOption = POST_SORT_OPTIONS.find(option => option.key === postsSort);
-    if (summary) summary.textContent = `${sorted.length} posts · ordenado por ${activeOption ? activeOption.label.toLowerCase() : ''}`;
+    const orderLabel = activeOption ? activeOption.label.toLowerCase() : '';
+    if (summary) {
+      summary.textContent = sorted.length > displayed.length
+        ? `Top ${displayed.length} de ${sorted.length} posts · ordenado por ${orderLabel}`
+        : `${sorted.length} posts · ordenado por ${orderLabel}`;
+    }
     if (postsView === 'list') {
       grid.hidden = true;
-      if (tableWrap) { tableWrap.hidden = false; renderPostsTable(sorted); }
+      if (tableWrap) { tableWrap.hidden = false; renderPostsTable(displayed); }
     } else {
       if (tableWrap) tableWrap.hidden = true;
       grid.hidden = false;
-      grid.innerHTML = sorted.slice(0, 12).map((post, index) => renderPostCard(post, index)).join('');
+      grid.innerHTML = displayed.map((post, index) => renderPostCard(post, index)).join('');
     }
+  }
+
+  function renderPostsStats() {
+    const panel = el('postsStatsPanel');
+    if (!panel) return;
+    const subtitle = el('postsStatsSubtitle');
+    const ids = ['postsStatTotal', 'postsStatReels', 'postsStatStatic', 'postsStatLikes', 'postsStatComments', 'postsStatInteractions', 'postsStatViews', 'postsStatSaved'];
+    if (!isVonder) {
+      if (subtitle) subtitle.textContent = 'Esta marca ainda não tem posts conectados.';
+      ids.forEach(id => { const node = el(id); if (node) node.textContent = '—'; });
+      return;
+    }
+    const total = postsData.length;
+    if (!total) {
+      if (subtitle) subtitle.textContent = 'Aguardando a primeira coleta de posts.';
+      ids.forEach(id => { const node = el(id); if (node) node.textContent = '—'; });
+      return;
+    }
+    const reels = postsData.filter(post => post.mediaProductType === 'REELS').length;
+    const sum = key => postsData.reduce((acc, post) => acc + (Number(post[key]) || 0), 0);
+    if (subtitle) subtitle.textContent = `Baseado nos ${format(total)} posts mais recentes coletados`;
+    const values = {
+      postsStatTotal: format(total),
+      postsStatReels: format(reels),
+      postsStatStatic: format(total - reels),
+      postsStatLikes: format(sum('likeCount')),
+      postsStatComments: format(sum('commentsCount')),
+      postsStatInteractions: format(sum('totalInteractions')),
+      postsStatViews: format(sum('views')),
+      postsStatSaved: format(sum('saved')),
+    };
+    Object.entries(values).forEach(([id, value]) => { const node = el(id); if (node) node.textContent = value; });
   }
 
   function protectedPosts() {

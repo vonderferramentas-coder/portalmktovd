@@ -212,6 +212,22 @@
       color: var(--text)
     }
 
+    .section-divider {
+      margin: 28px 0 16px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border)
+    }
+
+    .section-divider h2 {
+      font-size: 17px;
+      margin: 0 0 4px;
+      color: var(--text)
+    }
+
+    .section-divider p {
+      margin: 0
+    }
+
     .muted {
       font-size: 12px;
       color: var(--muted)
@@ -1022,9 +1038,13 @@
 
     .posts-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      grid-template-columns: repeat(5, 1fr);
       gap: 14px;
       margin-top: 16px
+    }
+
+    .posts-grid[hidden] {
+      display: none
     }
 
     .post-card {
@@ -1423,6 +1443,10 @@
       .metrics-pair .metrics {
         grid-template-columns: repeat(3, 1fr)
       }
+
+      .posts-grid {
+        grid-template-columns: repeat(3, 1fr)
+      }
     }
 
     @media(max-width:700px) {
@@ -1458,6 +1482,10 @@
 
       .metrics {
         gap: 7px
+      }
+
+      .posts-grid {
+        grid-template-columns: repeat(2, 1fr)
       }
 
       .metric {
@@ -1605,41 +1633,6 @@
                 <tr id="milestoneHead"></tr>
               </thead>
               <tbody id="milestoneBody"></tbody>
-            </table>
-          </div>
-        </section>
-        <section class="card posts-card" id="postsPanel" style="margin-top:16px">
-          <div class="head">
-            <div>
-              <h2>Melhores posts</h2>
-              <p class="muted" id="postsSummary">Aguardando a primeira coleta.</p>
-            </div>
-            <div class="posts-controls">
-              <div class="posts-sort" id="postsSort">
-                <button type="button" class="posts-sort-btn" data-sort="timestamp">Data</button>
-                <button type="button" class="posts-sort-btn is-active" data-sort="likeCount">Curtidas</button>
-                <button type="button" class="posts-sort-btn" data-sort="commentsCount">Comentários</button>
-                <button type="button" class="posts-sort-btn" data-sort="totalInteractions">Interações</button>
-                <button type="button" class="posts-sort-btn" data-sort="views">Visualizações</button>
-                <button type="button" class="posts-sort-btn" data-sort="saved">Salvamentos</button>
-              </div>
-              <div class="posts-view-toggle" id="postsViewToggle">
-                <button type="button" class="posts-view-btn is-active" data-view="grid" aria-label="Visualização em grade" title="Grade">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
-                </button>
-                <button type="button" class="posts-view-btn" data-view="list" aria-label="Visualização em lista" title="Lista">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13" stroke-linecap="round" /><path d="M3 6h.01M3 12h.01M3 18h.01" stroke-linecap="round" /></svg>
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="posts-grid" id="postsGrid"></div>
-          <div class="table-wrap" id="postsTableWrap" hidden>
-            <table>
-              <thead>
-                <tr id="postsTableHead"></tr>
-              </thead>
-              <tbody id="postsTableBody"></tbody>
             </table>
           </div>
         </section>
@@ -1792,6 +1785,63 @@
               <span class="period-pill" id="historyPageLabel">Página 1 de 1</span>
               <button type="button" class="chevron-btn" id="historyNext" aria-label="Próxima página">›</button>
             </div>
+          </div>
+        </section>
+        <div class="section-divider">
+          <h2>Conteúdo do Instagram</h2>
+          <p class="muted">Ranking de posts e números agregados de publicações, à parte das métricas de seguidores acima.</p>
+        </div>
+        <section class="card posts-card" id="postsPanel">
+          <div class="head">
+            <div>
+              <h2>Melhores posts</h2>
+              <p class="muted" id="postsSummary">Aguardando a primeira coleta.</p>
+            </div>
+            <div class="posts-controls">
+              <div class="posts-sort" id="postsSort">
+                <button type="button" class="posts-sort-btn" data-sort="timestamp">Data</button>
+                <button type="button" class="posts-sort-btn is-active" data-sort="likeCount">Curtidas</button>
+                <button type="button" class="posts-sort-btn" data-sort="commentsCount">Comentários</button>
+                <button type="button" class="posts-sort-btn" data-sort="totalInteractions">Interações</button>
+                <button type="button" class="posts-sort-btn" data-sort="views">Visualizações</button>
+                <button type="button" class="posts-sort-btn" data-sort="saved">Salvamentos</button>
+              </div>
+              <div class="posts-view-toggle" id="postsViewToggle">
+                <button type="button" class="posts-view-btn is-active" data-view="grid" aria-label="Visualização em grade" title="Grade">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
+                </button>
+                <button type="button" class="posts-view-btn" data-view="list" aria-label="Visualização em lista" title="Lista">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13" stroke-linecap="round" /><path d="M3 6h.01M3 12h.01M3 18h.01" stroke-linecap="round" /></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="posts-grid" id="postsGrid"></div>
+          <div class="table-wrap" id="postsTableWrap" hidden>
+            <table>
+              <thead>
+                <tr id="postsTableHead"></tr>
+              </thead>
+              <tbody id="postsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="card" id="postsStatsPanel" style="margin-top:16px">
+          <div class="head">
+            <div>
+              <h2>Resumo de publicações</h2>
+              <p class="muted" id="postsStatsSubtitle">Aguardando a primeira coleta.</p>
+            </div><span class="period-pill">Instagram</span>
+          </div>
+          <div class="metrics" style="margin-top:16px">
+            <div class="metric"><span>Publicações coletadas</span><strong id="postsStatTotal">—</strong></div>
+            <div class="metric"><span>Reels</span><strong id="postsStatReels">—</strong></div>
+            <div class="metric"><span>Estáticos</span><strong id="postsStatStatic">—</strong></div>
+            <div class="metric"><span>Curtidas totais</span><strong id="postsStatLikes">—</strong></div>
+            <div class="metric"><span>Comentários totais</span><strong id="postsStatComments">—</strong></div>
+            <div class="metric"><span>Engajamento total</span><strong id="postsStatInteractions">—</strong></div>
+            <div class="metric"><span>Visualizações totais</span><strong id="postsStatViews">—</strong></div>
+            <div class="metric"><span>Salvamentos totais</span><strong id="postsStatSaved">—</strong></div>
           </div>
         </section>
       </div>

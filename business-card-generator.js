@@ -96,9 +96,9 @@
   var embeddedAssets = window.BusinessCardAssets || { logos: {} };
 
   var BRAND_TEMPLATES = {
-    "default": { label: "Institucional VONDER", source: "Identidade exclusiva VONDER", accent: "#F6BE00", ink: "#171717", style: "diagonal", qr: { x: 1460, y: 680, size: 300 } },
+    "default": { label: "VONDER 90 × 50 mm", source: "CorelDRAW .cdr + PDF de referência", accent: "#FFC20D", ink: "#231F20", style: "vonder", qr: { x: 1260, y: 478.4, size: 500 } },
     "ferramentas-gerais": { label: "FG 90 × 50 mm", source: "Illustrator .ai preenchido", accent: "#005745", ink: "#706f6f", style: "fg", qr: { x: 1320, y: 580, size: 400 } },
-    "osten-ferragens": { label: "Institucional OSTEN", source: "Identidade exclusiva OSTEN", accent: "#ED8B00", ink: "#252525", style: "sidebar", qr: { x: 1460, y: 680, size: 300 } },
+    "osten-ferragens": { label: "OSTEN FERRAGENS 90 × 50 mm", source: "CorelDRAW .cdr + PDF de referência", accent: "#FABC09", ink: "#231F20", style: "osten", qr: { x: 1260, y: 478.4, size: 500 } },
     "dismatal": { label: "Institucional DISMATAL", source: "Identidade exclusiva DISMATAL", accent: "#FFED00", ink: "#181818", style: "stripe", qr: { x: 1460, y: 680, size: 300 } },
     "toolmix": { label: "Institucional TOOLMIX", source: "Identidade exclusiva TOOLMIX", accent: "#F26522", ink: "#272727", style: "corner", qr: { x: 1460, y: 680, size: 300 } },
     "dwt": { label: "Institucional DWT", source: "Identidade exclusiva DWT", accent: "#285C4D", secondary: "#AB2328", ink: "#262626", style: "split", qr: { x: 1460, y: 680, size: 300 } },
@@ -345,14 +345,14 @@
     }
   }
 
-  // Seletor manual de negrito do nome — só faz sentido nos cartões que desenham o nome em runs
-  // {texto,negrito} (GRUPO OVD e PILAR TECNOLOGIA). Cada nome tem uma parte "fantasia" própria e
+  // Seletor manual de negrito do nome — usado nos cartões que desenham o nome em runs
+  // {texto,negrito} (VONDER, OSTEN, GRUPO OVD e PILAR TECNOLOGIA). Cada nome tem uma parte "fantasia" própria e
   // sem regra fixa (ex.: "Ailton Ribeiro da Silva" → Ailton Silva; "Marlos José Camilli" → só
   // Marlos), por isso a escolha fica a cargo de quem revisa o cartão.
   function renderNameBoldPicker(r) {
     var field = $("nameBoldField");
     if (!field) return;
-    var show = !!r && (template.style === "ovd" || template.style === "pilar");
+    var show = !!r && ["vonder", "osten", "ovd", "pilar"].indexOf(template.style) >= 0;
     field.hidden = !show;
     if (!show) return;
     var words = nameWordsWithBold(r);
@@ -828,10 +828,11 @@
       name: headerIndex(headers, ["nome", "nomecompleto", "name"]),
       role: headerIndex(headers, ["cargo", "funcao", "função", "role"]),
       address: headerIndex(headers, ["endereco", "address"]),
-      landline: headerIndex(headers, ["telefonefixo", "fixo", "telefonecomercial", "landline", "fone"]),
-      // "fone" fica só no Telefone: uma planilha com coluna única "FONE" (sem Celular separado)
-      // deve carregar apenas o Telefone, e não duplicar o mesmo número no Celular.
-      phone: headerIndex(headers, ["celular", "telefonecelular", "whatsapp", "mobile", "phone", "telefone"]),
+      // "fone"/"telefone" ficam só no Telefone: uma planilha com coluna única "FONE" ou
+      // "TELEFONE" (sem Celular separado) deve carregar apenas o Telefone, e não duplicar o
+      // mesmo número no Celular — "Telefone" sozinho, ao lado de "Celular", é o fixo/comercial.
+      landline: headerIndex(headers, ["telefonefixo", "fixo", "telefonecomercial", "landline", "fone", "telefone"]),
+      phone: headerIndex(headers, ["celular", "telefonecelular", "whatsapp", "mobile", "phone"]),
       email: headerIndex(headers, ["email", "correioeletronico"]),
       website: headerIndex(headers, ["site", "website", "url"])
     };
@@ -1212,8 +1213,17 @@
     return [{ text: words[0], bold: true }, { text: " " + words.slice(1).join(" "), bold: false }];
   }
 
+  function vonderDefaultNameRuns(name) {
+    var text = String(name || "");
+    var words = text.split(" ");
+    if (words.length < 2) return [{ text: text, bold: true }];
+    return [{ text: words.slice(0, -1).join(" ") + " ", bold: false }, { text: words[words.length - 1], bold: true }];
+  }
+
   function defaultNameRuns(name) {
-    return template.style === "pilar" ? pilarDefaultNameRuns(name) : ovdDefaultNameRuns(name);
+    if (template.style === "pilar") return pilarDefaultNameRuns(name);
+    if (template.style === "vonder") return vonderDefaultNameRuns(name);
+    return ovdDefaultNameRuns(name);
   }
 
   // Runs "ativos" de um cartão: usa o negrito escolhido manualmente (r.nameRuns) enquanto ele
@@ -1382,6 +1392,208 @@
 
   }
 
+
+  // ==== VONDER (estilo "vonder") ====
+  // Réplica do PDF exportado do CorelDRAW. A base embutida preserva a ilustração CMYK e a
+  // composição original; os logos vêm da biblioteca oficial e ocupam as caixas medidas no PDF.
+  // Somente os cinco textos variáveis e o QR são redesenhados pelo gerador.
+  async function drawVonder(r, token) {
+    var officialLogos = window.OVD_BRAND_LOGOS || {};
+    var images = await Promise.all([
+      loadImage(embeddedAssets.vonderTemplate),
+      loadImage(officialLogos["VONDER"]),
+      loadImage(officialLogos["OVD - Grupo"]),
+      loadImage(embeddedAssets.vonderTools)
+    ]);
+    if (token !== renderToken) return;
+
+    var background = images[0];
+    var vonderLogo = images[1];
+    var grupoOvdLogo = images[2];
+    var vonderTools = images[3];
+
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, W, H);
+    if (background) ctx.drawImage(background, 0, 0, W, H);
+
+    // A foto de ferramentas embutida na base saía com um tom azulado na exportação CMYK; troca
+    // pelo vetor aprovado (mesma caixa/proporção do original, medida no fundo estático em px de
+    // canvas — o viewBox da base é 1880×1080, igual ao canvas, então bate 1 para 1).
+    var toolsBox = { x: 622.7064, y: 524.2927, w: 633.2549, h: 400.0007 };
+    var toolsPad = 6;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(toolsBox.x - toolsPad, toolsBox.y - toolsPad, toolsBox.w + toolsPad * 2, toolsBox.h + toolsPad * 2);
+    if (vonderTools) ctx.drawImage(vonderTools, toolsBox.x, toolsBox.y, toolsBox.w, toolsBox.h);
+
+    // Neutraliza os vetores antigos da base e recoloca as marcas oficiais sem deformação.
+    // As caixas abaixo são a conversão literal dos limites do PDF (origem com sangria de 5 mm).
+    var yellowBandBottom = 219.436;
+    function clearLogoBox(box) {
+      var pad = 2;
+      var x = box.x - pad;
+      var y = box.y - pad;
+      var width = box.w + pad * 2;
+      var height = box.h + pad * 2;
+      var yellowHeight = Math.max(0, Math.min(y + height, yellowBandBottom) - y);
+      if (yellowHeight) {
+        ctx.fillStyle = "#FFC20D";
+        ctx.fillRect(x, y, width, yellowHeight);
+      }
+      if (y + height > yellowBandBottom) {
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(x, Math.max(y, yellowBandBottom), width, y + height - Math.max(y, yellowBandBottom));
+      }
+    }
+
+    var vonderBox = { x: 124.2363, y: 73.3199, w: 669.9342, h: 253.5844 };
+    var grupoOvdBox = { x: 1319.397, y: 60.700, w: 464.966, h: 251.869 };
+    clearLogoBox(vonderBox);
+    clearLogoBox(grupoOvdBox);
+    if (vonderLogo) ctx.drawImage(vonderLogo, vonderBox.x, vonderBox.y, vonderBox.w, vonderBox.h);
+    if (grupoOvdLogo) ctx.drawImage(grupoOvdLogo, grupoOvdBox.x, grupoOvdBox.y, grupoOvdBox.w, grupoOvdBox.h);
+
+    // Moldura externa de 25 mm e QR interno de 23 mm, ambos nas coordenadas literais do PDF.
+    var qr = template.qr;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(qr.x, qr.y, qr.size, qr.size);
+    var qrInset = 20; // 1 mm
+    drawContactQr(r, { x: qr.x + qrInset, y: qr.y + qrInset, size: qr.size - 2 * qrInset });
+    ctx.strokeStyle = "#231F20";
+    ctx.lineWidth = 5; // 0,25 mm
+    ctx.strokeRect(qr.x, qr.y, qr.size, qr.size);
+
+    // Coordenadas, corpos e pesos extraídos do texto editável do PDF de referência.
+    drawOvdRuns(ovdActiveNameRuns(r), ovdX(31.4617), ovdY(107.5459), 9 * OVD_PT_TO_PX, "#231F20");
+    ctx.font = "400 " + (6.5 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+    ctx.fillStyle = "#231F20";
+    ctx.fillText((r.role || "").toUpperCase(), ovdX(31.4493), ovdY(98.2704));
+    if (r.phone) drawOvdRuns(ovdPhoneRuns(r.phone), ovdX(31.6089), ovdY(89.5249), 6.5 * OVD_PT_TO_PX, "#231F20");
+    if (r.email) {
+      ctx.font = "400 " + (6.5 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+      ctx.fillText(r.email, ovdX(31.6086), ovdY(81.3807));
+    }
+
+    var addressLines = String(r.address || "").split(/\r\n|\r|\n/).filter(Boolean);
+    // +4pt sobre a posição literal do PDF: no valor original, a última linha (telefone fixo)
+    // ficava a menos de 2pt do rodapé preto (quase encostando, sem folga para descendentes).
+    var addressBaselinePt = 55.3589 + 4;
+    addressLines.forEach(function (line, index) {
+      ctx.font = "400 " + (7 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+      ctx.fillText(line, ovdX(31.4651), ovdY(addressBaselinePt - index * 7.9707));
+    });
+    if (r.landline) {
+      var phoneBaselinePt = addressBaselinePt - addressLines.length * 7.9707;
+      drawOvdRuns(ovdPhoneRuns(r.landline, "Fone "), ovdX(31.4654), ovdY(phoneBaselinePt), 7 * OVD_PT_TO_PX, "#231F20");
+    }
+
+    if (r.website) {
+      // Ao lado do QR (não embaixo — a caixa do QR desce até dentro do rodapé preto e cobriria
+      // o texto): encostado à esquerda da caixa com um respiro, base alinhada com a base do QR.
+      var vonderWebsiteRuns = [{ text: r.website, bold: true }];
+      var vonderWebsiteSize = 7.5 * OVD_PT_TO_PX;
+      var vonderWebsiteGap = 40; // ~2mm de respiro até a borda esquerda do QR
+      var vonderWebsiteX = qr.x - vonderWebsiteGap - ovdRunsWidth(vonderWebsiteRuns, vonderWebsiteSize);
+      drawOvdRuns(vonderWebsiteRuns, vonderWebsiteX, qr.y + qr.size, vonderWebsiteSize, "#fff");
+    }
+  }
+  // ==== OSTEN FERRAGENS (estilo "osten") ====
+  // Geometria e tipografia convertidas diretamente do PDF do CorelDRAW. A composição estática
+  // conserva a ilustração e as cores da referência; os dois logos vêm da biblioteca oficial.
+  async function drawOsten(r, token) {
+    var officialLogos = window.OVD_BRAND_LOGOS || {};
+    var images = await Promise.all([
+      loadImage(embeddedAssets.ostenTemplate),
+      loadImage(officialLogos["Osten_fundo_claro"]),
+      loadImage(officialLogos["OVD - Grupo"])
+    ]);
+    if (token !== renderToken) return;
+
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, W, H);
+    if (images[0]) ctx.drawImage(images[0], 0, 0, W, H);
+
+    // Repassa o paralelogramo amarelo por cima do fundo estático. Lateral direita em 90°, lateral
+    // esquerda diagonal; medidas conferidas pela diretoria (2,7768cm de largura no topo, 3,1101cm
+    // na base, 1,1921cm de altura). O canto inferior direito (ângulo reto) é a referência fixa —
+    // vem do stream de conteúdo do PDF original (Cartoes de Visitas Osten.pdf, "f*" logo após
+    // "0.0000 0.2510 1.0000 0.0000 k") — e os demais pontos derivam dele com as medidas acima.
+    // Pontos medidos a partir do canto da folha de impressão 104×64mm, por isso passam direto por
+    // ovdX/ovdY como o resto do texto do cartão.
+    var PT_PER_CM = 28.3464566929;
+    var flagBottomRightX = 283.8118;
+    var flagBottomY = 135.9349;
+    var flagTopWidthPt = 2.7768 * PT_PER_CM;
+    var flagBottomWidthPt = 3.1101 * PT_PER_CM;
+    var flagHeightPt = 1.1921 * PT_PER_CM;
+    var flagTopY = flagBottomY + flagHeightPt;
+    var flagBottomLeftX = flagBottomRightX - flagBottomWidthPt;
+    var flagTopLeftX = flagBottomRightX - flagTopWidthPt;
+    // O amarelo do fundo estático é ligeiramente mais alto que a medida acima — sem limpar antes,
+    // esse resíduo continuaria visível por trás/acima do polígono novo, menor. Cobre de branco
+    // toda a região (até a borda direita/superior do cartão) antes de repintar o tamanho exato.
+    var flagClearLeft = ovdX(Math.min(flagTopLeftX, flagBottomLeftX)) - 10;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(flagClearLeft, 0, W - flagClearLeft, ovdY(flagBottomY));
+    ctx.fillStyle = "#FABC09";
+    ctx.beginPath();
+    ctx.moveTo(ovdX(flagBottomLeftX), ovdY(flagBottomY));
+    ctx.lineTo(ovdX(flagBottomRightX), ovdY(flagBottomY));
+    ctx.lineTo(ovdX(flagBottomRightX), ovdY(flagTopY));
+    ctx.lineTo(ovdX(flagTopLeftX), ovdY(flagTopY));
+    ctx.closePath();
+    ctx.fill();
+
+    // Usa os SVGs oficiais sem reconstrução nem deformação. A largura e o centro vertical
+    // continuam ancorados nas caixas medidas no PDF, mas a altura deriva da proporção nativa.
+    function drawOfficialLogo(img, box) {
+      if (!img || !img.width || !img.height) return;
+      var height = box.w * img.height / img.width;
+      ctx.drawImage(img, box.x, box.y + (box.h - height) / 2, box.w, height);
+    }
+    drawOfficialLogo(images[1], { x: 92.492, y: 115.008, w: 985.222, h: 188.214 });
+    drawOfficialLogo(images[2], { x: 1319.397, y: 74.464, w: 464.966, h: 251.872 });
+
+    var qr = template.qr;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(qr.x, qr.y, qr.size, qr.size);
+    var qrInset = 20; // 1 mm: área útil de 23 mm dentro da moldura de 25 mm.
+    drawContactQr(r, { x: qr.x + qrInset, y: qr.y + qrInset, size: qr.size - 2 * qrInset });
+    ctx.strokeStyle = "#231F20";
+    ctx.lineWidth = 5;
+    ctx.strokeRect(qr.x, qr.y, qr.size, qr.size);
+
+    drawOvdRuns(ovdActiveNameRuns(r), ovdX(26.7664), ovdY(99.7784), 9 * OVD_PT_TO_PX, "#231F20");
+    ctx.font = "400 " + (6.5 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+    ctx.fillStyle = "#231F20";
+    ctx.fillText((r.role || "").toUpperCase(), ovdX(27.3229), ovdY(91.5227));
+    if (r.phone) drawOvdRuns(ovdPhoneRuns(r.phone), ovdX(27.3229), ovdY(82.8521), 6.5 * OVD_PT_TO_PX, "#231F20");
+    if (r.email) {
+      ctx.font = "400 " + (6.5 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+      ctx.fillText(r.email, ovdX(27.3229), ovdY(75.9633));
+    }
+
+    var addressLines = String(r.address || "").split(/\r\n|\r|\n/).filter(Boolean);
+    // +4pt sobre a posição literal do PDF, mesmo ajuste do VONDER: dava quase 2pt de folga até
+    // o rodapé preto na última linha (telefone fixo), curto demais para os descendentes da fonte.
+    var addressBaselinePt = 55.1762 + 4;
+    addressLines.forEach(function (line, index) {
+      ctx.font = "400 " + (7 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
+      ctx.fillText(line, ovdX(26.7647), ovdY(addressBaselinePt - index * 7.9710));
+    });
+    if (r.landline) {
+      var landlineBaselinePt = addressBaselinePt - addressLines.length * 7.9710;
+      drawOvdRuns(ovdPhoneRuns(r.landline, "Fone "), ovdX(26.7650), ovdY(landlineBaselinePt), 7 * OVD_PT_TO_PX, "#231F20");
+    }
+
+    if (r.website) {
+      // Mesmo ajuste do VONDER: ao lado do QR (não embaixo), base alinhada com a base do QR.
+      var ostenWebsiteRuns = [{ text: r.website, bold: true }];
+      var ostenWebsiteSize = 7.5 * OVD_PT_TO_PX;
+      var ostenWebsiteGap = 40;
+      var ostenWebsiteX = qr.x - ostenWebsiteGap - ovdRunsWidth(ostenWebsiteRuns, ostenWebsiteSize);
+      drawOvdRuns(ostenWebsiteRuns, ostenWebsiteX, qr.y + qr.size, ostenWebsiteSize, "#fff");
+    }
+  }
   function drawDecor(style, accent, secondary) {
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, W, H);
@@ -1607,6 +1819,8 @@
       ctx.setTransform(physicalWidth / W, 0, 0, physicalHeight / H, 0, 0);
       var localToken = ++renderToken;
       if (template.style === "fg") await drawFg(r || recordFrom({}), localToken);
+      else if (template.style === "vonder") await drawVonder(r || recordFrom({}), localToken);
+      else if (template.style === "osten") await drawOsten(r || recordFrom({}), localToken);
       else if (template.style === "ovd") await drawOvd(r || recordFrom({}), localToken);
       else if (template.style === "pilar") await drawPilar(r || recordFrom({}), localToken);
       else await drawGeneric(r || recordFrom({}), localToken);
@@ -1620,6 +1834,8 @@
     var token = ++renderToken;
     r = r || recordFrom({ name: "Nome", role: "Cargo" });
     if (template.style === "fg") await drawFg(r, token);
+    else if (template.style === "vonder") await drawVonder(r, token);
+    else if (template.style === "osten") await drawOsten(r, token);
     else if (template.style === "ovd") await drawOvd(r, token);
     else if (template.style === "pilar") await drawPilar(r, token);
     else await drawGeneric(r, token);
@@ -1670,38 +1886,55 @@
   }
 
   // Cores institucionais com receita CMYK exata aprovada (independente da conversão RGB→CMYK
-  // genérica): verde FG (#005745), amarelo GRUPO OVD (#FFC20D, pixel dominante do logo raster
-  // business-card-assets/ovd-logo.png) e azul PILAR TECNOLOGIA (#003A5D, CMYK 100/48/12/58
-  // aprovado). Cada entrada vira um vetor/norma pré-calculado usado para detectar tanto o pixel
-  // sólido quanto sua suavização contra o branco ao redor.
+  // genérica): verde FG (#005745), amarelo GRUPO OVD/VONDER/OSTEN (#FFC20D e #FABC09, ambos
+  // aprovados como CMYK 0/25/100/0), azul PILAR TECNOLOGIA (#003A5D, CMYK 100/48/12/58 aprovado),
+  // o preto de texto/rodapé VONDER/OSTEN (#231F20, aprovado como preto puro CMYK 0/0/0/100, não
+  // o "rich black" que a conversão genérica produziria) e o laranja do logo OSTEN FERRAGENS
+  // (#F5821F, aprovado como CMYK 0/60/100/0). Cada entrada vira um vetor/norma pré-calculado
+  // usado para detectar tanto o pixel sólido quanto sua suavização contra o branco ao redor.
+  // "styles" limita cada receita ao(s) estilo(s) de cartão que realmente usam aquela cor —
+  // sem isso, o verde escuro do FG (uma direção de vetor próxima do neutro) "casava" por
+  // coincidência com pixels cinza-claro de fotos em outros cartões (ex.: a foto de ferramentas
+  // do VONDER saía com um véu esverdeado) mesmo sem nenhum verde ali de verdade.
   var BRAND_CMYK_RECIPES = [
-    { rgb: [0, 87, 69], cmyk: [.95, .37, .73, .38] },
-    { rgb: [255, 194, 13], cmyk: [0, .25, 1, 0] },
-    { rgb: [0, 58, 93], cmyk: [1, .48, .12, .58] }
+    { rgb: [0, 87, 69], cmyk: [.95, .37, .73, .38], styles: ["fg"] },
+    { rgb: [255, 194, 13], cmyk: [0, .25, 1, 0], styles: ["vonder", "ovd"] },
+    { rgb: [250, 188, 9], cmyk: [0, .25, 1, 0], styles: ["osten"] },
+    { rgb: [0, 58, 93], cmyk: [1, .48, .12, .58], styles: ["pilar"] },
+    { rgb: [35, 31, 32], cmyk: [0, 0, 0, 1], styles: ["vonder", "osten"] },
+    { rgb: [245, 130, 31], cmyk: [0, .6, 1, 0], styles: ["osten"] }
   ].map(function (recipe) {
     var vector = [255 - recipe.rgb[0], 255 - recipe.rgb[1], 255 - recipe.rgb[2]];
     var norm = vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2];
-    return { cmyk: recipe.cmyk, vector: vector, norm: norm };
+    return { cmyk: recipe.cmyk, vector: vector, norm: norm, styles: recipe.styles };
   });
 
   function canvasToCmyk(canvasElement) {
     var rgba = canvasElement.getContext("2d").getImageData(0, 0, canvasElement.width, canvasElement.height).data;
     var output = new Uint8Array(canvasElement.width * canvasElement.height * 4);
+    var activeRecipes = BRAND_CMYK_RECIPES.filter(function (recipe) {
+      return recipe.styles.indexOf(template.style) >= 0;
+    });
     for (var source = 0, target = 0; source < rgba.length; source += 4, target += 4) {
       var r = rgba[source], g = rgba[source + 1], b = rgba[source + 2];
       var matched = false;
-      for (var i = 0; i < BRAND_CMYK_RECIPES.length; i++) {
-        var recipe = BRAND_CMYK_RECIPES[i];
+      for (var i = 0; i < activeRecipes.length; i++) {
+        var recipe = activeRecipes[i];
         var coverage = ((255 - r) * recipe.vector[0] + (255 - g) * recipe.vector[1] + (255 - b) * recipe.vector[2]) / recipe.norm;
         if (coverage <= .015 || coverage > 1.03) continue;
         var predictedR = 255 - coverage * recipe.vector[0];
         var predictedG = 255 - coverage * recipe.vector[1];
         var predictedB = 255 - coverage * recipe.vector[2];
         if (Math.abs(r - predictedR) + Math.abs(g - predictedG) + Math.abs(b - predictedB) >= 18) continue;
-        output[target] = Math.round(255 * recipe.cmyk[0] * coverage);
-        output[target + 1] = Math.round(255 * recipe.cmyk[1] * coverage);
-        output[target + 2] = Math.round(255 * recipe.cmyk[2] * coverage);
-        output[target + 3] = Math.round(255 * recipe.cmyk[3] * coverage);
+        // Coberturas até 1.03 são toleradas para pegar tons de marca ligeiramente diferentes
+        // (ex.: #FABC09 vs #FFC20D) como o mesmo amarelo aprovado, mas sem o clamp abaixo o
+        // valor final passava de 255 e o Uint8Array "dava a volta" (ex.: 260 virava 4),
+        // esvaziando o canal e deixando o amarelo quase sem tinta — a mesma cor lida como rosa.
+        var appliedCoverage = Math.min(coverage, 1);
+        output[target] = Math.round(255 * recipe.cmyk[0] * appliedCoverage);
+        output[target + 1] = Math.round(255 * recipe.cmyk[1] * appliedCoverage);
+        output[target + 2] = Math.round(255 * recipe.cmyk[2] * appliedCoverage);
+        output[target + 3] = Math.round(255 * recipe.cmyk[3] * appliedCoverage);
         matched = true;
         break;
       }

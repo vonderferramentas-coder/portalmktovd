@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="business-card-generator.css">
+  <link rel="stylesheet" href="auth.css">
+</head>
+
+<body>
+  <div class="portal-shell">
+    <aside class="portal-sidebar" id="portalSidebar"></aside>
+    <main class="portal-main bc-page">
+      <header class="bc-header">
+        <div><span class="bc-kicker">Produção gráfica</span><h1>Gerador de Cartão de Visitas</h1></div>
+        <div class="bc-brand-pill"><span id="brandDot">FG</span><div><small>Identidade ativa</small><strong id="brandName">FG</strong></div></div>
+      </header>
+      <section class="bc-import" id="importPanel">
+        <div class="bc-import-visual" aria-hidden="true"><div class="bc-mini-card"><strong id="miniBrand">FG</strong><span></span><span></span><span></span></div></div>
+      </section>
+      <section class="bc-workspace" id="workspace" hidden>
+        <aside class="bc-records-panel">
+          <div class="bc-panel-head"><div><h2 id="recordsTitle">0 cartões</h2></div><button id="deleteSelected" type="button" disabled>x</button></div>
+          <div class="bc-selection-tools"><label><input type="checkbox" id="selectAll"></label><span id="selectionCount"></span></div>
+          <div class="bc-records" id="recordsList"></div><button id="addRecord" type="button">+</button>
+        </aside>
+        <section class="bc-editor-panel">
+          <div class="bc-panel-head"><div><h2 id="editorTitle"></h2></div><span id="saveState"></span></div>
+          <form id="cardForm" autocomplete="off">
+            <div class="bc-form-grid">
+              <label class="bc-field bc-field-wide" id="logoVariantField" hidden><span></span>
+                <select id="fieldLogoVariant" name="logoVariant"><option value="fg">FG</option><option value="fg-ico">FG+ICO</option></select>
+              </label>
+              <label class="bc-field bc-field-wide"><span>Nome completo</span><input id="fieldName" name="name" maxlength="80"></label>
+              <div class="bc-field bc-field-wide" id="nameBoldField" hidden><span></span><div id="nameBoldWords"></div></div>
+              <label class="bc-field bc-field-wide"><span>Cargo</span><input id="fieldRole" name="role" maxlength="90"></label>
+              <label class="bc-field bc-field-wide"><span>Endereço</span><textarea id="fieldAddress" name="address" rows="3" maxlength="220"></textarea></label>
+              <label class="bc-field"><span>Celular</span><input id="fieldPhone" name="phone" maxlength="15"></label>
+              <label class="bc-field"><span>Telefone</span><input id="fieldLandline" name="landline" maxlength="15"></label>
+              <label class="bc-field bc-field-wide"><span>E-mail</span><input id="fieldEmail" name="email" maxlength="100"></label>
+              <label class="bc-field bc-field-wide" id="websiteField"><span>Site</span><input id="fieldWebsite" name="website" maxlength="100"></label>
+            </div>
+          </form>
+          <div class="bc-review-card">
+            <div class="bc-review-empty" id="reviewEmpty"><p></p></div>
+            <div class="bc-issues" id="issuesList" hidden></div>
+            <label class="bc-approval"><input type="checkbox" id="approveCurrent" disabled></label>
+          </div>
+        </section>
+        <aside class="bc-preview-panel">
+          <div class="bc-canvas-shell"><div class="bc-card-viewport"><canvas id="cardCanvas" width="1880" height="1080"></canvas></div></div>
+        </aside>
+      </section>
+      <section class="bc-export-bar" id="exportBar" hidden>
+        <div><p><strong id="approvedCount"></strong></p></div>
+        <div class="bc-export-actions"><button id="exportCurrent" type="button"></button><button id="exportSelected" type="button"></button><button id="exportAll" type="button"></button></div>
+      </section>
+      <div class="bc-toast" id="toast" hidden></div>
+      <div class="bc-confirm-backdrop" id="returnToImportModal" hidden>
+        <section><button id="cancelReturnToImportIcon" type="button"></button><h2 id="returnToImportTitle"></h2><p id="returnToImportDescription"></p>
+          <div><button id="cancelReturnToImport" type="button"></button><button id="confirmReturnToImport" type="button"></button></div>
+        </section>
+      </div>
+      <div class="bc-confirm-backdrop" id="deleteConfirmModal" hidden>
+        <section><button id="cancelDeleteConfirmIcon" type="button"></button><h2 id="deleteConfirmTitle"></h2><p id="deleteConfirmDescription"></p>
+          <div><button id="cancelDeleteConfirm" type="button"></button><button id="confirmDeleteConfirm" type="button"></button></div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <pre id="out" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#fff;padding:8px;font:15px monospace;white-space:pre-wrap"></pre>
+  <script src="sync-backend.js"></script>
+  <script>window.PortalBrand={activeId:"osten-ferragens",list:[{id:"osten-ferragens",name:"OSTEN FERRAGENS",shortName:"OF"},{id:"default",name:"VONDER",shortName:"VD"}]};</script>
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="vendor/qrcode-generator.js"></script>
+  <script src="business-card-assets.js"></script>
+  <script src="business-card-print-profile.js"></script>
+  <script src="business-card-vonder-assets.js"></script>
+  <script src="business-card-osten-assets.js"></script>
+  <script src="post-editor-assets/brands-js/VONDER.js"></script>
+  <script src="post-editor-assets/brands-js/Osten_fundo_claro.js"></script>
+  <script src="post-editor-assets/brands-js/OVD - Grupo.js"></script>
+  <script src="post-editor-assets/brands-js/Pilar_Tecnologia_Horizontal.js"></script>
+  <script src="business-card-generator.js"></script>
+  <script>
+    function log(s) { document.getElementById("out").textContent += s + "\n"; }
+    async function inflateZlib(bytes) {
+      var ds = new DecompressionStream("deflate");
+      var stream = new Blob([bytes]).stream().pipeThrough(ds);
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+    function findImageStream(bytes) {
+      var needle = Array.from("/ColorSpace /DeviceCMYK").map(function (c) { return c.charCodeAt(0); });
+      function indexOfBytes(hay, pat, from) {
+        outer: for (var i = from; i <= hay.length - pat.length; i++) {
+          for (var j = 0; j < pat.length; j++) if (hay[i + j] !== pat[j]) continue outer;
+          return i;
+        }
+        return -1;
+      }
+      var csIdx = indexOfBytes(bytes, needle, 0);
+      var streamNeedle = Array.from("stream\n").map(function (c) { return c.charCodeAt(0); });
+      var streamIdx = indexOfBytes(bytes, streamNeedle, csIdx);
+      var streamStart = streamIdx + streamNeedle.length;
+      var endNeedle = Array.from("\nendstream").map(function (c) { return c.charCodeAt(0); });
+      var streamEnd = indexOfBytes(bytes, endNeedle, streamStart);
+      var header = new TextDecoder().decode(bytes.slice(Math.max(0, csIdx - 400), csIdx + 200));
+      var widthMatch = header.match(/\/Width (\d+)/);
+      var heightMatch = header.match(/\/Height (\d+)/);
+      var hasFlate = header.indexOf("FlateDecode") >= 0;
+      return { bytes: bytes.slice(streamStart, streamEnd), width: parseInt(widthMatch[1], 10), height: parseInt(heightMatch[1], 10), flate: hasFlate };
+    }
+    function scanPixels(cmyk) {
+      var stats = { yellowPure: 0, blackPure: 0, orangePure: 0, yellowBad: 0 };
+      for (var i = 0; i < cmyk.length; i += 4) {
+        var c = cmyk[i], m = cmyk[i + 1], y = cmyk[i + 2], k = cmyk[i + 3];
+        if (c === 0 && y > 240 && k === 0 && m > 55 && m < 75) stats.yellowPure++;
+        if (c === 0 && y < 20 && k === 0 && m > 30) stats.yellowBad++;
+        if (c === 0 && m === 0 && y === 0 && k === 255) stats.blackPure++;
+        if (c === 0 && k === 0 && m > 140 && m < 165 && y > 240) stats.orangePure++;
+      }
+      return stats;
+    }
+    async function checkBrand(brandId, brandName) {
+      window.PortalBrand.activeId = brandId;
+      window.BusinessCardGenerator.loadDemo();
+      var r = window.BusinessCardGenerator.getState().records[0];
+      var pdf = await window.BusinessCardGenerator.createPdf(r);
+      var bytes = new Uint8Array(pdf.output("arraybuffer"));
+      var img = findImageStream(bytes);
+      var cmyk = img.flate ? await inflateZlib(img.bytes) : img.bytes;
+      var stats = scanPixels(cmyk);
+      log(brandName + ": " + JSON.stringify(stats));
+    }
+    window.addEventListener("load", async function () {
+      try {
+        await checkBrand("osten-ferragens", "OSTEN");
+        await checkBrand("default", "VONDER");
+        document.title = "OK";
+      } catch (e) {
+        log("ERRO: " + e.message);
+        document.title = "ERRO";
+      }
+    });
+  </script>
+</body>
+
+</html>
