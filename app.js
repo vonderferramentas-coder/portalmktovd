@@ -2151,7 +2151,7 @@
         post.title = title; post.date = date; post.notes = notes;
         post.briefingLink = briefingLink; post.referencesLink = referencesLink; post.artsLink = artsLink;
         post.imageLink = imageLink; post.imageNotes = imageNotes; post.noProduct = noProduct;
-        post.commemorativePostType = commemorativePostType || undefined;
+        post.commemorativePostType = commemorativePostType || '';
         post.referenceImages = editingReferenceImages.slice();
         post.editoria = editorias; post.products = products; delete post.productCode; delete post.productName;
         // redes, formato e tipo são sempre reconstruídos a partir do que está marcado no modal —
@@ -2177,7 +2177,7 @@
         channels: nets.map(net=>({ channel: net, types: [type], places: place.slice() })),
         status: defaultStatus, notes, briefingLink, referencesLink, artsLink, imageLink, imageNotes,
         referenceImages: editingReferenceImages.slice(),
-        noProduct, commemorativePostType: commemorativePostType || undefined, collab: false, color: null, editoria: editorias, products: products.slice(), order: nextOrderForDate(date)
+        noProduct, commemorativePostType: commemorativePostType || '', collab: false, color: null, editoria: editorias, products: products.slice(), order: nextOrderForDate(date)
       };
       state.posts.push(p);
       saveState();
