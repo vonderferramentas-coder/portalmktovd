@@ -1,0 +1,139 @@
+name: Sincronizar posts do Instagram
+
+# Coleta os posts recentes do Instagram com curtidas, comentários e as métricas de
+# /insights (interações totais, visualizações, salvamentos — ver diagnostico-meta-posts.yml,
+# que confirmou que o token atual alcança tudo isso sem escopo extra). Diferente do histórico
+# de seguidores, aqui não existe "dia fechado": cada rodada sobrescreve o snapshot inteiro com
+# os números mais recentes dos últimos posts, para alimentar o ranking de melhores posts.
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-posts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Coletar posts e métricas
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_INSTAGRAM_ID: '17841403154695997'
+        run: |
+          set -euo pipefail
+          test -n "$META_PAGE_ACCESS_TOKEN"
+          python3 - <<'PY'
+          import json, os, time, urllib.request, urllib.error
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          token = os.environ['META_PAGE_ACCESS_TOKEN']
+          ig_id = os.environ['META_INSTAGRAM_ID']
+          api = 'https://graph.facebook.com/v26.0'
+
+          def get(url):
+              req = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}'})
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  return json.loads(resp.read().decode('utf-8'))
+
+          def metric_value(insights, name):
+              for entry in insights.get('data', []):
+                  if entry.get('name') == name:
+                      values = entry.get('values') or []
+                      if values:
+                          return values[0].get('value')
+              return None
+
+          media_fields = 'id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url'
+          listing = get(f'{api}/{ig_id}/media?fields={media_fields}&limit=30')
+          items = listing.get('data', [])
+          if not items:
+              raise SystemExit('A Meta não retornou nenhum post — não grava nada para não apagar o snapshot anterior.')
+
+          posts = []
+          falhas = 0
+          for item in items:
+              media_id = item['id']
+              total_interactions = views = saved = None
+              try:
+                  insights = get(f'{api}/{media_id}/insights?metric=total_interactions,views,saved')
+                  total_interactions = metric_value(insights, 'total_interactions')
+                  views = metric_value(insights, 'views')
+                  saved = metric_value(insights, 'saved')
+              except urllib.error.HTTPError:
+                  # Posts muito antigos ou tipos de mídia sem essas métricas ficam sem elas —
+                  # não trava a coleta dos demais, só esse post fica com curtidas/comentários só.
+                  falhas += 1
+              posts.append({
+                  'id': media_id,
+                  'caption': item.get('caption') or '',
+                  'mediaType': item.get('media_type'),
+                  'mediaProductType': item.get('media_product_type'),
+                  'permalink': item.get('permalink'),
+                  'thumbnailUrl': item.get('thumbnail_url') or item.get('media_url'),
+                  'timestamp': item.get('timestamp'),
+                  'likeCount': item.get('like_count', 0) or 0,
+                  'commentsCount': item.get('comments_count', 0) or 0,
+                  'totalInteractions': total_interactions,
+                  'views': views,
+                  'saved': saved,
+              })
+              time.sleep(0.2)  # não martela a API em sequência
+
+          document = {
+              'version': 1,
+              'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+              'posts': posts,
+          }
+          Path('data/social-posts.json').write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(f'Coletados {len(posts)} posts ({falhas} sem insights de post).')
+          PY
+
+      - name: Publicar dados atualizados
+        run: |
+          git add data/social-posts.json
+          if git diff --cached --quiet -- data/social-posts.json; then
+            echo 'Nenhuma alteração para publicar.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: atualizar posts do Instagram'
+          git push
+
+      # Mesmo padrão de sync-meta-followers.yml: o painel só lê o Firestore, nunca o JSON
+      # público direto — ver docs/ARQUITETURA-E-INTEGRACOES.md, "Migração do painel de seguidores".
+      - name: Publicar posts no Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::warning::FIREBASE_SERVICE_ACCOUNT_KEY não configurado — pulando a gravação em portalStore/posts-vonder-v1. O painel continuará mostrando "Aguardando coleta" até o secret ser cadastrado.'
+            exit 0
+          fi
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os, time
+          from pathlib import Path
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+
+          cred = credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY']))
+          firebase_admin.initialize_app(cred)
+          db = firestore.client()
+
+          published = json.loads(Path('data/social-posts.json').read_text(encoding='utf-8'))
+
+          db.collection('portalStore').document('posts-vonder-v1').set({
+              'v': published,
+              'updated_at': int(time.time() * 1000),
+              'updatedAt': firestore.SERVER_TIMESTAMP,
+          })
+          print('Firestore atualizado:', len(published['posts']), 'posts em', published['updatedAt'])
+          PY

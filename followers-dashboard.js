@@ -15,6 +15,7 @@
   // sinal para não buscar os arquivos publicados e mostrar uma mensagem de "não conectado".
   const isVonder = brandKey === 'default';
   const FOLLOWERS_STORE_KEY = 'followers-vonder-v1';
+  const POSTS_STORE_KEY = 'posts-vonder-v1';
   const AUTO_REFRESH_MS = 60000;
   const MAX_BUCKETS = 60;
 
@@ -49,6 +50,17 @@
     { name:'YouTube',   color:'#F04444', icon:'icons/youtube.svg',   connected:false },
     { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected:false }
   ];
+  const POST_SORT_OPTIONS = [
+    { key: 'likeCount', label: 'Curtidas', icon: '<path d="M12 20s-6.5-4-9-8.5C1.2 7.8 3 4.5 6.5 4.5c2 0 3.5 1.2 5.5 3.5 2-2.3 3.5-3.5 5.5-3.5 3.5 0 5.3 3.3 3.5 7C18.5 16 12 20 12 20Z"/>' },
+    { key: 'commentsCount', label: 'Comentários', icon: '<path d="M21 11.5c0 4.4-4 8-9 8-1 0-2-.1-2.9-.4L4 21l1.3-4.3A7.6 7.6 0 0 1 3 11.5c0-4.4 4-8 9-8s9 3.6 9 8Z"/>' },
+    { key: 'totalInteractions', label: 'Interações', icon: '<path d="M3 17l6-6.5 4 4L21 6"/><path d="M15 6h6v6"/>' },
+    { key: 'views', label: 'Visualizações', icon: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>' },
+    { key: 'saved', label: 'Salvamentos', icon: '<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z"/>' }
+  ];
+  const postIconSvg = key => {
+    const option = POST_SORT_OPTIONS.find(item => item.key === key);
+    return `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${option ? option.icon : ''}</svg>`;
+  };
   const MONTHS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const WEEKDAYS = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
@@ -75,7 +87,10 @@
   const format = value => Number(value || 0).toLocaleString('pt-BR');
   const signed = value => (value > 0 ? '+' : '') + format(Math.round(value));
   const percent = value => `${value > 0 ? '+' : ''}${value.toFixed(1).replace('.', ',')}%`;
-  const decimal = value => Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+  // Seguidor é unidade inteira — "1.299,8/dia" não faz sentido. Toda taxa "por dia" arredonda.
+  const rounded = value => format(Math.round(value));
+  // Legenda vem direto da Meta — trata como conteúdo não confiável antes de injetar no DOM.
+  const escapeHtml = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
 
   let selectedNetwork = '0';
   let series = [];   // pontos diários fechados, com valor arrastado para a frente
@@ -83,6 +98,8 @@
   let liveSnapshot = null;
   let initialized = false;
   let milestoneMonth = null;  // { year, month } navegado pelo usuário no card "Marcos do mês"
+  let postsData = [];        // snapshot mais recente de posts (sem histórico por dia)
+  let postsSort = 'likeCount';
 
   // ---------------------------------------------------------------- dados
 
@@ -448,6 +465,134 @@
     renderMilestones();
   }
 
+  // ------------------------------------------------------------ melhores posts
+
+  const postDateLabel = value => {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '';
+    return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+  };
+
+  function renderPostCard(post, index) {
+    const caption = escapeHtml(post.caption).slice(0, 140);
+    const thumb = post.thumbnailUrl ? `<img src="${escapeHtml(post.thumbnailUrl)}" alt="" loading="lazy">` : '';
+    const stats = POST_SORT_OPTIONS.map(option => {
+      const value = post[option.key];
+      const known = Number.isFinite(Number(value));
+      return `<span class="post-stat${option.key === postsSort ? ' is-primary' : ''}">${postIconSvg(option.key)}<b>${known ? format(Number(value)) : '—'}</b></span>`;
+    }).join('');
+    return `<a class="post-card" href="${escapeHtml(post.permalink) || '#'}" target="_blank" rel="noopener">
+      <div class="post-thumb">${thumb}<span class="post-rank">#${index + 1}</span></div>
+      <div class="post-body">
+        <p class="post-caption">${caption || '<em>Sem legenda</em>'}</p>
+        <span class="post-date">${postDateLabel(post.timestamp)}</span>
+        <div class="post-stats">${stats}</div>
+      </div>
+    </a>`;
+  }
+
+  function renderPosts() {
+    const grid = el('postsGrid'), summary = el('postsSummary'), sortWrap = el('postsSort');
+    if (!grid) return;
+    if (!isVonder) {
+      if (summary) summary.textContent = 'Esta marca ainda não tem posts conectados.';
+      if (sortWrap) sortWrap.hidden = true;
+      grid.innerHTML = '';
+      return;
+    }
+    if (sortWrap) sortWrap.hidden = false;
+    if (!postsData.length) {
+      if (summary) summary.textContent = 'Aguardando a primeira coleta de posts.';
+      grid.innerHTML = '<p class="muted" style="grid-column:1/-1;text-align:center;padding:20px 0">Assim que a coleta automática rodar, os posts mais recentes aparecem aqui.</p>';
+      return;
+    }
+    const sorted = postsData.slice().sort((a, b) => (Number(b[postsSort]) || 0) - (Number(a[postsSort]) || 0));
+    const activeOption = POST_SORT_OPTIONS.find(option => option.key === postsSort);
+    if (summary) summary.textContent = `${sorted.length} posts · ordenado por ${activeOption ? activeOption.label.toLowerCase() : ''}`;
+    grid.innerHTML = sorted.slice(0, 12).map((post, index) => renderPostCard(post, index)).join('');
+  }
+
+  function protectedPosts() {
+    if (!isVonder) return Promise.resolve(null);
+    const gateway = window.PortalFirebase;
+    if (!gateway || typeof gateway.readPortalStore !== 'function') {
+      return Promise.reject(new Error('A conexão segura com os dados ainda não está pronta.'));
+    }
+    return gateway.readPortalStore(POSTS_STORE_KEY).then(record => record && record.v);
+  }
+
+  function loadPosts() {
+    return protectedPosts()
+      .then(data => { postsData = (data && Array.isArray(data.posts)) ? data.posts : []; renderPosts(); })
+      .catch(() => { postsData = []; renderPosts(); });
+  }
+
+  // Barras finas divergindo de uma linha de base central — reaproveitado tanto no gráfico
+  // grande de "Indicadores do período" quanto nos mini-gráficos de "Insights do Instagram".
+  function divergingBarsSvg(values, width, height, minGap) {
+    const baselineY = height / 2;
+    const maxAbs = Math.max(1, ...values.map(value => Math.abs(value)));
+    const barWidth = Math.max(1.5, Math.min(14, width / values.length - minGap));
+    const bars = values.map((value, index) => {
+      const cx = (index + 0.5) / values.length * width;
+      const half = Math.max(1, Math.abs(value) / maxAbs * (baselineY - 4));
+      const y = value >= 0 ? baselineY - half : baselineY;
+      const cls = value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral';
+      return `<rect class="mini-bar ${cls}" data-index="${index}" x="${(cx - barWidth / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${half.toFixed(1)}" rx="${Math.min(2, barWidth / 2).toFixed(1)}"></rect>`;
+    }).join('');
+    return `<line class="mini-baseline" x1="0" y1="${baselineY}" x2="${width}" y2="${baselineY}"></line>${bars}`;
+  }
+
+  // Linha com área preenchida, para séries que só têm valores >= 0 (alcance, novos seguidores...).
+  // Usa currentColor: quem chama pinta o tom certo (verde, vermelho, dourado) via style="color:".
+  function areaSparklineSvg(values, width, height) {
+    if (values.length < 2) return '';
+    const max = Math.max(...values, 1);
+    const min = Math.min(...values, 0);
+    const range = Math.max(1, max - min);
+    const stepX = width / (values.length - 1);
+    const points = values.map((value, index) => {
+      const x = index * stepX;
+      const y = height - ((value - min) / range) * (height - 4) - 2;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const linePath = `M${points.join(' L')}`;
+    const areaPath = `${linePath} L${width.toFixed(1)},${height} L0,${height} Z`;
+    return `<path class="tile-spark-area" d="${areaPath}"></path><path class="tile-spark-line" d="${linePath}"></path>`;
+  }
+
+  // Mini-gráfico de um tile: 'bars' pra séries que podem ser negativas (crescimento líquido),
+  // 'area' pra séries só-positivas (segue o mesmo dado real do tile, não é decoração).
+  // dates/label/unit alimentam o tooltip; sem eles o gráfico fica só visual, sem hover.
+  function renderTileSpark(id, values, kind, tone, dates, label, unit) {
+    const host = el(id);
+    if (!host) return;
+    if (!values.length) { host.innerHTML = ''; return; }
+    const width = 100, height = 36;
+    const chart = kind === 'bars'
+      ? `<svg class="mini-chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">${divergingBarsSvg(values, width, height, 1)}</svg>`
+      : (() => { const inner = areaSparklineSvg(values, width, height); return inner ? `<svg class="tile-spark-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true" style="color:${tone}">${inner}</svg>` : ''; })();
+    host.innerHTML = `${chart}<div class="chart-tooltip tile-spark-tooltip" role="status" hidden></div>`;
+    if (!chart || !dates || dates.length !== values.length) return;
+
+    const tooltip = host.querySelector('.tile-spark-tooltip');
+    if (!tooltip) return;
+    const formatValue = value => unit === 'signed' ? signed(value) : unit === 'percent' ? `${value.toFixed(2).replace('.', ',')}%` : format(Math.round(value));
+    const hide = () => { tooltip.hidden = true; };
+    const show = event => {
+      const rect = host.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+      const index = Math.round(ratio * (values.length - 1));
+      tooltip.innerHTML = `<strong>${shortDate(dates[index])}</strong><span>${label}: <b>${formatValue(values[index])}</b></span>`;
+      tooltip.hidden = false;
+      tooltip.style.left = `${Math.max(4, Math.min(rect.width - 130, event.clientX - rect.left + 8))}px`;
+      tooltip.style.top = '-8px';
+    };
+    host.addEventListener('pointerenter', show);
+    host.addEventListener('pointermove', show);
+    host.addEventListener('pointerleave', hide);
+  }
+
   function renderIndicators(points, nets, periodDeltas, net, rate, perDay, span) {
     const needs = days => `Faltam ${days} dia${days === 1 ? '' : 's'}`;
     setText('netGrowth', periodDeltas.length ? signed(net) : '—');
@@ -498,18 +643,30 @@
     setTone('ytd', ytd || 0);
   }
 
+  const INSIGHT_SPARK_IDS = ['grossFollowsSpark', 'unfollowsSpark', 'insightNetSpark', 'reachSpark', 'followConversionSpark', 'avgFollowsSpark'];
   function renderInsights(points) {
-    const daily = points.map(point => point.insights && point.insights.Instagram).filter(insight => insight && Number.isFinite(Number(insight.follows)) && Number.isFinite(Number(insight.unfollows)));
+    // Mantém a data junto do insight — o tooltip dos mini-gráficos precisa dizer "em que dia".
+    const daily = points
+      .map(point => ({ date: point.date, insight: point.insights && point.insights.Instagram }))
+      .filter(item => item.insight && Number.isFinite(Number(item.insight.follows)) && Number.isFinite(Number(item.insight.unfollows)));
     const blank = message => {
       ['grossFollows','unfollows','insightNet','reach','followConversion','avgFollows'].forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = 'neutral'; });
+      INSIGHT_SPARK_IDS.forEach(id => renderTileSpark(id, [], 'area', null));
       setText('insightsSummary', message);
       setText('insightsPeriod', 'Aguardando');
     };
     if (!daily.length) return blank('Aguardando a importação dos Insights da Meta para os dias fechados.');
-    const follows = daily.reduce((sum, item) => sum + Number(item.follows), 0);
-    const left = daily.reduce((sum, item) => sum + Number(item.unfollows), 0);
+    const dateSeries = daily.map(item => item.date);
+    const followsSeries = daily.map(item => Number(item.insight.follows));
+    const unfollowsSeries = daily.map(item => Number(item.insight.unfollows));
+    const netSeries = followsSeries.map((value, index) => value - unfollowsSeries[index]);
+    const reachSeries = daily.map(item => Number.isFinite(Number(item.insight.reach)) ? Number(item.insight.reach) : 0);
+    const conversionSeries = followsSeries.map((value, index) => reachSeries[index] > 0 ? value / reachSeries[index] * 100 : 0);
+
+    const follows = followsSeries.reduce((sum, value) => sum + value, 0);
+    const left = unfollowsSeries.reduce((sum, value) => sum + value, 0);
     const net = follows - left;
-    const reachValues = daily.map(item => Number(item.reach)).filter(Number.isFinite);
+    const reachValues = daily.map(item => Number(item.insight.reach)).filter(Number.isFinite);
     const reach = reachValues.reduce((sum, value) => sum + value, 0);
     const conversion = reach ? follows / reach * 100 : null;
     setText('grossFollows', signed(follows)); setTone('grossFollows', follows);
@@ -517,9 +674,16 @@
     setText('insightNet', signed(net)); setTone('insightNet', net);
     setText('reach', reachValues.length ? format(reach) : '—');
     setText('followConversion', conversion === null ? '—' : `${conversion.toFixed(2).replace('.', ',')}%`);
-    setText('avgFollows', `${decimal(follows / daily.length)}/dia`); setTone('avgFollows', follows);
+    setText('avgFollows', `${rounded(follows / daily.length)}/dia`); setTone('avgFollows', follows);
     setText('insightsSummary', `Dados confirmados pela Meta em ${daily.length} dia${daily.length === 1 ? '' : 's'} fechado${daily.length === 1 ? '' : 's'} no período.`);
     setText('insightsPeriod', `${daily.length} dia${daily.length === 1 ? '' : 's'}`);
+
+    renderTileSpark('grossFollowsSpark', followsSeries, 'area', 'var(--success)', dateSeries, 'Novos seguidores', 'count');
+    renderTileSpark('unfollowsSpark', unfollowsSeries, 'area', 'var(--danger)', dateSeries, 'Deixaram de seguir', 'count');
+    renderTileSpark('insightNetSpark', netSeries, 'bars', null, dateSeries, 'Saldo (Insights)', 'signed');
+    renderTileSpark('reachSpark', reachSeries, 'area', 'var(--accent)', dateSeries, 'Alcance', 'count');
+    renderTileSpark('followConversionSpark', conversionSeries, 'area', 'var(--accent)', dateSeries, 'Conversão', 'percent');
+    renderTileSpark('avgFollowsSpark', followsSeries, 'area', 'var(--success)', dateSeries, 'Novos seguidores', 'count');
   }
   function renderComparatives(points, nets, periodDeltas) {
     const last = points[points.length - 1];
@@ -674,14 +838,14 @@
     // Todas as projeções usam o último total que aparece no filtro e a média do período selecionado.
     const requiredDaily = remaining / daysToDeadline;
     const pace = perDay;
-    setText('goalNeeded', `${decimal(requiredDaily)}/dia`);
+    setText('goalNeeded', `${rounded(requiredDaily)}/dia`);
     if (pace === null || pace <= 0) {
-      setText('goalPace', pace === null ? '—' : `${decimal(pace)}/dia`);
+      setText('goalPace', pace === null ? '—' : `${rounded(pace)}/dia`);
       ['goalMonthly','goalEndMonth','goalEndYear','goalProjection'].forEach(id => setText(id, '—'));
       setText('goalStatus', pace === null ? 'Dados insuficientes' : 'Sem crescimento');
       return;
     }
-    setText('goalPace', `${decimal(pace)}/dia`);
+    setText('goalPace', `${rounded(pace)}/dia`);
 
     const monthlyNeed = requiredDaily * 30.44;
     const monthlyPace = pace * 30.44;
@@ -713,6 +877,7 @@
     el('platforms').innerHTML = NETWORKS.map(network => `<div class="platform" style="cursor:default"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${network.connected ? 'Aguardando coleta' : 'Sem API conectada'}</small></span><span class="platform-delta"><strong class="neutral">—</strong></span></div>`).join('');
     el('table').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted)">${message}</td></tr>`;
     const pager = el('historyPager'); if (pager) pager.hidden = true;
+    INSIGHT_SPARK_IDS.forEach(id => renderTileSpark(id, [], 'area', null));
     ['netGrowth','growthRate','dailyRate','bestDay','worstDay','ma7','ma30','mtd','ytd','cmpDay','cmpWeek','cmpMonth','cmpPeriod','cmpAccel','cmpWeekday','grossFollows','unfollows','insightNet','reach','followConversion','avgFollows']
       .forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = ''; });
     renderGoal({ values:{} }, 0, activeNetworks(), [], null);
@@ -820,6 +985,15 @@
   const milestonePrevBtn = el('milestonePrev'), milestoneNextBtn = el('milestoneNext');
   if (milestonePrevBtn) milestonePrevBtn.addEventListener('click', () => shiftMilestoneMonth(-1));
   if (milestoneNextBtn) milestoneNextBtn.addEventListener('click', () => shiftMilestoneMonth(1));
+  const postsSortWrap = el('postsSort');
+  if (postsSortWrap) {
+    postsSortWrap.querySelectorAll('[data-sort]').forEach(button => button.addEventListener('click', () => {
+      postsSort = button.dataset.sort;
+      postsSortWrap.querySelectorAll('[data-sort]').forEach(item => item.classList.toggle('is-active', item === button));
+      renderPosts();
+    }));
+  }
+  renderPosts(); // estado inicial ("aguardando...") enquanto loadPosts() ainda não resolveu
   const historyToggle = el('historyToggle'), historyBody = el('historyBody');
   if (historyToggle && historyBody) {
     historyToggle.addEventListener('click', () => {
@@ -960,7 +1134,8 @@
   // auth-guard.js é um módulo adiado: ele só define window.PortalFirebase depois que este
   // script (clássico, executado durante o parsing) já rodou. Por isso aguardamos o aviso
   // disparado ao final de firebase-client.js antes de tentar ler a área protegida.
-  if (!isVonder || window.PortalFirebase) load();
-  else window.addEventListener('portal-firebase-ready', load, { once: true });
-  window.setInterval(load, AUTO_REFRESH_MS);
+  const loadAll = () => { load(); loadPosts(); };
+  if (!isVonder || window.PortalFirebase) loadAll();
+  else window.addEventListener('portal-firebase-ready', loadAll, { once: true });
+  window.setInterval(loadAll, AUTO_REFRESH_MS);
 })();

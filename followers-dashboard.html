@@ -115,6 +115,7 @@
     .hero {
       display: grid;
       grid-template-columns: 1.05fr 1.55fr .82fr;
+      align-items: start;
       gap: 16px;
       margin-bottom: 16px
     }
@@ -252,6 +253,62 @@
       line-height: 1.1
     }
 
+
+    .metric-spark {
+      display: flex;
+      flex-direction: column
+    }
+
+    .tile-spark {
+      position: relative;
+      margin-top: 8px;
+      height: 36px;
+      cursor: crosshair
+    }
+
+    .tile-spark-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      overflow: visible
+    }
+
+    .tile-spark-area {
+      opacity: .16;
+      fill: currentColor
+    }
+
+    .tile-spark-line {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      vector-effect: non-scaling-stroke
+    }
+
+    .mini-chart-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible
+    }
+
+    .mini-bar.positive {
+      fill: var(--success)
+    }
+
+    .mini-bar.negative {
+      fill: var(--danger)
+    }
+
+    .mini-bar.neutral {
+      fill: var(--text-faint)
+    }
+
+    .mini-baseline {
+      stroke: var(--border);
+      stroke-width: 1
+    }
+
+
     .goal-ring-wrap {
       position: relative;
       width: 156px;
@@ -278,7 +335,7 @@
       stroke-linecap: round;
       stroke-dasharray: 326.726;
       stroke-dashoffset: 326.726;
-      transition: stroke-dashoffset .9s cubic-bezier(.16,1,.3,1), opacity .3s ease
+      transition: stroke-dashoffset .9s cubic-bezier(.16, 1, .3, 1), opacity .3s ease
     }
 
     .goal-ring-center {
@@ -416,6 +473,17 @@
       display: grid;
       grid-template-columns: minmax(0, 1.65fr) minmax(320px, .8fr);
       gap: 16px
+    }
+
+    .metrics-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start
+    }
+
+    .metrics-pair .metrics {
+      grid-template-columns: repeat(2, 1fr)
     }
 
     .chart-card {
@@ -835,6 +903,152 @@
       font-weight: 900
     }
 
+    .posts-sort {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px
+    }
+
+    .posts-sort-btn {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface-muted);
+      color: var(--muted);
+      font: 700 11px inherit;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s
+    }
+
+    .posts-sort-btn:hover,
+    .posts-sort-btn:focus-visible {
+      border-color: var(--accent);
+      outline: none
+    }
+
+    .posts-sort-btn.is-active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--on-accent)
+    }
+
+    .posts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+      margin-top: 16px
+    }
+
+    .post-card {
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--surface-muted);
+      text-decoration: none;
+      color: inherit;
+      transition: transform .15s, box-shadow .15s
+    }
+
+    .post-card:hover,
+    .post-card:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      outline: none
+    }
+
+    .post-thumb {
+      position: relative;
+      aspect-ratio: 1;
+      background: var(--card);
+      overflow: hidden
+    }
+
+    .post-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block
+    }
+
+    .post-rank {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: rgba(0, 0, 0, .6);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 900;
+      padding: 3px 7px;
+      border-radius: 999px
+    }
+
+    .post-body {
+      padding: 10px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1
+    }
+
+    .post-caption {
+      margin: 0;
+      font-size: 11px;
+      color: var(--text);
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden
+    }
+
+    .post-date {
+      font-size: 9px;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em
+    }
+
+    .post-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 10px;
+      margin-top: auto;
+      padding-top: 6px;
+      border-top: 1px solid var(--border)
+    }
+
+    .post-stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 700
+    }
+
+    .post-stat svg {
+      flex: none
+    }
+
+    .post-stat b {
+      color: var(--text);
+      font-weight: 800
+    }
+
+    .post-stat.is-primary {
+      color: var(--accent-ink);
+      background: var(--accent-weak);
+      padding: 2px 6px;
+      border-radius: 6px
+    }
+
+    .post-stat.is-primary b {
+      color: inherit
+    }
+
     .workflow-info-modal {
       max-width: 680px
     }
@@ -1105,6 +1319,14 @@
       .content-grid {
         grid-template-columns: 1fr
       }
+
+      .metrics-pair {
+        grid-template-columns: 1fr
+      }
+
+      .metrics-pair .metrics {
+        grid-template-columns: repeat(3, 1fr)
+      }
     }
 
     @media(max-width:700px) {
@@ -1203,9 +1425,9 @@
           </div>
           <div class="social-header-actions">
             <div class="period-control" id="periodControl"><button type="button" class="chevron-btn" id="periodPrev"
-                aria-label="Período anterior">‹</button><button class="period-trigger" type="button"
-                id="periodTrigger" aria-expanded="false" aria-controls="periodMenu"><svg width="15" height="15"
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                aria-label="Período anterior">‹</button><button class="period-trigger" type="button" id="periodTrigger"
+                aria-expanded="false" aria-controls="periodMenu"><svg width="15" height="15" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" stroke-width="1.8">
                   <rect x="3" y="4" width="18" height="17" rx="2" />
                   <path d="M8 2v4M16 2v4M3 10h18" />
                 </svg><span id="periodLabel">Últimos 30 dias</span><svg class="period-caret" aria-hidden="true"
@@ -1272,7 +1494,8 @@
           <div class="head">
             <div>
               <h2>Marcos do mês</h2>
-              <p class="muted">Primeiro e último dia do mês e toda sexta-feira · seguidores no marco e ganho da semana</p>
+              <p class="muted">Primeiro e último dia do mês e toda sexta-feira · seguidores no marco e ganho da semana
+              </p>
             </div>
             <div class="milestone-nav">
               <button type="button" class="chevron-btn" id="milestonePrev" aria-label="Mês anterior">‹</button>
@@ -1288,6 +1511,22 @@
               <tbody id="milestoneBody"></tbody>
             </table>
           </div>
+        </section>
+        <section class="card posts-card" id="postsPanel" style="margin-top:16px">
+          <div class="head">
+            <div>
+              <h2>Melhores posts</h2>
+              <p class="muted" id="postsSummary">Aguardando a primeira coleta.</p>
+            </div>
+            <div class="posts-sort" id="postsSort">
+              <button type="button" class="posts-sort-btn is-active" data-sort="likeCount">Curtidas</button>
+              <button type="button" class="posts-sort-btn" data-sort="commentsCount">Comentários</button>
+              <button type="button" class="posts-sort-btn" data-sort="totalInteractions">Interações</button>
+              <button type="button" class="posts-sort-btn" data-sort="views">Visualizações</button>
+              <button type="button" class="posts-sort-btn" data-sort="saved">Salvamentos</button>
+            </div>
+          </div>
+          <div class="posts-grid" id="postsGrid"></div>
         </section>
         <section class="content-grid">
           <article class="card chart-card">
@@ -1333,7 +1572,8 @@
             <div class="metric"><span>Data estimada da meta</span><strong id="goalProjection">—</strong></div>
           </div>
         </section>
-        <section class="card" id="advancedMetrics" style="margin-top:16px">
+        <section class="metrics-pair" style="margin-top:16px">
+        <section class="card" id="advancedMetrics">
           <div class="head">
             <div>
               <h2>Indicadores do período</h2>
@@ -1352,7 +1592,7 @@
             <div class="metric"><span>Acumulado no ano</span><strong id="ytd">—</strong></div>
           </div>
         </section>
-        <section class="card" id="comparePanel" style="margin-top:16px">
+        <section class="card" id="comparePanel">
           <div class="head">
             <div>
               <h2>Comparativos</h2>
@@ -1368,6 +1608,7 @@
             <div class="metric"><span>Melhor dia da semana</span><strong id="cmpWeekday">—</strong></div>
           </div>
         </section>
+        </section>
         <section class="card" id="insightsPanel" style="margin-top:16px">
           <div class="head">
             <div>
@@ -1376,16 +1617,35 @@
             </div><span class="period-pill" id="insightsPeriod">Meta API</span>
           </div>
           <div class="metrics" style="margin-top:16px">
-            <div class="metric"><span>Novos seguidores</span><strong id="grossFollows">—</strong></div>
-            <div class="metric"><span>Deixaram de seguir</span><strong id="unfollows">—</strong></div>
-            <div class="metric"><span>Crescimento líquido</span><strong id="insightNet">—</strong></div>
-            <div class="metric"><span>Alcance</span><strong id="reach">—</strong></div>
-            <div class="metric"><span>Conversão alcance → follow</span><strong id="followConversion">—</strong></div>
-            <div class="metric"><span>Média de novos por dia</span><strong id="avgFollows">—</strong></div>
+            <div class="metric metric-spark">
+              <span>Novos seguidores</span><strong id="grossFollows">—</strong>
+              <div class="tile-spark" id="grossFollowsSpark"></div>
+            </div>
+            <div class="metric metric-spark">
+              <span>Deixaram de seguir</span><strong id="unfollows">—</strong>
+              <div class="tile-spark" id="unfollowsSpark"></div>
+            </div>
+            <div class="metric metric-spark">
+              <span>Saldo (Insights da Meta)</span><strong id="insightNet">—</strong>
+              <div class="tile-spark" id="insightNetSpark"></div>
+            </div>
+            <div class="metric metric-spark">
+              <span>Alcance</span><strong id="reach">—</strong>
+              <div class="tile-spark" id="reachSpark"></div>
+            </div>
+            <div class="metric metric-spark">
+              <span>Conversão alcance → follow</span><strong id="followConversion">—</strong>
+              <div class="tile-spark" id="followConversionSpark"></div>
+            </div>
+            <div class="metric metric-spark">
+              <span>Média de novos por dia</span><strong id="avgFollows">—</strong>
+              <div class="tile-spark" id="avgFollowsSpark"></div>
+            </div>
           </div>
         </section>
         <section class="card history-card">
-          <button type="button" class="history-toggle" id="historyToggle" aria-expanded="false" aria-controls="historyBody">
+          <button type="button" class="history-toggle" id="historyToggle" aria-expanded="false"
+            aria-controls="historyBody">
             <div>
               <h2>Histórico de acompanhamento</h2>
               <p class="muted">Instagram coletado automaticamente pela API; demais canais, quando lançados manualmente.

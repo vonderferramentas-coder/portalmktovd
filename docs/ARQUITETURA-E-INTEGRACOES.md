@@ -2,7 +2,7 @@
 
 > **Documento vivo.** Atualize este arquivo na mesma alteração que criar, trocar ou remover uma integração, fonte de dados, automação, serviço hospedado ou recurso que possa gerar dúvida para a TI. A validação automatizada do repositório ajuda a cobrar essa atualização para os principais arquivos de integração.
 
-**Última revisão:** 03/09/2026  
+**Última revisão:** 04/09/2026  
 **Escopo desta revisão:** estado identificado no código da branch `main`.
 
 ## 1. O que é este projeto
@@ -47,7 +47,7 @@ GitHub Actions + segredo META_PAGE_ACCESS_TOKEN ------> Meta Graph API / Instagr
 | Portal de marcas | `portal-shell.js` | Selecionar/configurar marcas do grupo | Firebase; cópia local |
 | Central de Inteligência | `intelligence-center.html`, `intelligence-data.js` | Manter referências e aprendizados por editoria | Firebase; cópia local |
 | Editor de posts | `post-editor.html`, `post-editor.js` | Montar artes e usar catálogos de produtos | Catálogos versionados; preferências locais; Firebase para configurações |
-| Painel de seguidores | `followers-dashboard.*` | Visualizar histórico e metas | JSON atualizado pelo GitHub Actions; lançamentos manuais locais |
+| Painel de seguidores | `followers-dashboard.*` | Visualizar histórico, metas e ranking dos melhores posts | JSON atualizado pelo GitHub Actions; lançamentos manuais locais |
 | Cartões de visita | `business-card-generator.*` | Gerar cartões e exportações | Principalmente armazenamento local |
 
 ## 5. Integrações e conexões
@@ -57,8 +57,8 @@ GitHub Actions + segredo META_PAGE_ACCESS_TOKEN ------> Meta Graph API / Instagr
 | GitHub Pages | Hospeda o front-end estático | Arquivos públicos do portal e JSON de seguidores | Administração do repositório/Pages | Não executa PHP nem deve conter segredos no front-end |
 | Firebase Realtime Database | Sincroniza dados entre navegadores | calendário, configurações, marcas e inteligência | Regras do Firebase definem acesso; URL está no JS | Regras não são versionadas aqui: devem ser auditadas no console Firebase |
 | Cloudflare Workers | Ponte para ofertas FG e imagens OVD com CORS | URL de oferta, preços públicos, SKU, imagem e código de produto | Nenhuma credencial no Worker atual | Manter validação de origem/destino e não trafegar dados pessoais |
-| Meta Graph API | Coleta indicadores do Instagram | seguidores, entradas, saídas e alcance | `META_PAGE_ACCESS_TOKEN` em GitHub Secrets | Token nunca vai para o navegador; requer rotação e escopos mínimos |
-| GitHub Actions | Executa a coleta automática e publica JSON | dados agregados de seguidores | GitHub Secret + permissão de escrita | Gera commits automáticos |
+| Meta Graph API | Coleta indicadores do Instagram | seguidores, entradas, saídas, alcance; e por post: legenda, permalink, miniatura, data, curtidas, comentários, interações totais, visualizações e salvamentos | `META_PAGE_ACCESS_TOKEN` em GitHub Secrets | Token nunca vai para o navegador; requer rotação e escopos mínimos |
+| GitHub Actions | Executa a coleta automática e publica JSON | dados agregados de seguidores; e snapshot dos posts recentes com suas métricas | GitHub Secret + permissão de escrita | Gera commits automáticos |
 | `app.ovd.com.br` | Fonte de fotos oficiais de produto | imagem pública por código | sem credencial no código | Imagem passa pelo Worker/PHP para viabilizar CORS no editor |
 | `fg.com.br` | Fonte de ofertas no editor FG | título, marca, SKU, preço e disponibilidade públicos | sem credencial no código | Worker aceita apenas domínio FG e subdomínios |
 | Google Fonts | Carrega tipografias da interface | requisição técnica do navegador/IP | não aplicável | Dependência de terceiro: avaliar política corporativa de privacidade |
@@ -121,9 +121,11 @@ O dashboard não chama a Meta no navegador, evitando expor o token. Os workflows
 
 - `sync-meta-followers.yml`: consulta seguidores a cada 15 minutos e fecha um ponto diário às 23h55 de São Paulo;
 - `reconstruir-historico.yml`: recompõe dias recentes com métricas agregadas da Meta;
-- `diagnostico-meta.yml`: verifica alcance/permissões do token sem alterar arquivos.
+- `diagnostico-meta.yml`: verifica alcance/permissões do token para métricas de conta, sem alterar arquivos;
+- `sync-meta-posts.yml`: a cada 6 horas, busca os 30 posts mais recentes do Instagram (legenda, permalink, miniatura, data, curtidas e comentários) e, para cada um, as métricas de `/insights` (interações totais, visualizações e salvamentos), sobrescrevendo `data/social-posts.json` inteiro a cada execução — não existe histórico por dia aqui, só o snapshot mais recente para alimentar o ranking de melhores posts;
+- `diagnostico-meta-posts.yml`: verifica alcance/permissões do token para dados de posts (mídia e insights por post), sem alterar arquivos — foi o que confirmou que o token atual já alcança `like_count`/`comments_count` na listagem de mídia e `total_interactions`/`views`/`saved` em `/insights` (o nome legado `engagement` foi descontinuado pela Meta).
 
-Eles usam o segredo `META_PAGE_ACCESS_TOKEN` nos **GitHub Actions Secrets** e publicam somente dados agregados em `data/social-followers-live.json` e `data/social-followers.json`. Atualmente, apenas a marca padrão VONDER tem coleta automática; demais marcas e redes são manuais no painel.
+Eles usam o segredo `META_PAGE_ACCESS_TOKEN` nos **GitHub Actions Secrets** e publicam dados agregados/públicos do Instagram da própria marca (nunca dados pessoais de terceiros) em `data/social-followers-live.json`, `data/social-followers.json` e `data/social-posts.json`. Atualmente, apenas a marca padrão VONDER tem coleta automática; demais marcas e redes são manuais no painel.
 
 Para a TI: aplicar menor privilégio ao token, documentar owner, rotacionar antes de vencer, revisar escopos e limitar quem pode alterar workflows e secrets.
 
@@ -161,6 +163,7 @@ O workflow não substitui revisão humana: qualquer nova dependência remota, me
 | Data | Alteração | Responsável |
 |---|---|---|
 | 03/09/2026 | Criação do inventário: Firebase, Cloudflare Worker, GitHub Pages/Actions, Meta, fontes OVD/FG, Google Fonts e alternativa PHP/SQLite. | Equipe de Marketing / manutenção do portal |
+| 04/09/2026 | Adicionada coleta de posts do Instagram (`sync-meta-posts.yml`, `diagnostico-meta-posts.yml`) e o painel "Melhores posts" no dashboard de seguidores, publicando em `data/social-posts.json` e `portalStore/posts-vonder-v1`. | Equipe de Marketing / manutenção do portal |
 
 ## 13. Autenticação e controle de acesso (em implantação)
 
@@ -202,6 +205,17 @@ Enquanto o secret não for cadastrado, o sintoma original persiste. Depois de ca
 |---|---|---|
 | 03/09/2026 | Preparada migração controlada dos dados de seguidores para Cloud Firestore protegido, sem exclusão da origem pública. | Equipe de Marketing / manutenção do portal |
 | 04/09/2026 | `sync-meta-followers.yml` passou a gravar direto em `portalStore/followers-vonder-v1` via Admin SDK, corrigindo o painel mostrando "Aguardando coleta" apesar da coleta automática continuar rodando. Pendente: cadastrar o secret `FIREBASE_SERVICE_ACCOUNT_KEY`. | Equipe de Marketing / manutenção do portal |
+
+### Painel de melhores posts (04/09/2026)
+
+Seguindo o mesmo padrão já usado para seguidores, `sync-meta-posts.yml` grava o snapshot de posts direto em `portalStore/posts-vonder-v1` no Cloud Firestore, via Admin SDK com o mesmo secret `FIREBASE_SERVICE_ACCOUNT_KEY` (formato `v`/`updated_at`/`updatedAt`). `data/social-posts.json` continua publicado no repositório como origem/backup, do mesmo jeito que os arquivos de seguidores.
+
+- **Finalidade:** dar ao time visibilidade de quais posts do Instagram tiveram melhor desempenho, ordenáveis por curtidas, comentários, interações totais, visualizações e salvamentos.
+- **Dados:** por post — `id`, legenda, tipo de mídia, permalink, miniatura, data de publicação, curtidas e comentários (vindos direto da listagem de mídia) e interações totais/visualizações/salvamentos (vindos de `/insights` por post). Tudo é dado agregado e público do próprio perfil da marca; não há dado pessoal de quem curtiu/comentou.
+- **Autenticação:** mesmo `META_PAGE_ACCESS_TOKEN` já usado para seguidores — `diagnostico-meta-posts.yml` confirmou que o escopo atual já cobre esses endpoints, sem pedir permissão nova à Meta.
+- **Controles:** posts sem `/insights` disponível (mídia muito antiga ou tipo sem essa métrica) entram no snapshot só com curtidas/comentários, sem travar a coleta dos demais; se a Meta não retornar nenhum post na execução, o workflow aborta sem sobrescrever o snapshot anterior.
+- **Plano de falha/rollback:** sem o secret `FIREBASE_SERVICE_ACCOUNT_KEY`, o passo de Firestore só avisa e não falha a coleta pública; o painel mostra estado de espera. Para desligar, basta remover o agendamento do workflow (ou apagar o arquivo) — não afeta a coleta de seguidores, que é um workflow e um documento Firestore inteiramente separados.
+- **Arquivos/workflows:** `.github/workflows/diagnostico-meta-posts.yml` (novo), `.github/workflows/sync-meta-posts.yml` (novo), `data/social-posts.json` (novo), `followers-dashboard.html`/`followers-dashboard.js` (painel "Melhores posts").
 
 ### Revisão da migração e correções da proteção por login
 
