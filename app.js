@@ -2508,6 +2508,7 @@
           setSyncStatus('Sincronizado com o servidor', 'ok');
         }
       }catch(e){
+        console.error('[sync] falha ao salvar no servidor', key, e);
         setSyncStatus('Falha ao salvar no servidor (ficou salvo só neste navegador)', 'warn');
       }
     }
