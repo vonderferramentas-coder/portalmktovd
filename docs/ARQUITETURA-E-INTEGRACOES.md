@@ -190,9 +190,18 @@ O painel de seguidores passa a consultar o documento protegido `portalStore/foll
 
 Enquanto os arquivos `data/social-followers.json` e `data/social-followers-live.json` permanecerem publicados no repositório, seus dados agregados continuam públicos. A remoção só deve ocorrer após a cópia ser validada, a automação de coleta passar a gravar no Firestore por uma credencial guardada exclusivamente em GitHub Actions Secrets e uma aprovação explícita para a alteração. Isso evita interromper o painel e evita expor tokens ou chaves no navegador.
 
+### Automação passou a gravar no Firestore (04/09/2026)
+
+Depois da migração acima, o painel ficou lendo só `portalStore/followers-vonder-v1`, mas a coleta automática (`sync-meta-followers.yml`, a cada 15 min) continuava publicando somente os JSON públicos — ninguém tinha religado os dois lados. Resultado: o painel mostrava "Aguardando coleta" e a mensagem de que os dados "ainda não foram migrados para a área protegida", mesmo com a coleta rodando normalmente em segundo plano.
+
+`sync-meta-followers.yml` ganhou um passo final ("Publicar snapshot protegido no Firestore") que grava `data/social-followers.json` e `data/social-followers-live.json` direto em `portalStore/followers-vonder-v1`, no mesmo formato (`v`/`updated_at`/`updatedAt`) usado por `migrate-followers.js`, usando o **Admin SDK do Firebase** com uma chave de serviço — nunca a sessão de um usuário nem as regras client-side do Firestore. Isso exige o secret `FIREBASE_SERVICE_ACCOUNT_KEY` no GitHub Actions (conteúdo JSON de uma chave de conta de serviço gerada em Firebase Console → Configurações do projeto → Contas de serviço → Gerar nova chave privada); sem esse secret o passo apenas emite um aviso e não falha a coleta pública, que continua funcionando como antes.
+
+Enquanto o secret não for cadastrado, o sintoma original persiste. Depois de cadastrado, o painel volta a atualizar sozinho a cada execução (até 15 min de atraso), sem depender de ninguém reabrir `migrate-followers.html` — essa página continua existindo para uma cópia manual pontual, mas deixa de ser o único caminho.
+
 | Data | Alteração | Responsável |
 |---|---|---|
 | 03/09/2026 | Preparada migração controlada dos dados de seguidores para Cloud Firestore protegido, sem exclusão da origem pública. | Equipe de Marketing / manutenção do portal |
+| 04/09/2026 | `sync-meta-followers.yml` passou a gravar direto em `portalStore/followers-vonder-v1` via Admin SDK, corrigindo o painel mostrando "Aguardando coleta" apesar da coleta automática continuar rodando. Pendente: cadastrar o secret `FIREBASE_SERVICE_ACCOUNT_KEY`. | Equipe de Marketing / manutenção do portal |
 
 ### Revisão da migração e correções da proteção por login
 

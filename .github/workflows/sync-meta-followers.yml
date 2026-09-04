@@ -95,3 +95,42 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'chore: atualizar snapshot Meta'
           git push
+
+      # O painel (followers-dashboard.js) só lê portalStore/followers-vonder-v1 no Firestore,
+      # nunca mais os JSON públicos acima — eles continuam publicados só como origem/backup
+      # (ver docs/ARQUITETURA-E-INTEGRACOES.md, "Migração do painel de seguidores"). Sem este
+      # passo, a coleta seguia rodando normalmente mas o painel nunca via o resultado, porque
+      # dependia de alguém reabrir migrate-followers.html manualmente a cada atualização.
+      # Usa o Admin SDK (chave de serviço, nunca exposta ao navegador) para gravar direto,
+      # sem passar pela sessão de um usuário nem pelas regras client-side do Firestore.
+      - name: Publicar snapshot protegido no Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::warning::FIREBASE_SERVICE_ACCOUNT_KEY não configurado — pulando a gravação em portalStore/followers-vonder-v1. O painel continuará mostrando "Aguardando coleta" até o secret ser cadastrado.'
+            exit 0
+          fi
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os, time
+          from pathlib import Path
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+
+          cred = credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY']))
+          firebase_admin.initialize_app(cred)
+          db = firestore.client()
+
+          published = json.loads(Path('data/social-followers.json').read_text(encoding='utf-8'))
+          live = json.loads(Path('data/social-followers-live.json').read_text(encoding='utf-8'))
+
+          # Mesmo formato gravado por migrate-followers.js (v/updated_at/updatedAt), para que
+          # a leitura em followers-dashboard.js e a migração manual continuem compatíveis.
+          db.collection('portalStore').document('followers-vonder-v1').set({
+              'v': {'published': published, 'live': live},
+              'updated_at': int(time.time() * 1000),
+              'updatedAt': firestore.SERVER_TIMESTAMP,
+          })
+          print('Firestore atualizado:', live['platforms']['Instagram']['followers'], 'seguidores em', live['updatedAt'])
+          PY

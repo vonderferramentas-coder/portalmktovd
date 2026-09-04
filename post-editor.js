@@ -9,8 +9,8 @@ var templates={
  story:{w:1080,h:1920,footerY:1458,footerH:173,textX:67,titleY:1504,subY:1557,titleMax:620,codeX:714,codeY:1520,dualCodeY:1503,codeW:410,codeH:49}
 };
 var positions={
- feed:{left:{badge:[68,108,484,313],product:[458,128,410,333]},stacked:{badge:[42,338,484,313],product:[92,147,340,276]},right:{badge:[582,600,484,313],product:[618,360,365,296]}},
- story:{left:{badge:[64,246,471,306],product:[450,286,430,349]},stacked:{badge:[42,548,471,306],product:[88,333,370,300]},right:{badge:[568,548,471,306],product:[610,268,370,300]}}
+ feed:{left:{badge:[68,108,484,313],product:[458,128,410,333]},stacked:{badge:[42,338,484,313],product:[92,147,340,276]},right:{badge:[528,108,484,313],product:[212,128,410,333]}},
+ story:{left:{badge:[64,246,471,306],product:[450,286,430,349]},stacked:{badge:[42,548,471,306],product:[88,333,370,300]},right:{badge:[545,246,471,306],product:[200,286,430,349]}}
 };
 var state={editoriaName:null,editoriaColor:null,footerColor:'#FFBE00',brandBadgeColor:'#fbc400',background:null,product:null,productDrawable:null,productHasCircle:true,badgeFeed:null,badgeStory:null,customAssets:{},autoLayout:'left',bgZoom:{feed:1,story:1},overlayScale:1,format:{feed:{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0},story:{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0}}};
 var lastProductBox={feed:null,story:null},lastBadgeBox={feed:null,story:null};
@@ -424,7 +424,11 @@ function layout(){return $('#layoutMode').value==='auto'?state.autoLayout:$('#la
 // encostada-na-borda-esquerda/topo (0) até encostada-na-borda-direita/baixo (frame-size); se a
 // caixa for maior que o frame (fora do uso normal), ainda assim nunca deixa ela sair de vez
 function clampBoxPos(pos,size,frame){var lo=Math.min(0,frame-size),hi=Math.max(0,frame-size);return Math.max(lo,Math.min(hi,pos))}
-function scaled(box,format){var s=state.overlayScale,p=state.format[format],t=templates[format],cx=box[0]+box[2]/2,cy=box[1]+box[3]/2,w=box[2]*s,h=box[3]*s,x=clampBoxPos(cx-w/2+p.overlayDx,w,t.w),y=clampBoxPos(cy-h/2+p.overlayDy,h,t.h);return[x,y,w,h]}
+// escala em torno de um único ponto (anchor) compartilhado entre produto e selo, em vez do
+// centro de cada caixa isoladamente — assim a distância entre as duas encolhe na mesma
+// proporção do "Tamanho do destaque" e, se já estavam encostadas/sobrepostas, continuam
+// encostadas/sobrepostas em qualquer zoom (sem abrir vão entre elas)
+function scaled(box,format,anchor){var s=state.overlayScale,p=state.format[format],t=templates[format],ax=anchor[0],ay=anchor[1],w=box[2]*s,h=box[3]*s,x=clampBoxPos(ax+(box[0]-ax)*s+p.overlayDx,w,t.w),y=clampBoxPos(ay+(box[1]-ay)*s+p.overlayDy,h,t.h);return[x,y,w,h]}
 function contain(ctx,img,box){
  var s=Math.min(box[2]/img.width,box[3]/img.height),w=img.width*s,h=img.height*s;ctx.drawImage(img,box[0]+(box[2]-w)/2,box[1]+(box[3]-h)/2,w,h)
 }
@@ -454,7 +458,8 @@ function draw(format){
   activePreset.renderer({format:format,canvas:c,ctx:ctx,t:t,state:state,item:selectedProduct,productName:$('#productName').value,helpers:{drawCover:drawCover,drawPlaceholder:drawPlaceholder,contain:contain,roundRect:roundRect,font:font,fitFont:fitFont,setMoveBox:function(box){lastProductBox[format]=box}}});return
  }
  if(state.background)drawCover(ctx,state.background,t,format);else drawPlaceholder(ctx,t);
- var productBox=scaled(pos.product,format),badgeBox=scaled(pos.badge,format);lastProductBox[format]=productBox;lastBadgeBox[format]=badgeBox;
+ var group=unionBox(pos.product,pos.badge),anchor=[group[0]+group[2]/2,group[1]+group[3]/2];
+ var productBox=scaled(pos.product,format,anchor),badgeBox=scaled(pos.badge,format,anchor);lastProductBox[format]=productBox;lastBadgeBox[format]=badgeBox;
  // mesmo clipping do frame aplicado na imagem de fundo (drawCover), agora também no selo e no
  // produto recortado: mesmo com a posição já limitada por clampBoxPos, sombra/blur desses
  // desenhos poderiam sujar pixels perto da borda do frame — o clip garante que nada deles
