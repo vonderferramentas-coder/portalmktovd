@@ -17,7 +17,7 @@
     <script type="module" src="auth-guard.js"></script>
 </head>
 
-<body data-auth-role="admin">
+<body>
     <div class="portal-shell">
         <aside class="portal-sidebar" id="portalSidebar"></aside>
         <main class="portal-main">
@@ -26,30 +26,20 @@
                     <p class="auth-eyebrow">Administração</p>
                     <h1>Usuários e acessos</h1>
                     <p>Gerencie quem pode acessar as informações internas do portal.</p>
+                    <p><a class="btn ghost small" href="migrate-followers.html">Migrar dados de seguidores</a></p>
                 </section>
+                <p id="adminMessage" class="auth-message" role="alert"></p>
                 <div class="admin-grid">
-                    <section class="card admin-form-card">
-                        <p><a class="btn ghost small" href="migrate-followers.html">Migrar dados de seguidores</a></p>
-                        <h2>Novo usuário</h2>
-                        <p class="muted">A pessoa receberá um e-mail seguro para definir a própria senha.</p>
-                        <p id="adminMessage" class="auth-message" role="alert"></p>
-                        <form id="createUserForm" class="auth-form">
-                            <div class="auth-field"><label for="newName">Nome</label><input id="newName" required
-                                    type="text"></div>
-                            <div class="auth-field"><label for="newEmail">E-mail corporativo</label><input id="newEmail"
-                                    required type="email"></div>
-                            <div class="auth-field"><label for="newRole">Perfil</label><select id="newRole">
-                                    <option value="user">Usuário</option>
-                                    <option value="admin">Administrador</option>
-                                </select></div><button class="btn" type="submit">Criar e enviar convite</button>
-                        </form>
-                    </section>
                     <section class="card admin-list-card">
                         <div class="admin-list-head">
                             <div>
                                 <h2>Acessos cadastrados</h2>
                                 <p class="muted">Status e último acesso são atualizados pelo portal.</p>
-                            </div><button class="btn ghost small" id="refreshUsers" type="button">Atualizar</button>
+                            </div>
+                            <div class="admin-list-head-actions">
+                                <button class="btn-icon" id="refreshUsers" type="button" title="Atualizar" aria-label="Atualizar"></button>
+                                <button class="btn-icon" id="openCreateUser" type="button" title="Novo usuário" aria-label="Novo usuário"></button>
+                            </div>
                         </div>
                         <div class="admin-table-wrap">
                             <table class="admin-table">
@@ -70,6 +60,18 @@
                                 </tbody>
                             </table>
                         </div>
+                    </section>
+                    <section class="card admin-perm-card">
+                        <div class="admin-list-head">
+                            <div>
+                                <h2>Perfis</h2>
+                                <p class="muted">Edite quais páginas cada perfil pode ver ou exclua o perfil.</p>
+                            </div>
+                            <div class="admin-list-head-actions">
+                                <button class="btn-icon" id="openCreateProfile" type="button" title="Novo perfil" aria-label="Novo perfil"></button>
+                            </div>
+                        </div>
+                        <div id="profileList" class="admin-profile-list"></div>
                     </section>
                 </div>
             </div>

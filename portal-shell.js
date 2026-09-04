@@ -393,10 +393,16 @@
     { href:'business-card-generator.html', label:'Gerador de Cartões', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h5M7 14h3M15.5 10.5h2M15.5 14h2"/>' },
     { href:'followers-dashboard.html', label:'Redes sociais', icon:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>' },
     { href:'intelligence-center.html', label:'Central de Inteligência', icon:'<path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/><path d="M9 18h6"/><path d="M10 22h4"/>' },
-    // visível só a administradores — o item nasce escondido (ver renderNavHtml) e é revelado
-    // por auth-guard.js quando confirma o perfil, igual ao card [data-admin-only] de index.html
-    { href:'admin-users.html', label:'Usuários e acessos', icon:'<path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6Z"/>', adminOnly:true }
+    // página sensível: fica de fora por padrão pro perfil Usuário (ver defaultHidden em
+    // auth-guard.js/admin-users.js) até um administrador marcá-la em Usuários e acessos >
+    // Permissões por perfil — deixou de ser um bloqueio fixo de código (ver histórico) porque
+    // agora é o próprio admin quem decide, por perfil, se ela fica visível ou não
+    { href:'admin-users.html', label:'Usuários e acessos', icon:'<path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6Z"/>', defaultHidden:true }
   ];
+  // fonte única da lista de páginas do menu, pra Usuários e acessos montar o checklist de
+  // "quais páginas cada perfil pode ver" sem duplicar href/label — ver admin-users.js
+  // (renderPermPages) e auth-guard.js (aplica o resultado escondendo item/card + a própria página)
+  window.PortalNavItems = NAV_ITEMS.map(item => ({ href: item.href, label: item.label, defaultHidden: !!item.defaultHidden }));
   function currentPageFile(){
     return (location.pathname.split('/').pop() || 'index.html');
   }
@@ -404,8 +410,7 @@
     const cur = currentPageFile();
     return `<nav class="portal-nav">${NAV_ITEMS.map(item=>{
       const active = cur === item.href;
-      const adminAttrs = item.adminOnly ? ' data-admin-only hidden' : '';
-      return `<a href="${item.href}" class="portal-nav-item${active?' active':''}"${adminAttrs}>${svgIcon(item.icon)}<span>${escapeHtml(item.label)}</span></a>`;
+      return `<a href="${item.href}" class="portal-nav-item${active?' active':''}">${svgIcon(item.icon)}<span>${escapeHtml(item.label)}</span></a>`;
     }).join('')}</nav>`;
   }
 

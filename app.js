@@ -2475,41 +2475,67 @@
       syncVersions[key] = result.updated_at;
       return { conflict:false };
     }
+    // getValue pendente de cada chave, guardado à parte do timer pra poder ser disparado na
+    // hora (flushPendingSyncPushes) sem depender do setTimeout original — ver mais abaixo
+    const pendingSyncGetters = {};
+    async function runScheduledPush(key){
+      syncPushTimers[key] = null;
+      const getValue = pendingSyncGetters[key];
+      pendingSyncGetters[key] = null;
+      if(!getValue) return;
+      setSyncStatus('Salvando no servidor…');
+      try{
+        const result = await syncPush(key, getValue());
+        if(result.conflict){
+          // outra pessoa salvou primeiro: adota a versão do servidor em vez de sobrescrever.
+          // server.v===null significa "nada salvo no servidor ainda" (chave vazia/nunca
+          // gravada) — nesse caso NÃO apaga os dados locais (senão uma corrida com o servidor
+          // vazio zeraria o calendário à toa); só adota a versão e reagenda o envio, pra essa
+          // cópia local acabar subindo pro servidor no próximo ciclo
+          if(result.server.v === null){
+            syncVersions[key] = result.server.updated_at;
+            scheduleSyncPush(key, getValue);
+          } else {
+            const storageKey = key===API_POSTS_KEY ? LS_POSTS_KEY : LS_SETTINGS_KEY;
+            localStorage.setItem(storageKey, JSON.stringify(result.server.v));
+            if(key===API_POSTS_KEY) loadState(); else loadSettings();
+            syncVersions[key] = result.server.updated_at;
+            if(!anyModalOpen()){ renderAllDynamicUI(); buildCalendar(); render(); }
+            setSyncStatus('Atualizado com mudanças de outra pessoa', 'warn');
+            alert('Outra pessoa salvou uma alteração enquanto você editava. Os dados foram atualizados com a versão mais recente do servidor — se sua última ação não aparecer, refaça-a.');
+          }
+        } else {
+          setSyncStatus('Sincronizado com o servidor', 'ok');
+        }
+      }catch(e){
+        setSyncStatus('Falha ao salvar no servidor (ficou salvo só neste navegador)', 'warn');
+      }
+    }
     // agenda o envio pro servidor com um pequeno atraso, pra juntar várias chamadas
     // de saveState()/saveSettings() em sequência (ex: durante um drag) numa só requisição
     function scheduleSyncPush(key, getValue){
       if(!SYNC_ENABLED) return;
+      pendingSyncGetters[key] = getValue;
       clearTimeout(syncPushTimers[key]);
-      syncPushTimers[key] = setTimeout(async ()=>{
-        setSyncStatus('Salvando no servidor…');
-        try{
-          const result = await syncPush(key, getValue());
-          if(result.conflict){
-            // outra pessoa salvou primeiro: adota a versão do servidor em vez de sobrescrever.
-            // server.v===null significa "nada salvo no servidor ainda" (chave vazia/nunca
-            // gravada) — nesse caso NÃO apaga os dados locais (senão uma corrida com o servidor
-            // vazio zeraria o calendário à toa); só adota a versão e reagenda o envio, pra essa
-            // cópia local acabar subindo pro servidor no próximo ciclo
-            if(result.server.v === null){
-              syncVersions[key] = result.server.updated_at;
-              scheduleSyncPush(key, getValue);
-            } else {
-              const storageKey = key===API_POSTS_KEY ? LS_POSTS_KEY : LS_SETTINGS_KEY;
-              localStorage.setItem(storageKey, JSON.stringify(result.server.v));
-              if(key===API_POSTS_KEY) loadState(); else loadSettings();
-              syncVersions[key] = result.server.updated_at;
-              if(!anyModalOpen()){ renderAllDynamicUI(); buildCalendar(); render(); }
-              setSyncStatus('Atualizado com mudanças de outra pessoa', 'warn');
-              alert('Outra pessoa salvou uma alteração enquanto você editava. Os dados foram atualizados com a versão mais recente do servidor — se sua última ação não aparecer, refaça-a.');
-            }
-          } else {
-            setSyncStatus('Sincronizado com o servidor', 'ok');
-          }
-        }catch(e){
-          setSyncStatus('Falha ao salvar no servidor (ficou salvo só neste navegador)', 'warn');
-        }
-      }, 700);
+      syncPushTimers[key] = setTimeout(()=> runScheduledPush(key), 700);
     }
+    // Sem isto, um card criado e a pessoa trocando de página/fechando a aba menos de 700ms
+    // depois nunca chegava a sair do navegador dela — ficava só no localStorage local, e o
+    // resto da equipe nunca via a mudança (foi exatamente o que aconteceu: um card criado
+    // "sumiu" pra quem não era o autor). visibilitychange dispara assim que a aba é escondida
+    // (troca de página dentro do próprio portal incluída, por ser um site multi-página) —
+    // mais cedo e mais confiável que beforeunload, que alguns navegadores mobile nem chegam a
+    // disparar. pagehide cobre o restante (fechar a aba/janela diretamente).
+    function flushPendingSyncPushes(){
+      Object.keys(syncPushTimers).forEach(key=>{
+        if(syncPushTimers[key]){
+          clearTimeout(syncPushTimers[key]);
+          runScheduledPush(key);
+        }
+      });
+    }
+    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') flushPendingSyncPushes(); });
+    window.addEventListener('pagehide', flushPendingSyncPushes);
     // busca a versão mais recente do servidor e aplica localmente, reaproveitando
     // loadState()/loadSettings() (grava no localStorage e roda as mesmas migrações de sempre)
     async function syncPull(showIdleStatus){
