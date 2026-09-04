@@ -1,0 +1,76 @@
+name: Diagnóstico de posts na API Meta
+
+# Sonda o que o token atual alcança em nível de POST (não de conta, que já é coberto por
+# diagnostico-meta.yml): listagem de mídia com curtidas/comentários embutidos, e insights
+# por post (alcance, engajamento, salvamentos). Não grava nada e não faz commit — só
+# escreve no resumo da execução, para decidir se dá para construir a coleta de "melhores
+# posts" antes de gastar esforço nela. O token vai no cabeçalho Authorization, e não na
+# URL, para não aparecer em log de erro do curl.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar o que o token alcança em nível de post
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_INSTAGRAM_ID: '17841403154695997'
+        run: |
+          set -uo pipefail
+          API="https://graph.facebook.com/v26.0"
+
+          consultar () {
+            titulo="$1"
+            url="$2"
+            {
+              echo "### $titulo"
+              echo ''
+              echo '```json'
+            } >> "$GITHUB_STEP_SUMMARY"
+            if resposta="$(curl -sS --max-time 30 -H "Authorization: Bearer $META_PAGE_ACCESS_TOKEN" "$url")"; then
+              printf '%s\n' "$resposta" | jq '.' 2>/dev/null | head -c 4000 >> "$GITHUB_STEP_SUMMARY" \
+                || printf '%s\n' "$resposta" | head -c 4000 >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo 'A chamada falhou antes de receber resposta.' >> "$GITHUB_STEP_SUMMARY"
+            fi
+            {
+              echo ''
+              echo '```'
+              echo ''
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          echo "## O que o token alcança em posts" >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+
+          consultar "Lista dos 5 posts mais recentes — curtidas/comentários já vêm aqui?" \
+            "$API/$META_INSTAGRAM_ID/media?fields=id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count&limit=5"
+
+          # Precisa de um media_id de verdade pra sondar /insights; pega o primeiro da lista acima.
+          MEDIA_ID="$(curl -sS --max-time 30 -H "Authorization: Bearer $META_PAGE_ACCESS_TOKEN" \
+            "$API/$META_INSTAGRAM_ID/media?fields=id&limit=1" | jq -r '.data[0].id // empty')"
+
+          if [ -z "$MEDIA_ID" ]; then
+            echo "Não consegui obter um media_id — a listagem acima já deve mostrar o erro." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Post usado nas sondagens de \`/insights\` abaixo: \`$MEDIA_ID\`" >> "$GITHUB_STEP_SUMMARY"
+            echo '' >> "$GITHUB_STEP_SUMMARY"
+
+            consultar "Insights de post — nomenclatura de feed (engagement, impressions, reach, saved)" \
+              "$API/$MEDIA_ID/insights?metric=engagement,impressions,reach,saved"
+
+            consultar "Insights de post — nomenclatura mais nova (total_interactions, views, saved)" \
+              "$API/$MEDIA_ID/insights?metric=total_interactions,views,saved"
+          fi
+
+          {
+            echo "Se a listagem de posts já trouxer \`like_count\`/\`comments_count\`, dá para"
+            echo "ranquear por curtidas e comentários sem depender de permissão extra — só"
+            echo "alcance/engajamento (que vêm de \`/insights\`) dependem do escopo"
+            echo "\`instagram_manage_insights\`. Se as duas sondagens de \`/insights\` falharem"
+            echo "com erro de permissão ou métrica inválida, o nome certo da métrica muda"
+            echo "conforme a versão da API — ajusto a coleta definitiva pelo que aparecer aqui."
+          } >> "$GITHUB_STEP_SUMMARY"
