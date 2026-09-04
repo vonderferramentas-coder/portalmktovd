@@ -903,10 +903,98 @@
       font-weight: 900
     }
 
+    .posts-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap
+    }
+
     .posts-sort {
       display: flex;
       flex-wrap: wrap;
       gap: 6px
+    }
+
+    .posts-view-toggle {
+      display: flex;
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface-muted);
+      flex: none
+    }
+
+    .posts-view-btn {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background .15s, color .15s
+    }
+
+    .posts-view-btn:hover,
+    .posts-view-btn:focus-visible {
+      color: var(--text);
+      outline: none
+    }
+
+    .posts-view-btn.is-active {
+      background: var(--card);
+      color: var(--accent-ink);
+      box-shadow: var(--shadow-sm)
+    }
+
+    .posts-table-post {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: left;
+      max-width: 320px
+    }
+
+    .posts-table-post a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      color: inherit;
+      text-decoration: none
+    }
+
+    .posts-table-post a:hover span {
+      text-decoration: underline
+    }
+
+    .posts-table-thumb {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex: none
+    }
+
+    .posts-table-post span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .posts-th {
+      cursor: pointer;
+      user-select: none
+    }
+
+    .posts-th:hover,
+    .posts-th.is-active {
+      color: var(--accent-ink)
     }
 
     .posts-sort-btn {
@@ -1004,11 +1092,19 @@
     }
 
     .post-date {
+      align-self: flex-start;
       font-size: 9px;
       color: var(--muted);
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .04em
+    }
+
+    .post-date.is-primary {
+      color: var(--accent-ink);
+      background: var(--accent-weak);
+      padding: 2px 6px;
+      border-radius: 6px
     }
 
     .post-stats {
@@ -1518,15 +1614,34 @@
               <h2>Melhores posts</h2>
               <p class="muted" id="postsSummary">Aguardando a primeira coleta.</p>
             </div>
-            <div class="posts-sort" id="postsSort">
-              <button type="button" class="posts-sort-btn is-active" data-sort="likeCount">Curtidas</button>
-              <button type="button" class="posts-sort-btn" data-sort="commentsCount">Comentários</button>
-              <button type="button" class="posts-sort-btn" data-sort="totalInteractions">Interações</button>
-              <button type="button" class="posts-sort-btn" data-sort="views">Visualizações</button>
-              <button type="button" class="posts-sort-btn" data-sort="saved">Salvamentos</button>
+            <div class="posts-controls">
+              <div class="posts-sort" id="postsSort">
+                <button type="button" class="posts-sort-btn" data-sort="timestamp">Data</button>
+                <button type="button" class="posts-sort-btn is-active" data-sort="likeCount">Curtidas</button>
+                <button type="button" class="posts-sort-btn" data-sort="commentsCount">Comentários</button>
+                <button type="button" class="posts-sort-btn" data-sort="totalInteractions">Interações</button>
+                <button type="button" class="posts-sort-btn" data-sort="views">Visualizações</button>
+                <button type="button" class="posts-sort-btn" data-sort="saved">Salvamentos</button>
+              </div>
+              <div class="posts-view-toggle" id="postsViewToggle">
+                <button type="button" class="posts-view-btn is-active" data-view="grid" aria-label="Visualização em grade" title="Grade">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
+                </button>
+                <button type="button" class="posts-view-btn" data-view="list" aria-label="Visualização em lista" title="Lista">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13" stroke-linecap="round" /><path d="M3 6h.01M3 12h.01M3 18h.01" stroke-linecap="round" /></svg>
+                </button>
+              </div>
             </div>
           </div>
           <div class="posts-grid" id="postsGrid"></div>
+          <div class="table-wrap" id="postsTableWrap" hidden>
+            <table>
+              <thead>
+                <tr id="postsTableHead"></tr>
+              </thead>
+              <tbody id="postsTableBody"></tbody>
+            </table>
+          </div>
         </section>
         <section class="content-grid">
           <article class="card chart-card">

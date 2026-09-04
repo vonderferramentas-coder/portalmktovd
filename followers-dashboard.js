@@ -51,6 +51,7 @@
     { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected:false }
   ];
   const POST_SORT_OPTIONS = [
+    { key: 'timestamp', label: 'Data', icon: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>' },
     { key: 'likeCount', label: 'Curtidas', icon: '<path d="M12 20s-6.5-4-9-8.5C1.2 7.8 3 4.5 6.5 4.5c2 0 3.5 1.2 5.5 3.5 2-2.3 3.5-3.5 5.5-3.5 3.5 0 5.3 3.3 3.5 7C18.5 16 12 20 12 20Z"/>' },
     { key: 'commentsCount', label: 'Comentários', icon: '<path d="M21 11.5c0 4.4-4 8-9 8-1 0-2-.1-2.9-.4L4 21l1.3-4.3A7.6 7.6 0 0 1 3 11.5c0-4.4 4-8 9-8s9 3.6 9 8Z"/>' },
     { key: 'totalInteractions', label: 'Interações', icon: '<path d="M3 17l6-6.5 4 4L21 6"/><path d="M15 6h6v6"/>' },
@@ -100,6 +101,7 @@
   let milestoneMonth = null;  // { year, month } navegado pelo usuário no card "Marcos do mês"
   let postsData = [];        // snapshot mais recente de posts (sem histórico por dia)
   let postsSort = 'likeCount';
+  let postsView = 'grid';
 
   // ---------------------------------------------------------------- dados
 
@@ -472,11 +474,14 @@
     if (isNaN(d.getTime())) return '';
     return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
   };
+  // "Data" ordena pelo timestamp de verdade, não pelo texto formatado — as demais são numéricas.
+  const postSortValue = (post, key) => key === 'timestamp' ? (new Date(post.timestamp).getTime() || 0) : (Number(post[key]) || 0);
 
   function renderPostCard(post, index) {
     const caption = escapeHtml(post.caption).slice(0, 140);
     const thumb = post.thumbnailUrl ? `<img src="${escapeHtml(post.thumbnailUrl)}" alt="" loading="lazy">` : '';
-    const stats = POST_SORT_OPTIONS.map(option => {
+    // A data já aparece à parte (post-date); os chips de estatística cobrem só as métricas numéricas.
+    const stats = POST_SORT_OPTIONS.filter(option => option.key !== 'timestamp').map(option => {
       const value = post[option.key];
       const known = Number.isFinite(Number(value));
       return `<span class="post-stat${option.key === postsSort ? ' is-primary' : ''}">${postIconSvg(option.key)}<b>${known ? format(Number(value)) : '—'}</b></span>`;
@@ -485,31 +490,68 @@
       <div class="post-thumb">${thumb}<span class="post-rank">#${index + 1}</span></div>
       <div class="post-body">
         <p class="post-caption">${caption || '<em>Sem legenda</em>'}</p>
-        <span class="post-date">${postDateLabel(post.timestamp)}</span>
+        <span class="post-date${postsSort === 'timestamp' ? ' is-primary' : ''}">${postDateLabel(post.timestamp)}</span>
         <div class="post-stats">${stats}</div>
       </div>
     </a>`;
   }
 
+  function renderPostsTable(sorted) {
+    const head = el('postsTableHead'), body = el('postsTableBody');
+    if (!head || !body) return;
+    head.innerHTML = `<th>Post</th>${POST_SORT_OPTIONS.map(option =>
+      `<th class="posts-th${option.key === postsSort ? ' is-active' : ''}" data-sort="${option.key}">${option.label}</th>`
+    ).join('')}`;
+    body.innerHTML = sorted.map(post => {
+      const thumb = post.thumbnailUrl ? `<img class="posts-table-thumb" src="${escapeHtml(post.thumbnailUrl)}" alt="">` : '';
+      const cells = POST_SORT_OPTIONS.map(option => {
+        if (option.key === 'timestamp') return `<td>${postDateLabel(post.timestamp)}</td>`;
+        const value = post[option.key];
+        const known = Number.isFinite(Number(value));
+        return `<td>${known ? format(Number(value)) : '—'}</td>`;
+      }).join('');
+      return `<tr><td class="posts-table-post"><a href="${escapeHtml(post.permalink) || '#'}" target="_blank" rel="noopener">${thumb}<span>${escapeHtml(post.caption).slice(0, 70) || 'Sem legenda'}</span></a></td>${cells}</tr>`;
+    }).join('');
+    head.querySelectorAll('[data-sort]').forEach(th => th.addEventListener('click', () => {
+      postsSort = th.dataset.sort;
+      renderPosts();
+    }));
+  }
+
   function renderPosts() {
-    const grid = el('postsGrid'), summary = el('postsSummary'), sortWrap = el('postsSort');
+    const grid = el('postsGrid'), tableWrap = el('postsTableWrap'), summary = el('postsSummary'), sortWrap = el('postsSort');
     if (!grid) return;
     if (!isVonder) {
       if (summary) summary.textContent = 'Esta marca ainda não tem posts conectados.';
       if (sortWrap) sortWrap.hidden = true;
-      grid.innerHTML = '';
+      grid.hidden = false; grid.innerHTML = '';
+      if (tableWrap) tableWrap.hidden = true;
       return;
     }
-    if (sortWrap) sortWrap.hidden = false;
+    if (sortWrap) {
+      sortWrap.hidden = postsView === 'list';
+      // Sincroniza o pill ativo com postsSort mesmo quando quem mudou o valor foi o cabeçalho
+      // da tabela (lista) — sem isso, voltar pra grade mostrava o pill de um clique antigo.
+      sortWrap.querySelectorAll('[data-sort]').forEach(btn => btn.classList.toggle('is-active', btn.dataset.sort === postsSort));
+    }
     if (!postsData.length) {
       if (summary) summary.textContent = 'Aguardando a primeira coleta de posts.';
+      grid.hidden = false;
       grid.innerHTML = '<p class="muted" style="grid-column:1/-1;text-align:center;padding:20px 0">Assim que a coleta automática rodar, os posts mais recentes aparecem aqui.</p>';
+      if (tableWrap) tableWrap.hidden = true;
       return;
     }
-    const sorted = postsData.slice().sort((a, b) => (Number(b[postsSort]) || 0) - (Number(a[postsSort]) || 0));
+    const sorted = postsData.slice().sort((a, b) => postSortValue(b, postsSort) - postSortValue(a, postsSort));
     const activeOption = POST_SORT_OPTIONS.find(option => option.key === postsSort);
     if (summary) summary.textContent = `${sorted.length} posts · ordenado por ${activeOption ? activeOption.label.toLowerCase() : ''}`;
-    grid.innerHTML = sorted.slice(0, 12).map((post, index) => renderPostCard(post, index)).join('');
+    if (postsView === 'list') {
+      grid.hidden = true;
+      if (tableWrap) { tableWrap.hidden = false; renderPostsTable(sorted); }
+    } else {
+      if (tableWrap) tableWrap.hidden = true;
+      grid.hidden = false;
+      grid.innerHTML = sorted.slice(0, 12).map((post, index) => renderPostCard(post, index)).join('');
+    }
   }
 
   function protectedPosts() {
@@ -989,7 +1031,14 @@
   if (postsSortWrap) {
     postsSortWrap.querySelectorAll('[data-sort]').forEach(button => button.addEventListener('click', () => {
       postsSort = button.dataset.sort;
-      postsSortWrap.querySelectorAll('[data-sort]').forEach(item => item.classList.toggle('is-active', item === button));
+      renderPosts();
+    }));
+  }
+  const postsViewToggle = el('postsViewToggle');
+  if (postsViewToggle) {
+    postsViewToggle.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
+      postsView = button.dataset.view;
+      postsViewToggle.querySelectorAll('[data-view]').forEach(item => item.classList.toggle('is-active', item === button));
       renderPosts();
     }));
   }
