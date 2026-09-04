@@ -38,6 +38,13 @@
     button,input,select,textarea,option{font-family:var(--font-ui)}
     .container{max-width:1900px;margin:0 auto}
 
+    /* Brilho de fundo que acompanha o mouse (Início e Login) — canvas inserido via
+       mouse-light.js como 1º filho do body, substitui o gradiente radial estático de
+       .auth-page::before/.home-body::before (que continua servindo de fallback em telas sem
+       mouse ou com "reduzir movimento" ativado). Desenho (rastro de blobs desbotando) é feito
+       em JS a cada frame; aqui só o posicionamento/tamanho do canvas. */
+    .mouse-light-canvas{position:fixed;inset:0;pointer-events:none}
+
     /* Shell do portal: sidebar fixa à esquerda (menu de ferramentas + seletor de marca,
        montados por portal-shell.js) + área de conteúdo da ferramenta atual à direita. O
        padding:28px que antes vivia no body agora é do .portal-main, pra sidebar ficar

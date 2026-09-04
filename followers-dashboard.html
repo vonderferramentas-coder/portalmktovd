@@ -252,32 +252,56 @@
       line-height: 1.1
     }
 
-    .score {
-      font-size: 36px;
-      font-weight: 900;
-      letter-spacing: -.03em;
-      margin: 20px 0 4px
+    .goal-ring-wrap {
+      position: relative;
+      width: 156px;
+      height: 156px;
+      margin: 10px auto 0
     }
 
-    .score-caption {
-      margin: 0;
-      font-size: 11px;
-      color: var(--muted)
-    }
-
-    .progress {
-      height: 9px;
-      background: var(--surface-muted);
-      border-radius: 10px;
-      margin-top: 23px;
-      overflow: hidden
-    }
-
-    .progress i {
-      display: block;
+    .goal-ring {
+      width: 100%;
       height: 100%;
-      background: var(--accent);
-      border-radius: 10px
+      transform: rotate(-90deg)
+    }
+
+    .goal-ring-track {
+      fill: none;
+      stroke: var(--surface-muted);
+      stroke-width: 10
+    }
+
+    .goal-ring-fill {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 10;
+      stroke-linecap: round;
+      stroke-dasharray: 326.726;
+      stroke-dashoffset: 326.726;
+      transition: stroke-dashoffset .9s cubic-bezier(.16,1,.3,1), opacity .3s ease
+    }
+
+    .goal-ring-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .goal-ring-center strong {
+      font-size: 27px;
+      font-weight: 900;
+      letter-spacing: -.02em;
+      color: var(--text)
+    }
+
+    .goal-ring-caption {
+      margin: 10px 0 0;
+      text-align: center;
+      font-size: 11px;
+      line-height: 1.4;
+      color: var(--muted)
     }
 
     .line-chart {
@@ -598,6 +622,51 @@
       margin-top: 16px
     }
 
+    .history-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      width: 100%;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      margin: 0;
+      font: inherit;
+      color: inherit;
+      text-align: left;
+      cursor: pointer
+    }
+
+    .history-toggle:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+      border-radius: 6px
+    }
+
+    .history-chevron {
+      flex: none;
+      color: var(--muted);
+      margin-top: 4px;
+      transition: transform .15s
+    }
+
+    .history-toggle[aria-expanded="true"] .history-chevron {
+      transform: rotate(180deg)
+    }
+
+    .history-body {
+      margin-top: 4px
+    }
+
+    .history-pager {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 14px
+    }
+
     .table-wrap {
       overflow: auto;
       margin-top: 8px
@@ -644,6 +713,126 @@
     .channel-context img {
       width: 16px;
       height: 16px
+    }
+
+    .milestones-card .head {
+      margin-bottom: 4px
+    }
+
+    .milestone-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .chevron-btn {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: 1px solid var(--border-strong);
+      border-radius: 50%;
+      background: var(--surface-muted);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background .15s, border-color .15s
+    }
+
+    .chevron-btn:hover,
+    .chevron-btn:focus-visible {
+      background: var(--accent-weak);
+      border-color: var(--accent);
+      outline: none
+    }
+
+    .chevron-btn:disabled {
+      opacity: .4;
+      cursor: default
+    }
+
+    .milestone-table-wrap {
+      overflow: auto;
+      margin-top: 12px
+    }
+
+    .milestone-table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 560px
+    }
+
+    .milestone-table th,
+    .milestone-table td {
+      padding: 8px 10px;
+      font-size: 12px
+    }
+
+    .milestone-table th:not(:first-child),
+    .milestone-table td:not(:first-child) {
+      text-align: center
+    }
+
+    .milestone-table thead th {
+      border-bottom: 2px solid var(--border-strong);
+      font-size: 10px
+    }
+
+    .milestone-row-label {
+      min-width: 150px;
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+      position: sticky;
+      left: 0;
+      background: var(--card);
+      z-index: 1
+    }
+
+    .milestone-row-label-inner {
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .milestone-icon {
+      width: 17px;
+      height: 17px;
+      object-fit: contain
+    }
+
+    .milestone-total-row td {
+      border-bottom: 0;
+      font-size: 16px;
+      font-weight: 800;
+      padding-top: 12px;
+      padding-bottom: 2px
+    }
+
+    .milestone-delta-row td {
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-style: italic;
+      padding-top: 2px;
+      padding-bottom: 12px
+    }
+
+    .milestone-delta-row.alt td,
+    .milestone-total-row.alt td {
+      background: var(--surface-muted)
+    }
+
+    .milestone-delta-row.alt .milestone-row-label,
+    .milestone-total-row.alt .milestone-row-label {
+      background: var(--surface-muted)
+    }
+
+    .milestone-delta-cell.best-week {
+      font-size: 13px;
+      font-weight: 900
     }
 
     .workflow-info-modal {
@@ -716,6 +905,12 @@
     .period-control,
     .actions-control {
       position: relative
+    }
+
+    .period-control {
+      display: flex;
+      align-items: center;
+      gap: 6px
     }
 
     .period-trigger,
@@ -1007,7 +1202,8 @@
             <p class="muted" id="dataStatus" aria-live="polite" style="margin:5px 0 0;font-size:11px"></p>
           </div>
           <div class="social-header-actions">
-            <div class="period-control" id="periodControl"><button class="period-trigger" type="button"
+            <div class="period-control" id="periodControl"><button type="button" class="chevron-btn" id="periodPrev"
+                aria-label="Período anterior">‹</button><button class="period-trigger" type="button"
                 id="periodTrigger" aria-expanded="false" aria-controls="periodMenu"><svg width="15" height="15"
                   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                   <rect x="3" y="4" width="18" height="17" rx="2" />
@@ -1015,7 +1211,8 @@
                 </svg><span id="periodLabel">Últimos 30 dias</span><svg class="period-caret" aria-hidden="true"
                   width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                   <path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg></button>
+                </svg></button><button type="button" class="chevron-btn" id="periodNext"
+                aria-label="Próximo período">›</button>
               <div class="period-menu" id="periodMenu" hidden><button class="period-option" type="button"
                   data-range="7">Últimos 7 dias</button><button class="period-option" type="button"
                   data-range="15">Últimos 15 dias</button><button class="period-option is-active" type="button"
@@ -1057,12 +1254,40 @@
           </article>
           <article class="card score-card">
             <div class="head">
-              <h2>Ritmo de crescimento</h2><span class="period-pill" id="scorePeriod"></span>
+              <h2>Progresso da meta</h2><span class="period-pill" id="goalRingDeadline">Meta</span>
             </div>
-            <div class="score" id="scoreValue"></div>
-            <p class="score-caption" id="scoreCaption"></p>
-            <div class="progress"><i id="scoreBar"></i></div>
+            <div class="goal-ring-wrap">
+              <svg class="goal-ring" viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="goal-ring-track" cx="60" cy="60" r="52" />
+                <circle class="goal-ring-fill" id="goalRingFill" cx="60" cy="60" r="52" />
+              </svg>
+              <div class="goal-ring-center">
+                <strong id="goalRingPercent">—</strong>
+              </div>
+            </div>
+            <p class="goal-ring-caption" id="goalRingCaption">Nenhuma meta cadastrada</p>
           </article>
+        </section>
+        <section class="card milestones-card" style="margin-bottom:16px">
+          <div class="head">
+            <div>
+              <h2>Marcos do mês</h2>
+              <p class="muted">Primeiro e último dia do mês e toda sexta-feira · seguidores no marco e ganho da semana</p>
+            </div>
+            <div class="milestone-nav">
+              <button type="button" class="chevron-btn" id="milestonePrev" aria-label="Mês anterior">‹</button>
+              <span class="period-pill" id="milestoneMonthLabel">—</span>
+              <button type="button" class="chevron-btn" id="milestoneNext" aria-label="Próximo mês">›</button>
+            </div>
+          </div>
+          <div class="table-wrap milestone-table-wrap">
+            <table class="milestone-table">
+              <thead>
+                <tr id="milestoneHead"></tr>
+              </thead>
+              <tbody id="milestoneBody"></tbody>
+            </table>
+          </div>
         </section>
         <section class="content-grid">
           <article class="card chart-card">
@@ -1160,27 +1385,38 @@
           </div>
         </section>
         <section class="card history-card">
-          <div class="head">
+          <button type="button" class="history-toggle" id="historyToggle" aria-expanded="false" aria-controls="historyBody">
             <div>
               <h2>Histórico de acompanhamento</h2>
               <p class="muted">Instagram coletado automaticamente pela API; demais canais, quando lançados manualmente.
               </p>
             </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Período</th>
-                  <th>Instagram</th>
-                  <th>Facebook</th>
-                  <th>YouTube</th>
-                  <th>TikTok</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody id="table"></tbody>
-            </table>
+            <svg class="history-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.4">
+              <path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="history-body" id="historyBody" hidden>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr id="historyHead">
+                    <th>Período</th>
+                    <th>Instagram</th>
+                    <th>Facebook</th>
+                    <th>YouTube</th>
+                    <th>TikTok</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody id="table"></tbody>
+              </table>
+            </div>
+            <div class="history-pager" id="historyPager" hidden>
+              <button type="button" class="chevron-btn" id="historyPrev" aria-label="Página anterior">‹</button>
+              <span class="period-pill" id="historyPageLabel">Página 1 de 1</span>
+              <button type="button" class="chevron-btn" id="historyNext" aria-label="Próxima página">›</button>
+            </div>
           </div>
         </section>
       </div>

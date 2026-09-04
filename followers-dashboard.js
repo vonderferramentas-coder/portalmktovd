@@ -18,6 +18,23 @@
   const AUTO_REFRESH_MS = 60000;
   const MAX_BUCKETS = 60;
 
+  // auth.css esconde a página inteira (visibility:hidden) até auth-guard.js liberar o acesso —
+  // mas transições CSS e requestAnimationFrame continuam correndo por baixo. Sem isso, a
+  // animação do anel de meta termina escondida e só aparece o quadro final quando a página some
+  // do auth-pending. pageVisible fica em memória (não observa de novo) porque a classe some uma
+  // única vez, no máximo, na vida da página.
+  let pageVisible = !document.documentElement.classList.contains('auth-pending');
+  let onPageVisible = null;
+  if (!pageVisible) {
+    const authPendingObserver = new MutationObserver(() => {
+      if (document.documentElement.classList.contains('auth-pending')) return;
+      pageVisible = true;
+      authPendingObserver.disconnect();
+      if (onPageVisible) { const run = onPageVisible; onPageVisible = null; run(); }
+    });
+    authPendingObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  }
+
   ['social_followers_', 'social_followers_goals_', 'social_followers_v2_', 'social_followers_goals_v2_']
     .forEach(prefix => { try { localStorage.removeItem(prefix + brandKey); } catch (error) { /* sem storage */ } });
 
@@ -47,6 +64,10 @@
   const monthEnd = date => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
   const shortDate = value => { const d = parse(value); return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`; };
   const monthTag = date => `${MONTHS[date.getUTCMonth()]}/${String(date.getUTCFullYear()).slice(-2)}`;
+  // <input type="date"> dispara "change" assim que dia+mês+ano formam uma data válida — e ao
+  // digitar o ano dígito a dígito, o primeiro já forma uma data "válida" (ano bem pequeno, tipo
+  // 0002), disparando o listener antes do usuário terminar de digitar os outros 3 dígitos.
+  const looksLikeTypedYear = isoDate => { const year = Number(isoDate.slice(0, 4)); return year >= 2000 && year <= 2099; };
 
   const el = id => document.getElementById(id);
   const setText = (id, value) => { const node = el(id); if (node) node.textContent = value; };
@@ -61,6 +82,7 @@
   let goals = Object.assign({}, isVonder ? DEFAULT_GOALS : {}, read(goalsKey, {}));
   let liveSnapshot = null;
   let initialized = false;
+  let milestoneMonth = null;  // { year, month } navegado pelo usuário no card "Marcos do mês"
 
   // ---------------------------------------------------------------- dados
 
@@ -144,6 +166,7 @@
   // ---------------------------------------------------------------- render
 
   function render() {
+    renderMilestones();
     const nets = activeNetworks();
     const from = el('startDate').value, to = el('endDate').value;
     const spanForGrain = from && to ? Math.max(1, dayDiff(from, to)) : Math.max(1, series.length - 1);
@@ -180,7 +203,6 @@
     if (periodDeltas.length) el('growth').className = `growth-line ${net > 0 ? 'positive' : net < 0 ? 'negative' : ''}`.trim();
 
     setText('growthPeriod', `${shortDate(first.date)} a ${shortDate(last.date)}`);
-    setText('scorePeriod', `${points.length} ${points.length === 1 ? 'dia' : 'dias'}`);
     setText('newFollowers', periodDeltas.length ? signed(net) : '—');
     setTone('newFollowers', periodDeltas.length ? net : 0);
     setText('avg', perDay === null ? '—' : signed(perDay));
@@ -192,14 +214,7 @@
       .sort((a,b) => b.gain - a.gain);
     setText('bestChannel', ranked.length ? ranked[0].network.name : '—');
 
-    const score = Math.max(0, Math.min(100, Math.round(rate * 14)));
-    setText('scoreValue', periodDeltas.length ? `${score}%` : '—');
-    setText('scoreCaption', !periodDeltas.length
-      ? 'É preciso mais de uma medição para calcular o ritmo.'
-      : score >= 70 ? 'Crescimento forte no período'
-      : score >= 30 ? 'Crescimento moderado no período'
-      : net > 0 ? 'Crescimento discreto no período' : 'Sem crescimento no período');
-    el('scoreBar').style.width = periodDeltas.length ? `${score}%` : '0%';
+    renderGoalRing(currentPoint, nets);
     el('channelContext').innerHTML = active ? `<img src="${active.icon}" alt=""> ${active.name}` : 'Todas';
 
     renderChart(points, nets, grain);
@@ -244,13 +259,17 @@
     el('bars').innerHTML = `<svg class="line-chart-svg" viewBox="0 0 1000 252" preserveAspectRatio="none" aria-label="Evolução de seguidores">${seriesLines}</svg>${dots}<div class="line-labels">${labels}</div><div class="chart-tooltip" id="chartTooltip" role="status" hidden></div>`;
     const tooltip = el('chartTooltip');
     const hideTooltip = () => { tooltip.hidden = true; };
+    const grainNounLabel = grain === 'month' ? 'no mês' : grain === 'week' ? 'na semana' : 'no dia';
     const showTooltip = (event, point) => {
-      const item = buckets[Number(point.dataset.index)];
+      const index = Number(point.dataset.index);
+      const item = buckets[index];
       const network = plotted.find(entry => entry.name === point.dataset.network);
       const value = item.point.values[network.name];
-      const previous = series.filter(entry => entry.date < item.point.date).pop();
-      const daily = previous && Number.isFinite(previous.values[network.name]) ? value - previous.values[network.name] : null;
-      tooltip.innerHTML = `<strong>${network.name} · ${shortDate(item.point.date)}</strong><span>Seguidores: <b>${format(value)}</b></span><span>Novos no dia: <b class="${daily === null ? 'neutral' : daily > 0 ? 'positive' : daily < 0 ? 'negative' : 'neutral'}">${daily === null ? '—' : signed(daily)}</b></span>`;
+      // Compara com o bucket anterior (mesmo grão), não com o dia bruto anterior: num
+      // agrupamento por mês, "novos no mês" precisa somar o mês inteiro, não só o último dia dele.
+      const previousValue = index > 0 ? buckets[index - 1].point.values[network.name] : undefined;
+      const change = Number.isFinite(previousValue) ? value - previousValue : null;
+      tooltip.innerHTML = `<strong>${network.name} · ${shortDate(item.point.date)}</strong><span>Seguidores: <b>${format(value)}</b></span><span>Novos ${grainNounLabel}: <b class="${change === null ? 'neutral' : change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral'}">${change === null ? '—' : signed(change)}</b></span>`;
       tooltip.hidden = false;
       const rect = el('bars').getBoundingClientRect();
       const pointerX = event.clientX || (rect.left + point.getBoundingClientRect().left - rect.left);
@@ -296,16 +315,137 @@
       render();
     }));
   }
+  const HISTORY_PAGE_SIZE = 10;
+  let historyPage = 0;
+  let historySignature = '';
   function renderTable(points, nets, grain) {
     const buckets = aggregate(points, grain).slice().reverse();
-    document.querySelector('thead tr').innerHTML = `<th>Período</th>${nets.map(network => `<th>${network.name}</th>`).join('')}<th>Total</th>`;
-    el('table').innerHTML = buckets.map(item => {
+    // Muda o período/agrupamento filtrado (não a passagem do tempo em si) volta pra página 1;
+    // um refresh automático com o mesmo filtro não deve chutar o usuário da página que ele está lendo.
+    const signature = `${grain}|${points.length ? points[0].date : ''}|${points.length ? points[points.length - 1].date : ''}`;
+    if (signature !== historySignature) { historySignature = signature; historyPage = 0; }
+    const totalPages = Math.max(1, Math.ceil(buckets.length / HISTORY_PAGE_SIZE));
+    historyPage = Math.min(historyPage, totalPages - 1);
+    const pageItems = buckets.slice(historyPage * HISTORY_PAGE_SIZE, (historyPage + 1) * HISTORY_PAGE_SIZE);
+
+    el('historyHead').innerHTML = `<th>Período</th>${nets.map(network => `<th>${network.name}</th>`).join('')}<th>Total</th>`;
+    el('table').innerHTML = pageItems.map(item => {
       const cells = nets.map(network => {
         const value = item.point.values[network.name];
         return `<td>${Number.isFinite(value) ? format(value) : '—'}</td>`;
       }).join('');
       return `<tr><td>${item.label}</td>${cells}<td><strong>${format(totalAt(item.point, nets))}</strong></td></tr>`;
     }).join('');
+
+    const pager = el('historyPager');
+    if (pager) {
+      pager.hidden = buckets.length <= HISTORY_PAGE_SIZE;
+      setText('historyPageLabel', `Página ${historyPage + 1} de ${totalPages}`);
+      const prevBtn = el('historyPrev'), nextBtn = el('historyNext');
+      if (prevBtn) prevBtn.disabled = historyPage <= 0;
+      if (nextBtn) nextBtn.disabled = historyPage >= totalPages - 1;
+    }
+  }
+
+  // ----------------------------------------------------------- marcos do mês
+
+  // Marcos fixos do card visual: abertura e fechamento do mês, mais toda sexta-feira
+  // entre os dois — são os pontos que o time usa para comparar semana a semana.
+  function monthMilestones(year, month) {
+    const start = new Date(Date.UTC(year, month, 1));
+    const end = monthEnd(start);
+    const set = new Set([iso(start), iso(end)]);
+    let cursor = new Date(start);
+    while (cursor.getUTCDay() !== 5) cursor = addDays(cursor, 1);
+    while (cursor <= end) { set.add(iso(cursor)); cursor = addDays(cursor, 7); }
+    return Array.from(set).sort();
+  }
+
+  // Seguidores são estoque: o valor em um marco é o último medido até aquela data,
+  // igual ao resto do painel (ver comentário em buildSeries).
+  function valueAtDate(date, networkName) {
+    if (liveSnapshot && networkName === 'Instagram' && date === lastDate()) {
+      const live = liveSnapshot.platforms && liveSnapshot.platforms.Instagram;
+      if (live && Number.isFinite(Number(live.followers))) return Number(live.followers);
+    }
+    for (let index = series.length - 1; index >= 0; index--) {
+      const point = series[index];
+      if (point.date <= date && Number.isFinite(point.values[networkName])) return point.values[networkName];
+    }
+    return null;
+  }
+
+  // Distingue "cresceu 0 entre os marcos" de "não houve coleta nessa janela" — meses antigos só
+  // têm um número estimado por mês (ver comentário em buildSeries), então o valor do marco é
+  // sempre herdado do mês anterior até a próxima medição real, sem refletir a semana em si.
+  function hasMeasurementInRange(networkName, fromExclusive, toInclusive) {
+    return series.some(point => point.date > fromExclusive && point.date <= toInclusive &&
+      point.measured && Number.isFinite(point.measured[networkName]));
+  }
+
+  const milestoneDateLabel = value => {
+    const d = parse(value);
+    return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+  };
+
+  function renderMilestones() {
+    const head = el('milestoneHead'), body = el('milestoneBody'), label = el('milestoneMonthLabel'), nextBtn = el('milestoneNext');
+    if (!head || !body || !label) return;
+    if (!series.length) {
+      label.textContent = '—';
+      if (nextBtn) nextBtn.disabled = true;
+      head.innerHTML = '<th>Rede social</th>';
+      const message = !isVonder ? 'A integração de redes sociais desta marca ainda não foi conectada.' : 'Aguardando a primeira coleta.';
+      body.innerHTML = `<tr><td style="text-align:center;color:var(--muted);padding:20px">${message}</td></tr>`;
+      return;
+    }
+
+    const todayIso = lastDate();
+    if (!milestoneMonth) {
+      const last = parse(todayIso);
+      milestoneMonth = { year: last.getUTCFullYear(), month: last.getUTCMonth() };
+    }
+    const { year, month } = milestoneMonth;
+    label.textContent = `${MONTH_NAMES[month]} de ${year}`;
+    const lastAvailable = parse(todayIso);
+    const atOrAfterCurrentMonth = year > lastAvailable.getUTCFullYear() ||
+      (year === lastAvailable.getUTCFullYear() && month >= lastAvailable.getUTCMonth());
+    if (nextBtn) nextBtn.disabled = atOrAfterCurrentMonth;
+
+    const dates = monthMilestones(year, month);
+    head.innerHTML = `<th>Rede social</th>${dates.map(date => `<th>${milestoneDateLabel(date)}</th>`).join('')}`;
+
+    const toneClass = delta => delta === null ? 'neutral' : delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral';
+    body.innerHTML = NETWORKS.map((network, netIndex) => {
+      const values = dates.map(date => date > todayIso ? null : valueAtDate(date, network.name));
+      // Sem coleta real dentro da janela (ex.: meses antigos, só um número estimado por mês), o valor
+      // do marco é apenas herdado do anterior — mostrar "0" aí sugeriria estagnação em vez de "sem dado".
+      const deltasRow = values.map((value, index) => {
+        if (index === 0 || value === null || values[index - 1] === null) return null;
+        if (!hasMeasurementInRange(network.name, dates[index - 1], dates[index])) return null;
+        return value - values[index - 1];
+      });
+      const known = deltasRow.filter(delta => delta !== null);
+      const best = known.length ? Math.max(...known) : null;
+      const altClass = netIndex % 2 ? ' alt' : '';
+      const deltaCells = deltasRow.map(delta => {
+        const isBest = best !== null && delta === best;
+        return `<td class="milestone-delta-cell ${toneClass(delta)}${isBest ? ' best-week' : ''}">${delta === null ? '—' : signed(delta)}</td>`;
+      }).join('');
+      const totalCells = values.map(value => `<td>${value === null ? '—' : format(value)}</td>`).join('');
+      return `<tr class="milestone-total-row${altClass}"><td class="milestone-row-label"><span class="milestone-row-label-inner"><img class="milestone-icon" src="${network.icon}" alt="">${network.name}</span></td>${totalCells}</tr>` +
+        `<tr class="milestone-delta-row${altClass}"><td class="milestone-row-label"></td>${deltaCells}</tr>`;
+    }).join('');
+  }
+
+  function shiftMilestoneMonth(delta) {
+    if (!milestoneMonth) return;
+    let { year, month } = milestoneMonth;
+    month += delta;
+    if (month < 0) { month = 11; year -= 1; }
+    if (month > 11) { month = 0; year += 1; }
+    milestoneMonth = { year, month };
+    renderMilestones();
   }
 
   function renderIndicators(points, nets, periodDeltas, net, rate, perDay, span) {
@@ -438,6 +578,67 @@
     }
   }
 
+  // Compartilhado pelo anel "Progresso da meta" no topo e pelo card "Meta e projeção" mais
+  // abaixo, para que os dois sempre concordem sobre quanto falta e até quando.
+  function goalProgressFor(nets, last) {
+    const entries = nets.filter(network => goals[network.name] && Number(goals[network.name].target) > 0);
+    if (!entries.length) return null;
+    const target = entries.reduce((sum, network) => sum + Number(goals[network.name].target), 0);
+    const reached = entries.reduce((sum, network) => sum + (Number(last.values[network.name]) || 0), 0);
+    const deadline = entries.map(network => goals[network.name].deadline).filter(Boolean).sort()[0];
+    return { entries, target, reached, deadline };
+  }
+
+  const GOAL_RING_CIRCUMFERENCE = 2 * Math.PI * 52;
+  let goalRingAnimFrame = null;
+  let goalRingDisplayedPercent = null; // de onde a próxima animação parte, não o que está cru no DOM
+
+  // Conta do valor atual até o novo, em vez de trocar o número seco — mesma curva do
+  // preenchimento do traço (ver transition do .goal-ring-fill), pra sentir como um só movimento.
+  function animateGoalRingPercent(percentEl, target) {
+    const from = goalRingDisplayedPercent === null ? 0 : goalRingDisplayedPercent;
+    if (goalRingAnimFrame) cancelAnimationFrame(goalRingAnimFrame);
+    if (from === target) { percentEl.textContent = `${target.toFixed(1).replace('.', ',')}%`; return; }
+    const duration = 900;
+    const start = performance.now();
+    const step = now => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const value = from + (target - from) * eased;
+      percentEl.textContent = `${value.toFixed(1).replace('.', ',')}%`;
+      if (t < 1) { goalRingAnimFrame = requestAnimationFrame(step); }
+      else { goalRingDisplayedPercent = target; goalRingAnimFrame = null; }
+    };
+    goalRingAnimFrame = requestAnimationFrame(step);
+  }
+
+  function renderGoalRing(last, nets) {
+    const percentEl = el('goalRingPercent'), captionEl = el('goalRingCaption');
+    const fill = el('goalRingFill'), deadlinePill = el('goalRingDeadline');
+    if (!percentEl || !fill) return;
+    const progress = goalProgressFor(nets, last);
+    if (!progress) {
+      if (goalRingAnimFrame) { cancelAnimationFrame(goalRingAnimFrame); goalRingAnimFrame = null; }
+      goalRingDisplayedPercent = null;
+      percentEl.textContent = '—';
+      captionEl.textContent = 'Nenhuma meta cadastrada para esta seleção.';
+      fill.style.strokeDashoffset = `${GOAL_RING_CIRCUMFERENCE}`;
+      fill.style.opacity = '0'; // sem isso, a ponta arredondada do traço desenha um pontinho mesmo com 0% de progresso
+      if (deadlinePill) deadlinePill.textContent = 'Meta';
+      return;
+    }
+    const percent = progress.target ? progress.reached / progress.target * 100 : 0;
+    const clamped = Math.max(0, Math.min(100, percent));
+    captionEl.textContent = `${format(progress.reached)} de ${format(progress.target)} seguidores`;
+    if (deadlinePill) deadlinePill.textContent = progress.deadline ? progress.deadline.slice(0, 4) : 'Meta';
+    const reveal = () => {
+      animateGoalRingPercent(percentEl, percent);
+      fill.style.strokeDashoffset = `${GOAL_RING_CIRCUMFERENCE * (1 - clamped / 100)}`;
+      fill.style.opacity = clamped > 0 ? '1' : '0';
+    };
+    if (pageVisible) reveal(); else onPageVisible = reveal;
+  }
+
   function renderGoal(last, current, nets, periodDeltas, perDay) {
     const blank = message => {
       setText('goalSummary', message);
@@ -445,13 +646,10 @@
       ['goalTotal','goalPercent','goalRemaining','goalNeeded','goalPace','goalMonthly','goalEndMonth','goalEndYear','goalProjection']
         .forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = ''; });
     };
-    const entries = nets.filter(network => goals[network.name] && Number(goals[network.name].target) > 0);
-    if (!entries.length) return blank('Nenhuma meta cadastrada para esta seleção.');
-
-    const target = entries.reduce((sum, network) => sum + Number(goals[network.name].target), 0);
-    const reached = entries.reduce((sum, network) => sum + (Number(last.values[network.name]) || 0), 0);
+    const progress = goalProgressFor(nets, last);
+    if (!progress) return blank('Nenhuma meta cadastrada para esta seleção.');
+    const { entries, target, reached, deadline } = progress;
     const remaining = target - reached;
-    const deadline = entries.map(network => goals[network.name].deadline).filter(Boolean).sort()[0];
     setText('goalSummary', `${entries.map(network => network.name).join(', ')}: ${format(reached)} de ${format(target)}${deadline ? ` até ${deadline.split('-').reverse().join('/')}` : ''}.`);
     setText('goalTotal', format(target));
     setText('goalPercent', `${(reached / target * 100).toFixed(1).replace('.',',')}%`);
@@ -507,16 +705,14 @@
     setText('growth', message);
     ['newFollowers','avg','bestChannel'].forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = 'neutral'; });
     setText('growthPeriod', '—');
-    setText('scorePeriod', '—');
-    setText('scoreValue', '—');
-    setText('scoreCaption', 'É preciso mais de uma medição para calcular o ritmo.');
-    el('scoreBar').style.width = '0%';
+    renderGoalRing({ values:{} }, activeNetworks());
     el('channelContext').textContent = 'Todas';
     el('legend').innerHTML = '';
     el('chartY').innerHTML = '';
     el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">${message}<br>O Instagram é coletado automaticamente uma vez por dia; os demais canais podem ser lançados em "Registrar número".</p>`;
     el('platforms').innerHTML = NETWORKS.map(network => `<div class="platform" style="cursor:default"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${network.connected ? 'Aguardando coleta' : 'Sem API conectada'}</small></span><span class="platform-delta"><strong class="neutral">—</strong></span></div>`).join('');
     el('table').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted)">${message}</td></tr>`;
+    const pager = el('historyPager'); if (pager) pager.hidden = true;
     ['netGrowth','growthRate','dailyRate','bestDay','worstDay','ma7','ma30','mtd','ytd','cmpDay','cmpWeek','cmpMonth','cmpPeriod','cmpAccel','cmpWeekday','grossFollows','unfollows','insightNet','reach','followConversion','avgFollows']
       .forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = ''; });
     renderGoal({ values:{} }, 0, activeNetworks(), [], null);
@@ -526,6 +722,7 @@
 
   function resetRange() {
     if (!series.length) { el('startDate').value = ''; el('endDate').value = ''; return; }
+    periodPreset = '30'; periodOffset = 0;
     applyPreset('30', false);
   }
   function setRange(from, to, shouldRender = true) {
@@ -538,31 +735,63 @@
   const labels = { '7':'Últimos 7 dias', '15':'Últimos 15 dias', '30':'Últimos 30 dias', month:'Este mês', year:'Este ano', all:'Desde o início', custom:'Personalizado' };
   const periodMenu = el('periodMenu'), periodTrigger = el('periodTrigger'), customRange = el('customRange');
   const actionsMenu = el('actionsMenu'), actionsTrigger = el('actionsTrigger');
+  const periodPrevBtn = el('periodPrev'), periodNextBtn = el('periodNext');
+  let periodPreset = '30', periodOffset = 0;
   const closeMenus = () => {
     periodMenu.hidden = true; periodTrigger.setAttribute('aria-expanded', 'false');
     actionsMenu.hidden = true; actionsTrigger.setAttribute('aria-expanded', 'false');
   };
   const openPeriod = () => { actionsMenu.hidden = true; actionsTrigger.setAttribute('aria-expanded', 'false'); periodMenu.hidden = false; periodTrigger.setAttribute('aria-expanded', 'true'); };
-  const applyPreset = (range, shouldRender = true) => {
-    const end = lastDate(); let from = end;
-    if (/^\d+$/.test(range)) from = iso(addDays(parse(end), -(Number(range) - 1)));
-    if (range === 'month') { const day = parse(end); from = iso(new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1))); }
-    if (range === 'year') { const day = parse(end); from = `${day.getUTCFullYear()}-01-01`; }
-    if (range === 'all') { from = series.length ? series[0].date : end; }
-    setRange(from, end, shouldRender);
-    const label = /^\d+$/.test(range)
-      ? `${labels[range]} · ${shortDate(from)} a ${shortDate(end)}`
-      : range === 'month' ? `${labels.month} · ${MONTH_NAMES[parse(end).getUTCMonth()]}`
-      : range === 'year' ? `${labels.year} · ${parse(end).getUTCFullYear()}`
-      : range === 'all' ? `${labels.all} · ${shortDate(from)} a ${shortDate(end)}`
-      : labels[range];
-    setText('periodLabel', label);
+
+  // "all" (todo o histórico) e "custom" (já é datas livres) não têm uma unidade natural
+  // para deslocar — só os presets de janela fixa (dias/mês/ano) ganham as setas.
+  const isShiftable = range => /^\d+$/.test(range) || range === 'month' || range === 'year';
+  function computeWindow(range, offset) {
+    const end = lastDate();
+    if (/^\d+$/.test(range)) {
+      const size = Number(range);
+      let to = offset === 0 ? end : iso(addDays(parse(end), offset * size));
+      if (to > end) to = end;
+      return { from: iso(addDays(parse(to), -(size - 1))), to };
+    }
+    if (range === 'month') {
+      const day = parse(end);
+      const target = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth() + offset, 1));
+      const from = iso(target);
+      const natural = iso(monthEnd(target));
+      return { from, to: natural > end ? end : natural };
+    }
+    if (range === 'year') {
+      const targetYear = parse(end).getUTCFullYear() + offset;
+      const from = `${targetYear}-01-01`, natural = `${targetYear}-12-31`;
+      return { from, to: natural > end ? end : natural };
+    }
+    if (range === 'all') return { from: series.length ? series[0].date : end, to: end };
+    return { from: end, to: end };
+  }
+  function buildLabel(range, from, to) {
+    if (/^\d+$/.test(range)) return `${labels[range]} · ${shortDate(from)} a ${shortDate(to)}`;
+    if (range === 'month') { const d = parse(from); return `${labels.month} · ${MONTH_NAMES[d.getUTCMonth()]} de ${d.getUTCFullYear()}`; }
+    if (range === 'year') return `${labels.year} · ${parse(from).getUTCFullYear()}`;
+    if (range === 'all') return `${labels.all} · ${shortDate(from)} a ${shortDate(to)}`;
+    return labels[range];
+  }
+  const applyPreset = (range, shouldRender = true, offset = 0) => {
+    periodPreset = range;
+    periodOffset = offset;
+    const { from, to } = computeWindow(range, offset);
+    setRange(from, to, shouldRender);
+    setText('periodLabel', buildLabel(range, from, to));
     customRange.hidden = true;
     document.querySelectorAll('[data-range]').forEach(button => button.classList.toggle('is-active', button.dataset.range === range));
+    const canShift = isShiftable(range) && series.length > 0;
+    if (periodPrevBtn) periodPrevBtn.disabled = !canShift;
+    if (periodNextBtn) periodNextBtn.disabled = !canShift || offset >= 0;
   };
   document.querySelectorAll('[data-range]').forEach(button => button.addEventListener('click', () => {
     const range = button.dataset.range;
     if (range === 'custom') {
+      periodPreset = 'custom'; periodOffset = 0;
       customRange.hidden = false;
       setText('periodLabel', labels.custom);
       document.querySelectorAll('[data-range]').forEach(item => item.classList.toggle('is-active', item === button));
@@ -570,12 +799,16 @@
       el('endDate').value = '';
       el('endDate').disabled = true;
       el('endDate').removeAttribute('min');
+      if (periodPrevBtn) periodPrevBtn.disabled = true;
+      if (periodNextBtn) periodNextBtn.disabled = true;
       el('startDate').focus();
       return;
     }
-    applyPreset(range);
+    applyPreset(range, true, 0);
     closeMenus();
   }));
+  if (periodPrevBtn) periodPrevBtn.addEventListener('click', () => applyPreset(periodPreset, true, periodOffset - 1));
+  if (periodNextBtn) periodNextBtn.addEventListener('click', () => applyPreset(periodPreset, true, periodOffset + 1));
   periodTrigger.addEventListener('click', () => periodMenu.hidden ? openPeriod() : closeMenus());
   actionsTrigger.addEventListener('click', () => {
     const opening = actionsMenu.hidden;
@@ -584,9 +817,23 @@
   });
   document.addEventListener('click', event => { if (!el('periodControl').contains(event.target) && !el('actionsControl').contains(event.target)) closeMenus(); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenus(); });
+  const milestonePrevBtn = el('milestonePrev'), milestoneNextBtn = el('milestoneNext');
+  if (milestonePrevBtn) milestonePrevBtn.addEventListener('click', () => shiftMilestoneMonth(-1));
+  if (milestoneNextBtn) milestoneNextBtn.addEventListener('click', () => shiftMilestoneMonth(1));
+  const historyToggle = el('historyToggle'), historyBody = el('historyBody');
+  if (historyToggle && historyBody) {
+    historyToggle.addEventListener('click', () => {
+      const expanded = historyToggle.getAttribute('aria-expanded') === 'true';
+      historyToggle.setAttribute('aria-expanded', String(!expanded));
+      historyBody.hidden = expanded;
+    });
+  }
+  const historyPrevBtn = el('historyPrev'), historyNextBtn = el('historyNext');
+  if (historyPrevBtn) historyPrevBtn.addEventListener('click', () => { if (historyPage > 0) { historyPage--; render(); } });
+  if (historyNextBtn) historyNextBtn.addEventListener('click', () => { historyPage++; render(); });
   el('startDate').addEventListener('change', () => {
     const start = el('startDate').value;
-    if (!start) return;
+    if (!start || !looksLikeTypedYear(start)) return;
     el('endDate').min = start;
     if (el('endDate').value && el('endDate').value < start) el('endDate').value = '';
     el('endDate').disabled = false;
@@ -594,7 +841,7 @@
   });
   el('endDate').addEventListener('change', () => {
     const start = el('startDate').value, end = el('endDate').value;
-    if (!start || !end || end < start) return;
+    if (!start || !end || !looksLikeTypedYear(end) || end < start) return;
     setText('periodLabel', `${shortDate(start)} a ${shortDate(end)}`);
     closeMenus();
     render();
