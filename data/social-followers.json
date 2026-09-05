@@ -247,24 +247,9 @@
       "source": "estimado_exportacao_instagram"
     },
     {
-      "date": "2026-08-08",
-      "followers": {
-        "Instagram": 576563
-      },
-      "source": "reconstruido",
-      "insights": {
-        "Instagram": {
-          "follows": 1343,
-          "unfollows": 154,
-          "net": 1189,
-          "reach": 326778
-        }
-      }
-    },
-    {
       "date": "2026-08-09",
       "followers": {
-        "Instagram": 577813
+        "Instagram": 577762
       },
       "source": "reconstruido",
       "insights": {
@@ -279,7 +264,7 @@
     {
       "date": "2026-08-10",
       "followers": {
-        "Instagram": 579037
+        "Instagram": 578986
       },
       "source": "reconstruido",
       "insights": {
@@ -294,7 +279,7 @@
     {
       "date": "2026-08-11",
       "followers": {
-        "Instagram": 579985
+        "Instagram": 579934
       },
       "source": "reconstruido",
       "insights": {
@@ -309,7 +294,7 @@
     {
       "date": "2026-08-12",
       "followers": {
-        "Instagram": 580942
+        "Instagram": 580891
       },
       "source": "reconstruido",
       "insights": {
@@ -324,7 +309,7 @@
     {
       "date": "2026-08-13",
       "followers": {
-        "Instagram": 582020
+        "Instagram": 581969
       },
       "source": "reconstruido",
       "insights": {
@@ -339,7 +324,7 @@
     {
       "date": "2026-08-14",
       "followers": {
-        "Instagram": 582935
+        "Instagram": 582884
       },
       "source": "reconstruido",
       "insights": {
@@ -354,7 +339,7 @@
     {
       "date": "2026-08-15",
       "followers": {
-        "Instagram": 584490
+        "Instagram": 584439
       },
       "source": "reconstruido",
       "insights": {
@@ -369,7 +354,7 @@
     {
       "date": "2026-08-16",
       "followers": {
-        "Instagram": 586007
+        "Instagram": 585956
       },
       "source": "reconstruido",
       "insights": {
@@ -384,7 +369,7 @@
     {
       "date": "2026-08-17",
       "followers": {
-        "Instagram": 587052
+        "Instagram": 587001
       },
       "source": "reconstruido",
       "insights": {
@@ -399,7 +384,7 @@
     {
       "date": "2026-08-18",
       "followers": {
-        "Instagram": 588016
+        "Instagram": 587965
       },
       "source": "reconstruido",
       "insights": {
@@ -414,7 +399,7 @@
     {
       "date": "2026-08-19",
       "followers": {
-        "Instagram": 589083
+        "Instagram": 589032
       },
       "source": "reconstruido",
       "insights": {
@@ -429,7 +414,7 @@
     {
       "date": "2026-08-20",
       "followers": {
-        "Instagram": 590193
+        "Instagram": 590142
       },
       "source": "reconstruido",
       "insights": {
@@ -444,7 +429,7 @@
     {
       "date": "2026-08-21",
       "followers": {
-        "Instagram": 591355
+        "Instagram": 591304
       },
       "source": "reconstruido",
       "insights": {
@@ -459,7 +444,7 @@
     {
       "date": "2026-08-22",
       "followers": {
-        "Instagram": 592841
+        "Instagram": 592790
       },
       "source": "reconstruido",
       "insights": {
@@ -474,7 +459,7 @@
     {
       "date": "2026-08-23",
       "followers": {
-        "Instagram": 594212
+        "Instagram": 594161
       },
       "source": "reconstruido",
       "insights": {
@@ -489,7 +474,7 @@
     {
       "date": "2026-08-24",
       "followers": {
-        "Instagram": 595200
+        "Instagram": 595149
       },
       "source": "reconstruido",
       "insights": {
@@ -504,7 +489,7 @@
     {
       "date": "2026-08-25",
       "followers": {
-        "Instagram": 596111
+        "Instagram": 596060
       },
       "source": "reconstruido",
       "insights": {
@@ -519,7 +504,7 @@
     {
       "date": "2026-08-26",
       "followers": {
-        "Instagram": 597004
+        "Instagram": 596953
       },
       "source": "reconstruido",
       "insights": {
@@ -534,7 +519,7 @@
     {
       "date": "2026-08-27",
       "followers": {
-        "Instagram": 597951
+        "Instagram": 597900
       },
       "source": "reconstruido",
       "insights": {
@@ -549,7 +534,7 @@
     {
       "date": "2026-08-28",
       "followers": {
-        "Instagram": 598866
+        "Instagram": 598815
       },
       "source": "reconstruido",
       "insights": {
@@ -564,7 +549,7 @@
     {
       "date": "2026-08-29",
       "followers": {
-        "Instagram": 600031
+        "Instagram": 599980
       },
       "source": "reconstruido",
       "insights": {
@@ -579,7 +564,7 @@
     {
       "date": "2026-08-30",
       "followers": {
-        "Instagram": 601421
+        "Instagram": 601370
       },
       "source": "reconstruido",
       "insights": {
@@ -594,7 +579,7 @@
     {
       "date": "2026-08-31",
       "followers": {
-        "Instagram": 602092
+        "Instagram": 602041
       },
       "source": "reconstruido",
       "insights": {
@@ -638,6 +623,14 @@
       "date": "2026-09-03",
       "followers": {
         "Instagram": 603010
+      },
+      "insights": {
+        "Instagram": {
+          "follows": 1040,
+          "unfollows": 157,
+          "net": 883,
+          "reach": 227917
+        }
       }
     },
     {
@@ -653,7 +646,7 @@
       }
     }
   ],
-  "updatedAt": "2026-09-05T03:01:07Z",
+  "updatedAt": "2026-09-05T11:48:22Z",
   "platforms": {
     "Instagram": {
       "accountId": "17841403154695997",
