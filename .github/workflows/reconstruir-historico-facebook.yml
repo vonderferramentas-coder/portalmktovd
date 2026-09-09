@@ -1,0 +1,131 @@
+name: Reconstruir histórico de seguidores do Facebook
+
+# Carga única. Ao contrário do Instagram (que só expõe saldo diário de entradas/saídas),
+# a métrica page_follows da Página do Facebook devolve o total acumulado de seguidores
+# por dia diretamente — não precisa "andar para trás" a partir de hoje. A Meta limita
+# cada chamada a no máximo 93 dias entre since/until (confirmado em
+# diagnostico-meta-facebook-historico.yml), então este workflow busca em pedaços de 90
+# dias, andando para trás no tempo até a Meta parar de devolver pontos.
+#
+# Só adiciona/atualiza a chave "Facebook" dentro de followers em cada dia — nunca mexe em
+# Instagram, insights ou no restante de um dia que já existir no arquivo. Dias sem nenhum
+# registro anterior são criados com "source": "reconstruido".
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Coletar page_follows em pedaços de 90 dias
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_FACEBOOK_PAGE_ID: '262406600508752'
+        run: |
+          set -euo pipefail
+          API="https://graph.facebook.com/v26.0"
+          AUTH="Authorization: Bearer $META_PAGE_ACCESS_TOKEN"
+          PAGE="$META_FACEBOOK_PAGE_ID"
+
+          echo '[]' > pontos.json
+          fim="$(date -u -d 'yesterday' +%s)"
+          # Trava de segurança: no máximo 20 pedaços de 90 dias (~5 anos) — bem mais que o
+          # necessário, evita loop infinito se a Meta um dia devolver dado vazio por engano
+          # em vez de parar de vez.
+          max_pedacos=20
+          i=0
+          while [ "$i" -lt "$max_pedacos" ]; do
+            i=$((i + 1))
+            inicio=$((fim - 89 * 86400))
+            resposta="$(curl -sS --max-time 30 -H "$AUTH" \
+              "$API/$PAGE/insights?metric=page_follows&period=day&since=$inicio&until=$fim")"
+            qtd="$(printf '%s' "$resposta" | jq -r '.data[0].values | length' 2>/dev/null || echo 0)"
+            if ! [ "$qtd" -gt 0 ] 2>/dev/null; then
+              echo "Pedaço $i: sem mais pontos antes de $(date -u -d "@$fim" +%F) — parando."
+              break
+            fi
+            echo "Pedaço $i: $qtd pontos, $(date -u -d "@$inicio" +%F) a $(date -u -d "@$fim" +%F)"
+            printf '%s' "$resposta" | jq '.data[0].values' > pedaco.json
+            jq -s 'add' pontos.json pedaco.json > tmp.json && mv tmp.json pontos.json
+            fim="$inicio"
+          done
+
+          echo "Total de pontos brutos coletados: $(jq 'length' pontos.json)"
+
+      - name: Mesclar no histórico sem tocar em Instagram/insights
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          pontos = json.loads(Path('pontos.json').read_text(encoding='utf-8'))
+          caminho = Path('data/social-followers.json')
+          doc = json.loads(caminho.read_text(encoding='utf-8')) if caminho.exists() else {'version': 2, 'history': []}
+
+          historico = {item['date']: item for item in doc.get('history', []) if item.get('date')}
+
+          # Pedaços vizinhos se tocam na borda (o dia final de um pode repetir o dia inicial
+          # do próximo) — agrupar por data descarta a repetição automaticamente.
+          por_dia = {}
+          for ponto in pontos:
+              dia = str(ponto.get('end_time', ''))[:10]
+              valor = ponto.get('value')
+              if dia and isinstance(valor, (int, float)):
+                  por_dia[dia] = int(valor)
+
+          novos = 0
+          atualizados = 0
+          for dia, valor in sorted(por_dia.items()):
+              existente = historico.get(dia)
+              if existente:
+                  if existente.get('followers', {}).get('Facebook') == valor:
+                      continue
+                  entrada = dict(existente)
+                  entrada['followers'] = dict(entrada.get('followers') or {})
+                  era_novo = 'Facebook' not in entrada['followers']
+                  entrada['followers']['Facebook'] = valor
+                  historico[dia] = entrada
+                  novos += 1 if era_novo else 0
+                  atualizados += 0 if era_novo else 1
+              else:
+                  historico[dia] = {'date': dia, 'followers': {'Facebook': valor}, 'source': 'reconstruido'}
+                  novos += 1
+
+          doc['version'] = 2
+          doc['history'] = [historico[dia] for dia in sorted(historico)][-730:]
+          doc['updatedAt'] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+          caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          resumo = ['## Reconstrução do histórico do Facebook', '']
+          if not por_dia:
+              resumo.append('Nenhum ponto de page_follows foi coletado — nada para mesclar.')
+          else:
+              resumo += [
+                  f"Dias novos com Facebook adicionado: **{novos}**",
+                  f"Dias existentes com o valor corrigido: **{atualizados}**",
+                  f"Total de dias no histórico agora: **{len(doc['history'])}**",
+                  f"Cobre de **{sorted(por_dia)[0]}** até **{sorted(por_dia)[-1]}**",
+              ]
+          Path('resumo.md').write_text('\n'.join(resumo) + '\n', encoding='utf-8')
+          PY
+          cat resumo.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar
+        run: |
+          git add data/social-followers.json
+          if git diff --cached --quiet -- data/social-followers.json; then
+            echo 'Nada mudou.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: reconstruir histórico de seguidores do Facebook'
+          git push
