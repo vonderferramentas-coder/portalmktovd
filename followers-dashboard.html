@@ -213,9 +213,30 @@
     }
 
     .section-divider {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      width: 100%;
       margin: 28px 0 16px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border)
+      padding: 24px 0 0;
+      border: 0;
+      border-top: 1px solid var(--border);
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      text-align: left;
+      cursor: pointer
+    }
+
+    .section-divider[hidden] {
+      display: none
+    }
+
+    .section-divider:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+      border-radius: 6px
     }
 
     .section-divider h2 {
@@ -226,6 +247,17 @@
 
     .section-divider p {
       margin: 0
+    }
+
+    .section-divider-chevron {
+      flex: none;
+      color: var(--muted);
+      margin-top: 4px;
+      transition: transform .15s
+    }
+
+    .section-divider[aria-expanded="true"] .section-divider-chevron {
+      transform: rotate(180deg)
     }
 
     .muted {
@@ -485,12 +517,6 @@
       color: var(--muted) !important
     }
 
-    .content-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.65fr) minmax(320px, .8fr);
-      gap: 16px
-    }
-
     .metrics-pair {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -620,16 +646,19 @@
     }
 
     .platform-list {
-      padding: 0 10px 12px
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 0 20px 20px
     }
 
     .platform {
-      width: 100%;
+      flex: 1 1 220px;
       display: flex;
       gap: 11px;
       align-items: center;
       padding: 11px;
-      border: 1px solid transparent;
+      border: 1px solid var(--border);
       border-radius: 11px;
       background: transparent;
       color: var(--text);
@@ -641,7 +670,7 @@
 
     .platform:hover {
       background: var(--surface-muted);
-      transform: translateX(2px)
+      transform: translateY(-2px)
     }
 
     .platform.selected {
@@ -1432,10 +1461,6 @@
         grid-column: span 2
       }
 
-      .content-grid {
-        grid-template-columns: 1fr
-      }
-
       .metrics-pair {
         grid-template-columns: 1fr
       }
@@ -1554,15 +1579,15 @@
                   fill="none" stroke="currentColor" stroke-width="1.8">
                   <rect x="3" y="4" width="18" height="17" rx="2" />
                   <path d="M8 2v4M16 2v4M3 10h18" />
-                </svg><span id="periodLabel">Últimos 30 dias</span><svg class="period-caret" aria-hidden="true"
+                </svg><span id="periodLabel">Este mês</span><svg class="period-caret" aria-hidden="true"
                   width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                   <path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
                 </svg></button><button type="button" class="chevron-btn" id="periodNext"
                 aria-label="Próximo período">›</button>
               <div class="period-menu" id="periodMenu" hidden><button class="period-option" type="button"
                   data-range="7">Últimos 7 dias</button><button class="period-option" type="button"
-                  data-range="15">Últimos 15 dias</button><button class="period-option is-active" type="button"
-                  data-range="30">Últimos 30 dias</button><button class="period-option" type="button"
+                  data-range="15">Últimos 15 dias</button><button class="period-option" type="button"
+                  data-range="30">Últimos 30 dias</button><button class="period-option is-active" type="button"
                   data-range="month">Este mês</button><button class="period-option" type="button" data-range="year">Este
                   ano</button><button class="period-option" type="button" data-range="all">Desde o início <small>Todo o
                     histórico</small></button><button class="period-option" type="button"
@@ -1583,6 +1608,38 @@
             </div>
           </div>
         </header>
+        <section class="card milestones-card" style="margin-bottom:16px">
+          <div class="head">
+            <div>
+              <h2>Evolução mensal</h2>
+              <p class="muted">Primeiro e último dia do mês e toda sexta-feira · seguidores no marco e ganho da semana
+              </p>
+            </div>
+            <div class="milestone-nav">
+              <button type="button" class="chevron-btn" id="milestonePrev" aria-label="Mês anterior">‹</button>
+              <span class="period-pill" id="milestoneMonthLabel">—</span>
+              <button type="button" class="chevron-btn" id="milestoneNext" aria-label="Próximo mês">›</button>
+            </div>
+          </div>
+          <div class="table-wrap milestone-table-wrap">
+            <table class="milestone-table">
+              <thead>
+                <tr id="milestoneHead"></tr>
+              </thead>
+              <tbody id="milestoneBody"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="card platform-card" style="margin-bottom:16px">
+          <div class="head">
+            <div>
+              <h2>Por plataforma</h2>
+              <p class="muted" id="platformSubtitle">Total mais recente</p>
+            </div><span class="channel-context" id="channelContext">Todas</span>
+          </div>
+          <div class="platform-hint">Clique em uma plataforma para filtrar todas as métricas abaixo. Por padrão, o Instagram fica selecionado.</div>
+          <div class="platform-list" id="platforms"></div>
+        </section>
         <section class="hero">
           <article class="card total">
             <div><span class="total-label" id="totalLabel">Comunidade total</span><strong id="total"></strong></div>
@@ -1614,53 +1671,31 @@
             <p class="goal-ring-caption" id="goalRingCaption">Nenhuma meta cadastrada</p>
           </article>
         </section>
-        <section class="card milestones-card" style="margin-bottom:16px">
+        <button type="button" class="section-divider" id="performanceToggle" aria-expanded="true"
+          aria-controls="performanceBody">
+          <div>
+            <h2>Performance em números</h2>
+            <p class="muted">Gráfico, metas, indicadores e insights detalhados da plataforma selecionada.</p>
+          </div>
+          <svg class="section-divider-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2.4">
+            <path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <div class="section-divider-body" id="performanceBody">
+        <article class="card chart-card">
           <div class="head">
             <div>
-              <h2>Marcos do mês</h2>
-              <p class="muted">Primeiro e último dia do mês e toda sexta-feira · seguidores no marco e ganho da semana
-              </p>
+              <h2>Evolução de seguidores</h2>
+              <p class="muted">Por rede social</p>
             </div>
-            <div class="milestone-nav">
-              <button type="button" class="chevron-btn" id="milestonePrev" aria-label="Mês anterior">‹</button>
-              <span class="period-pill" id="milestoneMonthLabel">—</span>
-              <button type="button" class="chevron-btn" id="milestoneNext" aria-label="Próximo mês">›</button>
-            </div>
+            <div class="legend" id="legend"></div>
           </div>
-          <div class="table-wrap milestone-table-wrap">
-            <table class="milestone-table">
-              <thead>
-                <tr id="milestoneHead"></tr>
-              </thead>
-              <tbody id="milestoneBody"></tbody>
-            </table>
+          <div class="chart">
+            <div class="chart-y" id="chartY"></div>
+            <div class="bars" id="bars"></div>
           </div>
-        </section>
-        <section class="content-grid">
-          <article class="card chart-card">
-            <div class="head">
-              <div>
-                <h2>Evolução de seguidores</h2>
-                <p class="muted">Por rede social</p>
-              </div>
-              <div class="legend" id="legend"></div>
-            </div>
-            <div class="chart">
-              <div class="chart-y" id="chartY"></div>
-              <div class="bars" id="bars"></div>
-            </div>
-          </article>
-          <article class="card platform-card">
-            <div class="head">
-              <div>
-                <h2>Por plataforma</h2>
-                <p class="muted" id="platformSubtitle">Total mais recente</p>
-              </div><span class="channel-context" id="channelContext">Todas</span>
-            </div>
-            <div class="platform-hint">Clique em uma plataforma para filtrar todo o dashboard.</div>
-            <div class="platform-list" id="platforms"></div>
-          </article>
-        </section>
+        </article>
         <section class="card" id="goalPanel" style="margin-top:16px">
           <div class="head">
             <div>
@@ -1787,10 +1822,19 @@
             </div>
           </div>
         </section>
-        <div class="section-divider">
-          <h2>Conteúdo do Instagram</h2>
-          <p class="muted">Ranking de posts e números agregados de publicações, à parte das métricas de seguidores acima.</p>
         </div>
+        <button type="button" class="section-divider" id="postsDivider" aria-expanded="true"
+          aria-controls="postsBody">
+          <div>
+            <h2>Conteúdo do Instagram</h2>
+            <p class="muted">Ranking de posts e números agregados de publicações, à parte das métricas de seguidores acima.</p>
+          </div>
+          <svg class="section-divider-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2.4">
+            <path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <div class="section-divider-body" id="postsBody">
         <section class="card posts-card" id="postsPanel">
           <div class="head">
             <div>
@@ -1844,6 +1888,7 @@
             <div class="metric"><span>Salvamentos totais</span><strong id="postsStatSaved">—</strong></div>
           </div>
         </section>
+        </div>
       </div>
     </main>
   </div>

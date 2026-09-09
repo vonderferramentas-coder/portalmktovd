@@ -134,6 +134,14 @@
   }
 
   const activeNetworks = () => selectedNetwork === 'all' ? NETWORKS : [NETWORKS[Number(selectedNetwork)]];
+  // Insights detalhados e o ranking de posts só existem para o Instagram (é o único canal com
+  // esses dados coletados pela Meta) — em "Todas as redes" eles ainda fazem sentido como
+  // complemento, mas olhando Facebook/YouTube/TikTok isoladamente eles não condizem com a
+  // seleção e precisam ficar escondidos.
+  const isInstagramOrAllSelected = () => {
+    const active = selectedNetwork === 'all' ? null : NETWORKS[Number(selectedNetwork)];
+    return !active || active.name === 'Instagram';
+  };
   const totalAt = (point, nets) => nets.reduce((sum, network) => sum + (Number.isFinite(point.values[network.name]) ? point.values[network.name] : 0), 0);
   const currentValues = point => {
     const values = Object.assign({}, point.values);
@@ -244,9 +252,23 @@
     renderPlatforms(points, nets, currentPoint);
     renderTable(points, nets, grain);
     renderIndicators(points, nets, periodDeltas, net, rate, perDay, span);
-    renderInsights(points);
+    // A Meta só nos dá follows/unfollows/alcance detalhados do Instagram — não existe
+    // esse dado para Facebook/YouTube/TikTok, então o bloco não faz sentido fora do
+    // Instagram (ou da visão "Todas", onde ele complementa o total).
+    const showInstagramOnly = isInstagramOrAllSelected();
+    const insightsPanel = el('insightsPanel');
+    if (insightsPanel) insightsPanel.hidden = !showInstagramOnly;
+    if (showInstagramOnly) renderInsights(points);
     renderComparatives(points, nets, periodDeltas);
     renderGoal(currentPoint, current, nets, periodDeltas, perDay);
+
+    // Ranking de posts e resumo de publicações também só existem pro Instagram — mesma regra.
+    // O corpo (postsBody) respeita o recolher/expandir manual do usuário quando a seção está
+    // visível — só é forçado a escondido quando a própria seção não se aplica à plataforma.
+    const postsDivider = el('postsDivider'), postsBody = el('postsBody');
+    if (postsDivider) postsDivider.hidden = !showInstagramOnly;
+    if (postsBody) postsBody.hidden = !showInstagramOnly || (postsDivider && postsDivider.getAttribute('aria-expanded') !== 'true');
+    if (showInstagramOnly) renderPosts();
   }
 
   function renderChart(points, nets, grain) {
@@ -972,8 +994,8 @@
 
   function resetRange() {
     if (!series.length) { el('startDate').value = ''; el('endDate').value = ''; return; }
-    periodPreset = '30'; periodOffset = 0;
-    applyPreset('30', false);
+    periodPreset = 'month'; periodOffset = 0;
+    applyPreset('month', false);
   }
   function setRange(from, to, shouldRender = true) {
     el('startDate').value = from;
@@ -986,7 +1008,7 @@
   const periodMenu = el('periodMenu'), periodTrigger = el('periodTrigger'), customRange = el('customRange');
   const actionsMenu = el('actionsMenu'), actionsTrigger = el('actionsTrigger');
   const periodPrevBtn = el('periodPrev'), periodNextBtn = el('periodNext');
-  let periodPreset = '30', periodOffset = 0;
+  let periodPreset = 'month', periodOffset = 0;
   const closeMenus = () => {
     periodMenu.hidden = true; periodTrigger.setAttribute('aria-expanded', 'false');
     actionsMenu.hidden = true; actionsTrigger.setAttribute('aria-expanded', 'false');
@@ -1094,6 +1116,17 @@
       historyBody.hidden = expanded;
     });
   }
+  // "Performance em números" e "Conteúdo do Instagram" vêm abertos por padrão (ao contrário do
+  // histórico acima) — só existem para reduzir a verticalidade quando o usuário já sabe o que quer ver.
+  [['performanceToggle', 'performanceBody'], ['postsDivider', 'postsBody']].forEach(([toggleId, bodyId]) => {
+    const toggle = el(toggleId), body = el(bodyId);
+    if (!toggle || !body) return;
+    toggle.addEventListener('click', () => {
+      const expanded = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!expanded));
+      body.hidden = expanded;
+    });
+  });
   const historyPrevBtn = el('historyPrev'), historyNextBtn = el('historyNext');
   if (historyPrevBtn) historyPrevBtn.addEventListener('click', () => { if (historyPage > 0) { historyPage--; render(); } });
   if (historyNextBtn) historyNextBtn.addEventListener('click', () => { historyPage++; render(); });
