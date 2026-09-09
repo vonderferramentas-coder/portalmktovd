@@ -83,7 +83,7 @@ jobs:
           http_code="$(curl --silent --show-error --get \
             "https://youtubeanalytics.googleapis.com/v2/reports" \
             -H "Authorization: Bearer $ACCESS_TOKEN" \
-            --data-urlencode "ids=channel==$YOUTUBE_CHANNEL_ID" \
+            --data-urlencode "ids=channel==MINE" \
             --data-urlencode "startDate=2011-01-01" \
             --data-urlencode "endDate=$ONTEM" \
             --data-urlencode "metrics=subscribersGained,subscribersLost" \
