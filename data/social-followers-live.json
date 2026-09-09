@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-09-09T18:08:58Z",
+  "updatedAt": "2026-09-09T18:13:37Z",
   "source": "meta_graph_api",
   "platforms": {
     "Instagram": {
@@ -12,6 +12,13 @@
       "accountId": "262406600508752",
       "username": "Vonder",
       "followers": 46454
+    },
+    "YouTube": {
+      "accountId": "UCflcAVLpPmH-03R-njMSayw",
+      "username": "Vonder",
+      "followers": 41000,
+      "views": 10115398,
+      "source": "youtube_data_api"
     }
   }
 }
