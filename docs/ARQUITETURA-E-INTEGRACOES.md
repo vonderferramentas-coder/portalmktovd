@@ -3,7 +3,7 @@
 > **Documento vivo.** Atualize este arquivo na mesma alteração que criar, trocar ou remover uma integração, fonte de dados, automação, serviço hospedado ou recurso que possa gerar dúvida para a TI. A validação automatizada do repositório ajuda a cobrar essa atualização para os principais arquivos de integração.
 
 **Última revisão:** 09/09/2026  
-**Escopo desta revisão:** estado identificado no código da branch `main`.
+**Escopo desta revisão:** estado identificado no código da branch `main`, incluindo a conexão do YouTube (canal Vonder) ao painel de Redes Sociais.
 
 ## 1. O que é este projeto
 
@@ -37,6 +37,7 @@ Pessoa usuária / navegador
                                                            ^
                                                            |
 GitHub Actions + segredo META_PAGE_ACCESS_TOKEN ------> Meta Graph API / Instagram + Facebook
+GitHub Actions + segredo YOUTUBE_API_KEY -------------> YouTube Data API v3 / canal Vonder
 ```
 
 ## 4. Componentes do portal
@@ -58,6 +59,7 @@ GitHub Actions + segredo META_PAGE_ACCESS_TOKEN ------> Meta Graph API / Instagr
 | Firebase Realtime Database | Sincroniza dados entre navegadores | calendário, configurações, marcas e inteligência | Regras do Firebase definem acesso; URL está no JS | Regras não são versionadas aqui: devem ser auditadas no console Firebase |
 | Cloudflare Workers | Ponte para ofertas FG e imagens OVD com CORS | URL de oferta, preços públicos, SKU, imagem e código de produto | Nenhuma credencial no Worker atual | Manter validação de origem/destino e não trafegar dados pessoais |
 | Meta Graph API | Coleta indicadores do Instagram e da Página do Facebook da VONDER | Instagram: seguidores, entradas, saídas, alcance; e por post: legenda, permalink, miniatura, data, curtidas, comentários, interações totais, visualizações e salvamentos. Facebook: seguidores/curtidas da Página (`followers_count`/`fan_count`) | `META_PAGE_ACCESS_TOKEN` em GitHub Secrets — mesmo token de Página usado para o Instagram, já alcança a Página sem escopo adicional | Token nunca vai para o navegador; requer rotação e escopos mínimos |
+| YouTube Data API v3 | Coleta inscritos/visualizações do canal Vonder no YouTube | inscritos (`subscriberCount`) e visualizações totais (`viewCount`) do canal — agregados e públicos | `YOUTUBE_API_KEY` em GitHub Secrets — API Key restrita à YouTube Data API v3, sem OAuth (só lê dado público de canal) | Chave nunca vai para o navegador; se o canal ocultar a contagem de inscritos, a API para de devolver o número real |
 | GitHub Actions | Executa a coleta automática e publica JSON | dados agregados de seguidores; e snapshot dos posts recentes com suas métricas | GitHub Secret + permissão de escrita | Gera commits automáticos |
 | `app.ovd.com.br` | Fonte de fotos oficiais de produto | imagem pública por código | sem credencial no código | Imagem passa pelo Worker/PHP para viabilizar CORS no editor |
 | `fg.com.br` | Fonte de ofertas no editor FG | título, marca, SKU, preço e disponibilidade públicos | sem credencial no código | Worker aceita apenas domínio FG e subdomínios |
@@ -132,7 +134,23 @@ Eles usam o segredo `META_PAGE_ACCESS_TOKEN` nos **GitHub Actions Secrets** e pu
 
 Para a TI: aplicar menor privilégio ao token, documentar owner, rotacionar antes de vencer, revisar escopos e limitar quem pode alterar workflows e secrets.
 
-## 9. Persistência local e alternativa PHP/SQLite
+## 9. YouTube e GitHub Actions: painel de seguidores
+
+Segue o mesmo desenho da seção 8: o dashboard nunca chama a API do YouTube no navegador, e a chave nunca é exposta ao público que abre o portal. Diferença central em relação à Meta: a YouTube Data API v3 não usa OAuth/token de usuário para ler dados públicos de canal — usa uma **API Key** restrita, por HTTPS puro, sem login nenhum por trás. Ela só enxerga o que já é público na página do canal (inscritos, visualizações totais); não alcança dados privados do Studio nem de qualquer outra conta.
+
+- `diagnostico-youtube.yml`: verifica o que a chave atual alcança no canal Vonder (`UCflcAVLpPmH-03R-njMSayw`), sem alterar arquivos — cada resposta vai tanto para o resumo da execução quanto para o log bruto do passo, no mesmo padrão adotado em `diagnostico-meta.yml`;
+- `sync-youtube-followers.yml`: a cada ~15 minutos (offset de 7 min em relação ao agendamento da Meta, só para reduzir a chance de as duas execuções tentarem publicar no mesmo minuto), consulta `channels.list` (`part=snippet,statistics`) e grava inscritos e visualizações totais; fecha um ponto diário às 23:50 de São Paulo (5 min antes do fechamento da Meta).
+
+Os dois workflows (Meta e YouTube) escrevem nos **mesmos dois arquivos** (`data/social-followers-live.json` e `data/social-followers.json`) em paralelo, cada um mexendo só na própria chave dentro de `platforms`/`followers` — nunca reconstroem o documento inteiro, senão um apagaria o dado do outro a cada execução (é por isso que `sync-meta-followers.yml` deixou de gravar o documento inteiro nesta mesma mudança: passou a ler o arquivo existente e mesclar, igual ao YouTube). Cada workflow ainda tenta `git pull --rebase` e reenviar até 3 vezes se o `git push` for rejeitado por não estar atualizado — o cenário normal quando os dois rodam perto um do outro.
+
+Assim como a Meta, o passo final grava o snapshot combinado direto em `portalStore/followers-vonder-v1` no Firestore via Admin SDK, reaproveitando o mesmo secret `FIREBASE_SERVICE_ACCOUNT_KEY` já cadastrado — nenhum secret novo é necessário para essa etapa.
+
+- **Finalidade:** trazer para o painel de Redes Sociais o número de inscritos do canal Vonder no YouTube, no mesmo padrão já visto para Instagram/Facebook.
+- **Dados:** inscritos (`subscriberCount`) e visualizações totais (`viewCount`) do canal — agregados e públicos, sem dado pessoal de quem assiste/se inscreve.
+- **Credenciais:** `YOUTUBE_API_KEY` em GitHub Secrets — uma API Key do Google Cloud restrita à YouTube Data API v3 (sem restrição de aplicativo/IP, pois o GitHub Actions roda de IPs variáveis; a restrição de segurança real é só poder chamar essa API, que só lê dado público). Projeto Google Cloud reaproveitado: `mkt-ovd`, o mesmo já usado pelo Firebase.
+- **Ponto de atenção da TI:** se o canal ocultar a contagem de inscritos nas configurações do YouTube (`hiddenSubscriberCount`), a API deixa de devolver o número real mesmo com a chave certa — `diagnostico-youtube.yml` sinaliza esse caso. Rotacionar a chave e revisar a restrição de API periodicamente, como já se faz com o token da Meta.
+
+## 10. Persistência local e alternativa PHP/SQLite
 
 O portal mantém uma cópia em `localStorage`, útil como cache e quando não há conexão, mas que pode ser apagada pelo usuário/navegador.
 
@@ -140,7 +158,7 @@ O portal mantém uma cópia em `localStorage`, útil como cache e quando não h�
 
 **Estado atual:** a camada usada pelo front-end é `SyncBackend`, implementada hoje com Firebase. Logo, `api.php` é opção de contingência/migração, não backend do GitHub Pages. Não tratar o SQLite como backup sem rotina formal de backup, retenção e recuperação.
 
-## 10. Dados, segurança e operação
+## 11. Dados, segurança e operação
 
 | Categoria | Exemplos | Tratamento esperado |
 |---|---|---|
@@ -148,7 +166,7 @@ O portal mantém uma cópia em `localStorage`, útil como cache e quando não h�
 | Interno | calendário editorial, briefings, referências, configurações e catálogo curado | acesso limitado à equipe e às regras Firebase/GitHub |
 | Confidencial/restrito | tokens, chaves, credenciais, dados pessoais não necessários | nunca versionar nem gravar em Firebase/localStorage; usar Secrets/cofre corporativo |
 
-## 11. Como atualizar esta documentação
+## 12. Como atualizar esta documentação
 
 Antes de liberar novidade que conecte o portal a outro serviço, registrar aqui: serviço e owner; finalidade; URL/domínios e direção do tráfego; dados enviados/recebidos; autenticação e onde credenciais são guardadas; classificação/LGPD, logs e retenção; controles (CORS, allowlist, validação, limite, backup e monitoramento); plano de falha/rollback; e arquivos/workflows alterados.
 
@@ -161,7 +179,7 @@ Há duas barreiras de processo:
 
 O workflow não substitui revisão humana: qualquer nova dependência remota, mesmo fora da lista monitorada, exige atualização. Para bloquear o merge, a proteção da branch `main` deve exigir o check **Validar documentação de arquitetura**.
 
-## 12. Histórico deste documento
+## 13. Histórico deste documento
 
 | Data | Alteração | Responsável |
 |---|---|---|
@@ -170,8 +188,9 @@ O workflow não substitui revisão humana: qualquer nova dependência remota, me
 | 09/09/2026 | Adicionada coleta de seguidores/curtidas da Página do Facebook da VONDER (`262406600508752`) em `sync-meta-followers.yml`, reaproveitando o `META_PAGE_ACCESS_TOKEN` já existente (confirmado sem escopo novo em `diagnostico-meta-facebook.yml`). O painel de Redes Sociais passa a exibir o Facebook como rede conectada para a VONDER. | Equipe de Marketing / manutenção do portal |
 | 09/09/2026 | Corrigidos dois bugs de perda silenciosa de histórico em `data/social-followers.json`: (1) o corte `[-730:]` por contagem de linhas, que descartava os pontos mais antigos da exportação manual do Instagram assim que o histórico do Facebook cresceu — removido dos três workflows que gravavam esse arquivo; (2) `reconstruir-historico.yml` descartava todo dia marcado `reconstruido`/`estimado` a cada execução, mesmo fora da janela de ~29 dias que consultava, apagando para sempre dias que a Meta não deixa mais recalcular — agora só descarta dentro da própria janela da execução. Reimportados os arquivos `followers_*.json` originais (exportação "Baixe suas informações" do Instagram, com data exata de cada seguidor atual) para reconstruir o histórico dia a dia (não mais só por mês) de 01/09/2023 a 04/08/2026 e preencher o buraco real de 05 a 12/08/2026, calibrado para bater com o dado real da API mais próximo. | Equipe de Marketing / manutenção do portal |
 | 09/09/2026 | `diagnostico-meta.yml` passou a ecoar cada resposta também no log bruto do passo (além do resumo da execução), para investigar falhas do token direto pela CLI sem depender do navegador. Usado para confirmar que uma sequência de falhas em `sync-meta-followers.yml` (HTTP 400 em "Consultar seguidores do Instagram") foi a sessão do `META_PAGE_ACCESS_TOKEN` expirando do lado da Meta (`error_subcode 463`, "Session has expired"), sem relação com o push do painel de Redes Sociais que aconteceu por coincidência perto do mesmo horário — o token precisou ser gerado de novo pelo Graph API Explorer, do mesmo jeito feito ao ligar a coleta do Facebook. | Equipe de Marketing / manutenção do portal |
+| 09/09/2026 | Conectado o canal Vonder no YouTube (`@vonderferramentas`, `UCflcAVLpPmH-03R-njMSayw`) ao painel de Redes Sociais: novos `diagnostico-youtube.yml` e `sync-youtube-followers.yml` (API Key restrita à YouTube Data API v3, secret `YOUTUBE_API_KEY`, projeto Google Cloud `mkt-ovd` reaproveitado do Firebase), `NETWORKS` em `followers-dashboard.js` marcou YouTube como `connected` para a VONDER. Como os dois workflows (Meta e YouTube) passaram a escrever nos mesmos `data/social-followers-live.json`/`data/social-followers.json`, `sync-meta-followers.yml` deixou de reconstruir esses arquivos inteiros a cada execução e passou a ler e mesclar só a própria chave (`platforms.Instagram`/`platforms.Facebook`, `followers.Instagram`/`followers.Facebook` do dia), igual ao padrão do YouTube — e ambos tentam `git pull --rebase` com até 3 tentativas se o `git push` for rejeitado por desatualização. | Equipe de Marketing / manutenção do portal |
 
-## 13. Autenticação e controle de acesso (em implantação)
+## 14. Autenticação e controle de acesso (em implantação)
 
 A partir de 03/09/2026, o projeto possui Firebase Authentication com os provedores **e-mail/senha** e **Google** ativados. O domínio `vonderferramentas-coder.github.io` foi autorizado para OAuth. A configuração pública do aplicativo Web está centralizada em `firebase-config.js`; ela não contém credenciais privadas. O botão de login com Google está temporariamente oculto em `login.html` (atributo `hidden`, sem remover o código/import de `firebase-client.js`) — reativar exige apenas remover esse atributo do botão e do divisor "ou".
 

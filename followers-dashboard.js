@@ -10,9 +10,10 @@
   const brand = (window.PortalBrand && (window.PortalBrand.list || []).find(item => item.id === window.PortalBrand.activeId)) || {};
   const brandKey = brand.id || 'default';
   // 'default' é o id fixo da VONDER (ver DEFAULT_BRANDS em portal-shell.js) — hoje é a única
-  // marca com coleta automática pela API da Meta. As demais marcas ainda não têm integração
-  // própria, então não devem herdar os números nem as metas/projeções da VONDER: usam este
-  // sinal para não buscar os arquivos publicados e mostrar uma mensagem de "não conectado".
+  // marca com coleta automática (Meta Graph API para Instagram/Facebook, YouTube Data API
+  // para o YouTube). As demais marcas ainda não têm integração própria, então não devem
+  // herdar os números nem as metas/projeções da VONDER: usam este sinal para não buscar os
+  // arquivos publicados e mostrar uma mensagem de "não conectado".
   const isVonder = brandKey === 'default';
   const FOLLOWERS_STORE_KEY = 'followers-vonder-v1';
   const POSTS_STORE_KEY = 'posts-vonder-v1';
@@ -48,7 +49,7 @@
   const NETWORKS = [
     { name:'Instagram', color:'#E94683', icon:'icons/instagram.svg', connected:isVonder },
     { name:'Facebook',  color:'#287BE0', icon:'icons/facebook.svg',  connected:isVonder },
-    { name:'YouTube',   color:'#F04444', icon:'icons/youtube.svg',   connected:false },
+    { name:'YouTube',   color:'#F04444', icon:'icons/youtube.svg',   connected:isVonder },
     { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected:false }
   ];
   const POST_SORT_OPTIONS = [
@@ -263,11 +264,11 @@
     renderGoal(currentPoint, current, nets, periodDeltas, perDay);
 
     // Ranking de posts e resumo de publicações também só existem pro Instagram — mesma regra.
-    // O corpo (postsBody) respeita o recolher/expandir manual do usuário quando a seção está
-    // visível — só é forçado a escondido quando a própria seção não se aplica à plataforma.
+    // `hidden` aqui é só o corte por plataforma; o recolher/expandir manual (classe
+    // is-collapsed, ver o toggle mais abaixo) fica intacto independente disso.
     const postsDivider = el('postsDivider'), postsBody = el('postsBody');
     if (postsDivider) postsDivider.hidden = !showInstagramOnly;
-    if (postsBody) postsBody.hidden = !showInstagramOnly || (postsDivider && postsDivider.getAttribute('aria-expanded') !== 'true');
+    if (postsBody) postsBody.hidden = !showInstagramOnly;
     if (showInstagramOnly) renderPosts();
   }
 
@@ -544,6 +545,18 @@
     }));
   }
 
+  // Igual ao resto do painel: as métricas abaixo do seletor de período só valem para os dias
+  // dentro dele. O feed em si só guarda os ~30 posts mais recentes coletados (sem histórico
+  // completo), então um período fora dessa janela legitimamente não tem post nenhum pra mostrar.
+  function postsInPeriod() {
+    const from = el('startDate').value, to = el('endDate').value;
+    if (!from || !to) return postsData.slice();
+    return postsData.filter(post => {
+      const day = String(post.timestamp || '').slice(0, 10);
+      return day && day >= from && day <= to;
+    });
+  }
+
   function renderPosts() {
     const grid = el('postsGrid'), tableWrap = el('postsTableWrap'), summary = el('postsSummary'), sortWrap = el('postsSort');
     renderPostsStats();
@@ -568,7 +581,15 @@
       if (tableWrap) tableWrap.hidden = true;
       return;
     }
-    const sorted = postsData.slice().sort((a, b) => postSortValue(b, postsSort) - postSortValue(a, postsSort));
+    const scoped = postsInPeriod();
+    if (!scoped.length) {
+      if (summary) summary.textContent = 'Nenhum post publicado no período selecionado.';
+      grid.hidden = false;
+      grid.innerHTML = '<p class="muted" style="grid-column:1/-1;text-align:center;padding:20px 0">Troque o período no topo da página para ver posts de outras datas.</p>';
+      if (tableWrap) tableWrap.hidden = true;
+      return;
+    }
+    const sorted = scoped.slice().sort((a, b) => postSortValue(b, postsSort) - postSortValue(a, postsSort));
     const displayed = sorted.slice(0, POSTS_DISPLAY_LIMIT);
     const activeOption = POST_SORT_OPTIONS.find(option => option.key === postsSort);
     const orderLabel = activeOption ? activeOption.label.toLowerCase() : '';
@@ -597,15 +618,21 @@
       ids.forEach(id => { const node = el(id); if (node) node.textContent = '—'; });
       return;
     }
-    const total = postsData.length;
-    if (!total) {
+    if (!postsData.length) {
       if (subtitle) subtitle.textContent = 'Aguardando a primeira coleta de posts.';
       ids.forEach(id => { const node = el(id); if (node) node.textContent = '—'; });
       return;
     }
-    const reels = postsData.filter(post => post.mediaProductType === 'REELS').length;
-    const sum = key => postsData.reduce((acc, post) => acc + (Number(post[key]) || 0), 0);
-    if (subtitle) subtitle.textContent = `Baseado nos ${format(total)} posts mais recentes coletados`;
+    const scoped = postsInPeriod();
+    const total = scoped.length;
+    if (!total) {
+      if (subtitle) subtitle.textContent = 'Nenhum post publicado no período selecionado.';
+      ids.forEach(id => { const node = el(id); if (node) node.textContent = '—'; });
+      return;
+    }
+    const reels = scoped.filter(post => post.mediaProductType === 'REELS').length;
+    const sum = key => scoped.reduce((acc, post) => acc + (Number(post[key]) || 0), 0);
+    if (subtitle) subtitle.textContent = `Baseado nos ${format(total)} posts publicados no período selecionado`;
     const values = {
       postsStatTotal: format(total),
       postsStatReels: format(reels),
@@ -980,7 +1007,7 @@
     el('channelContext').textContent = 'Todas';
     el('legend').innerHTML = '';
     el('chartY').innerHTML = '';
-    el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">${message}<br>Instagram e Facebook são coletados automaticamente; os demais canais podem ser lançados em "Registrar número".</p>`;
+    el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">${message}<br>Instagram, Facebook e YouTube são coletados automaticamente; os demais canais podem ser lançados em "Registrar número".</p>`;
     el('platforms').innerHTML = NETWORKS.map(network => `<div class="platform" style="cursor:default"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${network.connected ? 'Aguardando coleta' : 'Sem API conectada'}</small></span><span class="platform-delta"><strong class="neutral">—</strong></span></div>`).join('');
     el('table').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted)">${message}</td></tr>`;
     const pager = el('historyPager'); if (pager) pager.hidden = true;
@@ -1118,13 +1145,18 @@
   }
   // "Performance em números" e "Conteúdo do Instagram" vêm abertos por padrão (ao contrário do
   // histórico acima) — só existem para reduzir a verticalidade quando o usuário já sabe o que quer ver.
+  // Usa uma classe (animada via grid-template-rows no CSS) em vez de `hidden` — assim o
+  // recolher/abrir anima; `hidden` continua reservado pra quando a seção inteira não se aplica
+  // à plataforma selecionada (ver render()), que deve ser instantâneo, sem transição.
   [['performanceToggle', 'performanceBody'], ['postsDivider', 'postsBody']].forEach(([toggleId, bodyId]) => {
     const toggle = el(toggleId), body = el(bodyId);
     if (!toggle || !body) return;
     toggle.addEventListener('click', () => {
       const expanded = toggle.getAttribute('aria-expanded') === 'true';
       toggle.setAttribute('aria-expanded', String(!expanded));
-      body.hidden = expanded;
+      body.classList.toggle('is-collapsed', expanded);
+      body.setAttribute('aria-hidden', String(expanded));
+      body.inert = expanded;
     });
   });
   const historyPrevBtn = el('historyPrev'), historyNextBtn = el('historyNext');

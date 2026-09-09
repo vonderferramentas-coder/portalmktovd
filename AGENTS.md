@@ -4,7 +4,7 @@
 
 Portal estático (HTML/CSS/JS vanilla, sem framework/build step) multi-marca para agência de marketing: calendário de postagens (`visual-editor.html`), editor de artes (`post-editor.html`), gerador de cartão de visita (`business-card-generator.html`), dashboard de seguidores (`followers-dashboard.html`) e central de inteligência de conteúdo (`intelligence-center.html`), todos atrás de autenticação Firebase e compartilhando `portal-shell.js`/`styles.css`.
 
-**Stack**: JS/HTML/CSS puro (sem bundler), Firebase (Auth + Firestore), Cloudflare Worker + PHP + PowerShell como proxies redundantes de imagem, GitHub Actions para coleta automática de dados do Instagram (Meta Graph API).
+**Stack**: JS/HTML/CSS puro (sem bundler), Firebase (Auth + Firestore), Cloudflare Worker + PHP + PowerShell como proxies redundantes de imagem, GitHub Actions para coleta automática de dados de Instagram/Facebook (Meta Graph API) e YouTube (YouTube Data API v3) da VONDER.
 
 Para arquitetura detalhada (módulos, fluxos, gotchas), veja [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
 

@@ -1,0 +1,60 @@
+name: Diagnóstico da API do YouTube
+
+# Só descobre o que a API Key atual alcança no canal Vonder e escreve o resultado no
+# resumo da execução e no log bruto do passo (mesmo padrão de diagnostico-meta.yml, para dar
+# para investigar direto pela CLI com `gh run view --log`, sem depender do navegador).
+# Não altera arquivo nenhum e não faz commit. A chave vai só como parâmetro de URL porque a
+# YouTube Data API v3 não aceita API Key no cabeçalho Authorization — mas, ao contrário de um
+# token de acesso, uma API Key restrita à YouTube Data API só lê dados públicos do canal
+# (inscritos, visualizações), então não há segredo sensível para vazar em log de erro do curl.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar o que a chave alcança
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_CHANNEL_ID: 'UCflcAVLpPmH-03R-njMSayw'
+        run: |
+          set -uo pipefail
+          API="https://www.googleapis.com/youtube/v3"
+
+          consultar () {
+            titulo="$1"
+            url="$2"
+            {
+              echo "### $titulo"
+              echo ''
+              echo '```json'
+            } >> "$GITHUB_STEP_SUMMARY"
+            if resposta="$(curl -sS --max-time 30 --get "$url" --data-urlencode "key=$YOUTUBE_API_KEY")"; then
+              printf '%s\n' "$resposta" | head -c 4000 >> "$GITHUB_STEP_SUMMARY"
+              echo "$titulo:" && printf '%s\n' "$resposta" | head -c 4000
+            else
+              echo 'A chamada falhou antes de receber resposta.' >> "$GITHUB_STEP_SUMMARY"
+              echo "$titulo: a chamada falhou antes de receber resposta."
+            fi
+            {
+              echo ''
+              echo '```'
+              echo ''
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          echo "## O que a chave alcança hoje" >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo "Canal consultado: $YOUTUBE_CHANNEL_ID (Vonder / @vonderferramentas)." >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+
+          consultar "Estatísticas públicas do canal (já em uso na coleta)" \
+            "$API/channels?part=snippet,statistics&id=$YOUTUBE_CHANNEL_ID"
+
+          echo "Se 'statistics.hiddenSubscriberCount' vier 'true', o canal escondeu a contagem" >> "$GITHUB_STEP_SUMMARY"
+          echo "pública de inscritos nas configurações do YouTube — a API não devolve o número" >> "$GITHUB_STEP_SUMMARY"
+          echo "real nesse caso, mesmo com a chave certa; é preciso reverter isso no Studio." >> "$GITHUB_STEP_SUMMARY"
+          echo "Se a resposta trouxer 'error.status' \`PERMISSION_DENIED\` ou \`API_KEY_SERVICE_BLOCKED\`," >> "$GITHUB_STEP_SUMMARY"
+          echo "a chave existe mas não tem a YouTube Data API v3 liberada nas restrições dela." >> "$GITHUB_STEP_SUMMARY"

@@ -64,24 +64,31 @@ jobs:
           from datetime import datetime, timezone
           from pathlib import Path
 
+          # Mescla só as chaves Instagram/Facebook em 'platforms', sem sobrescrever o
+          # documento inteiro: sync-youtube-followers.yml grava a chave YouTube no mesmo
+          # arquivo em paralelo, e um `document = {...}` inteiro aqui apagaria esse dado
+          # a cada execução (o Meta roda a cada 15 min).
           path = Path('data/social-followers-live.json')
-          document = {
+          document = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'version': 2, 'platforms': {}}
+          platforms = dict(document.get('platforms') or {})
+          platforms['Instagram'] = {
+              'accountId': '17841403154695997',
+              'username': os.environ['USERNAME'],
+              'followers': int(os.environ['FOLLOWERS']),
+              'source': 'meta_graph_api'
+          }
+          platforms['Facebook'] = {
+              'accountId': '262406600508752',
+              'username': os.environ['FB_NAME'],
+              'followers': int(os.environ['FB_FOLLOWERS']),
+              'source': 'meta_graph_api'
+          }
+          document.update({
               'version': 2,
               'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
-              'source': 'meta_graph_api',
-              'platforms': {
-                  'Instagram': {
-                      'accountId': '17841403154695997',
-                      'username': os.environ['USERNAME'],
-                      'followers': int(os.environ['FOLLOWERS'])
-                  },
-                  'Facebook': {
-                      'accountId': '262406600508752',
-                      'username': os.environ['FB_NAME'],
-                      'followers': int(os.environ['FB_FOLLOWERS'])
-                  }
-              }
-          }
+              'platforms': platforms
+          })
+          document.pop('source', None)
           path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
@@ -100,15 +107,16 @@ jobs:
           document = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'version': 2, 'history': []}
           # A execução ocorre às 02:55 UTC, equivalente a 23:55 em São Paulo.
           closing_date = (datetime.now(timezone.utc) - timedelta(hours=3)).date().isoformat()
-          history = [item for item in document.get('history', []) if item.get('date') != closing_date]
-          history.append({
-              'date': closing_date,
-              'followers': {
-                  'Instagram': int(os.environ['FOLLOWERS']),
-                  'Facebook': int(os.environ['FB_FOLLOWERS'])
-              }
-          })
-          history.sort(key=lambda item: item['date'])
+          history = {item['date']: item for item in document.get('history', []) if item.get('date')}
+          # Mescla só Instagram/Facebook no dia: preserva a chave YouTube que
+          # sync-youtube-followers.yml pode já ter fechado no mesmo dia (ou vier a
+          # fechar depois) — um `history.append` substituindo o dia inteiro a apagaria.
+          existing_day = dict(history.get(closing_date) or {'date': closing_date})
+          existing_day['followers'] = dict(existing_day.get('followers') or {})
+          existing_day['followers']['Instagram'] = int(os.environ['FOLLOWERS'])
+          existing_day['followers']['Facebook'] = int(os.environ['FB_FOLLOWERS'])
+          history[closing_date] = existing_day
+          history = [history[day] for day in sorted(history)]
           document.update({
               'version': 2,
               'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
@@ -127,7 +135,16 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'chore: atualizar snapshot Meta'
-          git push
+          # sync-youtube-followers.yml grava nos mesmos dois arquivos em paralelo (chave
+          # YouTube, em campos que este workflow não toca) — um push rejeitado por não estar
+          # atualizado tenta de novo com rebase antes de desistir, em vez de falhar a coleta.
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
 
       # O painel (followers-dashboard.js) só lê portalStore/followers-vonder-v1 no Firestore,
       # nunca mais os JSON públicos acima — eles continuam publicados só como origem/backup
