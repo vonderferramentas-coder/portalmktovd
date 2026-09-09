@@ -31,8 +31,10 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
             if resposta="$(curl -sS --max-time 30 -H "Authorization: Bearer $META_PAGE_ACCESS_TOKEN" "$url")"; then
               printf '%s\n' "$resposta" | head -c 4000 >> "$GITHUB_STEP_SUMMARY"
+              echo "$titulo:" && printf '%s\n' "$resposta" | head -c 4000
             else
               echo 'A chamada falhou antes de receber resposta.' >> "$GITHUB_STEP_SUMMARY"
+              echo "$titulo: a chamada falhou antes de receber resposta."
             fi
             {
               echo ''
