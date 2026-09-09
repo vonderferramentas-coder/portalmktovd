@@ -72,6 +72,27 @@
       flex: none
     }
 
+    /* O YouTube arredonda o total de inscritos que devolve por API (a própria empresa
+       confirma isso na documentação): o número muda de milhar em milhar, não a cada
+       inscrito novo. Este selo avisa isso onde o total aparece como se fosse exato. */
+    .approx-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 6px;
+      color: var(--muted);
+      cursor: help;
+      vertical-align: middle
+    }
+
+    .approx-badge svg {
+      display: block
+    }
+
+    .approx-badge[hidden] {
+      display: none
+    }
+
     .social .page-header .page-subtitle {
       max-width: 520px
     }
@@ -1666,7 +1687,7 @@
         </section>
         <section class="hero">
           <article class="card total">
-            <div><span class="total-label" id="totalLabel">Comunidade total</span><strong id="total"></strong></div>
+            <div><span class="total-label" id="totalLabel">Comunidade total</span><strong id="total"></strong><span class="approx-badge" id="totalApprox" hidden><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01" stroke-linecap="round"/></svg></span></div>
             <span class="growth-line" id="growth"></span>
           </article>
           <article class="card">
@@ -1928,12 +1949,18 @@
             aria-label="Fechar">×</button></div>
       </div>
       <div class="modal-body">
-        <p class="workflow-info-intro">Os números vêm da Meta e são atualizados sozinhos, para Instagram e Facebook.
-          Você não precisa enviar nada manualmente.</p>
+        <p class="workflow-info-intro">Os números vêm da Meta (Instagram, Facebook) e do YouTube, e são atualizados
+          sozinhos. Você não precisa enviar nada manualmente.</p>
         <ul class="workflow-info-list">
           <li><i class="workflow-info-icon">15</i>
             <div><b>Número atual</b><span>A cada 15 minutos, o painel busca o total mais recente de seguidores do
-                Instagram e do Facebook.</span></div>
+                Instagram, do Facebook e do YouTube.</span></div>
+          </li>
+          <li><i class="workflow-info-icon">~</i>
+            <div><b>YouTube é aproximado</b><span>O próprio YouTube arredonda o total de inscritos que entrega por
+                API — o número aqui só muda de milhar em milhar (ex.: 41.059 vira 41.000), mesmo o canal ganhando
+                inscritos todo dia. É assim em qualquer painel que use dados do YouTube; o valor exato só existe
+                dentro do YouTube Studio.</span></div>
           </li>
           <li><i class="workflow-info-icon">D</i>
             <div><b>Histórico diário</b><span>No fim de cada dia, o total de cada rede é salvo. Assim, dá para

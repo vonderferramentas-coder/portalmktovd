@@ -227,7 +227,17 @@
     const perDay = periodDeltas.length ? net / span : null;
 
     el('totalLabel').textContent = active ? `Seguidores no ${active.name}` : 'Comunidade total';
-    setText('total', format(current));
+    // O YouTube arredonda o total de inscritos que devolve por API (confirmado na própria
+    // documentação do Google) — o número só muda de milhar em milhar, mesmo o canal
+    // ganhando inscritos todo dia. Sinalizamos isso aqui em vez de fingir precisão que a
+    // API não tem; o valor exato só existe dentro do YouTube Studio.
+    const isYouTube = active && active.name === 'YouTube';
+    setText('total', (isYouTube ? '~' : '') + format(current));
+    const approxBadge = el('totalApprox');
+    if (approxBadge) {
+      approxBadge.hidden = !isYouTube;
+      if (isYouTube) approxBadge.title = 'O YouTube não informa o número exato de inscritos por API — o Google arredonda esse total (ex.: 41.059 vira 41.000) e só mostra o valor real dentro do próprio YouTube Studio. Por isso este número só muda de milhar em milhar, mesmo o canal crescendo todo dia.';
+    }
     el('growth').className = 'growth-line';
     el('growth').textContent = periodDeltas.length
       ? `${signed(net)} no período · ${percent(rate)}`
@@ -351,7 +361,10 @@
       const value = last.values[network.name];
       const before = first.values[network.name];
       const known = Number.isFinite(value);
-      const detail = known ? `${format(value)} seguidores` : (network.connected ? 'Aguardando coleta' : 'Sem API conectada');
+      // Mesmo aviso do total: o YouTube arredonda o que devolve por API.
+      const approx = known && network.name === 'YouTube';
+      const approxTitle = approx ? ' title="Número aproximado — o YouTube arredonda o total de inscritos que devolve por API; o valor exato só existe no YouTube Studio."' : '';
+      const detail = known ? `<span${approxTitle}>${approx ? '~' : ''}${format(value)} seguidores</span>` : (network.connected ? 'Aguardando coleta' : 'Sem API conectada');
       const comparable = known && Number.isFinite(before) && points.length > 1;
       return `<button type="button" class="platform ${String(index) === selectedNetwork ? 'selected' : ''}" data-network="${index}"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${detail}</small></span><span class="platform-delta">${chip(value, known ? value - before : 0, comparable)}</span><span class="platform-chevron">›</span></button>`;
     }).concat([`<button type="button" class="platform ${selectedNetwork === 'all' ? 'selected' : ''}" data-network="all"><span class="all-networks-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M10 19V5M16 19v-7M22 19V2"/></svg></span><span class="platform-copy"><strong>Todas as redes</strong><small>${format(allTotal)} seguidores</small></span><span class="platform-delta">${chip(allTotal, allDelta, comparableAll)}</span><span class="platform-chevron">›</span></button>`]).join('');
@@ -999,6 +1012,8 @@
   function renderEmpty(message) {
     setText('totalLabel', 'Comunidade total');
     setText('total', '—');
+    const approxBadge = el('totalApprox');
+    if (approxBadge) approxBadge.hidden = true;
     el('growth').className = 'growth-line';
     setText('growth', message);
     ['newFollowers','avg','bestChannel'].forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = 'neutral'; });
