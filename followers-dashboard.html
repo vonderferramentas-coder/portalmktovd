@@ -260,6 +260,30 @@
       transform: rotate(180deg)
     }
 
+    /* Anima até a altura real do conteúdo (grid-template-rows 0fr<->1fr é o único jeito de
+       animar "para altura automática" em CSS puro, sem medir pixels em JS). O filho único
+       (.section-divider-body-inner) precisa de overflow:hidden para o recorte funcionar. */
+    .section-divider-body {
+      display: grid;
+      grid-template-rows: 1fr;
+      transition: grid-template-rows .28s ease, opacity .22s ease;
+      opacity: 1
+    }
+
+    .section-divider-body.is-collapsed {
+      grid-template-rows: 0fr;
+      opacity: 0
+    }
+
+    .section-divider-body[hidden] {
+      display: none
+    }
+
+    .section-divider-body-inner {
+      overflow: hidden;
+      min-height: 0
+    }
+
     .muted {
       font-size: 12px;
       color: var(--muted)
@@ -1683,6 +1707,7 @@
           </svg>
         </button>
         <div class="section-divider-body" id="performanceBody">
+        <div class="section-divider-body-inner">
         <article class="card chart-card">
           <div class="head">
             <div>
@@ -1823,6 +1848,7 @@
           </div>
         </section>
         </div>
+        </div>
         <button type="button" class="section-divider" id="postsDivider" aria-expanded="true"
           aria-controls="postsBody">
           <div>
@@ -1835,6 +1861,7 @@
           </svg>
         </button>
         <div class="section-divider-body" id="postsBody">
+        <div class="section-divider-body-inner">
         <section class="card posts-card" id="postsPanel">
           <div class="head">
             <div>
@@ -1889,6 +1916,7 @@
           </div>
         </section>
         </div>
+        </div>
       </div>
     </main>
   </div>
@@ -1900,20 +1928,26 @@
             aria-label="Fechar">×</button></div>
       </div>
       <div class="modal-body">
-        <p class="workflow-info-intro">Os números vêm da Meta e são atualizados sozinhos. Você não precisa enviar nada
-          manualmente.</p>
+        <p class="workflow-info-intro">Os números vêm da Meta e são atualizados sozinhos, para Instagram e Facebook.
+          Você não precisa enviar nada manualmente.</p>
         <ul class="workflow-info-list">
           <li><i class="workflow-info-icon">15</i>
-            <div><b>Número atual</b><span>A cada 15 minutos, o painel busca o total mais recente de seguidores.</span>
-            </div>
+            <div><b>Número atual</b><span>A cada 15 minutos, o painel busca o total mais recente de seguidores do
+                Instagram e do Facebook.</span></div>
           </li>
           <li><i class="workflow-info-icon">D</i>
-            <div><b>Histórico diário</b><span>No fim de cada dia, o total é salvo. Assim, podemos acompanhar a evolução
-                desde o início da coleta, até o fim do ano.</span></div>
+            <div><b>Histórico diário</b><span>No fim de cada dia, o total de cada rede é salvo. Assim, dá para
+                acompanhar a evolução de "Evolução mensal" e do gráfico desde o início da coleta.</span></div>
           </li>
-          <li><i class="workflow-info-icon">↻</i>
-            <div><b>Detalhes do Instagram</b><span>Uma vez por dia, atualizamos novos seguidores, pessoas que deixaram
-                de seguir e alcance. A Meta mostra esses detalhes dos últimos 29 dias.</span></div>
+          <li><i class="workflow-info-icon">▾</i>
+            <div><b>Por plataforma</b><span>Clique em um card de rede social para filtrar todas as métricas abaixo por
+                ela — o Instagram vem selecionado por padrão.</span></div>
+          </li>
+          <li><i class="workflow-info-icon">IG</i>
+            <div><b>Exclusivo do Instagram</b><span>Insights de novos seguidores/alcance e o ranking de posts (seções
+                "Performance em números" e "Conteúdo do Instagram") só existem para o Instagram — somem sozinhos ao
+                selecionar outra rede. O ranking de posts também segue o período escolhido no topo da página, dentro
+                dos últimos posts coletados.</span></div>
           </li>
           <li><i class="workflow-info-icon">60</i>
             <div><b>Página aberta</b><span>Se esta página estiver aberta, ela procura novidades a cada 1 minuto. A
@@ -1921,7 +1955,8 @@
           </li>
         </ul>
         <p class="workflow-info-note">O dia de hoje ainda está em andamento. Por isso, os relatórios usam dias já
-          fechados. Se não houver erro ou o acesso à Meta não vencer, você não precisa fazer nada.</p>
+          fechados. "Performance em números" e "Conteúdo do Instagram" podem ser recolhidos clicando no título, para
+          reduzir a rolagem. Se não houver erro ou o acesso à Meta não vencer, você não precisa fazer nada.</p>
       </div>
       <div class="modal-footer"><button type="button" class="btn" id="workflowInfoDone">Entendi</button></div>
     </section>
