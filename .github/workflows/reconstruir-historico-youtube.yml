@@ -1,0 +1,180 @@
+name: Reconstruir histórico de inscritos do YouTube
+
+# Carga única. A YouTube Data API v3 (a mesma usada por sync-youtube-followers.yml) não
+# guarda o total de inscritos ao longo do tempo — só o snapshot atual. A YouTube Analytics
+# API guarda, por dia, quantos inscritos entraram e saíram (subscribersGained/subscribersLost),
+# mas só aceita OAuth 2.0 (não aceita a API Key simples da coleta do dia a dia). Sabendo o
+# total de agora, dá para caminhar para trás: total de um dia = total do dia seguinte menos
+# o saldo do dia seguinte — mesma lógica de reconstruir-historico.yml (Instagram), adaptada
+# porque aqui não existe uma segunda métrica independente para conferir o resultado (a Meta
+# tem follower_count paralelo ao follows_and_unfollows; o YouTube não tem equivalente), então
+# esta reconstrução é melhor-esforço, sem a rejeição por divergência que o Instagram tem.
+#
+# A dimensão "day" da YouTube Analytics API usa o fuso Pacific Time (meia-noite a meia-noite),
+# não UTC nem o fuso de São Paulo usado no resto do histórico — a data de cada ponto pode
+# ficar até algumas horas deslocada da fronteira de dia do Instagram/Facebook. Aceitável para
+# uma curva histórica de inscritos, não para o fechamento diário em si (que continua vindo de
+# sync-youtube-followers.yml, alinhado ao mesmo fuso dos demais).
+#
+# Só adiciona/atualiza a chave "YouTube" dentro de followers em cada dia — nunca mexe em
+# Instagram, Facebook ou insights. Dias sem nenhum registro anterior nascem com
+# "source": "reconstruido"; um dia que já existir (ex.: fechado por sync-youtube-followers.yml)
+# só ganha a chave YouTube, sem perder o resto.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Obter access token a partir do refresh token
+        id: token
+        env:
+          CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.YOUTUBE_OAUTH_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.YOUTUBE_OAUTH_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$REFRESH_TOKEN"
+          curl --fail --silent --show-error \
+            --data-urlencode "client_id=$CLIENT_ID" \
+            --data-urlencode "client_secret=$CLIENT_SECRET" \
+            --data-urlencode "refresh_token=$REFRESH_TOKEN" \
+            --data-urlencode "grant_type=refresh_token" \
+            "https://oauth2.googleapis.com/token" \
+            --output token.json
+          echo "access_token=$(jq -er '.access_token | strings' token.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Coletar total atual (âncora da caminhada para trás)
+        id: atual
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_CHANNEL_ID: 'UCflcAVLpPmH-03R-njMSayw'
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --get \
+            "https://www.googleapis.com/youtube/v3/channels" \
+            --data-urlencode 'part=statistics' \
+            --data-urlencode "id=$YOUTUBE_CHANNEL_ID" \
+            --data-urlencode "key=$YOUTUBE_API_KEY" \
+            --output canal.json
+          echo "inscritos=$(jq -er '.items[0].statistics.subscriberCount | strings' canal.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Coletar inscritos ganhos/perdidos por dia
+        env:
+          ACCESS_TOKEN: ${{ steps.token.outputs.access_token }}
+          YOUTUBE_CHANNEL_ID: 'UCflcAVLpPmH-03R-njMSayw'
+        run: |
+          set -euo pipefail
+          ONTEM="$(date -u -d 'yesterday' +%F)"
+          curl --fail --silent --show-error --get \
+            "https://youtubeanalytics.googleapis.com/v2/reports" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            --data-urlencode "ids=channel==$YOUTUBE_CHANNEL_ID" \
+            --data-urlencode "startDate=2011-01-01" \
+            --data-urlencode "endDate=$ONTEM" \
+            --data-urlencode "metrics=subscribersGained,subscribersLost" \
+            --data-urlencode "dimensions=day" \
+            --data-urlencode "sort=day" \
+            --output saldos.json
+          echo "Linhas recebidas: $(jq '.rows | length' saldos.json)"
+
+      - name: Reconstruir os totais e mesclar
+        env:
+          ATUAL: ${{ steps.atual.outputs.inscritos }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          atual = int(os.environ['ATUAL'])
+          resposta = json.loads(Path('saldos.json').read_text(encoding='utf-8'))
+          linhas = resposta.get('rows') or []
+
+          if not linhas:
+              Path('resumo.md').write_text(
+                  '## Reconstrução do histórico do YouTube\n\nA YouTube Analytics API não devolveu nenhuma linha — nada para mesclar.\n',
+                  encoding='utf-8')
+              raise SystemExit(0)
+
+          # [day, subscribersGained, subscribersLost], já ordenado por 'day' (sort=day).
+          saldos = [{'date': dia, 'ganhos': int(g), 'perdidos': int(p), 'saldo': int(g) - int(p)}
+                    for dia, g, p in linhas]
+
+          # Caminha do dia mais recente para o mais antigo: o total de hoje é a âncora, e o
+          # total de um dia é o total do dia seguinte menos o saldo do dia seguinte. Sem saldo
+          # parcial do dia corrente para descontar (a Analytics só fecha até ontem) — pequeno
+          # desvio de algumas horas é aceitável aqui, ao contrário do fechamento diário oficial.
+          total = atual
+          reconstruidos = {}
+          for item in reversed(saldos):
+              reconstruidos[item['date']] = total
+              total -= item['saldo']
+
+          caminho = Path('data/social-followers.json')
+          doc = json.loads(caminho.read_text(encoding='utf-8')) if caminho.exists() else {'version': 2, 'history': []}
+          historico = {item['date']: item for item in doc.get('history', []) if item.get('date')}
+
+          novos = 0
+          atualizados = 0
+          for dia, valor in sorted(reconstruidos.items()):
+              existente = historico.get(dia)
+              if existente:
+                  if existente.get('followers', {}).get('YouTube') == valor:
+                      continue
+                  entrada = dict(existente)
+                  entrada['followers'] = dict(entrada.get('followers') or {})
+                  era_novo = 'YouTube' not in entrada['followers']
+                  entrada['followers']['YouTube'] = valor
+                  historico[dia] = entrada
+                  novos += 1 if era_novo else 0
+                  atualizados += 0 if era_novo else 1
+              else:
+                  historico[dia] = {'date': dia, 'followers': {'YouTube': valor}, 'source': 'reconstruido'}
+                  novos += 1
+
+          doc['version'] = 2
+          doc['history'] = [historico[dia] for dia in sorted(historico)]
+          doc['updatedAt'] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+          caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          primeiro, ultimo = saldos[0]['date'], saldos[-1]['date']
+          resumo = [
+              '## Reconstrução do histórico do YouTube', '',
+              f"Total de referência (agora, arredondado pela API): **{atual:,}**".replace(',', '.'),
+              f"Dias novos com YouTube adicionado: **{novos}**",
+              f"Dias existentes com o valor corrigido: **{atualizados}**",
+              f"Cobre de **{primeiro}** até **{ultimo}**",
+              '', 'Dias marcados "reconstruido"; a fronteira de cada dia é Pacific Time (YouTube Analytics), não o fuso de São Paulo usado no resto do histórico — pequeno desvio esperado.',
+          ]
+          Path('resumo.md').write_text('\n'.join(resumo) + '\n', encoding='utf-8')
+          PY
+          cat resumo.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar
+        run: |
+          git add data/social-followers.json
+          if git diff --cached --quiet -- data/social-followers.json; then
+            echo 'Nada mudou.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: reconstruir histórico de inscritos do YouTube'
+          # sync-youtube-followers.yml e sync-meta-followers.yml podem publicar em paralelo —
+          # retry com rebase antes de desistir, mesmo padrão dos outros workflows.
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
