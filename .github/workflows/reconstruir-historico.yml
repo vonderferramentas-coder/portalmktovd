@@ -124,20 +124,23 @@ jobs:
           caminho = Path('data/social-followers.json')
           doc = json.loads(caminho.read_text(encoding='utf-8')) if caminho.exists() else {'version': 1, 'history': []}
 
-          # Descarta reconstruções anteriores antes de qualquer coisa: se esta rodada não
-          # passar na conferência, o arquivo fica só com medição real, e não com número
-          # errado de uma tentativa passada.
-          historico = {
-              item['date']: item for item in doc.get('history', [])
-              if item.get('source') not in ('reconstruido', 'estimado')
-          }
-
           # Conferência: o follower_count mede as entradas do mesmo dia por outro caminho.
           # Se os dois discordarem muito, a janela de consulta está errada — foi assim que
           # a primeira tentativa dobrou todos os números — e nada deve ser gravado.
           referencia = {
               item['end_time'][:10]: item['value']
               for item in json.loads(Path('fronteiras.json').read_text())['data'][0]['values']
+          }
+
+          # Descarta reconstruções anteriores só dentro da janela que esta execução vai
+          # refazer de verdade (os dias em "referencia") — nunca fora dela. A Meta só permite
+          # consultar os últimos ~29 dias de follows_and_unfollows, então um dia que já saiu
+          # dessa janela nunca mais será recalculado; descartá-lo aqui apagaria histórico para
+          # sempre, sem nenhuma chance de reposição (foi o que aconteceu antes desta correção).
+          janela_desta_execucao = set(referencia)
+          historico = {
+              item['date']: item for item in doc.get('history', [])
+              if not (item.get('source') in ('reconstruido', 'estimado') and item['date'] in janela_desta_execucao)
           }
           # Um dia faltando desloca o total de todos os dias anteriores a ele, porque a
           # caminhada para trás é encadeada. Melhor recusar do que publicar série torta.
