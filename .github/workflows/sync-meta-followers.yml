@@ -35,10 +35,29 @@ jobs:
           echo "followers=$(jq -er '.followers_count | numbers' meta-response.json)" >> "$GITHUB_OUTPUT"
           echo "username=$(jq -er '.username | strings' meta-response.json)" >> "$GITHUB_OUTPUT"
 
+      # A Página do Facebook (dona da conta do Instagram acima) responde com o mesmo token de
+      # Página — confirmado em diagnostico-meta-facebook.yml, sem precisar de escopo novo.
+      - name: Consultar seguidores do Facebook
+        id: metaFacebook
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_FACEBOOK_PAGE_ID: '262406600508752'
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --get \
+            "https://graph.facebook.com/v26.0/$META_FACEBOOK_PAGE_ID" \
+            --data-urlencode 'fields=followers_count,name' \
+            --data-urlencode "access_token=$META_PAGE_ACCESS_TOKEN" \
+            --output meta-facebook-response.json
+          echo "followers=$(jq -er '.followers_count | numbers' meta-facebook-response.json)" >> "$GITHUB_OUTPUT"
+          echo "name=$(jq -er '.name | strings' meta-facebook-response.json)" >> "$GITHUB_OUTPUT"
+
       - name: Atualizar snapshot público
         env:
           FOLLOWERS: ${{ steps.meta.outputs.followers }}
           USERNAME: ${{ steps.meta.outputs.username }}
+          FB_FOLLOWERS: ${{ steps.metaFacebook.outputs.followers }}
+          FB_NAME: ${{ steps.metaFacebook.outputs.name }}
         run: |
           python3 - <<'PY'
           import json, os
@@ -50,11 +69,18 @@ jobs:
               'version': 2,
               'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
               'source': 'meta_graph_api',
-              'platforms': {'Instagram': {
-                  'accountId': '17841403154695997',
-                  'username': os.environ['USERNAME'],
-                  'followers': int(os.environ['FOLLOWERS'])
-              }}
+              'platforms': {
+                  'Instagram': {
+                      'accountId': '17841403154695997',
+                      'username': os.environ['USERNAME'],
+                      'followers': int(os.environ['FOLLOWERS'])
+                  },
+                  'Facebook': {
+                      'accountId': '262406600508752',
+                      'username': os.environ['FB_NAME'],
+                      'followers': int(os.environ['FB_FOLLOWERS'])
+                  }
+              }
           }
           path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
@@ -63,6 +89,7 @@ jobs:
         if: github.event.schedule == '55 2 * * *' || github.event_name == 'workflow_dispatch'
         env:
           FOLLOWERS: ${{ steps.meta.outputs.followers }}
+          FB_FOLLOWERS: ${{ steps.metaFacebook.outputs.followers }}
         run: |
           python3 - <<'PY'
           import json, os
@@ -74,7 +101,13 @@ jobs:
           # A execução ocorre às 02:55 UTC, equivalente a 23:55 em São Paulo.
           closing_date = (datetime.now(timezone.utc) - timedelta(hours=3)).date().isoformat()
           history = [item for item in document.get('history', []) if item.get('date') != closing_date]
-          history.append({'date': closing_date, 'followers': {'Instagram': int(os.environ['FOLLOWERS'])}})
+          history.append({
+              'date': closing_date,
+              'followers': {
+                  'Instagram': int(os.environ['FOLLOWERS']),
+                  'Facebook': int(os.environ['FB_FOLLOWERS'])
+              }
+          })
           history.sort(key=lambda item: item['date'])
           document.update({
               'version': 2,
