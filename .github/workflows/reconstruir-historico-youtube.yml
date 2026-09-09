@@ -125,19 +125,56 @@ jobs:
           saldos = [{'date': dia, 'ganhos': int(g), 'perdidos': int(p), 'saldo': int(g) - int(p)}
                     for dia, g, p in linhas]
 
+          # O canal foi criado em 2011-03-22 — qualquer dia antes disso não existe de verdade,
+          # mesmo que a Analytics devolva uma linha (zerada) para ele.
+          CANAL_CRIADO = '2011-03-22'
+
           # Caminha do dia mais recente para o mais antigo: o total de hoje é a âncora, e o
           # total de um dia é o total do dia seguinte menos o saldo do dia seguinte. Sem saldo
           # parcial do dia corrente para descontar (a Analytics só fecha até ontem) — pequeno
           # desvio de algumas horas é aceitável aqui, ao contrário do fechamento diário oficial.
+          #
+          # Quinze anos de saldos diários acumulam desvio (arredondamento da âncora, purgas de
+          # inscritos falsos pela própria YouTube, imprecisão da Analytics em datas antigas) —
+          # a primeira execução chegou a -45 inscritos em 2011. Como o desvio só cresce quanto
+          # mais se caminha para trás, para no primeiro dia em que o total deixaria de ser
+          # positivo ou cruzaria a criação do canal: dali pra trás, a série já não é confiável.
           total = atual
           reconstruidos = {}
+          descartados_negativo = 0
+          descartados_pre_canal = 0
           for item in reversed(saldos):
+              if item['date'] < CANAL_CRIADO:
+                  descartados_pre_canal += 1
+                  continue
+              if total <= 0:
+                  descartados_negativo += 1
+                  continue
               reconstruidos[item['date']] = total
               total -= item['saldo']
 
           caminho = Path('data/social-followers.json')
           doc = json.loads(caminho.read_text(encoding='utf-8')) if caminho.exists() else {'version': 2, 'history': []}
           historico = {item['date']: item for item in doc.get('history', []) if item.get('date')}
+
+          # Limpeza única: a primeira execução (antes desta trava) já publicou dias negativos
+          # e/ou anteriores à criação do canal. Remove só a chave YouTube desses dias — nunca
+          # Instagram/Facebook/insights — e o dia inteiro se YouTube era o único conteúdo dele.
+          limpos = 0
+          for dia in list(historico):
+              entrada = historico[dia]
+              valor_atual = entrada.get('followers', {}).get('YouTube')
+              se_deve_limpar = valor_atual is not None and (dia < CANAL_CRIADO or valor_atual <= 0) and dia not in reconstruidos
+              if se_deve_limpar:
+                  followers = dict(entrada.get('followers') or {})
+                  followers.pop('YouTube', None)
+                  if followers or entrada.get('insights'):
+                      entrada = dict(entrada)
+                      entrada['followers'] = followers
+                      historico[dia] = entrada
+                  else:
+                      del historico[dia]
+                  limpos += 1
 
           novos = 0
           atualizados = 0
@@ -162,15 +199,25 @@ jobs:
           doc['updatedAt'] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
           caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
-          primeiro, ultimo = saldos[0]['date'], saldos[-1]['date']
-          resumo = [
-              '## Reconstrução do histórico do YouTube', '',
-              f"Total de referência (agora, arredondado pela API): **{atual:,}**".replace(',', '.'),
-              f"Dias novos com YouTube adicionado: **{novos}**",
-              f"Dias existentes com o valor corrigido: **{atualizados}**",
-              f"Cobre de **{primeiro}** até **{ultimo}**",
-              '', 'Dias marcados "reconstruido"; a fronteira de cada dia é Pacific Time (YouTube Analytics), não o fuso de São Paulo usado no resto do histórico — pequeno desvio esperado.',
-          ]
+          resumo = ['## Reconstrução do histórico do YouTube', '']
+          if reconstruidos:
+              primeiro, ultimo = min(reconstruidos), max(reconstruidos)
+              resumo += [
+                  f"Total de referência (agora, arredondado pela API): **{atual:,}**".replace(',', '.'),
+                  f"Dias novos com YouTube adicionado: **{novos}**",
+                  f"Dias existentes com o valor corrigido: **{atualizados}**",
+                  f"Cobre de **{primeiro}** até **{ultimo}**",
+              ]
+          else:
+              resumo.append('Nenhum dia ficou dentro da faixa confiável — nada foi adicionado.')
+          if descartados_negativo:
+              resumo.append(f"⚠️ Parou em **{descartados_negativo}** dia(s) mais antigos onde o total acumulado deixaria de ser positivo — desvio normal ao caminhar 15 anos para trás a partir de um total já arredondado; a série real desse canal não tem como ser reconstruída com confiança até 2011.")
+          if descartados_pre_canal:
+              resumo.append(f"{descartados_pre_canal} dia(s) descartados por serem anteriores à criação do canal ({CANAL_CRIADO}).")
+          if limpos:
+              resumo.append(f"Limpeza: removida a chave YouTube de **{limpos}** dia(s) publicados numa execução anterior (antes desta trava) com valor negativo ou anterior à criação do canal.")
+          resumo.append('')
+          resumo.append('Dias marcados "reconstruido"; a fronteira de cada dia é Pacific Time (YouTube Analytics), não o fuso de São Paulo usado no resto do histórico — pequeno desvio esperado.')
           Path('resumo.md').write_text('\n'.join(resumo) + '\n', encoding='utf-8')
           PY
           cat resumo.md >> "$GITHUB_STEP_SUMMARY"
