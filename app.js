@@ -989,18 +989,6 @@
       circle: (s)=> svgIcon('<circle cx="12" cy="12" r="9"/>', s),
       upload: (s)=> svgIcon('<path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>', s)
     };
-    // escolhe um ícone para um status pelo nome (heurística por palavra-chave — cobre os status
-    // padrão e a maioria dos nomes customizados; cai num círculo neutro quando não reconhece)
-    function statusIconFor(name){
-      const n = normalizeIconKey(name);
-      if(/public/.test(n)) return UI_ICONS.checkCircle;
-      if(/aprov|conclu|final|done/.test(n)) return UI_ICONS.checkCircle;
-      if(/agend|schedul/.test(n)) return UI_ICONS.clock;
-      if(/produc|producao|progress|revis/.test(n)) return UI_ICONS.shuffle;
-      if(/rascunho|draft/.test(n)) return UI_ICONS.edit;
-      return UI_ICONS.circle;
-    }
-
     // gera um id único para uma nova postagem
     function generateId(){ return 'p-' + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4); }
 
