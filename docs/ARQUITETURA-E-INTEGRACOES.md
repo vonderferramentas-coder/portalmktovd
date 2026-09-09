@@ -2,7 +2,7 @@
 
 > **Documento vivo.** Atualize este arquivo na mesma alteração que criar, trocar ou remover uma integração, fonte de dados, automação, serviço hospedado ou recurso que possa gerar dúvida para a TI. A validação automatizada do repositório ajuda a cobrar essa atualização para os principais arquivos de integração.
 
-**Última revisão:** 04/09/2026  
+**Última revisão:** 09/09/2026  
 **Escopo desta revisão:** estado identificado no código da branch `main`.
 
 ## 1. O que é este projeto
@@ -36,7 +36,7 @@ Pessoa usuária / navegador
         +-- JSON público no GitHub -----------------> painel de seguidores
                                                            ^
                                                            |
-GitHub Actions + segredo META_PAGE_ACCESS_TOKEN ------> Meta Graph API / Instagram
+GitHub Actions + segredo META_PAGE_ACCESS_TOKEN ------> Meta Graph API / Instagram + Facebook
 ```
 
 ## 4. Componentes do portal
@@ -57,7 +57,7 @@ GitHub Actions + segredo META_PAGE_ACCESS_TOKEN ------> Meta Graph API / Instagr
 | GitHub Pages | Hospeda o front-end estático | Arquivos públicos do portal e JSON de seguidores | Administração do repositório/Pages | Não executa PHP nem deve conter segredos no front-end |
 | Firebase Realtime Database | Sincroniza dados entre navegadores | calendário, configurações, marcas e inteligência | Regras do Firebase definem acesso; URL está no JS | Regras não são versionadas aqui: devem ser auditadas no console Firebase |
 | Cloudflare Workers | Ponte para ofertas FG e imagens OVD com CORS | URL de oferta, preços públicos, SKU, imagem e código de produto | Nenhuma credencial no Worker atual | Manter validação de origem/destino e não trafegar dados pessoais |
-| Meta Graph API | Coleta indicadores do Instagram | seguidores, entradas, saídas, alcance; e por post: legenda, permalink, miniatura, data, curtidas, comentários, interações totais, visualizações e salvamentos | `META_PAGE_ACCESS_TOKEN` em GitHub Secrets | Token nunca vai para o navegador; requer rotação e escopos mínimos |
+| Meta Graph API | Coleta indicadores do Instagram e da Página do Facebook da VONDER | Instagram: seguidores, entradas, saídas, alcance; e por post: legenda, permalink, miniatura, data, curtidas, comentários, interações totais, visualizações e salvamentos. Facebook: seguidores/curtidas da Página (`followers_count`/`fan_count`) | `META_PAGE_ACCESS_TOKEN` em GitHub Secrets — mesmo token de Página usado para o Instagram, já alcança a Página sem escopo adicional | Token nunca vai para o navegador; requer rotação e escopos mínimos |
 | GitHub Actions | Executa a coleta automática e publica JSON | dados agregados de seguidores; e snapshot dos posts recentes com suas métricas | GitHub Secret + permissão de escrita | Gera commits automáticos |
 | `app.ovd.com.br` | Fonte de fotos oficiais de produto | imagem pública por código | sem credencial no código | Imagem passa pelo Worker/PHP para viabilizar CORS no editor |
 | `fg.com.br` | Fonte de ofertas no editor FG | título, marca, SKU, preço e disponibilidade públicos | sem credencial no código | Worker aceita apenas domínio FG e subdomínios |
@@ -119,13 +119,14 @@ O Worker é uma ponte controlada: recebe o pedido, valida parâmetros e domínio
 
 O dashboard não chama a Meta no navegador, evitando expor o token. Os workflows em `.github/workflows/` executam no GitHub:
 
-- `sync-meta-followers.yml`: consulta seguidores a cada 15 minutos e fecha um ponto diário às 23h55 de São Paulo;
+- `sync-meta-followers.yml`: consulta seguidores do Instagram e, desde 09/09/2026, da Página do Facebook da VONDER (`262406600508752`) a cada 15 minutos, e fecha um ponto diário às 23h55 de São Paulo para as duas redes;
 - `reconstruir-historico.yml`: recompõe dias recentes com métricas agregadas da Meta;
-- `diagnostico-meta.yml`: verifica alcance/permissões do token para métricas de conta, sem alterar arquivos;
+- `diagnostico-meta.yml`: verifica alcance/permissões do token para métricas de conta do Instagram, sem alterar arquivos;
+- `diagnostico-meta-facebook.yml`: verifica a que Página pertence o token (`/me`) e se ele alcança `followers_count`/`fan_count` da Página, sem alterar arquivos — foi o que confirmou o ID `262406600508752` e que nenhum escopo novo era necessário;
 - `sync-meta-posts.yml`: a cada 6 horas, busca os 30 posts mais recentes do Instagram (legenda, permalink, miniatura, data, curtidas e comentários) e, para cada um, as métricas de `/insights` (interações totais, visualizações e salvamentos), sobrescrevendo `data/social-posts.json` inteiro a cada execução — não existe histórico por dia aqui, só o snapshot mais recente para alimentar o ranking de melhores posts;
 - `diagnostico-meta-posts.yml`: verifica alcance/permissões do token para dados de posts (mídia e insights por post), sem alterar arquivos — foi o que confirmou que o token atual já alcança `like_count`/`comments_count` na listagem de mídia e `total_interactions`/`views`/`saved` em `/insights` (o nome legado `engagement` foi descontinuado pela Meta).
 
-Eles usam o segredo `META_PAGE_ACCESS_TOKEN` nos **GitHub Actions Secrets** e publicam dados agregados/públicos do Instagram da própria marca (nunca dados pessoais de terceiros) em `data/social-followers-live.json`, `data/social-followers.json` e `data/social-posts.json`. Atualmente, apenas a marca padrão VONDER tem coleta automática; demais marcas e redes são manuais no painel.
+Eles usam o segredo `META_PAGE_ACCESS_TOKEN` nos **GitHub Actions Secrets** e publicam dados agregados/públicos do Instagram e do Facebook da própria marca (nunca dados pessoais de terceiros) em `data/social-followers-live.json`, `data/social-followers.json` e `data/social-posts.json`. Atualmente, apenas a marca padrão VONDER tem coleta automática (Instagram e Facebook); demais marcas e redes são manuais no painel. A coleta de posts (`sync-meta-posts.yml`) continua exclusiva do Instagram.
 
 Para a TI: aplicar menor privilégio ao token, documentar owner, rotacionar antes de vencer, revisar escopos e limitar quem pode alterar workflows e secrets.
 
@@ -164,6 +165,7 @@ O workflow não substitui revisão humana: qualquer nova dependência remota, me
 |---|---|---|
 | 03/09/2026 | Criação do inventário: Firebase, Cloudflare Worker, GitHub Pages/Actions, Meta, fontes OVD/FG, Google Fonts e alternativa PHP/SQLite. | Equipe de Marketing / manutenção do portal |
 | 04/09/2026 | Adicionada coleta de posts do Instagram (`sync-meta-posts.yml`, `diagnostico-meta-posts.yml`) e o painel "Melhores posts" no dashboard de seguidores, publicando em `data/social-posts.json` e `portalStore/posts-vonder-v1`. | Equipe de Marketing / manutenção do portal |
+| 09/09/2026 | Adicionada coleta de seguidores/curtidas da Página do Facebook da VONDER (`262406600508752`) em `sync-meta-followers.yml`, reaproveitando o `META_PAGE_ACCESS_TOKEN` já existente (confirmado sem escopo novo em `diagnostico-meta-facebook.yml`). O painel de Redes Sociais passa a exibir o Facebook como rede conectada para a VONDER. | Equipe de Marketing / manutenção do portal |
 
 ## 13. Autenticação e controle de acesso (em implantação)
 
