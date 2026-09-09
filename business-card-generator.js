@@ -1421,8 +1421,13 @@
     // canvas — o viewBox da base é 1880×1080, igual ao canvas, então bate 1 para 1).
     var toolsBox = { x: 622.7064, y: 524.2927, w: 633.2549, h: 400.0007 };
     var toolsPad = 6;
+    // O rodapé preto da base começa em y=923.5539 (medido no SVG embutido) — a caixa de limpeza
+    // não pode descer até lá, senão pinta uma tarja branca por cima do topo do rodapé.
+    var toolsFooterTop = 923.5539;
+    var toolsClearTop = toolsBox.y - toolsPad;
+    var toolsClearBottom = Math.min(toolsBox.y + toolsBox.h + toolsPad, toolsFooterTop);
     ctx.fillStyle = "#fff";
-    ctx.fillRect(toolsBox.x - toolsPad, toolsBox.y - toolsPad, toolsBox.w + toolsPad * 2, toolsBox.h + toolsPad * 2);
+    ctx.fillRect(toolsBox.x - toolsPad, toolsClearTop, toolsBox.w + toolsPad * 2, toolsClearBottom - toolsClearTop);
     if (vonderTools) ctx.drawImage(vonderTools, toolsBox.x, toolsBox.y, toolsBox.w, toolsBox.h);
 
     // Neutraliza os vetores antigos da base e recoloca as marcas oficiais sem deformação.
