@@ -1,0 +1,79 @@
+name: Diagnóstico OAuth do YouTube Analytics
+
+# Só descobre o que o refresh token atual alcança, sem alterar arquivos e sem precisar de
+# nova autorização do usuário (reaproveita YOUTUBE_OAUTH_REFRESH_TOKEN). Mesmo padrão de
+# diagnostico-meta.yml: cada resposta vai tanto para o resumo da execução quanto para o log
+# bruto do passo, para investigar direto pela CLI sem depender do navegador.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obter access token
+        id: token
+        env:
+          CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.YOUTUBE_OAUTH_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.YOUTUBE_OAUTH_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --data-urlencode "client_id=$CLIENT_ID" \
+            --data-urlencode "client_secret=$CLIENT_SECRET" \
+            --data-urlencode "refresh_token=$REFRESH_TOKEN" \
+            --data-urlencode "grant_type=refresh_token" \
+            "https://oauth2.googleapis.com/token" \
+            --output token.json
+          ACCESS_TOKEN="$(jq -er '.access_token | strings' token.json)"
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "access_token=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
+          echo "Escopos concedidos ao token:"
+          jq -r '.scope // "(resposta não trouxe .scope)"' token.json
+
+      - name: Consultar o que o token alcança
+        env:
+          ACCESS_TOKEN: ${{ steps.token.outputs.access_token }}
+        run: |
+          set -uo pipefail
+          AUTH="Authorization: Bearer $ACCESS_TOKEN"
+
+          consultar () {
+            titulo="$1"
+            url="$2"
+            {
+              echo "### $titulo"
+              echo ''
+              echo '```json'
+            } >> "$GITHUB_STEP_SUMMARY"
+            if resposta="$(curl -sS --max-time 30 -H "$AUTH" -H "Accept-Language: pt-BR" "$url")"; then
+              printf '%s\n' "$resposta" | head -c 3000 >> "$GITHUB_STEP_SUMMARY"
+              echo "$titulo:" && printf '%s\n' "$resposta" | head -c 3000
+            else
+              echo 'A chamada falhou antes de receber resposta.' >> "$GITHUB_STEP_SUMMARY"
+            fi
+            { echo ''; echo '```'; echo ''; } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          echo "## Diagnóstico OAuth do YouTube" >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+
+          consultar "Tokeninfo — a quem pertence este token, e com quais escopos" \
+            "https://oauth2.googleapis.com/tokeninfo?access_token=$ACCESS_TOKEN"
+
+          consultar "channels.list mine=true — qual canal esta conta enxerga como 'seu canal' via API" \
+            "https://www.googleapis.com/youtube/v3/channels?part=snippet,contentOwnerDetails&mine=true"
+
+          consultar "channels.list managedByMe=true — canais de marca que esta conta gerencia" \
+            "https://www.googleapis.com/youtube/v3/channels?part=snippet&managedByMe=true&maxResults=10"
+
+          DESDE="$(date -u -d '7 days ago' +%F)"
+          ATE="$(date -u -d 'yesterday' +%F)"
+
+          consultar "Analytics: views, channel==MINE, últimos 7 dias" \
+            "https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&startDate=$DESDE&endDate=$ATE&metrics=views"
+
+          consultar "Analytics: views, channel==UCflcAVLpPmH-03R-njMSayw, últimos 7 dias" \
+            "https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DUCflcAVLpPmH-03R-njMSayw&startDate=$DESDE&endDate=$ATE&metrics=views"
