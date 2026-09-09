@@ -80,9 +80,20 @@
       align-items: center;
       justify-content: center;
       margin-left: 6px;
+      padding: 0;
+      border: 0;
+      background: transparent;
       color: var(--muted);
-      cursor: help;
-      vertical-align: middle
+      cursor: pointer;
+      vertical-align: middle;
+      border-radius: 50%;
+      transition: color .12s
+    }
+
+    .approx-badge:hover,
+    .approx-badge:focus-visible {
+      color: #F04444;
+      outline: none
     }
 
     .approx-badge svg {
@@ -91,6 +102,28 @@
 
     .approx-badge[hidden] {
       display: none
+    }
+
+    /* Modal com a identidade do YouTube (vermelho da marca, ver NETWORKS em
+       followers-dashboard.js) — reaproveita .modal-backdrop/.modal do portal. */
+    .youtube-approx-modal .modal-header {
+      border-bottom-color: #F04444
+    }
+
+    .youtube-approx-modal .modal-header-title img {
+      flex-shrink: 0
+    }
+
+    .youtube-approx-modal .modal-header h2 {
+      color: #F04444
+    }
+
+    .youtube-approx-modal .modal-footer .btn {
+      background: #F04444
+    }
+
+    .youtube-approx-modal .modal-footer .btn:hover {
+      background: #d93a3a
     }
 
     .social .page-header .page-subtitle {
@@ -1687,7 +1720,7 @@
         </section>
         <section class="hero">
           <article class="card total">
-            <div><span class="total-label" id="totalLabel">Comunidade total</span><strong id="total"></strong><span class="approx-badge" id="totalApprox" hidden><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01" stroke-linecap="round"/></svg></span></div>
+            <div><span class="total-label" id="totalLabel">Comunidade total</span><strong id="total"></strong><button type="button" class="approx-badge" id="totalApprox" hidden aria-label="Por que este número é aproximado"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01" stroke-linecap="round"/></svg></button></div>
             <span class="growth-line" id="growth"></span>
           </article>
           <article class="card">
@@ -1941,6 +1974,25 @@
       </div>
     </main>
   </div>
+  <div class="modal-backdrop" id="youtubeApproxBackdrop" aria-hidden="true">
+    <section class="modal modal-sm youtube-approx-modal" role="dialog" aria-modal="true" aria-labelledby="youtubeApproxTitle">
+      <div class="modal-header">
+        <div class="modal-header-title"><img src="icons/youtube.svg" alt="" width="20" height="20">
+          <h2 id="youtubeApproxTitle">Número aproximado</h2>
+        </div>
+        <div class="modal-header-actions"><button type="button" class="modal-close" id="youtubeApproxClose"
+            aria-label="Fechar">×</button></div>
+      </div>
+      <div class="modal-body">
+        <p>O YouTube arredonda o total de inscritos que devolve por API — o número aqui só muda de milhar em
+          milhar (ex.: 41.059 vira <b>~41.0k</b>; só quando passar de 41.100 é que vira <b>~41.1k</b>), mesmo o
+          canal ganhando inscritos todo dia.</p>
+        <p>É assim em qualquer painel que use dados do YouTube, não é uma limitação deste portal. O número exato
+          só existe dentro do YouTube Studio, para quem administra o canal.</p>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn" id="youtubeApproxDone">Entendi</button></div>
+    </section>
+  </div>
   <div class="modal-backdrop" id="workflowInfoBackdrop" aria-hidden="true">
     <section class="modal workflow-info-modal" role="dialog" aria-modal="true" aria-labelledby="workflowInfoTitle">
       <div class="modal-header">
@@ -1958,9 +2010,10 @@
           </li>
           <li><i class="workflow-info-icon">~</i>
             <div><b>YouTube é aproximado</b><span>O próprio YouTube arredonda o total de inscritos que entrega por
-                API — o número aqui só muda de milhar em milhar (ex.: 41.059 vira 41.000), mesmo o canal ganhando
-                inscritos todo dia. É assim em qualquer painel que use dados do YouTube; o valor exato só existe
-                dentro do YouTube Studio.</span></div>
+                API — o número aqui aparece como "~41.0k" e só muda de casa decimal em casa decimal (ex.: 41.059
+                vira ~41.0k; só ao passar de 41.100 vira ~41.1k), mesmo o canal ganhando inscritos todo dia. É assim
+                em qualquer painel que use dados do YouTube; o valor exato só existe dentro do YouTube Studio.
+                Toque no ícone ao lado do número para ver essa explicação de novo.</span></div>
           </li>
           <li><i class="workflow-info-icon">D</i>
             <div><b>Histórico diário</b><span>No fim de cada dia, o total de cada rede é salvo. Assim, dá para

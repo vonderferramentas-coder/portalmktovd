@@ -88,6 +88,15 @@
   const setText = (id, value) => { const node = el(id); if (node) node.textContent = value; };
   const setTone = (id, value) => { const node = el(id); if (node) node.className = value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral'; };
   const format = value => Number(value || 0).toLocaleString('pt-BR');
+  // O YouTube arredonda o total de inscritos que devolve por API a 3 algarismos
+  // significativos (documentado pelo Google) — abaixo de 1.000 o valor já vem exato, então só
+  // formata como "~41.0k" a partir daí; a casa decimal muda exatamente quando o Google já
+  // teria mudado o valor bruto (41.000→41.1k só quando o real vira 41.100), sem inventar falsa
+  // precisão nem perder precisão real.
+  const formatApproxYouTube = value => {
+    const n = Number(value || 0);
+    return n < 1000 ? format(n) : `~${(n / 1000).toFixed(1)}k`;
+  };
   const signed = value => (value > 0 ? '+' : '') + format(Math.round(value));
   const percent = value => `${value > 0 ? '+' : ''}${value.toFixed(1).replace('.', ',')}%`;
   // Seguidor é unidade inteira — "1.299,8/dia" não faz sentido. Toda taxa "por dia" arredonda.
@@ -228,16 +237,13 @@
 
     el('totalLabel').textContent = active ? `Seguidores no ${active.name}` : 'Comunidade total';
     // O YouTube arredonda o total de inscritos que devolve por API (confirmado na própria
-    // documentação do Google) — o número só muda de milhar em milhar, mesmo o canal
-    // ganhando inscritos todo dia. Sinalizamos isso aqui em vez de fingir precisão que a
-    // API não tem; o valor exato só existe dentro do YouTube Studio.
+    // documentação do Google) — sinalizamos isso em vez de fingir precisão que a API não tem;
+    // o ícone abre um modal explicando (ver openYoutubeApprox), o valor exato só existe
+    // dentro do YouTube Studio.
     const isYouTube = active && active.name === 'YouTube';
-    setText('total', (isYouTube ? '~' : '') + format(current));
+    setText('total', isYouTube ? formatApproxYouTube(current) : format(current));
     const approxBadge = el('totalApprox');
-    if (approxBadge) {
-      approxBadge.hidden = !isYouTube;
-      if (isYouTube) approxBadge.title = 'O YouTube não informa o número exato de inscritos por API — o Google arredonda esse total (ex.: 41.059 vira 41.000) e só mostra o valor real dentro do próprio YouTube Studio. Por isso este número só muda de milhar em milhar, mesmo o canal crescendo todo dia.';
-    }
+    if (approxBadge) approxBadge.hidden = !isYouTube;
     el('growth').className = 'growth-line';
     el('growth').textContent = periodDeltas.length
       ? `${signed(net)} no período · ${percent(rate)}`
@@ -361,10 +367,9 @@
       const value = last.values[network.name];
       const before = first.values[network.name];
       const known = Number.isFinite(value);
-      // Mesmo aviso do total: o YouTube arredonda o que devolve por API.
-      const approx = known && network.name === 'YouTube';
-      const approxTitle = approx ? ' title="Número aproximado — o YouTube arredonda o total de inscritos que devolve por API; o valor exato só existe no YouTube Studio."' : '';
-      const detail = known ? `<span${approxTitle}>${approx ? '~' : ''}${format(value)} seguidores</span>` : (network.connected ? 'Aguardando coleta' : 'Sem API conectada');
+      // Mesmo aviso do total (ver openYoutubeApprox): o YouTube arredonda o que devolve por API.
+      const shown = known ? (network.name === 'YouTube' ? formatApproxYouTube(value) : format(value)) : null;
+      const detail = known ? `${shown} seguidores` : (network.connected ? 'Aguardando coleta' : 'Sem API conectada');
       const comparable = known && Number.isFinite(before) && points.length > 1;
       return `<button type="button" class="platform ${String(index) === selectedNetwork ? 'selected' : ''}" data-network="${index}"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${detail}</small></span><span class="platform-delta">${chip(value, known ? value - before : 0, comparable)}</span><span class="platform-chevron">›</span></button>`;
     }).concat([`<button type="button" class="platform ${selectedNetwork === 'all' ? 'selected' : ''}" data-network="all"><span class="all-networks-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M10 19V5M16 19v-7M22 19V2"/></svg></span><span class="platform-copy"><strong>Todas as redes</strong><small>${format(allTotal)} seguidores</small></span><span class="platform-delta">${chip(allTotal, allDelta, comparableAll)}</span><span class="platform-chevron">›</span></button>`]).join('');
@@ -1215,6 +1220,29 @@
   if (workflowInfo) workflowInfo.addEventListener('click', event => { if (event.target === workflowInfo) closeWorkflowInfo(); });
   ['workflowInfoClose', 'workflowInfoDone'].forEach(id => { const button = el(id); if (button) button.addEventListener('click', closeWorkflowInfo); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && workflowInfo && workflowInfo.style.display === 'flex') closeWorkflowInfo(); });
+
+  // Mesmo padrão do modal acima, mas para o aviso de número aproximado do YouTube — o ícone
+  // que fica ao lado do "~41.0k" (ver render()) abre este modal na identidade da marca.
+  const youtubeApprox = el('youtubeApproxBackdrop');
+  let youtubeApproxLastFocus = null;
+  const closeYoutubeApprox = () => {
+    if (!youtubeApprox) return;
+    youtubeApprox.style.display = 'none';
+    youtubeApprox.setAttribute('aria-hidden', 'true');
+    if (youtubeApproxLastFocus) youtubeApproxLastFocus.focus();
+  };
+  const openYoutubeApprox = () => {
+    if (!youtubeApprox) return;
+    youtubeApproxLastFocus = document.activeElement;
+    youtubeApprox.style.display = 'flex';
+    youtubeApprox.setAttribute('aria-hidden', 'false');
+    el('youtubeApproxClose').focus();
+  };
+  const totalApproxTrigger = el('totalApprox');
+  if (totalApproxTrigger) totalApproxTrigger.addEventListener('click', openYoutubeApprox);
+  if (youtubeApprox) youtubeApprox.addEventListener('click', event => { if (event.target === youtubeApprox) closeYoutubeApprox(); });
+  ['youtubeApproxClose', 'youtubeApproxDone'].forEach(id => { const button = el(id); if (button) button.addEventListener('click', closeYoutubeApprox); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && youtubeApprox && youtubeApprox.style.display === 'flex') closeYoutubeApprox(); });
 
   el('addGoal').addEventListener('click', () => {
     const answer = prompt('Rede social para a meta (Instagram, Facebook, YouTube ou TikTok):');
