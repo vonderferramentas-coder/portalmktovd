@@ -1003,8 +1003,11 @@
     }
 
     const referenceDate = parse(last.date);
+    // Prazo é opcional: sem ele a meta ainda serve de base pras projeções por ritmo (goalPace,
+    // goalEndMonth/Year, goalProjection) — só o que depende de comparar com uma data (ritmo
+    // necessário por dia, "no ritmo"/"atrasada") fica indisponível.
     const daysToDeadline = deadline ? dayDiff(last.date, deadline) : null;
-    if (!daysToDeadline || daysToDeadline <= 0) {
+    if (deadline && daysToDeadline <= 0) {
       setText('goalNeeded', 'Prazo encerrado');
       ['goalPace','goalMonthly','goalEndMonth','goalEndYear','goalProjection'].forEach(id => setText(id, '—'));
       setText('goalStatus', 'Prazo encerrado');
@@ -1012,9 +1015,9 @@
     }
 
     // Todas as projeções usam o último total que aparece no filtro e a média do período selecionado.
-    const requiredDaily = remaining / daysToDeadline;
+    const requiredDaily = deadline ? remaining / daysToDeadline : null;
     const pace = perDay;
-    setText('goalNeeded', `${rounded(requiredDaily)}/dia`);
+    setText('goalNeeded', requiredDaily === null ? 'Sem prazo definido' : `${rounded(requiredDaily)}/dia`);
     if (pace === null || pace <= 0) {
       setText('goalPace', pace === null ? '—' : `${rounded(pace)}/dia`);
       ['goalMonthly','goalEndMonth','goalEndYear','goalProjection'].forEach(id => setText(id, '—'));
@@ -1023,10 +1026,15 @@
     }
     setText('goalPace', `${rounded(pace)}/dia`);
 
-    const monthlyNeed = requiredDaily * 30.44;
-    const monthlyPace = pace * 30.44;
-    setText('goalMonthly', `${signed(monthlyPace)} de ${signed(monthlyNeed)}`);
-    setTone('goalMonthly', monthlyPace - monthlyNeed);
+    if (deadline) {
+      const monthlyNeed = requiredDaily * 30.44;
+      const monthlyPace = pace * 30.44;
+      setText('goalMonthly', `${signed(monthlyPace)} de ${signed(monthlyNeed)}`);
+      setTone('goalMonthly', monthlyPace - monthlyNeed);
+    } else {
+      setText('goalMonthly', `${signed(pace * 30.44)}/mês`);
+      setTone('goalMonthly', pace);
+    }
 
     const daysLeftInMonth = dayDiff(last.date, iso(monthEnd(referenceDate)));
     const daysLeftInYear = dayDiff(last.date, `${referenceDate.getUTCFullYear()}-12-31`);
@@ -1035,7 +1043,7 @@
 
     const eta = addDays(referenceDate, Math.ceil(remaining / pace));
     setText('goalProjection', `${String(eta.getUTCDate()).padStart(2,'0')}/${String(eta.getUTCMonth()+1).padStart(2,'0')}/${eta.getUTCFullYear()}`);
-    setText('goalStatus', eta <= parse(deadline) ? 'No ritmo' : 'Atrasada');
+    setText('goalStatus', deadline ? (eta <= parse(deadline) ? 'No ritmo' : 'Atrasada') : 'Sem prazo');
   }
 
   function renderEmpty(message) {
@@ -1270,19 +1278,79 @@
   ['youtubeApproxClose', 'youtubeApproxDone'].forEach(id => { const button = el(id); if (button) button.addEventListener('click', closeYoutubeApprox); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && youtubeApprox && youtubeApprox.style.display === 'flex') closeYoutubeApprox(); });
 
-  el('addGoal').addEventListener('click', () => {
-    const answer = prompt('Rede social para a meta (Instagram, Facebook, YouTube ou TikTok):');
-    if (!answer) return;
-    const network = NETWORKS.find(item => item.name.toLowerCase() === answer.trim().toLowerCase());
-    if (!network) return alert('Rede não encontrada.');
-    const target = Number(prompt(`Meta total de seguidores para ${network.name}:`));
-    if (!Number.isFinite(target) || target <= 0) return;
-    const deadline = prompt('Data limite (AAAA-MM-DD):');
-    if (!deadline || !/^\d{4}-\d{2}-\d{2}$/.test(deadline.trim())) return alert('Data inválida. Use o formato AAAA-MM-DD.');
-    goals[network.name] = { target, deadline: deadline.trim() };
+  // Modal "Controle de metas": uma linha por rede (ver NETWORKS), com meta e prazo editáveis
+  // — substitui o antigo fluxo de 3 prompt() sequenciais (addGoal). Os campos só são lidos e
+  // gravados em goals[] ao clicar em Salvar; Cancelar/X fecham sem tocar no que já estava salvo.
+  const goalsControl = el('goalsControlBackdrop');
+  let goalsControlLastFocus = null;
+  const closeGoalsControl = () => {
+    if (!goalsControl) return;
+    goalsControl.style.display = 'none';
+    goalsControl.setAttribute('aria-hidden', 'true');
+    if (goalsControlLastFocus) goalsControlLastFocus.focus();
+  };
+  const openGoalsControl = () => {
+    if (!goalsControl) return;
+    const list = el('goalsControlList');
+    if (list) {
+      list.innerHTML = NETWORKS.map(network => {
+        const goal = goals[network.name] || {};
+        return `<div class="goals-control-row"><div class="goals-control-network"><img src="${network.icon}" alt="">${network.name}</div><div class="goals-control-fields"><label>Meta<input type="text" inputmode="numeric" placeholder="Ex.: 1.000.000" data-goal-target="${network.name}" value="${goal.target ? format(goal.target) : ''}"></label><label>Prazo (opcional)<input type="date" data-goal-deadline="${network.name}" value="${goal.deadline || ''}"></label></div></div>`;
+      }).join('');
+      // ponytail: o cursor sempre pula pro fim do campo a cada tecla (reformatar o valor inteiro
+      // é a forma mais simples de manter os pontos de milhar atualizados); digitar no meio de um
+      // número grande fica um pouco estranho, mas o campo é curto e de uso raro o bastante pra
+      // não valer a complexidade de preservar a posição do cursor.
+      list.querySelectorAll('[data-goal-target]').forEach(input => {
+        input.addEventListener('input', () => {
+          const digits = input.value.replace(/\D/g, '');
+          input.value = digits ? format(Number(digits)) : '';
+        });
+      });
+    }
+    goalsControlLastFocus = document.activeElement;
+    goalsControl.style.display = 'flex';
+    goalsControl.setAttribute('aria-hidden', 'false');
+    const firstInput = goalsControl.querySelector('input');
+    if (firstInput) firstInput.focus();
+  };
+  const saveGoalsControl = () => {
+    const rows = NETWORKS.map(network => ({
+      network,
+      targetInput: goalsControl.querySelector(`[data-goal-target="${network.name}"]`),
+      deadlineInput: goalsControl.querySelector(`[data-goal-deadline="${network.name}"]`)
+    }));
+    for (const row of rows) {
+      const targetRaw = row.targetInput.value.replace(/\D/g, '');
+      const deadlineRaw = row.deadlineInput.value.trim();
+      if (!targetRaw && !deadlineRaw) continue;
+      const target = Number(targetRaw);
+      const deadlineOk = !deadlineRaw || /^\d{4}-\d{2}-\d{2}$/.test(deadlineRaw);
+      // O prazo é opcional (a meta sozinha já alimenta as projeções de ritmo), mas um prazo sem
+      // meta não tem contra o que comparar — por isso só a meta é obrigatória aqui.
+      if (!targetRaw || !Number.isFinite(target) || target <= 0 || !deadlineOk) {
+        alert(`Informe uma meta válida (número maior que zero) para ${row.network.name}, ou deixe meta e prazo em branco.`);
+        row.targetInput.focus();
+        return;
+      }
+    }
+    rows.forEach(row => {
+      const targetRaw = row.targetInput.value.replace(/\D/g, '');
+      const deadlineRaw = row.deadlineInput.value.trim();
+      if (!targetRaw && !deadlineRaw) { delete goals[row.network.name]; return; }
+      goals[row.network.name] = { target: Number(targetRaw), deadline: deadlineRaw || null };
+    });
     write(goalsKey, goals);
     render();
-  });
+    closeGoalsControl();
+  };
+  const goalsControlTrigger = el('goalsControlTrigger');
+  if (goalsControlTrigger) goalsControlTrigger.addEventListener('click', openGoalsControl);
+  if (goalsControl) goalsControl.addEventListener('click', event => { if (event.target === goalsControl) closeGoalsControl(); });
+  ['goalsControlClose', 'goalsControlCancel'].forEach(id => { const button = el(id); if (button) button.addEventListener('click', closeGoalsControl); });
+  const goalsControlSaveBtn = el('goalsControlSave');
+  if (goalsControlSaveBtn) goalsControlSaveBtn.addEventListener('click', saveGoalsControl);
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && goalsControl && goalsControl.style.display === 'flex') closeGoalsControl(); });
 
   el('addMeasurement').addEventListener('click', () => {
     const answer = prompt('Rede social: Instagram, Facebook, YouTube ou TikTok');

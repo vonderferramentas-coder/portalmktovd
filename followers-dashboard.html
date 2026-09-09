@@ -1492,6 +1492,100 @@
       min-width: 205px
     }
 
+    .goals-control-modal {
+      max-width: 560px
+    }
+
+    .goals-control-intro {
+      margin: 0 0 14px;
+      font-size: 12.5px;
+      color: var(--muted)
+    }
+
+    .goals-control-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .goals-control-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0
+    }
+
+    .goals-control-network {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 118px;
+      flex-shrink: 0;
+      font-weight: 800;
+      font-size: 13px
+    }
+
+    .goals-control-network img {
+      width: 20px;
+      height: 20px;
+      border-radius: 5px
+    }
+
+    .goals-control-fields {
+      display: flex;
+      gap: 10px;
+      flex: 1;
+      min-width: 0
+    }
+
+    .goals-control-fields label {
+      display: grid;
+      gap: 4px;
+      flex: 1;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800
+    }
+
+    .goals-control-fields input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface-muted);
+      color: var(--text);
+      font: 700 12px inherit;
+      outline: none
+    }
+
+    .goals-control-fields input:focus {
+      border-color: var(--accent)
+    }
+
+    /* color-scheme diz ao navegador para desenhar os controles nativos do input (aqui, só o
+       ícone do calendário — o de meta virou texto puro, sem as setinhas de spinner) na variante
+       clara ou escura; sem isso o ícone do calendário fica escuro sobre fundo escuro no tema
+       dark, quase invisível. */
+    .goals-control-fields input[type="date"] {
+      color-scheme: light
+    }
+
+    :root[data-theme="dark"] .goals-control-fields input[type="date"] {
+      color-scheme: dark
+    }
+
+    @media (max-width: 560px) {
+      .goals-control-row {
+        flex-wrap: wrap
+      }
+
+      .goals-control-network {
+        min-width: 100%
+      }
+    }
+
     .actions-trigger {
       background: var(--accent);
       color: var(--on-accent);
@@ -1681,7 +1775,7 @@
                   <path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
                 </svg></button>
               <div class="actions-menu" id="actionsMenu" hidden><button class="action-option" type="button"
-                  id="addGoal">Adicionar meta</button><button class="action-option" type="button"
+                  id="goalsControlTrigger">Controle de metas</button><button class="action-option" type="button"
                   id="addMeasurement">Registrar número</button></div>
             </div>
           </div>
@@ -1991,6 +2085,23 @@
           só existe dentro do YouTube Studio, para quem administra o canal.</p>
       </div>
       <div class="modal-footer"><button type="button" class="btn" id="youtubeApproxDone">Entendi</button></div>
+    </section>
+  </div>
+  <div class="modal-backdrop" id="goalsControlBackdrop" aria-hidden="true">
+    <section class="modal goals-control-modal" role="dialog" aria-modal="true" aria-labelledby="goalsControlTitle">
+      <div class="modal-header">
+        <h2 id="goalsControlTitle">Controle de metas</h2>
+        <div class="modal-header-actions"><button type="button" class="modal-close" id="goalsControlClose"
+            aria-label="Fechar">×</button></div>
+      </div>
+      <div class="modal-body">
+        <p class="goals-control-intro">Defina uma meta de seguidores para cada rede. O prazo é opcional: sem ele, a
+          meta ainda entra nas projeções de ritmo, só não há uma data para comparar se está adiantado ou atrasado.
+          Deixe a meta em branco para remover a meta daquela rede.</p>
+        <div class="goals-control-list" id="goalsControlList"></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn ghost" id="goalsControlCancel">Cancelar</button><button
+          type="button" class="btn" id="goalsControlSave">Salvar</button></div>
     </section>
   </div>
   <div class="modal-backdrop" id="workflowInfoBackdrop" aria-hidden="true">
