@@ -191,7 +191,7 @@ jobs:
                   for dia, obtido, esperado, desvio in divergentes[:15]:
                       linhas.append(f'| {dia} | {obtido} | {esperado} | {desvio:.0%} |')
               linhas += ['', 'Nada foi gravado; o arquivo ficou apenas com as medições reais do coletor.']
-              doc['history'] = [historico[dia] for dia in sorted(historico)][-730:]
+              doc['history'] = [historico[dia] for dia in sorted(historico)]
               caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
               Path('resumo.md').write_text('\n'.join(linhas) + '\n', encoding='utf-8')
               raise SystemExit(0)
@@ -237,7 +237,7 @@ jobs:
               historico[dia] = entrada
 
           doc['version'] = 2
-          doc['history'] = [historico[dia] for dia in sorted(historico)][-730:]
+          doc['history'] = [historico[dia] for dia in sorted(historico)]
           doc['updatedAt'] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
           caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 

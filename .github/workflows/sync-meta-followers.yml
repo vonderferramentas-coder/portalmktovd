@@ -112,7 +112,7 @@ jobs:
           document.update({
               'version': 2,
               'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
-              'history': history[-730:]
+              'history': history
           })
           path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY

@@ -100,7 +100,7 @@ jobs:
                   novos += 1
 
           doc['version'] = 2
-          doc['history'] = [historico[dia] for dia in sorted(historico)][-730:]
+          doc['history'] = [historico[dia] for dia in sorted(historico)]
           doc['updatedAt'] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
           caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
