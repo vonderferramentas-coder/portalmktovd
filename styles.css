@@ -534,7 +534,6 @@
     .list-row-nets{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
     .list-empty{padding:44px 20px;text-align:center;color:var(--muted);background:var(--card);border-radius:var(--radius-md);border:1px dashed var(--border);font-size:13px}
 
-    .net-icon{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;margin-right:6px}
     .net-icon-img{width:16px;height:16px;display:inline-block;vertical-align:middle;border-radius:50%}
     .net-view-icon{display:inline-flex;align-items:center;justify-content:center}
 

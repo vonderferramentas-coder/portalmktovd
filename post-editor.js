@@ -133,7 +133,6 @@ function itemImageUrls(item,width){
  if(direct)urls.push(direct);
  return urls.filter(function(url,index){return url&&urls.indexOf(url)===index})
 }
-function itemImageUrl(item){return itemImageUrls(item)[0]||''}
 function itemThumbnailUrls(item){return(item&&item.thumbnail)?[item.thumbnail]:itemImageUrls(item,CATALOG_THUMB_WIDTH)}
 // tenta cada URL da lista em sequência quando a anterior falhar (onerror) — usado pelas
 // miniaturas do catálogo pra cair pra foto original quando a miniatura do proxy não responde

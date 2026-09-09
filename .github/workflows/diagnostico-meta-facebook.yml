@@ -1,0 +1,62 @@
+name: Diagnóstico do Facebook na API Meta
+
+# Descobre a que Página do Facebook o META_PAGE_ACCESS_TOKEN atual pertence (todo Page
+# Access Token responde por si mesmo em /me) e se esse mesmo token já alcança os campos
+# de seguidores/curtidas da Página, sem pedir escopo novo à Meta. Não grava nada e não
+# faz commit — só escreve no resumo da execução. O token vai no cabeçalho Authorization,
+# e não na URL, para não aparecer em log de erro do curl (mesmo padrão de
+# diagnostico-meta.yml e diagnostico-meta-posts.yml).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar a que Página este token pertence
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+        run: |
+          set -uo pipefail
+          API="https://graph.facebook.com/v26.0"
+
+          consultar () {
+            titulo="$1"
+            url="$2"
+            {
+              echo "### $titulo"
+              echo ''
+              echo '```json'
+            } >> "$GITHUB_STEP_SUMMARY"
+            if resposta="$(curl -sS --max-time 30 -H "Authorization: Bearer $META_PAGE_ACCESS_TOKEN" "$url")"; then
+              printf '%s\n' "$resposta" | jq '.' 2>/dev/null | head -c 4000 >> "$GITHUB_STEP_SUMMARY" \
+                || printf '%s\n' "$resposta" | head -c 4000 >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo 'A chamada falhou antes de receber resposta.' >> "$GITHUB_STEP_SUMMARY"
+            fi
+            {
+              echo ''
+              echo '```'
+              echo ''
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          echo "## De qual Página é este token, e o que ele alcança" >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+
+          consultar "Identidade do token — todo Page Access Token responde por si mesmo aqui, com o ID da Página" \
+            "$API/me?fields=id,name,link"
+
+          consultar "Seguidores e curtidas da Página (é isso que vamos publicar no painel)" \
+            "$API/me?fields=followers_count,fan_count"
+
+          consultar "Lista de Páginas que este usuário/token administra (só responde se for um token de usuário, não de Página — serve de checagem extra)" \
+            "$API/me/accounts?fields=id,name"
+
+          {
+            echo "Se a primeira consulta trouxer \`id\` e \`name\` da Página VONDER, é esse o"
+            echo "\`META_FACEBOOK_PAGE_ID\` que vamos usar na coleta definitiva. Se a segunda"
+            echo "trouxer \`followers_count\`/\`fan_count\` sem erro de permissão, o token atual"
+            echo "já alcança os dados — não precisa pedir escopo novo nem gerar outro token."
+          } >> "$GITHUB_STEP_SUMMARY"
