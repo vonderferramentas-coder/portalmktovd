@@ -1,12 +1,17 @@
 {
   "version": 2,
-  "updatedAt": "2026-09-09T13:27:41Z",
+  "updatedAt": "2026-09-09T13:42:23Z",
   "source": "meta_graph_api",
   "platforms": {
     "Instagram": {
       "accountId": "17841403154695997",
       "username": "vonderferramentas",
-      "followers": 608774
+      "followers": 608787
+    },
+    "Facebook": {
+      "accountId": "262406600508752",
+      "username": "Vonder",
+      "followers": 46454
     }
   }
 }
