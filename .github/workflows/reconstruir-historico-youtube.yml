@@ -50,7 +50,13 @@ jobs:
             --data-urlencode "grant_type=refresh_token" \
             "https://oauth2.googleapis.com/token" \
             --output token.json
-          echo "access_token=$(jq -er '.access_token | strings' token.json)" >> "$GITHUB_OUTPUT"
+          ACCESS_TOKEN="$(jq -er '.access_token | strings' token.json)"
+          # O GitHub só mascara automaticamente os secrets originais (client id/secret/refresh
+          # token) nos logs — este access token é um valor novo, derivado deles, então precisa
+          # ser mascarado explicitamente antes de aparecer em qualquer log (inclusive o dump
+          # de env de outros passos que o recebem via ${{ steps.token.outputs.access_token }}).
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "access_token=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
 
       - name: Coletar total atual (âncora da caminhada para trás)
         id: atual
@@ -74,7 +80,7 @@ jobs:
         run: |
           set -euo pipefail
           ONTEM="$(date -u -d 'yesterday' +%F)"
-          curl --fail --silent --show-error --get \
+          http_code="$(curl --silent --show-error --get \
             "https://youtubeanalytics.googleapis.com/v2/reports" \
             -H "Authorization: Bearer $ACCESS_TOKEN" \
             --data-urlencode "ids=channel==$YOUTUBE_CHANNEL_ID" \
@@ -83,7 +89,17 @@ jobs:
             --data-urlencode "metrics=subscribersGained,subscribersLost" \
             --data-urlencode "dimensions=day" \
             --data-urlencode "sort=day" \
-            --output saldos.json
+            --output saldos.json \
+            --write-out '%{http_code}')"
+          if [ "$http_code" != "200" ]; then
+            echo "::error::YouTube Analytics API respondeu HTTP $http_code"
+            echo "### Erro da YouTube Analytics API (HTTP $http_code)" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat saldos.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            cat saldos.json
+            exit 1
+          fi
           echo "Linhas recebidas: $(jq '.rows | length' saldos.json)"
 
       - name: Reconstruir os totais e mesclar
