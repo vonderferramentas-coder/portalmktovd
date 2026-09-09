@@ -47,7 +47,7 @@
 
   const NETWORKS = [
     { name:'Instagram', color:'#E94683', icon:'icons/instagram.svg', connected:isVonder },
-    { name:'Facebook',  color:'#287BE0', icon:'icons/facebook.svg',  connected:false },
+    { name:'Facebook',  color:'#287BE0', icon:'icons/facebook.svg',  connected:isVonder },
     { name:'YouTube',   color:'#F04444', icon:'icons/youtube.svg',   connected:false },
     { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected:false }
   ];
@@ -137,8 +137,11 @@
   const totalAt = (point, nets) => nets.reduce((sum, network) => sum + (Number.isFinite(point.values[network.name]) ? point.values[network.name] : 0), 0);
   const currentValues = point => {
     const values = Object.assign({}, point.values);
-    const instagram = liveSnapshot && liveSnapshot.platforms && liveSnapshot.platforms.Instagram;
-    if (instagram && Number.isFinite(Number(instagram.followers))) values.Instagram = Number(instagram.followers);
+    const platforms = (liveSnapshot && liveSnapshot.platforms) || {};
+    Object.keys(platforms).forEach(name => {
+      const platform = platforms[name];
+      if (platform && Number.isFinite(Number(platform.followers))) values[name] = Number(platform.followers);
+    });
     return values;
   };
 
@@ -384,8 +387,8 @@
   // Seguidores são estoque: o valor em um marco é o último medido até aquela data,
   // igual ao resto do painel (ver comentário em buildSeries).
   function valueAtDate(date, networkName) {
-    if (liveSnapshot && networkName === 'Instagram' && date === lastDate()) {
-      const live = liveSnapshot.platforms && liveSnapshot.platforms.Instagram;
+    if (liveSnapshot && date === lastDate()) {
+      const live = liveSnapshot.platforms && liveSnapshot.platforms[networkName];
       if (live && Number.isFinite(Number(live.followers))) return Number(live.followers);
     }
     for (let index = series.length - 1; index >= 0; index--) {
@@ -955,7 +958,7 @@
     el('channelContext').textContent = 'Todas';
     el('legend').innerHTML = '';
     el('chartY').innerHTML = '';
-    el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">${message}<br>O Instagram é coletado automaticamente uma vez por dia; os demais canais podem ser lançados em "Registrar número".</p>`;
+    el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">${message}<br>Instagram e Facebook são coletados automaticamente; os demais canais podem ser lançados em "Registrar número".</p>`;
     el('platforms').innerHTML = NETWORKS.map(network => `<div class="platform" style="cursor:default"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${network.connected ? 'Aguardando coleta' : 'Sem API conectada'}</small></span><span class="platform-delta"><strong class="neutral">—</strong></span></div>`).join('');
     el('table').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted)">${message}</td></tr>`;
     const pager = el('historyPager'); if (pager) pager.hidden = true;
