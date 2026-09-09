@@ -97,6 +97,17 @@
     const n = Number(value || 0);
     return n < 1000 ? format(n) : `~${(n / 1000).toFixed(1)}k`;
   };
+  // Escurece um hex (ex.: "#E94683") multiplicando cada canal — usado para gerar o tom escuro
+  // do degradê do cartão de total a partir da cor da plataforma, mantendo o mesmo estilo visual
+  // (escuro -> cor) que o gradiente padrão da marca já usava.
+  const shadeColor = (hex, factor) => {
+    const n = hex.replace('#', '');
+    const r = Math.round(parseInt(n.slice(0, 2), 16) * factor);
+    const g = Math.round(parseInt(n.slice(2, 4), 16) * factor);
+    const b = Math.round(parseInt(n.slice(4, 6), 16) * factor);
+    const clamp = v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
+    return `#${clamp(r)}${clamp(g)}${clamp(b)}`;
+  };
   const signed = value => (value > 0 ? '+' : '') + format(Math.round(value));
   const percent = value => `${value > 0 ? '+' : ''}${value.toFixed(1).replace('.', ',')}%`;
   // Seguidor é unidade inteira — "1.299,8/dia" não faz sentido. Toda taxa "por dia" arredonda.
@@ -236,6 +247,19 @@
     const perDay = periodDeltas.length ? net / span : null;
 
     el('totalLabel').textContent = active ? `Seguidores no ${active.name}` : 'Comunidade total';
+    // O cartão de total usava sempre o degradê dourado da marca; agora reflete a cor da
+    // plataforma selecionada (mesmo tom usado nos ícones/badges dela), e volta ao dourado
+    // padrão quando "Todas" está selecionado.
+    const totalCard = el('totalCard');
+    if (totalCard) {
+      if (active) {
+        totalCard.style.setProperty('--social-hero-start', shadeColor(active.color, 0.35));
+        totalCard.style.setProperty('--social-hero-end', active.color);
+      } else {
+        totalCard.style.removeProperty('--social-hero-start');
+        totalCard.style.removeProperty('--social-hero-end');
+      }
+    }
     // O YouTube arredonda o total de inscritos que devolve por API (confirmado na própria
     // documentação do Google) — sinalizamos isso em vez de fingir precisão que a API não tem;
     // o ícone abre um modal explicando (ver openYoutubeApprox), o valor exato só existe
@@ -1019,6 +1043,8 @@
     setText('total', '—');
     const approxBadge = el('totalApprox');
     if (approxBadge) approxBadge.hidden = true;
+    const totalCard = el('totalCard');
+    if (totalCard) { totalCard.style.removeProperty('--social-hero-start'); totalCard.style.removeProperty('--social-hero-end'); }
     el('growth').className = 'growth-line';
     setText('growth', message);
     ['newFollowers','avg','bestChannel'].forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = 'neutral'; });
