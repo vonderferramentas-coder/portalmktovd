@@ -45,6 +45,20 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           }
 
+          echo "## Quais permissões o token tem hoje" >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+
+          consultar "debug_token — escopos (scopes) concedidos ao token atual" \
+            "$API/debug_token?input_token=$META_PAGE_ACCESS_TOKEN&access_token=$META_PAGE_ACCESS_TOKEN"
+
+          {
+            echo "Se \`read_insights\` NÃO aparecer na lista de \`scopes\` acima, é só isso: o token"
+            echo "foi gerado sem pedir essa permissão — dá para gerar um novo token pedindo"
+            echo "\`read_insights\` (sem precisar de revisão de app da Meta, contanto que quem gerar"
+            echo "seja administrador da Página). Se \`read_insights\` já estiver na lista mesmo assim,"
+            echo "aí sim as métricas abaixo estão mesmo descontinuadas/vazias para esta Página."
+          } >> "$GITHUB_STEP_SUMMARY"
+
           echo "## Quais métricas de histórico de seguidores/fãs a Página ainda expõe" >> "$GITHUB_STEP_SUMMARY"
           echo '' >> "$GITHUB_STEP_SUMMARY"
           echo "Janela consultada: 29 dias até ontem." >> "$GITHUB_STEP_SUMMARY"
