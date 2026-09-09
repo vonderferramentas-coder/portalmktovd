@@ -59,36 +59,34 @@ jobs:
             echo "aí sim as métricas abaixo estão mesmo descontinuadas/vazias para esta Página."
           } >> "$GITHUB_STEP_SUMMARY"
 
-          echo "## Quais métricas de histórico de seguidores/fãs a Página ainda expõe" >> "$GITHUB_STEP_SUMMARY"
+          echo "## page_follows — até onde a Meta deixa puxar de uma vez" >> "$GITHUB_STEP_SUMMARY"
           echo '' >> "$GITHUB_STEP_SUMMARY"
-          echo "Janela consultada: 29 dias até ontem." >> "$GITHUB_STEP_SUMMARY"
+          echo "page_follows já confirmado como total acumulado por dia, com read_insights concedido." >> "$GITHUB_STEP_SUMMARY"
           echo '' >> "$GITHUB_STEP_SUMMARY"
 
-          consultar "page_fans — total acumulado de curtidas por dia (métrica clássica, pode estar descontinuada)" \
-            "$API/$META_FACEBOOK_PAGE_ID/insights?metric=page_fans&period=day&since=$SINCE&until=$UNTIL"
+          SINCE_AMPLO="$(date -u -d '3 years ago' +%s)"
 
-          consultar "page_follows — total acumulado de seguidores por dia" \
-            "$API/$META_FACEBOOK_PAGE_ID/insights?metric=page_follows&period=day&since=$SINCE&until=$UNTIL"
+          consultar "Janela ampla: 3 anos até ontem — conta quantos pontos volta e mostra paging" \
+            "$API/$META_FACEBOOK_PAGE_ID/insights?metric=page_follows&period=day&since=$SINCE_AMPLO&until=$UNTIL"
 
-          consultar "page_fan_adds_unique — entradas únicas por dia (métrica antiga)" \
-            "$API/$META_FACEBOOK_PAGE_ID/insights?metric=page_fan_adds_unique&period=day&since=$SINCE&until=$UNTIL"
-
-          consultar "page_fan_removes_unique — saídas únicas por dia (métrica antiga)" \
-            "$API/$META_FACEBOOK_PAGE_ID/insights?metric=page_fan_removes_unique&period=day&since=$SINCE&until=$UNTIL"
-
-          consultar "page_daily_follows_unique — entradas únicas por dia (métrica atual)" \
-            "$API/$META_FACEBOOK_PAGE_ID/insights?metric=page_daily_follows_unique&period=day&since=$SINCE&until=$UNTIL"
-
-          consultar "page_daily_unfollows_unique — saídas únicas por dia (métrica atual)" \
-            "$API/$META_FACEBOOK_PAGE_ID/insights?metric=page_daily_unfollows_unique&period=day&since=$SINCE&until=$UNTIL"
-
-          consultar "Lista de todas as métricas de insights que a Página expõe hoje (catálogo completo)" \
-            "$API/$META_FACEBOOK_PAGE_ID/insights?metric=page_fans,page_follows,page_daily_follows_unique,page_daily_unfollows_unique&period=day&since=$SINCE&until=$UNTIL"
+          echo '### Quantidade de dias retornados na janela ampla' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          resposta_ampla="$(curl -sS --max-time 30 -H "Authorization: Bearer $META_PAGE_ACCESS_TOKEN" \
+            "$API/$META_FACEBOOK_PAGE_ID/insights?metric=page_follows&period=day&since=$SINCE_AMPLO&until=$UNTIL")"
+          qtd="$(printf '%s' "$resposta_ampla" | jq -r '.data[0].values | length' 2>/dev/null || echo '?')"
+          primeiro="$(printf '%s' "$resposta_ampla" | jq -r '.data[0].values[0].end_time' 2>/dev/null || echo '?')"
+          ultimo="$(printf '%s' "$resposta_ampla" | jq -r '.data[0].values[-1].end_time' 2>/dev/null || echo '?')"
+          tem_previous="$(printf '%s' "$resposta_ampla" | jq -r 'if .paging.previous then "sim" else "nao" end' 2>/dev/null || echo '?')"
+          {
+            echo "- Pontos retornados: **$qtd**"
+            echo "- Do dia **$primeiro** até **$ultimo**"
+            echo "- Existe página anterior (\`paging.previous\`) pra buscar dias ainda mais antigos: **$tem_previous**"
+          } >> "$GITHUB_STEP_SUMMARY"
 
           {
-            echo "Se alguma consulta trouxer \`data\` com valores (em vez de erro de permissão ou"
-            echo "'(#100) metric ... is deprecated'), dá para reconstruir o histórico do Facebook"
-            echo "como já é feito para o Instagram. Se todas vierem descontinuadas, o histórico do"
-            echo "Facebook só poderá começar a partir de hoje, sem reconstrução retroativa —"
-            echo "a Meta não guarda esse dado de outra forma consultável."
+            echo ''
+            echo "Se \`paging.previous\` existir, a reconstrução final precisa paginar pra trás em"
+            echo "vez de confiar num único since/until. Se a quantidade de pontos for bem menor"
+            echo "que os dias entre since e until, a Meta está limitando a janela por chamada —"
+            echo "nesse caso a reconstrução também precisa paginar/repetir a consulta em pedaços."
           } >> "$GITHUB_STEP_SUMMARY"
