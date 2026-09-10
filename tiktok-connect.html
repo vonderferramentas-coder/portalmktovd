@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Conectar TikTok — Portal de Marketing OVD</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root { color-scheme: light; --accent:#F6BE00; --ink:#1a1a1a; }
+    body { margin:0; padding:0; font-family:'Plus Jakarta Sans', system-ui, sans-serif; background:#f7f7f6; color:#17171a; }
+    main { max-width:520px; margin:0 auto; padding:64px 24px; }
+    .card { background:#fff; border:1px solid #e5e5e3; border-radius:16px; padding:32px; }
+    h1 { font-size:1.4rem; font-weight:800; margin:0 0 .5rem; }
+    p { line-height:1.6; color:#4b5058; }
+    .account { display:flex; align-items:center; gap:10px; background:#f7f7f5; border-radius:10px; padding:10px 14px; margin:1.25rem 0; font-weight:600; }
+    .dot { width:8px; height:8px; border-radius:50%; background:var(--accent); }
+    .scopes { display:flex; flex-wrap:wrap; gap:6px; margin:1rem 0 1.5rem; }
+    .scope { font-size:.78rem; font-weight:600; background:rgba(246,190,0,.16); color:#7a5b00; padding:4px 10px; border-radius:999px; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:14px 20px;
+      background:var(--ink); color:#fff; font-weight:700; font-size:.95rem; border:none; border-radius:10px;
+      text-decoration:none; cursor:pointer; }
+    .btn:hover { background:#000; }
+    .muted { font-size:.8rem; color:#8a8f98; margin-top:1rem; }
+  </style>
+</head>
+
+<body>
+  <main>
+    <div class="card">
+      <h1>Conectar TikTok ao Portal de Marketing OVD</h1>
+      <p>Autoriza o acesso somente aos dados públicos e agregados da própria conta oficial da marca — seguidores e desempenho dos vídeos publicados.</p>
+
+      <div class="account"><span class="dot" aria-hidden="true"></span> Conta: @vonderferramentas</div>
+
+      <div class="scopes">
+        <span class="scope">Perfil básico</span>
+        <span class="scope">Estatísticas de seguidores</span>
+        <span class="scope">Lista de vídeos</span>
+      </div>
+
+      <a class="btn" id="connectBtn" href="#">Conectar com TikTok</a>
+      <p class="muted">Você será redirecionado ao TikTok para confirmar o login e a autorização.</p>
+    </div>
+  </main>
+
+  <script>
+    const CLIENT_KEY = 'sbaw3sg25zn8oo3mmm';
+    const REDIRECT_URI = 'https://vonderferramentas-coder.github.io/portalmktovd/tiktok-oauth-callback.html';
+    const SCOPES = ['user.info.basic', 'user.info.stats', 'video.list'];
+
+    function randomState() {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    const state = randomState();
+    sessionStorage.setItem('tiktok_oauth_state', state);
+
+    const params = new URLSearchParams({
+      client_key: CLIENT_KEY,
+      scope: SCOPES.join(','),
+      response_type: 'code',
+      redirect_uri: REDIRECT_URI,
+      state
+    });
+
+    document.getElementById('connectBtn').href =
+      'https://www.tiktok.com/v2/auth/authorize/?' + params.toString();
+  </script>
+</body>
+
+</html>
