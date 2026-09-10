@@ -1291,16 +1291,13 @@
       align-items: flex-start
     }
 
-    .post-preview-media {
+    /* Altura fixada via JS (syncPostPreviewImageHeight em followers-dashboard.js), igual à
+       altura de .post-preview-top (perfil + legenda + métricas, sem contar o botão) — por
+       isso o min-height aqui é só um piso enquanto a 1ª medição ainda não rodou (1 frame). */
+    .post-preview-image {
       width: 300px;
       flex: none;
-      display: flex;
-      flex-direction: column;
-      gap: 12px
-    }
-
-    .post-preview-image {
-      aspect-ratio: 4 / 5;
+      min-height: 320px;
       border-radius: 12px;
       overflow: hidden;
       background: var(--surface-muted);
@@ -1330,6 +1327,20 @@
       box-sizing: border-box
     }
 
+    .post-preview-content {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px
+    }
+
+    .post-preview-top {
+      display: flex;
+      flex-direction: column;
+      gap: 12px
+    }
+
     .post-preview-profile {
       display: flex;
       align-items: center;
@@ -1356,21 +1367,43 @@
       flex: none
     }
 
+    .post-preview-caption-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px
+    }
+
     .post-preview-caption {
       margin: 0;
       font-size: 12.5px;
       line-height: 1.5;
       color: var(--text);
-      white-space: pre-wrap
+      white-space: pre-wrap;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden
     }
 
-    .post-preview-metrics {
-      flex: 1;
-      min-width: 0
+    .post-preview-caption.is-expanded {
+      -webkit-line-clamp: unset;
+      overflow: visible
+    }
+
+    .post-preview-caption-toggle {
+      align-self: flex-start;
+      border: 0;
+      background: none;
+      padding: 0;
+      color: var(--accent-ink);
+      font: 700 11.5px inherit;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px
     }
 
     .post-preview-meta {
-      margin: 0 0 10px;
+      margin: 0;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--border);
       font-size: 11px;
@@ -1412,12 +1445,7 @@
       color: var(--text)
     }
 
-    .post-preview-footer {
-      justify-content: stretch
-    }
-
     .post-preview-cta {
-      flex: 1;
       text-decoration: none
     }
 
@@ -1426,11 +1454,10 @@
         flex-direction: column
       }
 
-      .post-preview-media {
-        width: 100%
-      }
-
       .post-preview-image {
+        width: 100%;
+        height: auto !important;
+        min-height: 0;
         aspect-ratio: 16 / 10
       }
     }
@@ -2353,26 +2380,31 @@
             aria-label="Fechar">×</button></div>
       </div>
       <div class="modal-body post-preview-body">
-        <div class="post-preview-media">
-          <div class="post-preview-image" id="postPreviewImage"></div>
-          <div class="post-preview-profile"><img class="post-preview-avatar" id="postPreviewAvatar" src="" alt="">
-            <span class="post-preview-handle" id="postPreviewHandle"></span>
-            <svg class="post-preview-verified" width="14" height="14" viewBox="0 0 24 24" fill="none"
-              aria-hidden="true">
-              <circle cx="12" cy="12" r="10" fill="#3897f0" />
-              <path d="m8 12.5 2.5 2.5L16 9.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"
-                stroke-linejoin="round" fill="none" />
-            </svg>
+        <div class="post-preview-image" id="postPreviewImage"></div>
+        <div class="post-preview-content">
+          <div class="post-preview-top" id="postPreviewTop">
+            <div class="post-preview-profile"><img class="post-preview-avatar" id="postPreviewAvatar" src=""
+                alt="">
+              <span class="post-preview-handle" id="postPreviewHandle"></span>
+              <svg class="post-preview-verified" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                aria-hidden="true">
+                <circle cx="12" cy="12" r="10" fill="#3897f0" />
+                <path d="m8 12.5 2.5 2.5L16 9.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"
+                  stroke-linejoin="round" fill="none" />
+              </svg>
+            </div>
+            <div class="post-preview-caption-wrap">
+              <p class="post-preview-caption" id="postPreviewCaption"></p>
+              <button type="button" class="post-preview-caption-toggle" id="postPreviewCaptionToggle"
+                hidden>ver mais</button>
+            </div>
+            <p class="post-preview-meta" id="postPreviewMeta"></p>
+            <div class="post-preview-metrics" id="postPreviewMetricsList"></div>
           </div>
-          <p class="post-preview-caption" id="postPreviewCaption"></p>
-        </div>
-        <div class="post-preview-metrics">
-          <p class="post-preview-meta" id="postPreviewMeta"></p>
-          <div id="postPreviewMetricsList"></div>
+          <a class="btn post-preview-cta" id="postPreviewCta" href="#" target="_blank" rel="noopener">Ver
+            publicação</a>
         </div>
       </div>
-      <div class="modal-footer post-preview-footer"><a class="btn post-preview-cta" id="postPreviewCta" href="#"
-          target="_blank" rel="noopener">Ver publicação</a></div>
     </section>
   </div>
   <script src="portal-shell.js"></script>

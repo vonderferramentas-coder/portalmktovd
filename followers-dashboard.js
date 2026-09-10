@@ -1578,6 +1578,17 @@
     postPreview.setAttribute('aria-hidden', 'true');
     if (postPreviewLastFocus) postPreviewLastFocus.focus();
   };
+  // A imagem preenche a altura de .post-preview-top (perfil + legenda + métricas, sem contar
+  // o botão "Ver publicação" abaixo) — refeito sempre que esse bloco pode ter mudado de altura
+  // (abrir o modal, expandir/recolher a legenda, redimensionar a janela). Abaixo de 680px as
+  // colunas empilham (ver media query), então a altura passa a ser controlada só por CSS
+  // (aspect-ratio) e a sincronia por JS é desligada.
+  const syncPostPreviewImageHeight = () => {
+    const topBlock = el('postPreviewTop');
+    const imageWrap = el('postPreviewImage');
+    if (!topBlock || !imageWrap) return;
+    imageWrap.style.height = window.innerWidth <= 680 ? '' : topBlock.offsetHeight + 'px';
+  };
   const openPostPreview = post => {
     if (!postPreview || !post) return;
     const network = NETWORKS.find(item => item.name === post.network);
@@ -1585,6 +1596,7 @@
     if (iconEl) { iconEl.src = network ? network.icon : ''; iconEl.alt = post.network || ''; }
     const imageWrap = el('postPreviewImage');
     if (imageWrap) {
+      imageWrap.style.height = '';
       imageWrap.innerHTML = post.thumbnailUrl
         ? `<img src="${escapeHtml(post.thumbnailUrl)}" alt="">`
         : `<div class="post-preview-image-empty">${iconSvg(FORMAT_ICON_POST, 26)}<span>Prévia indisponível</span></div>`;
@@ -1593,7 +1605,9 @@
     if (avatarEl) avatarEl.src = brand.photo || '';
     setText('postPreviewHandle', NETWORK_HANDLE[post.network] || brand.name || '');
     const captionEl = el('postPreviewCaption');
-    if (captionEl) captionEl.textContent = post.caption || 'Sem legenda.';
+    if (captionEl) { captionEl.textContent = post.caption || 'Sem legenda.'; captionEl.classList.remove('is-expanded'); }
+    const captionToggleEl = el('postPreviewCaptionToggle');
+    if (captionToggleEl) { captionToggleEl.hidden = true; captionToggleEl.textContent = 'ver mais'; }
     setText('postPreviewMeta', `${formatLabel(post)} · ${postDateLabel(post.timestamp)}`);
     const metricsEl = el('postPreviewMetricsList');
     if (metricsEl) {
@@ -1610,6 +1624,12 @@
     postPreview.style.display = 'flex';
     postPreview.setAttribute('aria-hidden', 'false');
     el('postPreviewClose').focus();
+    // Só depois do 1º layout dá pra saber se a legenda de fato estourou as 3 linhas do clamp
+    // (scrollHeight > clientHeight) e pra medir a altura real de .post-preview-top.
+    requestAnimationFrame(() => {
+      if (captionEl && captionToggleEl) captionToggleEl.hidden = captionEl.scrollHeight <= captionEl.clientHeight + 1;
+      syncPostPreviewImageHeight();
+    });
   };
   const openPostPreviewById = id => {
     const post = postsData.find(item => item.id === id);
@@ -1618,7 +1638,16 @@
   if (postPreview) postPreview.addEventListener('click', event => { if (event.target === postPreview) closePostPreview(); });
   const postPreviewCloseBtn = el('postPreviewClose');
   if (postPreviewCloseBtn) postPreviewCloseBtn.addEventListener('click', closePostPreview);
+  const postPreviewCaptionToggle = el('postPreviewCaptionToggle');
+  if (postPreviewCaptionToggle) postPreviewCaptionToggle.addEventListener('click', () => {
+    const captionEl = el('postPreviewCaption');
+    if (!captionEl) return;
+    const expanded = captionEl.classList.toggle('is-expanded');
+    postPreviewCaptionToggle.textContent = expanded ? 'ver menos' : 'ver mais';
+    syncPostPreviewImageHeight();
+  });
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && postPreview && postPreview.style.display === 'flex') closePostPreview(); });
+  window.addEventListener('resize', () => { if (postPreview && postPreview.style.display === 'flex') syncPostPreviewImageHeight(); });
   const postsGridEl = el('postsGrid');
   if (postsGridEl) postsGridEl.addEventListener('click', event => {
     const card = event.target.closest('.post-card');
