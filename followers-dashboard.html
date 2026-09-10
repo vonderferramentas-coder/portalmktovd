@@ -1281,14 +1281,20 @@
       cursor: pointer
     }
 
+    /* width:auto (em vez do width:100% herdado de .modal) pra encolher junto com as duas
+       colunas de largura fixa abaixo, em vez de esticar até max-width deixando espaço vazio. */
     .post-preview-modal {
+      width: auto;
       max-width: 980px
     }
 
     .post-preview-body {
       display: flex;
       gap: 24px;
-      align-items: flex-start
+      align-items: flex-start;
+      /* Uma variável só pras duas colunas (imagem e conteúdo) nunca desalinharem entre si —
+         ver .post-preview-image/.post-preview-content abaixo. */
+      --post-preview-col-w: 340px
     }
 
     /* Largura fixa; a altura vem naturalmente da proporção real da própria imagem
@@ -1300,7 +1306,7 @@
        métricas acompanhar a altura da miniatura. */
     .post-preview-image {
       flex: none;
-      width: 340px;
+      width: var(--post-preview-col-w);
       border-radius: 12px;
       overflow: hidden;
       background: var(--surface-muted);
@@ -1329,9 +1335,11 @@
       box-sizing: border-box
     }
 
+    /* Largura default IGUAL à largura atual da miniatura ao lado (mesma variável
+       --post-preview-col-w de .post-preview-image, não um número duplicado). */
     .post-preview-content {
-      flex: 1;
-      min-width: 220px;
+      flex: none;
+      width: var(--post-preview-col-w);
       display: flex;
       flex-direction: column;
       gap: 16px
@@ -1456,7 +1464,12 @@
         flex-direction: column
       }
 
-      .post-preview-image {
+      .post-preview-image,
+      .post-preview-content {
+        width: 100%
+      }
+
+      .post-preview-modal {
         width: 100%
       }
     }
