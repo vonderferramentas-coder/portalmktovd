@@ -1,0 +1,229 @@
+name: Refinar histórico recente de inscritos do YouTube
+
+# sync-youtube-followers.yml fecha o dia com statistics.subscriberCount, que a YouTube Data
+# API v3 arredonda a 3 algarismos significativos (ex.: 41.047 vira "41000") — para um canal
+# na casa dos 41 mil, isso só muda de milhar em milhar, então o histórico fica "parado" em
+# 41,0k por dias seguidos mesmo o canal ganhando inscritos todo dia (ver seção 9 de
+# docs/ARQUITETURA-E-INTEGRACOES.md).
+#
+# A YouTube Analytics API não sofre desse arredondamento: subscribersGained/subscribersLost
+# por dia são valores exatos, só que exigem OAuth (mesmas credenciais já usadas por
+# reconstruir-historico-youtube.yml). Esta execução diária refaz, todo dia, a mesma caminhada
+# para trás a partir do total atual (total de um dia = total do dia seguinte menos o saldo do
+# dia seguinte) só numa janela curta e recente — nunca mexe em dias fora dela, e nunca nos dias
+# muito antigos já cobertos pela reconstrução única.
+#
+# Só publica dias com pelo menos 2 dias de "decantação": a Analytics pode ajustar dados de
+# ontem/anteontem depois que já foram consultados (processamento assíncrono do YouTube), então
+# escrever um número que muda de novo no dia seguinte seria pior do que esperar mais um pouco.
+# Cada execução também serve de correção automática: se um dia da janela mudar de valor na
+# Analytics, a próxima execução sobrescreve com o valor mais recente.
+
+on:
+  schedule:
+    # 04:30 UTC = 01:30 em São Paulo — depois dos dois fechamentos diários (23:50/23:55 SP),
+    # com folga para não brigar pelo mesmo commit.
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refinar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Obter access token a partir do refresh token
+        id: token
+        env:
+          CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.YOUTUBE_OAUTH_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.YOUTUBE_OAUTH_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$REFRESH_TOKEN"
+          curl --fail --silent --show-error \
+            --data-urlencode "client_id=$CLIENT_ID" \
+            --data-urlencode "client_secret=$CLIENT_SECRET" \
+            --data-urlencode "refresh_token=$REFRESH_TOKEN" \
+            --data-urlencode "grant_type=refresh_token" \
+            "https://oauth2.googleapis.com/token" \
+            --output token.json
+          ACCESS_TOKEN="$(jq -er '.access_token | strings' token.json)"
+          echo "::add-mask::$ACCESS_TOKEN"
+          echo "access_token=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Coletar total atual (âncora da caminhada para trás)
+        id: atual
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_CHANNEL_ID: 'UCflcAVLpPmH-03R-njMSayw'
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --get \
+            "https://www.googleapis.com/youtube/v3/channels" \
+            --data-urlencode 'part=statistics' \
+            --data-urlencode "id=$YOUTUBE_CHANNEL_ID" \
+            --data-urlencode "key=$YOUTUBE_API_KEY" \
+            --output canal.json
+          echo "inscritos=$(jq -er '.items[0].statistics.subscriberCount | strings' canal.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Coletar inscritos ganhos/perdidos (janela recente)
+        env:
+          ACCESS_TOKEN: ${{ steps.token.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          # 12 dias de saldo dão folga suficiente para a caminhada para trás alcançar os
+          # ~10 dias que de fato serão publicados (ver filtro de decantação no passo seguinte).
+          INICIO="$(date -u -d '12 days ago' +%F)"
+          ONTEM="$(date -u -d 'yesterday' +%F)"
+          http_code="$(curl --silent --show-error --get \
+            "https://youtubeanalytics.googleapis.com/v2/reports" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            --data-urlencode "ids=channel==MINE" \
+            --data-urlencode "startDate=$INICIO" \
+            --data-urlencode "endDate=$ONTEM" \
+            --data-urlencode "metrics=subscribersGained,subscribersLost" \
+            --data-urlencode "dimensions=day" \
+            --data-urlencode "sort=day" \
+            --output saldos.json \
+            --write-out '%{http_code}')"
+          if [ "$http_code" != "200" ]; then
+            echo "::error::YouTube Analytics API respondeu HTTP $http_code"
+            cat saldos.json
+            exit 1
+          fi
+          echo "Linhas recebidas: $(jq '.rows | length' saldos.json)"
+
+      - name: Refinar os últimos dias decantados e mesclar
+        env:
+          ATUAL: ${{ steps.atual.outputs.inscritos }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timedelta, timezone
+          from pathlib import Path
+
+          atual = int(os.environ['ATUAL'])
+          resposta = json.loads(Path('saldos.json').read_text(encoding='utf-8'))
+          linhas = resposta.get('rows') or []
+
+          if not linhas:
+              Path('resumo.md').write_text(
+                  '## Refino diário de inscritos do YouTube\n\nA YouTube Analytics API não devolveu nenhuma linha — nada para mesclar.\n',
+                  encoding='utf-8')
+              raise SystemExit(0)
+
+          saldos = [{'date': dia, 'saldo': int(g) - int(p)} for dia, g, p in linhas]
+
+          # Só publica dias com 2+ dias de decantação (a Analytics pode ajustar dados recentes).
+          hoje = datetime.now(timezone.utc).date()
+          limite_publicavel = (hoje - timedelta(days=2)).isoformat()
+
+          # Mesma caminhada para trás de reconstruir-historico-youtube.yml, mas só nesta janela
+          # curta: total de um dia = total do dia seguinte menos o saldo do dia seguinte.
+          total = atual
+          reconstruidos = {}
+          for item in reversed(saldos):
+              if total <= 0:
+                  break
+              if item['date'] <= limite_publicavel:
+                  reconstruidos[item['date']] = total
+              total -= item['saldo']
+
+          if not reconstruidos:
+              Path('resumo.md').write_text(
+                  '## Refino diário de inscritos do YouTube\n\nNenhum dia dentro da janela já decantou o suficiente — nada publicado nesta execução.\n',
+                  encoding='utf-8')
+              raise SystemExit(0)
+
+          caminho = Path('data/social-followers.json')
+          doc = json.loads(caminho.read_text(encoding='utf-8')) if caminho.exists() else {'version': 2, 'history': []}
+          historico = {item['date']: item for item in doc.get('history', []) if item.get('date')}
+
+          # "source" no arquivo é um rótulo por DIA inteiro (ex.: "reconstruido"), não por
+          # rede — não mexe nele aqui, mesmo padrão de sync-youtube-followers.yml ao fechar o
+          # dia (só atualiza followers.YouTube, sem tocar em source/insights/outras redes).
+          mudou = False
+          for dia, valor in sorted(reconstruidos.items()):
+              existente = dict(historico.get(dia) or {'date': dia})
+              followers = dict(existente.get('followers') or {})
+              if followers.get('YouTube') == valor:
+                  continue
+              followers['YouTube'] = valor
+              existente['followers'] = followers
+              historico[dia] = existente
+              mudou = True
+
+          if not mudou:
+              Path('resumo.md').write_text(
+                  '## Refino diário de inscritos do YouTube\n\nOs valores já estavam corretos — nada mudou.\n',
+                  encoding='utf-8')
+              raise SystemExit(0)
+
+          doc['version'] = 2
+          doc['history'] = [historico[dia] for dia in sorted(historico)]
+          doc['updatedAt'] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+          caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          primeiro, ultimo = min(reconstruidos), max(reconstruidos)
+          Path('resumo.md').write_text(
+              f"## Refino diário de inscritos do YouTube\n\nDias refinados de **{primeiro}** a **{ultimo}** "
+              f"com o saldo exato da YouTube Analytics API (total de referência: {atual:,}).\n".replace(',', '.'),
+              encoding='utf-8')
+          PY
+          cat resumo.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar dados atualizados
+        run: |
+          git add data/social-followers.json
+          if git diff --cached --quiet -- data/social-followers.json; then
+            echo 'Nenhuma alteração para publicar.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: refinar histórico recente de inscritos do YouTube'
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
+
+      # Mesmo mecanismo dos outros workflows: sem isso, o painel (que só lê
+      # portalStore/followers-vonder-v1 no Firestore) nunca veria o refino.
+      - name: Publicar snapshot protegido no Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::warning::FIREBASE_SERVICE_ACCOUNT_KEY não configurado — pulando a gravação em portalStore/followers-vonder-v1.'
+            exit 0
+          fi
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os, time
+          from pathlib import Path
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+
+          cred = credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY']))
+          firebase_admin.initialize_app(cred)
+          db = firestore.client()
+
+          published = json.loads(Path('data/social-followers.json').read_text(encoding='utf-8'))
+          live_path = Path('data/social-followers-live.json')
+          live = json.loads(live_path.read_text(encoding='utf-8')) if live_path.exists() else {'version': 2, 'platforms': {}}
+
+          db.collection('portalStore').document('followers-vonder-v1').set({
+              'v': {'published': published, 'live': live},
+              'updated_at': int(time.time() * 1000),
+              'updatedAt': firestore.SERVER_TIMESTAMP,
+          })
+          print('Firestore atualizado com o histórico refinado do YouTube.')
+          PY
