@@ -1,0 +1,145 @@
+name: Sincronizar vídeos do YouTube
+
+# Mesmo espírito de sync-meta-posts.yml (Instagram), mas para os vídeos do canal Vonder —
+# alimenta o mesmo painel "Melhores posts" do followers-dashboard.js, agora também para o
+# YouTube. Usa só a YOUTUBE_API_KEY já existente (dados públicos, sem OAuth): não tem
+# endpoint único "listar meus vídeos com estatísticas", então são 3 chamadas em sequência —
+# achar a playlist de uploads do canal, listar os vídeos dela, e pedir as estatísticas em lote.
+# Cada rodada sobrescreve o snapshot inteiro com os números mais recentes, sem histórico por dia.
+
+on:
+  schedule:
+    - cron: '20 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-videos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Coletar vídeos e métricas
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_CHANNEL_ID: 'UCflcAVLpPmH-03R-njMSayw'
+        run: |
+          set -euo pipefail
+          test -n "$YOUTUBE_API_KEY"
+          python3 - <<'PY'
+          import json, os, urllib.parse, urllib.request
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          api_key = os.environ['YOUTUBE_API_KEY']
+          channel_id = os.environ['YOUTUBE_CHANNEL_ID']
+          base = 'https://www.googleapis.com/youtube/v3'
+
+          def get(path, **params):
+              params['key'] = api_key
+              url = f'{base}/{path}?{urllib.parse.urlencode(params)}'
+              with urllib.request.urlopen(url, timeout=30) as resp:
+                  return json.loads(resp.read().decode('utf-8'))
+
+          # A API do YouTube não tem "listar meus vídeos com estatísticas" direto — o caminho é
+          # achar a playlist especial de uploads do canal e listar os itens dela.
+          canal = get('channels', part='contentDetails', id=channel_id)
+          items = canal.get('items') or []
+          if not items:
+              raise SystemExit('A API do YouTube não retornou o canal — não grava nada para não apagar o snapshot anterior.')
+          uploads_playlist = items[0]['contentDetails']['relatedPlaylists']['uploads']
+
+          playlist = get('playlistItems', part='snippet', playlistId=uploads_playlist, maxResults=30)
+          entries = playlist.get('items') or []
+          if not entries:
+              raise SystemExit('A playlist de uploads não retornou nenhum vídeo — não grava nada para não apagar o snapshot anterior.')
+
+          video_ids = [entry['snippet']['resourceId']['videoId'] for entry in entries]
+          stats_response = get('videos', part='statistics', id=','.join(video_ids))
+          stats_by_id = {item['id']: item.get('statistics', {}) for item in stats_response.get('items', [])}
+
+          videos = []
+          for entry in entries:
+              snippet = entry['snippet']
+              video_id = snippet['resourceId']['videoId']
+              stats = stats_by_id.get(video_id, {})
+              thumbnails = snippet.get('thumbnails') or {}
+              thumb = (thumbnails.get('medium') or thumbnails.get('default') or {}).get('url')
+              video = {
+                  'id': video_id,
+                  'network': 'YouTube',
+                  'caption': snippet.get('title') or '',
+                  'permalink': f'https://www.youtube.com/watch?v={video_id}',
+                  'thumbnailUrl': thumb,
+                  'timestamp': snippet.get('publishedAt'),
+                  'likeCount': int(stats.get('likeCount', 0) or 0),
+                  'views': int(stats.get('viewCount', 0) or 0),
+              }
+              # commentCount some quando os comentários do vídeo estão desativados — omite a
+              # chave (em vez de gravar "0", que pareceria zero comentários de verdade); o
+              # painel já trata chave ausente como "—", igual às demais métricas que faltam.
+              if 'commentCount' in stats:
+                  video['commentsCount'] = int(stats['commentCount'])
+              videos.append(video)
+
+          document = {
+              'version': 1,
+              'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+              'posts': videos,
+          }
+          Path('data/social-youtube-videos.json').write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(f'Coletados {len(videos)} vídeos.')
+          PY
+
+      - name: Publicar dados atualizados
+        run: |
+          git add data/social-youtube-videos.json
+          if git diff --cached --quiet -- data/social-youtube-videos.json; then
+            echo 'Nenhuma alteração para publicar.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: atualizar vídeos do YouTube'
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
+
+      # Documento próprio (youtube-videos-vonder-v1), separado de posts-vonder-v1 (Instagram) —
+      # o painel lê os dois e junta, mas cada coleta escreve só o seu, sem risco de uma apagar
+      # o snapshot da outra.
+      - name: Publicar vídeos no Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::warning::FIREBASE_SERVICE_ACCOUNT_KEY não configurado — pulando a gravação em portalStore/youtube-videos-vonder-v1.'
+            exit 0
+          fi
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os, time
+          from pathlib import Path
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+
+          cred = credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY']))
+          firebase_admin.initialize_app(cred)
+          db = firestore.client()
+
+          published = json.loads(Path('data/social-youtube-videos.json').read_text(encoding='utf-8'))
+
+          db.collection('portalStore').document('youtube-videos-vonder-v1').set({
+              'v': published,
+              'updated_at': int(time.time() * 1000),
+              'updatedAt': firestore.SERVER_TIMESTAMP,
+          })
+          print('Firestore atualizado:', len(published['posts']), 'vídeos em', published['updatedAt'])
+          PY

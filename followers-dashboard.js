@@ -17,6 +17,7 @@
   const isVonder = brandKey === 'default';
   const FOLLOWERS_STORE_KEY = 'followers-vonder-v1';
   const POSTS_STORE_KEY = 'posts-vonder-v1';
+  const YOUTUBE_VIDEOS_STORE_KEY = 'youtube-videos-vonder-v1';
   const POSTS_DISPLAY_LIMIT = 10;
   const AUTO_REFRESH_MS = 60000;
   const MAX_BUCKETS = 60;
@@ -163,6 +164,14 @@
     const active = selectedNetwork === 'all' ? null : NETWORKS[Number(selectedNetwork)];
     return !active || active.name === 'Instagram';
   };
+  // Painel de posts: ao contrário dos insights acima (exclusivos do Instagram), aceita as
+  // redes que já têm coleta de conteúdo (Instagram e YouTube) — Facebook/TikTok ainda não.
+  const POSTS_NETWORKS = ['Instagram', 'YouTube'];
+  const activeNetworkOrNull = () => selectedNetwork === 'all' ? null : NETWORKS[Number(selectedNetwork)];
+  const isPostsNetworkSelected = () => {
+    const active = activeNetworkOrNull();
+    return !active || POSTS_NETWORKS.includes(active.name);
+  };
   const totalAt = (point, nets) => nets.reduce((sum, network) => sum + (Number.isFinite(point.values[network.name]) ? point.values[network.name] : 0), 0);
   const currentValues = point => {
     const values = Object.assign({}, point.values);
@@ -306,13 +315,18 @@
     renderComparatives(points, nets, periodDeltas);
     renderGoal(currentPoint, current, nets, periodDeltas, perDay);
 
-    // Ranking de posts e resumo de publicações também só existem pro Instagram — mesma regra.
-    // `hidden` aqui é só o corte por plataforma; o recolher/expandir manual (classe
-    // is-collapsed, ver o toggle mais abaixo) fica intacto independente disso.
+    // Ranking de posts: Instagram e YouTube (ver POSTS_NETWORKS) — Facebook/TikTok ainda não
+    // têm coleta de conteúdo. `hidden` aqui é só o corte por plataforma; o recolher/expandir
+    // manual (classe is-collapsed, ver o toggle mais abaixo) fica intacto independente disso.
+    const showPosts = isPostsNetworkSelected();
     const postsDivider = el('postsDivider'), postsBody = el('postsBody');
-    if (postsDivider) postsDivider.hidden = !showInstagramOnly;
-    if (postsBody) postsBody.hidden = !showInstagramOnly;
-    if (showInstagramOnly) renderPosts();
+    if (postsDivider) postsDivider.hidden = !showPosts;
+    if (postsBody) postsBody.hidden = !showPosts;
+    if (showPosts) {
+      const postsTitle = postsDivider && postsDivider.querySelector('h2');
+      if (postsTitle) postsTitle.textContent = active ? `Conteúdo do ${active.name}` : 'Conteúdo do Instagram e YouTube';
+      renderPosts();
+    }
   }
 
   function renderChart(points, nets, grain) {
@@ -594,9 +608,11 @@
   // dentro dele. O feed em si só guarda os ~30 posts mais recentes coletados (sem histórico
   // completo), então um período fora dessa janela legitimamente não tem post nenhum pra mostrar.
   function postsInPeriod() {
+    const active = activeNetworkOrNull();
+    const byNetwork = active ? postsData.filter(post => post.network === active.name) : postsData;
     const from = el('startDate').value, to = el('endDate').value;
-    if (!from || !to) return postsData.slice();
-    return postsData.filter(post => {
+    if (!from || !to) return byNetwork.slice();
+    return byNetwork.filter(post => {
       const day = String(post.timestamp || '').slice(0, 10);
       return day && day >= from && day <= to;
     });
@@ -691,19 +707,30 @@
     Object.entries(values).forEach(([id, value]) => { const node = el(id); if (node) node.textContent = value; });
   }
 
-  function protectedPosts() {
+  function protectedStore(key) {
     if (!isVonder) return Promise.resolve(null);
     const gateway = window.PortalFirebase;
     if (!gateway || typeof gateway.readPortalStore !== 'function') {
       return Promise.reject(new Error('A conexão segura com os dados ainda não está pronta.'));
     }
-    return gateway.readPortalStore(POSTS_STORE_KEY).then(record => record && record.v);
+    return gateway.readPortalStore(key).then(record => record && record.v);
   }
 
+  // Instagram (posts-vonder-v1) e YouTube (youtube-videos-vonder-v1) são coletados por
+  // workflows separados, cada um com seu próprio documento no Firestore — junta os dois aqui
+  // na leitura, marcando a origem de cada item, para o painel "Melhores posts" tratar como uma
+  // lista só (ver isPostsNetworkSelected). Uma falha em um dos dois não derruba o outro.
   function loadPosts() {
-    return protectedPosts()
-      .then(data => { postsData = (data && Array.isArray(data.posts)) ? data.posts : []; renderPosts(); })
-      .catch(() => { postsData = []; renderPosts(); });
+    return Promise.all([
+      protectedStore(POSTS_STORE_KEY).catch(() => null),
+      protectedStore(YOUTUBE_VIDEOS_STORE_KEY).catch(() => null)
+    ]).then(([instagram, youtube]) => {
+      const instagramPosts = (instagram && Array.isArray(instagram.posts)) ? instagram.posts : [];
+      const youtubePosts = (youtube && Array.isArray(youtube.posts)) ? youtube.posts : [];
+      postsData = instagramPosts.map(post => Object.assign({ network: 'Instagram' }, post))
+        .concat(youtubePosts.map(post => Object.assign({ network: 'YouTube' }, post)));
+      renderPosts();
+    }).catch(() => { postsData = []; renderPosts(); });
   }
 
   // Barras finas divergindo de uma linha de base central — reaproveitado tanto no gráfico
