@@ -123,7 +123,17 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'chore: atualizar posts do Instagram'
-          git push
+          # reconstruir-historico-posts.yml pode levar dezenas de minutos paginando o histórico
+          # inteiro e também grava neste mesmo arquivo — um push rejeitado por não estar
+          # atualizado tenta de novo com rebase antes de desistir (mesmo padrão de
+          # sync-meta-followers.yml), em vez de perder esta rodada de coleta.
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
 
       # Mesmo padrão de sync-meta-followers.yml: o painel só lê o Firestore, nunca o JSON
       # público direto — ver docs/ARQUITETURA-E-INTEGRACOES.md, "Migração do painel de seguidores".

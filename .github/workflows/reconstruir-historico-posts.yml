@@ -138,7 +138,18 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'chore: reconstruir histórico de posts do Instagram'
-          git push
+          # Essa etapa só roda depois de paginar o /media inteiro (pode levar dezenas de
+          # minutos) — tempo de sobra para outro workflow (ou alguém) empurrar pro main nesse
+          # meio-tempo. Um push rejeitado por não estar atualizado tenta de novo com rebase
+          # antes de desistir, em vez de descartar a reconstrução inteira (mesmo padrão de
+          # sync-meta-followers.yml).
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
 
       # Mesmo padrão de sync-meta-posts.yml — ver lá o comentário ponytail sobre o limite de
       # 1 MiB por documento do Firestore.
