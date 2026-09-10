@@ -622,14 +622,14 @@
       const known = Number.isFinite(Number(value));
       return `<span class="post-stat${option.key === postsSort ? ' is-primary' : ''}">${postIconSvg(option.key)}<b>${known ? format(Number(value)) : '—'}</b></span>`;
     }).join('');
-    return `<a class="post-card" href="${escapeHtml(post.permalink) || '#'}" target="_blank" rel="noopener">
+    return `<button type="button" class="post-card" data-post-id="${escapeHtml(post.id)}">
       <div class="post-thumb">${thumb}<span class="post-rank">#${index + 1}</span><span class="post-format-badge">${formatLabel(post)}</span></div>
       <div class="post-body">
         <p class="post-caption">${caption || '<em>Sem legenda</em>'}</p>
         <span class="post-date${postsSort === 'timestamp' ? ' is-primary' : ''}">${postDateLabel(post.timestamp)}</span>
         <div class="post-stats">${stats}</div>
       </div>
-    </a>`;
+    </button>`;
   }
 
   function renderPostsTable(sorted) {
@@ -647,7 +647,7 @@
         const known = Number.isFinite(Number(value));
         return `<td>${known ? format(Number(value)) : '—'}</td>`;
       }).join('');
-      return `<tr><td class="posts-table-post"><a href="${escapeHtml(post.permalink) || '#'}" target="_blank" rel="noopener">${thumb}<span>${escapeHtml(post.caption).slice(0, 70) || 'Sem legenda'}</span></a><span class="posts-table-format">${formatLabel(post)}</span></td>${cells}</tr>`;
+      return `<tr><td class="posts-table-post"><button type="button" data-post-id="${escapeHtml(post.id)}">${thumb}<span>${escapeHtml(post.caption).slice(0, 70) || 'Sem legenda'}</span></button><span class="posts-table-format">${formatLabel(post)}</span></td>${cells}</tr>`;
     }).join('');
     head.querySelectorAll('[data-sort]').forEach(th => th.addEventListener('click', () => {
       postsSort = th.dataset.sort;
@@ -1555,6 +1555,80 @@
   const goalsControlSaveBtn = el('goalsControlSave');
   if (goalsControlSaveBtn) goalsControlSaveBtn.addEventListener('click', saveGoalsControl);
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && goalsControl && goalsControl.style.display === 'flex') closeGoalsControl(); });
+
+  // Modal de prévia de post: abre ao clicar numa miniatura (grade ou lista) — a publicação
+  // embedada aparece à esquerda (perfil + legenda, no estilo do próprio Instagram/YouTube/
+  // Facebook) e todas as métricas que a rede expõe para aquele post à direita. Só o botão "Ver
+  // publicação" do rodapé de fato leva pra rede social, em nova guia; clicar na miniatura nunca
+  // mais navega direto.
+  const postPreview = el('postPreviewBackdrop');
+  let postPreviewLastFocus = null;
+  // Sem endpoint que devolva o @ de cada rede — os três (Instagram, YouTube, TikTok) usam o
+  // mesmo handle @vonderferramentas (confirmado nos avisos de coleta manual do TikTok acima);
+  // o Facebook não tem um @ equivalente, mostra o nome da marca mesmo.
+  const NETWORK_HANDLE = {
+    Instagram: '@vonderferramentas',
+    YouTube: '@vonderferramentas',
+    TikTok: '@vonderferramentas',
+    Facebook: brand.name || 'VONDER'
+  };
+  const closePostPreview = () => {
+    if (!postPreview) return;
+    postPreview.style.display = 'none';
+    postPreview.setAttribute('aria-hidden', 'true');
+    if (postPreviewLastFocus) postPreviewLastFocus.focus();
+  };
+  const openPostPreview = post => {
+    if (!postPreview || !post) return;
+    const network = NETWORKS.find(item => item.name === post.network);
+    const iconEl = el('postPreviewNetworkIcon');
+    if (iconEl) { iconEl.src = network ? network.icon : ''; iconEl.alt = post.network || ''; }
+    const imageWrap = el('postPreviewImage');
+    if (imageWrap) {
+      imageWrap.innerHTML = post.thumbnailUrl
+        ? `<img src="${escapeHtml(post.thumbnailUrl)}" alt="">`
+        : `<div class="post-preview-image-empty">${iconSvg(FORMAT_ICON_POST, 26)}<span>Prévia indisponível</span></div>`;
+    }
+    const avatarEl = el('postPreviewAvatar');
+    if (avatarEl) avatarEl.src = brand.photo || '';
+    setText('postPreviewHandle', NETWORK_HANDLE[post.network] || brand.name || '');
+    const captionEl = el('postPreviewCaption');
+    if (captionEl) captionEl.textContent = post.caption || 'Sem legenda.';
+    setText('postPreviewMeta', `${formatLabel(post)} · ${postDateLabel(post.timestamp)}`);
+    const metricsEl = el('postPreviewMetricsList');
+    if (metricsEl) {
+      const options = sortOptionsForNetwork(network).filter(option => option.key !== 'timestamp');
+      metricsEl.innerHTML = options.map(option => {
+        const value = post[option.key];
+        const known = Number.isFinite(Number(value));
+        return `<div class="post-preview-metric-row"><span class="post-preview-metric-label">${postIconSvg(option.key)}${option.label}</span><span class="post-preview-metric-value">${known ? format(Number(value)) : '—'}</span></div>`;
+      }).join('');
+    }
+    const ctaEl = el('postPreviewCta');
+    if (ctaEl) ctaEl.href = post.permalink || '#';
+    postPreviewLastFocus = document.activeElement;
+    postPreview.style.display = 'flex';
+    postPreview.setAttribute('aria-hidden', 'false');
+    el('postPreviewClose').focus();
+  };
+  const openPostPreviewById = id => {
+    const post = postsData.find(item => item.id === id);
+    if (post) openPostPreview(post);
+  };
+  if (postPreview) postPreview.addEventListener('click', event => { if (event.target === postPreview) closePostPreview(); });
+  const postPreviewCloseBtn = el('postPreviewClose');
+  if (postPreviewCloseBtn) postPreviewCloseBtn.addEventListener('click', closePostPreview);
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && postPreview && postPreview.style.display === 'flex') closePostPreview(); });
+  const postsGridEl = el('postsGrid');
+  if (postsGridEl) postsGridEl.addEventListener('click', event => {
+    const card = event.target.closest('.post-card');
+    if (card && card.dataset.postId) openPostPreviewById(card.dataset.postId);
+  });
+  const postsTableBodyEl = el('postsTableBody');
+  if (postsTableBodyEl) postsTableBodyEl.addEventListener('click', event => {
+    const button = event.target.closest('.posts-table-post button');
+    if (button && button.dataset.postId) openPostPreviewById(button.dataset.postId);
+  });
 
   // ---------------------------------------------------------------- carga
 

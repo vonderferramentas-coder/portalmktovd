@@ -1077,16 +1077,22 @@
       max-width: 320px
     }
 
-    .posts-table-post a {
+    .posts-table-post button {
       display: flex;
       align-items: center;
       gap: 10px;
       min-width: 0;
       color: inherit;
-      text-decoration: none
+      text-decoration: none;
+      background: none;
+      border: 0;
+      padding: 0;
+      font: inherit;
+      text-align: left;
+      cursor: pointer
     }
 
-    .posts-table-post a:hover span {
+    .posts-table-post button:hover span {
       text-decoration: underline
     }
 
@@ -1265,6 +1271,168 @@
 
     .post-stat.is-primary b {
       color: inherit
+    }
+
+    .post-card {
+      width: 100%;
+      padding: 0;
+      font: inherit;
+      text-align: left;
+      cursor: pointer
+    }
+
+    .post-preview-modal {
+      max-width: 900px
+    }
+
+    .post-preview-body {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start
+    }
+
+    .post-preview-media {
+      width: 300px;
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px
+    }
+
+    .post-preview-image {
+      aspect-ratio: 4 / 5;
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface-muted);
+      border: 1px solid var(--border)
+    }
+
+    .post-preview-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block
+    }
+
+    .post-preview-image-empty {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      padding: 20px;
+      box-sizing: border-box
+    }
+
+    .post-preview-profile {
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .post-preview-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      flex: none;
+      background: var(--surface-muted)
+    }
+
+    .post-preview-handle {
+      font-weight: 800;
+      font-size: 13px;
+      color: var(--text)
+    }
+
+    .post-preview-verified {
+      flex: none
+    }
+
+    .post-preview-caption {
+      margin: 0;
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: var(--text);
+      white-space: pre-wrap
+    }
+
+    .post-preview-metrics {
+      flex: 1;
+      min-width: 0
+    }
+
+    .post-preview-meta {
+      margin: 0 0 10px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em
+    }
+
+    .post-preview-metric-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .post-preview-metric-row:last-child {
+      border-bottom: 0
+    }
+
+    .post-preview-metric-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12.5px;
+      font-weight: 700
+    }
+
+    .post-preview-metric-label svg {
+      flex: none
+    }
+
+    .post-preview-metric-value {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--text)
+    }
+
+    .post-preview-footer {
+      justify-content: stretch
+    }
+
+    .post-preview-cta {
+      flex: 1;
+      text-decoration: none
+    }
+
+    @media (max-width: 680px) {
+      .post-preview-body {
+        flex-direction: column
+      }
+
+      .post-preview-media {
+        width: 100%
+      }
+
+      .post-preview-image {
+        aspect-ratio: 16 / 10
+      }
     }
 
     .workflow-info-modal {
@@ -2159,8 +2327,9 @@
           <li><i class="workflow-info-icon">IG</i>
             <div><b>Exclusivo do Instagram</b><span>Insights de novos seguidores/alcance e o ranking de posts (seções
                 "Performance em números" e "Conteúdo do Instagram") só existem para o Instagram — somem sozinhos ao
-                selecionar outra rede. O ranking de posts também segue o período escolhido no topo da página, dentro
-                dos últimos posts coletados.</span></div>
+                selecionar outra rede. O ranking de posts também segue o período escolhido no topo da página — para o
+                Instagram, cobre o histórico completo da conta; YouTube e Facebook ainda cobrem só os posts recentes
+                coletados.</span></div>
           </li>
           <li><i class="workflow-info-icon">60</i>
             <div><b>Página aberta</b><span>Se esta página estiver aberta, ela procura novidades a cada 1 minuto. A
@@ -2172,6 +2341,38 @@
           reduzir a rolagem. Se não houver erro ou o acesso à Meta não vencer, você não precisa fazer nada.</p>
       </div>
       <div class="modal-footer"><button type="button" class="btn" id="workflowInfoDone">Entendi</button></div>
+    </section>
+  </div>
+  <div class="modal-backdrop" id="postPreviewBackdrop" aria-hidden="true">
+    <section class="modal post-preview-modal" role="dialog" aria-modal="true" aria-labelledby="postPreviewTitle">
+      <div class="modal-header">
+        <div class="modal-header-title"><img id="postPreviewNetworkIcon" src="" alt="" width="20" height="20">
+          <h2 id="postPreviewTitle">Publicação</h2>
+        </div>
+        <div class="modal-header-actions"><button type="button" class="modal-close" id="postPreviewClose"
+            aria-label="Fechar">×</button></div>
+      </div>
+      <div class="modal-body post-preview-body">
+        <div class="post-preview-media">
+          <div class="post-preview-image" id="postPreviewImage"></div>
+          <div class="post-preview-profile"><img class="post-preview-avatar" id="postPreviewAvatar" src="" alt="">
+            <span class="post-preview-handle" id="postPreviewHandle"></span>
+            <svg class="post-preview-verified" width="14" height="14" viewBox="0 0 24 24" fill="none"
+              aria-hidden="true">
+              <circle cx="12" cy="12" r="10" fill="#3897f0" />
+              <path d="m8 12.5 2.5 2.5L16 9.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"
+                stroke-linejoin="round" fill="none" />
+            </svg>
+          </div>
+          <p class="post-preview-caption" id="postPreviewCaption"></p>
+        </div>
+        <div class="post-preview-metrics">
+          <p class="post-preview-meta" id="postPreviewMeta"></p>
+          <div id="postPreviewMetricsList"></div>
+        </div>
+      </div>
+      <div class="modal-footer post-preview-footer"><a class="btn post-preview-cta" id="postPreviewCta" href="#"
+          target="_blank" rel="noopener">Ver publicação</a></div>
     </section>
   </div>
   <script src="portal-shell.js"></script>
