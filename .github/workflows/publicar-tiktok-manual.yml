@@ -1,0 +1,132 @@
+name: Publicar lançamento manual do TikTok
+
+# Lançamento pontual, disparado manualmente (nunca por agendamento), enquanto a
+# coleta automática do TikTok não existe — o app "Portal MKT OVD" está em App
+# Review na TikTok for Developers (ver docs/ARQUITETURA-E-INTEGRACOES.md, seção
+# 15). Grava um número fixo de seguidores para uma data, no mesmo formato usado
+# por sync-meta-followers.yml/sync-youtube-followers.yml, com "source": "manual"
+# para o painel diferenciar de uma coleta real por API.
+on:
+  workflow_dispatch:
+    inputs:
+      followers:
+        description: 'Total de seguidores do TikTok (@vonderferramentas) na data informada'
+        required: true
+      date:
+        description: 'Data do lançamento (AAAA-MM-DD). Em branco = hoje, fuso São Paulo.'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Atualizar snapshot público
+        env:
+          FOLLOWERS: ${{ inputs.followers }}
+          DATE_INPUT: ${{ inputs.date }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timedelta, timezone
+          from pathlib import Path
+
+          followers = int(os.environ['FOLLOWERS'])
+          date_input = os.environ.get('DATE_INPUT', '').strip()
+          # Mesmo fuso de fechamento usado pelos demais workflows (São Paulo = UTC-3),
+          # para o "hoje" bater com o resto do histórico quando a data não for informada.
+          date = date_input or (datetime.now(timezone.utc) - timedelta(hours=3)).date().isoformat()
+
+          # snapshot "live" — mescla só a chave TikTok, sem tocar nas outras (mesmo
+          # cuidado de sync-meta-followers.yml/sync-youtube-followers.yml).
+          live_path = Path('data/social-followers-live.json')
+          live = json.loads(live_path.read_text(encoding='utf-8')) if live_path.exists() else {'version': 2, 'platforms': {}}
+          platforms = dict(live.get('platforms') or {})
+          platforms['TikTok'] = {
+              'username': 'vonderferramentas',
+              'followers': followers,
+              'source': 'manual'
+          }
+          live.update({
+              'version': 2,
+              'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+              'platforms': platforms
+          })
+          live_path.write_text(json.dumps(live, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          # histórico — mescla só a chave TikTok no dia informado, preservando o que já
+          # existir de Instagram/Facebook/YouTube naquele mesmo dia.
+          hist_path = Path('data/social-followers.json')
+          document = json.loads(hist_path.read_text(encoding='utf-8')) if hist_path.exists() else {'version': 2, 'history': []}
+          history = {item['date']: item for item in document.get('history', []) if item.get('date')}
+          existing_day = dict(history.get(date) or {'date': date})
+          existing_day['followers'] = dict(existing_day.get('followers') or {})
+          existing_day['followers']['TikTok'] = followers
+          existing_day['source'] = dict(existing_day.get('source') or {})
+          existing_day['source']['TikTok'] = 'manual'
+          history[date] = existing_day
+          history = [history[day] for day in sorted(history)]
+          document.update({
+              'version': 2,
+              'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+              'history': history
+          })
+          hist_path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          print(f'TikTok: {followers} seguidores em {date} (lançamento manual)')
+          PY
+
+      - name: Publicar dados atualizados
+        run: |
+          git add data/social-followers.json data/social-followers-live.json
+          if git diff --cached --quiet -- data/social-followers.json data/social-followers-live.json; then
+            echo 'Nenhuma alteração para publicar.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: lançamento manual de seguidores do TikTok'
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
+
+      # Mesmo padrão de sync-meta-followers.yml: o painel só lê
+      # portalStore/followers-vonder-v1 no Firestore, nunca os JSON públicos direto.
+      - name: Publicar snapshot protegido no Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::warning::FIREBASE_SERVICE_ACCOUNT_KEY não configurado — pulando a gravação em portalStore/followers-vonder-v1.'
+            exit 0
+          fi
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os, time
+          from pathlib import Path
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+
+          cred = credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY']))
+          firebase_admin.initialize_app(cred)
+          db = firestore.client()
+
+          published = json.loads(Path('data/social-followers.json').read_text(encoding='utf-8'))
+          live = json.loads(Path('data/social-followers-live.json').read_text(encoding='utf-8'))
+
+          db.collection('portalStore').document('followers-vonder-v1').set({
+              'v': {'published': published, 'live': live},
+              'updated_at': int(time.time() * 1000),
+              'updatedAt': firestore.SERVER_TIMESTAMP,
+          })
+          print('Firestore atualizado:', live['platforms']['TikTok']['followers'], 'seguidores do TikTok')
+          PY

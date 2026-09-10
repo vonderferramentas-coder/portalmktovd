@@ -263,11 +263,14 @@
     // O YouTube arredonda o total de inscritos que devolve por API (confirmado na própria
     // documentação do Google) — sinalizamos isso em vez de fingir precisão que a API não tem;
     // o ícone abre um modal explicando (ver openYoutubeApprox), o valor exato só existe
-    // dentro do YouTube Studio.
+    // dentro do YouTube Studio. O mesmo ícone também avisa quando o TikTok é um lançamento
+    // manual (ver TOTAL_APPROX_INFO) — some sozinho quando `connected` virar true, depois
+    // que a coleta automática entrar no ar.
     const isYouTube = active && active.name === 'YouTube';
+    const isManualTikTok = active && active.name === 'TikTok' && !active.connected;
     setText('total', isYouTube ? formatApproxYouTube(current) : format(current));
     const approxBadge = el('totalApprox');
-    if (approxBadge) approxBadge.hidden = !isYouTube;
+    if (approxBadge) approxBadge.hidden = !(isYouTube || isManualTikTok);
     el('growth').className = 'growth-line';
     el('growth').textContent = periodDeltas.length
       ? `${signed(net)} no período · ${percent(rate)}`
@@ -1255,10 +1258,33 @@
   ['workflowInfoClose', 'workflowInfoDone'].forEach(id => { const button = el(id); if (button) button.addEventListener('click', closeWorkflowInfo); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && workflowInfo && workflowInfo.style.display === 'flex') closeWorkflowInfo(); });
 
-  // Mesmo padrão do modal acima, mas para o aviso de número aproximado do YouTube — o ícone
-  // que fica ao lado do "~41.0k" (ver render()) abre este modal na identidade da marca.
+  // Mesmo padrão do modal acima, mas para o ícone de aviso ao lado do total (ver render()) —
+  // reaproveitado tanto para o número aproximado do YouTube quanto para o lançamento manual
+  // do TikTok (enquanto o App Review na TikTok for Developers não é aprovado, ver
+  // docs/ARQUITETURA-E-INTEGRACOES.md seção 15): o conteúdo do modal é montado na hora,
+  // conforme a rede selecionada no momento do clique.
   const youtubeApprox = el('youtubeApproxBackdrop');
   let youtubeApproxLastFocus = null;
+  const TOTAL_APPROX_INFO = {
+    YouTube: {
+      icon: 'icons/youtube.svg',
+      title: 'Número aproximado',
+      body: `<p>O YouTube arredonda o total de inscritos que devolve por API — o número aqui só muda de milhar em
+        milhar (ex.: 41.059 vira <b>~41.0k</b>; só quando passar de 41.100 é que vira <b>~41.1k</b>), mesmo o
+        canal ganhando inscritos todo dia.</p>
+        <p>É assim em qualquer painel que use dados do YouTube, não é uma limitação deste portal. O número exato
+        só existe dentro do YouTube Studio, para quem administra o canal.</p>`
+    },
+    TikTok: {
+      icon: 'icons/tiktok.svg',
+      title: 'Número lançado manualmente',
+      body: `<p>A coleta automática do TikTok ainda não está ativa: o app do portal está em análise (App Review)
+        na TikTok for Developers. Este número foi lançado manualmente pela equipe, direto da conta oficial
+        <b>@vonderferramentas</b>, e só muda quando alguém repetir esse lançamento — não atualiza sozinho como
+        Instagram, Facebook e YouTube.</p>
+        <p>Assim que a TikTok aprovar o app, a coleta passa a ser automática e este aviso desaparece.</p>`
+    }
+  };
   const closeYoutubeApprox = () => {
     if (!youtubeApprox) return;
     youtubeApprox.style.display = 'none';
@@ -1267,6 +1293,14 @@
   };
   const openYoutubeApprox = () => {
     if (!youtubeApprox) return;
+    const active = selectedNetwork === 'all' ? null : NETWORKS[Number(selectedNetwork)];
+    const info = (active && TOTAL_APPROX_INFO[active.name]) || TOTAL_APPROX_INFO.YouTube;
+    const iconEl = youtubeApprox.querySelector('.modal-header-title img');
+    const titleEl = el('youtubeApproxTitle');
+    const bodyEl = youtubeApprox.querySelector('.modal-body');
+    if (iconEl) iconEl.src = info.icon;
+    if (titleEl) titleEl.textContent = info.title;
+    if (bodyEl) bodyEl.innerHTML = info.body;
     youtubeApproxLastFocus = document.activeElement;
     youtubeApprox.style.display = 'flex';
     youtubeApprox.setAttribute('aria-hidden', 'false');
