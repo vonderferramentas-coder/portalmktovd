@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-09-10T12:09:14Z",
+  "updatedAt": "2026-09-10T12:21:57Z",
   "platforms": {
     "Instagram": {
       "accountId": "17841403154695997",
@@ -20,6 +20,11 @@
       "followers": 41000,
       "views": 10135136,
       "source": "youtube_data_api"
+    },
+    "TikTok": {
+      "username": "vonderferramentas",
+      "followers": 4217,
+      "source": "manual"
     }
   }
 }

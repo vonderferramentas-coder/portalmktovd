@@ -32740,11 +32740,15 @@
       "date": "2026-09-10",
       "followers": {
         "Instagram": 609541,
-        "Facebook": 46456
+        "Facebook": 46456,
+        "TikTok": 4217
+      },
+      "source": {
+        "TikTok": "manual"
       }
     }
   ],
-  "updatedAt": "2026-09-10T03:01:04Z",
+  "updatedAt": "2026-09-10T12:21:57Z",
   "platforms": {
     "Instagram": {
       "accountId": "17841403154695997",
