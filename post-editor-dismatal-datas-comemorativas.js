@@ -51,9 +51,8 @@
     var lineBaselines=lines.map(function(line,index){ return centeredBaseline(ctx,line,firstCenter+index*lineH) });
     ctx.fillStyle=BLACK;ctx.font=titleFont(prefixSize,'400');ctx.fillText(prefix,textX,lineBaselines[0]);
     ctx.fillStyle=BLACK;ctx.font=titleFont(titleSize,'700');lines.forEach(function(line,index){var x=index===0?textX+prefixW+9:textX;ctx.fillText(line,x,lineBaselines[index])});
-    var footerY=isStory?1544:1245,footerH=t.h-footerY;ctx.fillStyle=YELLOW;ctx.fillRect(0,footerY,t.w,footerH);
-    var logo=(global.OVD_BRAND_LOGOS||{}).Dismatal;if(logo){if(!state.customAssets.dismatalLogo){var im=new Image();im.onload=function(){state.customAssets.dismatalLogo=im;global.PostEditor&&global.PostEditor.redraw()};im.src=logo}else api.helpers.contain(ctx,state.customAssets.dismatalLogo,isStory?[214,1584,655,190]:[710,1261,300,70])}
+    var footer=state.customAssets[isStory?'footerStory':'footerFeed'];if(footer)ctx.drawImage(footer,0,0,t.w,t.h);
   }
   global.POST_EDITOR_CUSTOM_PRESETS=global.POST_EDITOR_CUSTOM_PRESETS||{};
-  global.POST_EDITOR_CUSTOM_PRESETS['__dismatal']=Object.assign({},global.POST_EDITOR_CUSTOM_PRESETS['__dismatal']||{}, {'Datas comemorativas':{footerColor:YELLOW,supportsCodes:false,supportsProductCutout:false,skipProductChooser:true,commemorative:true,renderer:renderer}});
+  global.POST_EDITOR_CUSTOM_PRESETS['__dismatal']=Object.assign({},global.POST_EDITOR_CUSTOM_PRESETS['__dismatal']||{}, {'Datas comemorativas':{footerColor:YELLOW,assetSources:{footerFeed:'post-editor-assets/footers/footer-dismatal-feed.png',footerStory:'post-editor-assets/footers/footer-dismatal-story.png'},supportsCodes:false,supportsProductCutout:false,skipProductChooser:true,commemorative:true,renderer:renderer}});
 })(window);

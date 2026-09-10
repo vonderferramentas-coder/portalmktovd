@@ -41,9 +41,8 @@
     var lineBaselines=lines.map(function(line,index){ return centeredBaseline(ctx,line,firstCenter+index*lineH) });
     ctx.fillStyle=BLACK;ctx.font=titleFont(prefixSize,'400');ctx.fillText(prefix,textX,lineBaselines[0]);
     ctx.fillStyle=WHITE;ctx.font=titleFont(titleSize,'700');lines.forEach(function(line,index){var x=index===0?textX+prefixW+9:textX;ctx.fillText(line,x,lineBaselines[index])});
-    var footerY=isStory?1544:1245,footerH=t.h-footerY;ctx.fillStyle=ORANGE;ctx.fillRect(0,footerY,t.w,footerH);
-    var logo=(global.OVD_BRAND_LOGOS||{}).Osten_fundo_laranja;if(logo){if(!state.customAssets.ostenLogo){var im=new Image();im.onload=function(){state.customAssets.ostenLogo=im;global.PostEditor&&global.PostEditor.redraw()};im.src=logo}else api.helpers.contain(ctx,state.customAssets.ostenLogo,isStory?[214,1584,655,190]:[710,1261,300,70])}
+    var footer=state.customAssets[isStory?'footerStory':'footerFeed'];if(footer)ctx.drawImage(footer,0,0,t.w,t.h);
   }
   global.POST_EDITOR_CUSTOM_PRESETS=global.POST_EDITOR_CUSTOM_PRESETS||{};
-  global.POST_EDITOR_CUSTOM_PRESETS['__osten-ferragens']=Object.assign({},global.POST_EDITOR_CUSTOM_PRESETS['__osten-ferragens']||{}, {'Datas comemorativas':{footerColor:ORANGE,supportsCodes:false,supportsProductCutout:false,skipProductChooser:true,commemorative:true,renderer:renderer}});
+  global.POST_EDITOR_CUSTOM_PRESETS['__osten-ferragens']=Object.assign({},global.POST_EDITOR_CUSTOM_PRESETS['__osten-ferragens']||{}, {'Datas comemorativas':{footerColor:ORANGE,assetSources:{footerFeed:'post-editor-assets/footers/footer-osten-feed.png',footerStory:'post-editor-assets/footers/footer-osten-story.png'},supportsCodes:false,supportsProductCutout:false,skipProductChooser:true,commemorative:true,renderer:renderer}});
 })(window);
