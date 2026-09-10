@@ -1282,7 +1282,7 @@
     }
 
     .post-preview-modal {
-      max-width: 900px
+      max-width: 980px
     }
 
     .post-preview-body {
@@ -1291,14 +1291,16 @@
       align-items: flex-start
     }
 
-    /* Largura igual a .post-preview-content por terem o mesmo flex:1 (mesma base, mesmo
-       crescimento — ambas dividem o espaço disponível ao meio). Altura fixada via JS
-       (syncPostPreviewImageHeight em followers-dashboard.js), igual à altura de
-       .post-preview-content inteiro (perfil + legenda + métricas + botão "Ver publicação") —
-       o min-height aqui é só um piso enquanto a 1ª medição ainda não rodou (1 frame). */
+    /* Altura fixada via JS (syncPostPreviewImageHeight em followers-dashboard.js), igual à
+       altura de .post-preview-content inteiro (perfil + legenda + métricas + botão "Ver
+       publicação") — o min-height aqui é só um piso enquanto a 1ª medição ainda não rodou (1
+       frame). Largura NÃO é forçada: aspect-ratio 4:5 (moldura padrão de post do Instagram) faz
+       o navegador calcular a largura a partir dessa altura, para a miniatura aparecer inteira,
+       sem cortar — mesmo que isso deixe a coluna da imagem mais larga ou mais estreita que a
+       de conteúdo (que flexiona pra ocupar o resto do espaço, ver .post-preview-content). */
     .post-preview-image {
-      flex: 1;
-      min-width: 0;
+      flex: none;
+      aspect-ratio: 4 / 5;
       min-height: 320px;
       border-radius: 12px;
       overflow: hidden;
@@ -1309,7 +1311,7 @@
     .post-preview-image img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
       display: block
     }
 
@@ -1331,7 +1333,7 @@
 
     .post-preview-content {
       flex: 1;
-      min-width: 0;
+      min-width: 220px;
       display: flex;
       flex-direction: column;
       gap: 16px
@@ -1460,7 +1462,7 @@
         width: 100%;
         height: auto !important;
         min-height: 0;
-        aspect-ratio: 16 / 10
+        aspect-ratio: 4 / 5
       }
     }
 

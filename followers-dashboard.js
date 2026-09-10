@@ -1578,12 +1578,13 @@
     postPreview.setAttribute('aria-hidden', 'true');
     if (postPreviewLastFocus) postPreviewLastFocus.focus();
   };
-  // A imagem preenche a largura (flex:1 nas duas colunas, ver CSS) e a altura de
-  // .post-preview-content inteiro — perfil, legenda, métricas e o botão "Ver publicação" — ,
-  // refeito sempre que esse bloco pode ter mudado de altura (abrir o modal, expandir/recolher
-  // a legenda, redimensionar a janela). Abaixo de 680px as colunas empilham (ver media query),
-  // então a altura passa a ser controlada só por CSS (aspect-ratio) e a sincronia por JS é
-  // desligada.
+  // A imagem recebe a altura de .post-preview-content inteiro — perfil, legenda, métricas e o
+  // botão "Ver publicação" — refeito sempre que esse bloco pode ter mudado de altura (abrir o
+  // modal, expandir/recolher a legenda, redimensionar a janela). A largura NÃO é sincronizada:
+  // vem do aspect-ratio 4:5 no CSS a partir dessa altura, pra miniatura aparecer inteira, sem
+  // cortar (object-fit:contain) — a coluna de conteúdo flexiona pra ocupar o espaço restante.
+  // Abaixo de 680px as colunas empilham (ver media query) e a altura passa a ser controlada só
+  // por CSS (aspect-ratio a partir da largura), então a sincronia por JS é desligada.
   const syncPostPreviewImageHeight = () => {
     const contentBlock = el('postPreviewContent');
     const imageWrap = el('postPreviewImage');
