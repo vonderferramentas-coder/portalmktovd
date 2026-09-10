@@ -1578,18 +1578,18 @@
     postPreview.setAttribute('aria-hidden', 'true');
     if (postPreviewLastFocus) postPreviewLastFocus.focus();
   };
-  // A imagem recebe a altura de .post-preview-content inteiro — perfil, legenda, métricas e o
-  // botão "Ver publicação" — refeito sempre que esse bloco pode ter mudado de altura (abrir o
-  // modal, expandir/recolher a legenda, redimensionar a janela). A largura NÃO é sincronizada:
-  // vem do aspect-ratio 4:5 no CSS a partir dessa altura, pra miniatura aparecer inteira, sem
-  // cortar (object-fit:contain) — a coluna de conteúdo flexiona pra ocupar o espaço restante.
-  // Abaixo de 680px as colunas empilham (ver media query) e a altura passa a ser controlada só
-  // por CSS (aspect-ratio a partir da largura), então a sincronia por JS é desligada.
-  const syncPostPreviewImageHeight = () => {
+  // A imagem nunca é cortada nem sobra barra: a caixa só acompanha a proporção real dela
+  // (width:100%;height:auto no CSS, sem aspect-ratio fixo). Quem se ajusta é a coluna de
+  // conteúdo — este helper mede a altura que a imagem (ou o estado "sem prévia") resultou e
+  // aplica como piso em .post-preview-content, refeito sempre que essa altura pode ter mudado
+  // (a própria imagem termina de carregar, expandir/recolher a legenda, redimensionar a
+  // janela). Abaixo de 680px as colunas empilham (ver media query) e não faz sentido uma
+  // "acompanhar" a altura da outra, então a sincronia por JS é desligada.
+  const syncPostPreviewContentHeight = () => {
     const contentBlock = el('postPreviewContent');
     const imageWrap = el('postPreviewImage');
     if (!contentBlock || !imageWrap) return;
-    imageWrap.style.height = window.innerWidth <= 680 ? '' : contentBlock.offsetHeight + 'px';
+    contentBlock.style.minHeight = window.innerWidth <= 680 ? '' : imageWrap.offsetHeight + 'px';
   };
   const openPostPreview = post => {
     if (!postPreview || !post) return;
@@ -1597,11 +1597,17 @@
     const iconEl = el('postPreviewNetworkIcon');
     if (iconEl) { iconEl.src = network ? network.icon : ''; iconEl.alt = post.network || ''; }
     const imageWrap = el('postPreviewImage');
+    const contentBlock = el('postPreviewContent');
+    if (contentBlock) contentBlock.style.minHeight = '';
     if (imageWrap) {
-      imageWrap.style.height = '';
       imageWrap.innerHTML = post.thumbnailUrl
         ? `<img src="${escapeHtml(post.thumbnailUrl)}" alt="">`
         : `<div class="post-preview-image-empty">${iconSvg(FORMAT_ICON_POST, 26)}<span>Prévia indisponível</span></div>`;
+      // A imagem carrega da CDN da Meta/YouTube de forma assíncrona — só dá pra medir a
+      // altura real dela depois do load (o requestAnimationFrame abaixo já cobre o estado
+      // "sem prévia" e imagens que já estavam em cache, mas não uma que ainda está baixando).
+      const imgEl = imageWrap.querySelector('img');
+      if (imgEl) imgEl.addEventListener('load', syncPostPreviewContentHeight);
     }
     const avatarEl = el('postPreviewAvatar');
     if (avatarEl) avatarEl.src = brand.photo || '';
@@ -1627,10 +1633,10 @@
     postPreview.setAttribute('aria-hidden', 'false');
     el('postPreviewClose').focus();
     // Só depois do 1º layout dá pra saber se a legenda de fato estourou as 3 linhas do clamp
-    // (scrollHeight > clientHeight) e pra medir a altura real de .post-preview-content.
+    // (scrollHeight > clientHeight) e pra medir a altura real de .post-preview-image.
     requestAnimationFrame(() => {
       if (captionEl && captionToggleEl) captionToggleEl.hidden = captionEl.scrollHeight <= captionEl.clientHeight + 1;
-      syncPostPreviewImageHeight();
+      syncPostPreviewContentHeight();
     });
   };
   const openPostPreviewById = id => {
