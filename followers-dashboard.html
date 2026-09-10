@@ -1291,12 +1291,14 @@
       align-items: flex-start
     }
 
-    /* Altura fixada via JS (syncPostPreviewImageHeight em followers-dashboard.js), igual à
-       altura de .post-preview-top (perfil + legenda + métricas, sem contar o botão) — por
-       isso o min-height aqui é só um piso enquanto a 1ª medição ainda não rodou (1 frame). */
+    /* Largura igual a .post-preview-content por terem o mesmo flex:1 (mesma base, mesmo
+       crescimento — ambas dividem o espaço disponível ao meio). Altura fixada via JS
+       (syncPostPreviewImageHeight em followers-dashboard.js), igual à altura de
+       .post-preview-content inteiro (perfil + legenda + métricas + botão "Ver publicação") —
+       o min-height aqui é só um piso enquanto a 1ª medição ainda não rodou (1 frame). */
     .post-preview-image {
-      width: 300px;
-      flex: none;
+      flex: 1;
+      min-width: 0;
       min-height: 320px;
       border-radius: 12px;
       overflow: hidden;
@@ -2381,7 +2383,7 @@
       </div>
       <div class="modal-body post-preview-body">
         <div class="post-preview-image" id="postPreviewImage"></div>
-        <div class="post-preview-content">
+        <div class="post-preview-content" id="postPreviewContent">
           <div class="post-preview-top" id="postPreviewTop">
             <div class="post-preview-profile"><img class="post-preview-avatar" id="postPreviewAvatar" src=""
                 alt="">

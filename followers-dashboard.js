@@ -1578,16 +1578,17 @@
     postPreview.setAttribute('aria-hidden', 'true');
     if (postPreviewLastFocus) postPreviewLastFocus.focus();
   };
-  // A imagem preenche a altura de .post-preview-top (perfil + legenda + métricas, sem contar
-  // o botão "Ver publicação" abaixo) — refeito sempre que esse bloco pode ter mudado de altura
-  // (abrir o modal, expandir/recolher a legenda, redimensionar a janela). Abaixo de 680px as
-  // colunas empilham (ver media query), então a altura passa a ser controlada só por CSS
-  // (aspect-ratio) e a sincronia por JS é desligada.
+  // A imagem preenche a largura (flex:1 nas duas colunas, ver CSS) e a altura de
+  // .post-preview-content inteiro — perfil, legenda, métricas e o botão "Ver publicação" — ,
+  // refeito sempre que esse bloco pode ter mudado de altura (abrir o modal, expandir/recolher
+  // a legenda, redimensionar a janela). Abaixo de 680px as colunas empilham (ver media query),
+  // então a altura passa a ser controlada só por CSS (aspect-ratio) e a sincronia por JS é
+  // desligada.
   const syncPostPreviewImageHeight = () => {
-    const topBlock = el('postPreviewTop');
+    const contentBlock = el('postPreviewContent');
     const imageWrap = el('postPreviewImage');
-    if (!topBlock || !imageWrap) return;
-    imageWrap.style.height = window.innerWidth <= 680 ? '' : topBlock.offsetHeight + 'px';
+    if (!contentBlock || !imageWrap) return;
+    imageWrap.style.height = window.innerWidth <= 680 ? '' : contentBlock.offsetHeight + 'px';
   };
   const openPostPreview = post => {
     if (!postPreview || !post) return;
@@ -1625,7 +1626,7 @@
     postPreview.setAttribute('aria-hidden', 'false');
     el('postPreviewClose').focus();
     // Só depois do 1º layout dá pra saber se a legenda de fato estourou as 3 linhas do clamp
-    // (scrollHeight > clientHeight) e pra medir a altura real de .post-preview-top.
+    // (scrollHeight > clientHeight) e pra medir a altura real de .post-preview-content.
     requestAnimationFrame(() => {
       if (captionEl && captionToggleEl) captionToggleEl.hidden = captionEl.scrollHeight <= captionEl.clientHeight + 1;
       syncPostPreviewImageHeight();
