@@ -289,6 +289,21 @@ Seguindo o mesmo padrão já usado para seguidores, `sync-meta-posts.yml` grava 
 - **Plano de falha/rollback:** sem o secret `FIREBASE_SERVICE_ACCOUNT_KEY`, o passo de Firestore só avisa e não falha a coleta pública; o painel mostra estado de espera. Para desligar, basta remover o agendamento do workflow (ou apagar o arquivo) — não afeta a coleta de seguidores, que é um workflow e um documento Firestore inteiramente separados.
 - **Arquivos/workflows:** `.github/workflows/diagnostico-meta-posts.yml` (novo), `.github/workflows/sync-meta-posts.yml` (novo), `data/social-posts.json` (novo), `followers-dashboard.html`/`followers-dashboard.js` (painel "Melhores posts").
 
+### Histórico completo de posts no painel: sharding no Firestore e miniaturas permanentes (10/09/2026)
+
+`reconstruir-historico-posts.yml` (carga única sob demanda) trouxe o histórico completo da conta (3.311 posts), mas dois problemas impediam o painel de aproveitar isso por inteiro:
+
+1. **Corte no Firestore:** o publicador truncava o histórico no primeiro post que estourasse 900 KB (limite de 1 MiB por documento) — só os ~1.425 mais recentes chegavam ao painel; o restante ficava só em `data/social-posts.json`, sem o painel nunca ler. Corrigido dividindo em documentos sequenciais no mesmo padrão já anotado como caminho de evolução no código: `portalStore/posts-vonder-v1`, `posts-vonder-v1__2`, `posts-vonder-v1__3`, ... (o primeiro grava `chunkCount`). `followers-dashboard.js` (`protectedStoreChunked`) lê e junta todos de volta antes de usar — o painel continua só lendo o Firestore, nunca o JSON público direto, mesma regra já registrada acima. Lógica de publicação extraída para `scripts/publish_posts_firestore.py`, compartilhada entre `sync-meta-posts.yml` e `reconstruir-historico-posts.yml`.
+2. **Miniatura ausente no histórico:** posts trazidos pela reconstrução entravam com `thumbnailUrl: null` de propósito — a URL de imagem que a Meta devolve é assinada e expira, então guardar o link deixaria a miniatura quebrada mais pra frente sem re-coleta. Sem miniatura nenhuma, porém, o card "Melhores posts" fica irreconhecível (só título e métricas). Corrigido baixando a imagem uma vez e guardando uma cópia permanente nossa em `data/social-posts-thumbnails/<id>.<ext>` (nunca expira, é nossa). Lógica em `scripts/archive_post_thumbnails.py`, chamada tanto por `reconstruir-historico-posts.yml` (que também busca `thumbnail_url`/`media_url` avulso por post para o histórico que ainda não tinha nenhuma URL) quanto por `sync-meta-posts.yml` (arquiva os posts recém-vistos antes que saiam da janela dos ~30 recentes e a última URL conhecida expire).
+
+- **Custo:** ambas as mudanças cabem folgadas na cota grátis do Firestore (Spark) e do GitHub Pages — ler/escrever alguns documentos pequenos a mais por execução, e o repositório cresce de forma permanente (~150-250 MB) com as miniaturas baixadas; sem impacto de performance no painel, que só carrega a miniatura do card quando ele aparece na tela.
+- **Plano de falha:** falha ao baixar uma miniatura individual (rede, post sem imagem disponível) não derruba a coleta dos demais — só aquele post permanece sem miniatura local até a próxima execução tentar de novo. Documento Firestore extra órfão (histórico encolheu) é limpo automaticamente pela própria publicação.
+- **Arquivos:** `scripts/publish_posts_firestore.py` (novo), `scripts/archive_post_thumbnails.py` (novo), `data/social-posts-thumbnails/` (novo), `.github/workflows/sync-meta-posts.yml`, `.github/workflows/reconstruir-historico-posts.yml`, `followers-dashboard.js`.
+
+| Data | Alteração | Responsável |
+|---|---|---|
+| 10/09/2026 | Publicação de posts passou a shardear por documento no Firestore (sem corte de histórico) e a arquivar miniaturas como arquivo permanente em vez de link que expira. | Equipe de Marketing / manutenção do portal |
+
 ### Revisão da migração e correções da proteção por login
 
 Uma revisão de ponta a ponta do fluxo de login e da migração de seguidores encontrou e corrigiu três problemas antes de qualquer uso real:

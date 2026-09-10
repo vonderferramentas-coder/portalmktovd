@@ -810,6 +810,23 @@
     return gateway.readPortalStore(key).then(record => record && record.v);
   }
 
+  // Um documento do Firestore tem limite de 1 MiB — quando o histórico de posts passa disso,
+  // scripts/publish_posts_firestore.py divide em documentos sequenciais (key, key__2, key__3,
+  // ...) e marca chunkCount no primeiro. Junta todos de volta aqui antes de devolver pro
+  // chamador, que não precisa saber que o dado veio fatiado.
+  function protectedStoreChunked(key) {
+    return protectedStore(key).then(first => {
+      const chunkCount = (first && Number(first.chunkCount)) || 1;
+      if (chunkCount <= 1) return first;
+      const rest = [];
+      for (let index = 2; index <= chunkCount; index += 1) rest.push(protectedStore(`${key}__${index}`));
+      return Promise.all(rest).then(extras => {
+        const posts = (first.posts || []).concat(...extras.map(extra => (extra && extra.posts) || []));
+        return Object.assign({}, first, { posts });
+      });
+    });
+  }
+
   // Instagram (posts-vonder-v1), YouTube (youtube-videos-vonder-v1) e Facebook
   // (facebook-posts-vonder-v1) são coletados por workflows separados, cada um com seu próprio
   // documento no Firestore — junta os três aqui na leitura, marcando a origem de cada item, para
@@ -817,7 +834,7 @@
   // em um deles não derruba os outros.
   function loadPosts() {
     return Promise.all([
-      protectedStore(POSTS_STORE_KEY).catch(() => null),
+      protectedStoreChunked(POSTS_STORE_KEY).catch(() => null),
       protectedStore(YOUTUBE_VIDEOS_STORE_KEY).catch(() => null),
       protectedStore(FACEBOOK_POSTS_STORE_KEY).catch(() => null)
     ]).then(([instagram, youtube, facebook]) => {

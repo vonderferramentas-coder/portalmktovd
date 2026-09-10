@@ -33,9 +33,12 @@ jobs:
           set -euo pipefail
           test -n "$META_PAGE_ACCESS_TOKEN"
           python3 - <<'PY'
-          import json, os, time, urllib.request, urllib.error
+          import json, os, sys, time, urllib.request, urllib.error
           from datetime import datetime, timezone
           from pathlib import Path
+
+          sys.path.insert(0, 'scripts')
+          from archive_post_thumbnails import archive_thumbnails
 
           token = os.environ['META_PAGE_ACCESS_TOKEN']
           ig_id = os.environ['META_INSTAGRAM_ID']
@@ -104,6 +107,12 @@ jobs:
               by_id[post['id']] = post
           merged = sorted(by_id.values(), key=lambda post: post.get('timestamp') or '', reverse=True)
 
+          # Guarda uma cópia permanente da miniatura de qualquer post que ainda não tenha uma
+          # (normalmente só os que acabaram de entrar nesta rodada) — sem isso, quando o post
+          # sair da janela dos ~30 recentes e parar de ser atualizado aqui, a URL assinada da
+          # Meta guardada por último eventualmente expira e a miniatura quebra sem re-coleta.
+          archive_thumbnails(merged)
+
           document = {
               'version': 1,
               'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
@@ -115,8 +124,8 @@ jobs:
 
       - name: Publicar dados atualizados
         run: |
-          git add data/social-posts.json
-          if git diff --cached --quiet -- data/social-posts.json; then
+          git add data/social-posts.json data/social-posts-thumbnails
+          if git diff --cached --quiet -- data/social-posts.json data/social-posts-thumbnails; then
             echo 'Nenhuma alteração para publicar.'
             exit 0
           fi
@@ -137,6 +146,8 @@ jobs:
 
       # Mesmo padrão de sync-meta-followers.yml: o painel só lê o Firestore, nunca o JSON
       # público direto — ver docs/ARQUITETURA-E-INTEGRACOES.md, "Migração do painel de seguidores".
+      # A publicação em si (com sharding para não estourar 1 MiB por documento) está em
+      # scripts/publish_posts_firestore.py, compartilhado com reconstruir-historico-posts.yml.
       - name: Publicar posts no Firestore
         env:
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
@@ -147,42 +158,12 @@ jobs:
           fi
           pip install --quiet firebase-admin
           python3 - <<'PY'
-          import json, os, time
+          import json, os, sys
           from pathlib import Path
-          import firebase_admin
-          from firebase_admin import credentials, firestore
 
-          cred = credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY']))
-          firebase_admin.initialize_app(cred)
-          db = firestore.client()
+          sys.path.insert(0, 'scripts')
+          from publish_posts_firestore import publish
 
           published = json.loads(Path('data/social-posts.json').read_text(encoding='utf-8'))
-          posts = published['posts']
-
-          # ponytail: um documento do Firestore tem limite de 1 MiB. Com legenda já cortada
-          # (MAX_CAPTION_CHARS acima) e thumbnail só nos posts recentes (o resto do histórico
-          # vem sem thumbnail — ver reconstruir-historico-posts.yml), cada post fica leve, mas
-          # uma conta com muitos anos de posts ainda pode chegar perto do limite. Em vez da
-          # escrita inteira falhar, publica só os mais recentes que couberem e avisa no log; o
-          # arquivo completo continua em data/social-posts.json. Caminho de evolução se isso
-          # disparar de verdade: shardear por ano (portalStore/posts-vonder-v1-<ano>).
-          FIRESTORE_MAX_BYTES = 900_000
-          encoded = json.dumps(posts, ensure_ascii=False).encode('utf-8')
-          if len(encoded) > FIRESTORE_MAX_BYTES:
-              kept, total = [], 2
-              for post in posts:  # já ordenado do mais recente pro mais antigo
-                  size = len(json.dumps(post, ensure_ascii=False).encode('utf-8')) + 1
-                  if total + size > FIRESTORE_MAX_BYTES:
-                      break
-                  kept.append(post)
-                  total += size
-              print(f'::warning::Histórico de posts ({len(posts)}) passou de {FIRESTORE_MAX_BYTES} bytes — publicando só os {len(kept)} mais recentes no Firestore. Arquivo completo continua em data/social-posts.json.')
-              posts = kept
-
-          db.collection('portalStore').document('posts-vonder-v1').set({
-              'v': {**published, 'posts': posts},
-              'updated_at': int(time.time() * 1000),
-              'updatedAt': firestore.SERVER_TIMESTAMP,
-          })
-          print('Firestore atualizado:', len(posts), 'posts publicados de', len(published['posts']), 'no total em', published['updatedAt'])
+          publish('posts-vonder-v1', published, os.environ['FIREBASE_SERVICE_ACCOUNT_KEY'])
           PY
