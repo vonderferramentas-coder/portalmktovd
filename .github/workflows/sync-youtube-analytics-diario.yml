@@ -118,10 +118,13 @@ jobs:
               raise SystemExit(0)
 
           saldos = [{'date': dia, 'saldo': int(g) - int(p)} for dia, g, p in linhas]
+          print('Âncora (total atual, via Data API v3):', atual)
+          print('Saldos recebidos da Analytics:', saldos)
 
           # Só publica dias com 2+ dias de decantação (a Analytics pode ajustar dados recentes).
           hoje = datetime.now(timezone.utc).date()
           limite_publicavel = (hoje - timedelta(days=2)).isoformat()
+          print('Hoje (UTC):', hoje.isoformat(), '| limite publicável (<=):', limite_publicavel)
 
           # Mesma caminhada para trás de reconstruir-historico-youtube.yml, mas só nesta janela
           # curta: total de um dia = total do dia seguinte menos o saldo do dia seguinte.
@@ -133,6 +136,8 @@ jobs:
               if item['date'] <= limite_publicavel:
                   reconstruidos[item['date']] = total
               total -= item['saldo']
+
+          print('Reconstruídos (dia -> total calculado):', reconstruidos)
 
           if not reconstruidos:
               Path('resumo.md').write_text(
@@ -151,7 +156,9 @@ jobs:
           for dia, valor in sorted(reconstruidos.items()):
               existente = dict(historico.get(dia) or {'date': dia})
               followers = dict(existente.get('followers') or {})
-              if followers.get('YouTube') == valor:
+              anterior = followers.get('YouTube')
+              print(f'{dia}: existente={anterior!r} calculado={valor!r}')
+              if anterior == valor:
                   continue
               followers['YouTube'] = valor
               existente['followers'] = followers
