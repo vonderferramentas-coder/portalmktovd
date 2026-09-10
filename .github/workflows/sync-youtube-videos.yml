@@ -6,10 +6,16 @@ name: Sincronizar vídeos do YouTube
 # endpoint único "listar meus vídeos com estatísticas", então são 3 chamadas em sequência —
 # achar a playlist de uploads do canal, listar os vídeos dela (paginando até 150, porque o
 # canal publica Shorts quase todo dia e só os uploads mais recentes ficavam só de Shorts) e
-# pedir estatísticas + duração em lote. A duração vira a heurística de Short (≤3 min, mesmo
-# teto que o YouTube usa desde 2024), gravada em `mediaProductType: 'REELS'`/`'VIDEO'` — o
-# mesmo campo que sync-meta-posts.yml já usa para Reels do Instagram, sem precisar de nenhuma
-# mudança no painel. Cada rodada sobrescreve o snapshot inteiro, sem histórico por dia.
+# pedir estatísticas em lote.
+#
+# Shorts vs vídeo normal: a duração sozinha não é confiável (um vídeo "normal" também pode
+# durar menos de 3 min) — a API do YouTube não expõe nenhum campo "isto é um Short". O sinal
+# real usado aqui é o próprio roteamento do youtube.com: abrir youtube.com/shorts/ID SEM
+# redirecionar para /watch?v=ID só acontece quando o vídeo é mesmo um Short — é como o site
+# oficial decide o que mostrar como Short, então é mais confiável que qualquer heurística
+# nossa. Isso custa uma requisição HTTP por vídeo (fora da API do YouTube, sem custo de quota),
+# então o resultado é cacheado por vídeo entre execuções — só verifica de novo vídeos novos,
+# nunca os que já apareceram numa coleta anterior.
 
 on:
   schedule:
@@ -34,7 +40,7 @@ jobs:
           set -euo pipefail
           test -n "$YOUTUBE_API_KEY"
           python3 - <<'PY'
-          import json, os, re, urllib.parse, urllib.request
+          import json, os, urllib.parse, urllib.request
           from datetime import datetime, timezone
           from pathlib import Path
 
@@ -76,36 +82,48 @@ jobs:
           stats_by_id = {}
           for i in range(0, len(video_ids), 50):
               lote = video_ids[i:i + 50]
-              resposta = get('videos', part='statistics,contentDetails', id=','.join(lote))
+              resposta = get('videos', part='statistics', id=','.join(lote))
               for item in resposta.get('items', []):
-                  stats_by_id[item['id']] = item
+                  stats_by_id[item['id']] = item.get('statistics', {})
 
-          def duration_seconds(iso8601):
-              # Duração no formato ISO 8601 (ex.: "PT1M3S", "PT45S") — parser simples, só
-              # precisa de horas/minutos/segundos, que é tudo que a API de vídeo devolve aqui.
-              if not iso8601 or not iso8601.startswith('PT'):
-                  return None
-              match = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?', iso8601)
-              if not match:
-                  return None
-              h, m, s = (int(v) if v else 0 for v in match.groups())
-              return h * 3600 + m * 60 + s
+          # Cache: reaproveita a classificação Short/vídeo de uma coleta anterior — só videos
+          # novos (nunca vistos) pagam o custo de uma requisição a mais.
+          anterior_path = Path('data/social-youtube-videos.json')
+          tipo_conhecido = {}
+          if anterior_path.exists():
+              anterior = json.loads(anterior_path.read_text(encoding='utf-8'))
+              for post in anterior.get('posts', []):
+                  if post.get('id') and post.get('mediaProductType'):
+                      tipo_conhecido[post['id']] = post['mediaProductType']
 
-          # YouTube não expõe um campo "isto é um Short" na API — a duração é o único sinal
-          # público disponível. O próprio YouTube estendeu o limite de Shorts para 3 minutos
-          # em 2024; usa esse teto como heurística (pode classificar errado um vídeo comum de
-          # até 3 min como Short, mas é o mesmo critério que o YouTube usa para si mesmo).
-          SHORT_MAX_SECONDS = 180
+          def eh_short(video_id):
+              # youtube.com/shorts/ID só NÃO redireciona para /watch?v=ID quando o vídeo é
+              # mesmo um Short — é o próprio site oficial decidindo, não uma estimativa nossa.
+              url = f'https://www.youtube.com/shorts/{video_id}'
+              req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'}, method='HEAD')
+              try:
+                  with urllib.request.urlopen(req, timeout=10) as resp:
+                      return '/shorts/' in resp.geturl()
+              except Exception:
+                  return None  # rede falhou — trata como "não sabemos" no chamador
 
           videos = []
+          falhas_classificacao = 0
           for entry in entries:
               snippet = entry['snippet']
               video_id = snippet['resourceId']['videoId']
-              detalhe = stats_by_id.get(video_id, {})
-              stats = detalhe.get('statistics', {})
-              duracao = duration_seconds((detalhe.get('contentDetails') or {}).get('duration'))
+              stats = stats_by_id.get(video_id, {})
               thumbnails = snippet.get('thumbnails') or {}
               thumb = (thumbnails.get('medium') or thumbnails.get('default') or {}).get('url')
+
+              media_product_type = tipo_conhecido.get(video_id)
+              if media_product_type is None:
+                  resultado = eh_short(video_id)
+                  if resultado is None:
+                      falhas_classificacao += 1  # fica sem a chave abaixo — próxima rodada tenta de novo
+                  else:
+                      media_product_type = 'REELS' if resultado else 'VIDEO'
+
               video = {
                   'id': video_id,
                   'network': 'YouTube',
@@ -115,10 +133,14 @@ jobs:
                   'timestamp': snippet.get('publishedAt'),
                   'likeCount': int(stats.get('likeCount', 0) or 0),
                   'views': int(stats.get('viewCount', 0) or 0),
+              }
+              # Sem chave (em vez de um valor "chutado") quando a classificação falhou — o
+              # painel trata chave ausente como "—", igual às demais métricas que faltam, e a
+              # próxima execução tenta classificar de novo (ver tipo_conhecido acima).
+              if media_product_type is not None:
                   # Mesmo nome/valor que sync-meta-posts.yml usa para Reels — o painel já separa
                   # "Reels vs Estático" por essa chave, sem precisar de nenhuma mudança no JS.
-                  'mediaProductType': 'REELS' if (duracao is not None and duracao <= SHORT_MAX_SECONDS) else 'VIDEO',
-              }
+                  video['mediaProductType'] = media_product_type
               # commentCount some quando os comentários do vídeo estão desativados — omite a
               # chave (em vez de gravar "0", que pareceria zero comentários de verdade); o
               # painel já trata chave ausente como "—", igual às demais métricas que faltam.
@@ -132,7 +154,7 @@ jobs:
               'posts': videos,
           }
           Path('data/social-youtube-videos.json').write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-          print(f'Coletados {len(videos)} vídeos.')
+          print(f'Coletados {len(videos)} vídeos ({falhas_classificacao} sem classificar Short/vídeo por falha de rede — tenta de novo na próxima).')
           PY
 
       - name: Publicar dados atualizados
