@@ -1033,18 +1033,6 @@
       flex-wrap: wrap
     }
 
-    .posts-sort,
-    .posts-format-filter {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px
-    }
-
-    .posts-format-filter {
-      padding-right: 10px;
-      border-right: 1px solid var(--border)
-    }
-
     .posts-view-toggle {
       display: flex;
       gap: 2px;
@@ -1124,29 +1112,6 @@
     .posts-th:hover,
     .posts-th.is-active {
       color: var(--accent-ink)
-    }
-
-    .posts-sort-btn {
-      padding: 6px 12px;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      background: var(--surface-muted);
-      color: var(--muted);
-      font: 700 11px inherit;
-      cursor: pointer;
-      transition: background .15s, border-color .15s, color .15s
-    }
-
-    .posts-sort-btn:hover,
-    .posts-sort-btn:focus-visible {
-      border-color: var(--accent);
-      outline: none
-    }
-
-    .posts-sort-btn.is-active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: var(--on-accent)
     }
 
     .posts-grid {
@@ -1480,6 +1445,11 @@
       color: var(--text)
     }
 
+    .period-option svg {
+      flex: none;
+      color: var(--muted)
+    }
+
     .period-option small {
       margin-left: auto;
       color: var(--muted);
@@ -1520,6 +1490,15 @@
 
     .actions-menu {
       min-width: 205px
+    }
+
+    /* Os dois dropdowns de "Melhores posts" (ao contrário do período/ações acima) precisam
+       ficar exatamente do tamanho do próprio botão-gatilho, alinhados nas duas bordas — sem o
+       min-width de 248px herdado, o menu ficaria mais largo que o botão e desalinhado à esquerda. */
+    #postsFormatMenu,
+    #postsSortMenu {
+      min-width: 0;
+      width: 100%;
     }
 
     .goals-control-modal {
@@ -2047,18 +2026,27 @@
               <p class="muted" id="postsSummary">Aguardando a primeira coleta.</p>
             </div>
             <div class="posts-controls">
-              <div class="posts-format-filter" id="postsFormatFilter">
-                <button type="button" class="posts-sort-btn is-active" data-format="all">Todos</button>
-                <button type="button" class="posts-sort-btn" data-format="short">Reels/Shorts</button>
-                <button type="button" class="posts-sort-btn" data-format="long">Posts/Vídeos</button>
+              <div class="actions-control" id="postsFormatControl">
+                <button type="button" class="period-trigger" id="postsFormatTrigger" aria-expanded="false"
+                  aria-controls="postsFormatMenu">
+                  <span>Tipo de publicação: <strong id="postsFormatLabel">Todos</strong></span>
+                  <svg class="period-caret" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.4">
+                    <path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <div class="period-menu" id="postsFormatMenu" hidden></div>
               </div>
-              <div class="posts-sort" id="postsSort">
-                <button type="button" class="posts-sort-btn" data-sort="timestamp">Data</button>
-                <button type="button" class="posts-sort-btn is-active" data-sort="likeCount">Curtidas</button>
-                <button type="button" class="posts-sort-btn" data-sort="commentsCount">Comentários</button>
-                <button type="button" class="posts-sort-btn" data-sort="totalInteractions">Interações</button>
-                <button type="button" class="posts-sort-btn" data-sort="views">Visualizações</button>
-                <button type="button" class="posts-sort-btn" data-sort="saved">Salvamentos</button>
+              <div class="actions-control" id="postsSortControl">
+                <button type="button" class="period-trigger" id="postsSortTrigger" aria-expanded="false"
+                  aria-controls="postsSortMenu">
+                  <span>Ordenar por: <strong id="postsSortLabel">Data</strong></span>
+                  <svg class="period-caret" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.4">
+                    <path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <div class="period-menu" id="postsSortMenu" hidden></div>
               </div>
               <div class="posts-view-toggle" id="postsViewToggle">
                 <button type="button" class="posts-view-btn is-active" data-view="grid" aria-label="Visualização em grade" title="Grade">

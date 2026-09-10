@@ -221,6 +221,9 @@
     root.setProperty('--accent-hover', mixHex(accent, '#000000', 0.15));
     root.setProperty('--accent-weak', hexToRgba(accent, 0.16));
     root.setProperty('--on-accent', (brandTheme && b.onAccent) || pickOnColor(accent));
+    // Seleção de texto exige contraste AA inclusive em cores personalizadas. Não reutiliza
+    // --on-accent porque algumas marcas têm uma exceção visual deliberada para botões.
+    root.setProperty('--selection-text', contrastRatio(relLuminance(accent), 0) >= contrastRatio(relLuminance(accent), 1) ? '#000000' : '#ffffff');
     // no escuro, a ênfase (--accent-ink, usada em texto/ícone sobre fundo escuro — ex: item
     // ativo do menu lateral, botão ativo de Mês/Quinzena/Semana) sempre usa a própria cor de
     // destaque em vez da cor de ênfase da marca: um tom claro (como o amarelo da Vonder) lê bem

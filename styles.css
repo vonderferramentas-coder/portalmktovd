@@ -3,7 +3,7 @@
     :root{
       --bg:#f7f7f6;--card:#ffffff;--muted:#68686a;--accent:#F6BE00;--accent-ink:#1a1a1a;--text:#17171a;
       --border:#e5e5e3;--border-strong:#d3d3d0;--surface-muted:#f7f7f5;--accent-weak:rgba(246,190,0,.16);--text-faint:#9a9a98;
-      --white:#ffffff;--accent-hover:#d9a600;--on-accent:#1a1a1a;
+      --white:#ffffff;--accent-hover:#d9a600;--on-accent:#1a1a1a;--selection-text:#000000;
       --danger:#dc2626;--danger-bg:#fef2f2;--danger-bg-strong:#fee2e2;--danger-border:#fecaca;
       --success:#16a34a;--success-bg:#f0fdf4;--success-border:#bbf7d0;
       --backdrop:rgba(15,15,13,.5);
@@ -34,6 +34,7 @@
     }
     /* Reset global e layout base da página */
     *{box-sizing:border-box}
+    ::selection{background:var(--accent);color:var(--selection-text)}
     body{font-family:var(--base-font-family);background:var(--bg);margin:0;padding:0;color:var(--text);-webkit-font-smoothing:antialiased;transition:background .2s,color .2s}
     button,input,select,textarea,option{font-family:var(--font-ui)}
     .container{max-width:1900px;margin:0 auto}

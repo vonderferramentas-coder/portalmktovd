@@ -114,7 +114,12 @@ jobs:
               video_id = snippet['resourceId']['videoId']
               stats = stats_by_id.get(video_id, {})
               thumbnails = snippet.get('thumbnails') or {}
-              thumb = (thumbnails.get('medium') or thumbnails.get('default') or {}).get('url')
+              # Prefere a maior miniatura disponível (chega a 1280x720 em maxres) — é só a URL
+              # que muda de tamanho, a imagem em si é servida pelo CDN do YouTube na hora de
+              # exibir, então não pesa nada a mais neste JSON. 'medium' (320x180) deixava o
+              # card do painel borrado, que é bem maior que isso.
+              thumb = (thumbnails.get('maxres') or thumbnails.get('standard') or thumbnails.get('high')
+                       or thumbnails.get('medium') or thumbnails.get('default') or {}).get('url')
 
               media_product_type = tipo_conhecido.get(video_id)
               if media_product_type is None:

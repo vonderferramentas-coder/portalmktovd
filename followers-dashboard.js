@@ -18,6 +18,7 @@
   const FOLLOWERS_STORE_KEY = 'followers-vonder-v1';
   const POSTS_STORE_KEY = 'posts-vonder-v1';
   const YOUTUBE_VIDEOS_STORE_KEY = 'youtube-videos-vonder-v1';
+  const FACEBOOK_POSTS_STORE_KEY = 'facebook-posts-vonder-v1';
   const POSTS_DISPLAY_LIMIT = 10;
   const AUTO_REFRESH_MS = 60000;
   const MAX_BUCKETS = 60;
@@ -61,10 +62,48 @@
     { key: 'views', label: 'Visualizações', icon: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>' },
     { key: 'saved', label: 'Salvamentos', icon: '<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z"/>' }
   ];
+  const iconSvg = (path, size = 11) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">${path}</svg>`;
   const postIconSvg = key => {
     const option = POST_SORT_OPTIONS.find(item => item.key === key);
-    return `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${option ? option.icon : ''}</svg>`;
+    return iconSvg(option ? option.icon : '');
   };
+  // Cada rede só devolve as métricas que a própria API expõe (ver sync-meta-posts.yml para o
+  // Instagram, sync-youtube-videos.yml para o YouTube e sync-meta-facebook-posts.yml para o
+  // Facebook) — o YouTube não tem interações agregadas nem contagem de salvamentos, e o Facebook
+  // só tem curtidas/comentários/interações (sem visualizações nem salvamentos, que a Graph API
+  // de Página não expõe pelos campos básicos do /posts) — o dropdown "Ordenar por" e as colunas
+  // da lista só mostram o que existe de fato para a rede em foco.
+  const POST_SORT_KEYS_BY_NETWORK = {
+    Instagram: ['timestamp', 'likeCount', 'commentsCount', 'totalInteractions', 'views', 'saved'],
+    YouTube: ['timestamp', 'likeCount', 'commentsCount', 'views'],
+    Facebook: ['timestamp', 'likeCount', 'commentsCount', 'totalInteractions'],
+  };
+  const sortOptionsForNetwork = network => {
+    const keys = network && POST_SORT_KEYS_BY_NETWORK[network.name];
+    return keys ? POST_SORT_OPTIONS.filter(option => keys.includes(option.key)) : POST_SORT_OPTIONS;
+  };
+  // Reels só existe no Instagram e Shorts só no YouTube (ver isShortFormat/formatLabel abaixo) —
+  // por isso o dropdown "Tipo de publicação" nunca mistura os dois num mesmo item. O Facebook
+  // fica de fora deste mapa de propósito: os campos básicos do /posts da Graph API não dizem se
+  // um post é um Reels do Facebook ou uma publicação comum, então em vez de chutar essa
+  // classificação o dropdown mostra só "Todos" pra essa rede (ver formatOptionsForNetwork).
+  const FORMAT_ICON_SHORT = '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 9.5v5l4-2.5-4-2.5Z"/>'; // retrato + play: vídeo curto vertical
+  const FORMAT_ICON_POST = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>';
+  const FORMAT_ICON_VIDEO = '<circle cx="12" cy="12" r="9"/><path d="m10 8.5 6 3.5-6 3.5Z"/>';
+  const FORMAT_ICON_ALL = '<path d="M4 19V9M10 19V5M16 19v-7M22 19V2"/>'; // mesmas barras do botão "Todas as redes"
+  const POST_FORMAT_OPTIONS_BY_NETWORK = {
+    Instagram: [
+      { key: 'instagram-reels', network: 'Instagram', short: true, label: 'Reels', icon: FORMAT_ICON_SHORT },
+      { key: 'instagram-post', network: 'Instagram', short: false, label: 'Posts', icon: FORMAT_ICON_POST },
+    ],
+    YouTube: [
+      { key: 'youtube-shorts', network: 'YouTube', short: true, label: 'Shorts', icon: FORMAT_ICON_SHORT },
+      { key: 'youtube-video', network: 'YouTube', short: false, label: 'Vídeos', icon: FORMAT_ICON_VIDEO },
+    ],
+  };
+  const formatOptionsForNetwork = network => network
+    ? (POST_FORMAT_OPTIONS_BY_NETWORK[network.name] || [])
+    : [].concat(POST_FORMAT_OPTIONS_BY_NETWORK.Instagram, POST_FORMAT_OPTIONS_BY_NETWORK.YouTube);
   const MONTHS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const WEEKDAYS = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
@@ -123,9 +162,9 @@
   let initialized = false;
   let milestoneMonth = null;  // { year, month } navegado pelo usuário no card "Marcos do mês"
   let postsData = [];        // snapshot mais recente de posts (sem histórico por dia)
-  let postsSort = 'likeCount';
+  let postsSort = 'timestamp';
   let postsView = 'grid';
-  let postsFormat = 'all'; // 'all' | 'short' (Reels/Shorts) | 'long' (posts/vídeos normais)
+  let postsFormat = 'all'; // 'all' ou uma chave de POST_FORMAT_OPTIONS_BY_NETWORK (ex.: 'instagram-reels')
 
   // ---------------------------------------------------------------- dados
 
@@ -166,8 +205,8 @@
     return !active || active.name === 'Instagram';
   };
   // Painel de posts: ao contrário dos insights acima (exclusivos do Instagram), aceita as
-  // redes que já têm coleta de conteúdo (Instagram e YouTube) — Facebook/TikTok ainda não.
-  const POSTS_NETWORKS = ['Instagram', 'YouTube'];
+  // redes que já têm coleta de conteúdo (Instagram, YouTube e Facebook) — TikTok ainda não.
+  const POSTS_NETWORKS = ['Instagram', 'YouTube', 'Facebook'];
   const activeNetworkOrNull = () => selectedNetwork === 'all' ? null : NETWORKS[Number(selectedNetwork)];
   const isPostsNetworkSelected = () => {
     const active = activeNetworkOrNull();
@@ -568,7 +607,7 @@
     const caption = escapeHtml(post.caption).slice(0, 140);
     const thumb = post.thumbnailUrl ? `<img src="${escapeHtml(post.thumbnailUrl)}" alt="" loading="lazy">` : '';
     // A data já aparece à parte (post-date); os chips de estatística cobrem só as métricas numéricas.
-    const stats = POST_SORT_OPTIONS.filter(option => option.key !== 'timestamp').map(option => {
+    const stats = sortOptionsForNetwork({ name: post.network }).filter(option => option.key !== 'timestamp').map(option => {
       const value = post[option.key];
       const known = Number.isFinite(Number(value));
       return `<span class="post-stat${option.key === postsSort ? ' is-primary' : ''}">${postIconSvg(option.key)}<b>${known ? format(Number(value)) : '—'}</b></span>`;
@@ -586,12 +625,13 @@
   function renderPostsTable(sorted) {
     const head = el('postsTableHead'), body = el('postsTableBody');
     if (!head || !body) return;
-    head.innerHTML = `<th>Post</th>${POST_SORT_OPTIONS.map(option =>
+    const columns = sortOptionsForNetwork(activeNetworkOrNull());
+    head.innerHTML = `<th>Post</th>${columns.map(option =>
       `<th class="posts-th${option.key === postsSort ? ' is-active' : ''}" data-sort="${option.key}">${option.label}</th>`
     ).join('')}`;
     body.innerHTML = sorted.map(post => {
       const thumb = post.thumbnailUrl ? `<img class="posts-table-thumb" src="${escapeHtml(post.thumbnailUrl)}" alt="">` : '';
-      const cells = POST_SORT_OPTIONS.map(option => {
+      const cells = columns.map(option => {
         if (option.key === 'timestamp') return `<td>${postDateLabel(post.timestamp)}</td>`;
         const value = post[option.key];
         const known = Number.isFinite(Number(value));
@@ -620,8 +660,9 @@
   function postsInPeriod() {
     const active = activeNetworkOrNull();
     const byNetwork = active ? postsData.filter(post => post.network === active.name) : postsData;
-    const byFormat = postsFormat === 'all' ? byNetwork
-      : byNetwork.filter(post => isShortFormat(post) === (postsFormat === 'short'));
+    const formatOption = postsFormat !== 'all' && formatOptionsForNetwork(null).find(option => option.key === postsFormat);
+    const byFormat = !formatOption ? byNetwork
+      : byNetwork.filter(post => post.network === formatOption.network && isShortFormat(post) === formatOption.short);
     const from = el('startDate').value, to = el('endDate').value;
     if (!from || !to) return byFormat.slice();
     return byFormat.filter(post => {
@@ -630,22 +671,46 @@
     });
   }
 
+  // Reconstrói o conteúdo dos dois dropdowns (chamado a cada renderPosts, porque as opções
+  // dependem da rede em foco — trocar de Instagram para YouTube no topo muda as métricas e os
+  // formatos disponíveis). O clique nos itens é delegado no listener fixo do menu (ver mais
+  // abaixo), não precisa religar nada aqui.
+  function renderPostsMenu(menu, items, activeKey, dataAttr, labelId, fallbackLabel) {
+    if (!menu) return;
+    menu.innerHTML = items.map(item =>
+      `<button type="button" class="period-option${item.key === activeKey ? ' is-active' : ''}" data-${dataAttr}="${item.key}">${iconSvg(item.icon, 14)}<span>${item.label}</span></button>`
+    ).join('');
+    const active = items.find(item => item.key === activeKey);
+    setText(labelId, active ? active.label : fallbackLabel);
+  }
+
   function renderPosts() {
-    const grid = el('postsGrid'), tableWrap = el('postsTableWrap'), summary = el('postsSummary'), sortWrap = el('postsSort');
+    const grid = el('postsGrid'), tableWrap = el('postsTableWrap'), summary = el('postsSummary');
+    const formatControl = el('postsFormatControl'), sortControl = el('postsSortControl');
     renderPostsStats();
     if (!grid) return;
     if (!isVonder) {
       if (summary) summary.textContent = 'Esta marca ainda não tem posts conectados.';
-      if (sortWrap) sortWrap.hidden = true;
+      if (formatControl) formatControl.hidden = true;
+      if (sortControl) sortControl.hidden = true;
       grid.hidden = false; grid.innerHTML = '';
       if (tableWrap) tableWrap.hidden = true;
       return;
     }
-    if (sortWrap) {
-      sortWrap.hidden = postsView === 'list';
-      // Sincroniza o pill ativo com postsSort mesmo quando quem mudou o valor foi o cabeçalho
-      // da tabela (lista) — sem isso, voltar pra grade mostrava o pill de um clique antigo.
-      sortWrap.querySelectorAll('[data-sort]').forEach(btn => btn.classList.toggle('is-active', btn.dataset.sort === postsSort));
+    const network = activeNetworkOrNull();
+    const sortOptions = sortOptionsForNetwork(network);
+    const formatOptions = formatOptionsForNetwork(network);
+    if (!sortOptions.some(option => option.key === postsSort)) postsSort = 'timestamp';
+    if (postsFormat !== 'all' && !formatOptions.some(option => option.key === postsFormat)) postsFormat = 'all';
+    if (formatControl) {
+      formatControl.hidden = false;
+      renderPostsMenu(el('postsFormatMenu'), [{ key: 'all', label: 'Todos', icon: FORMAT_ICON_ALL }].concat(formatOptions), postsFormat, 'format', 'postsFormatLabel', 'Todos');
+    }
+    if (sortControl) {
+      // Igual ao comportamento anterior: escondido na lista, porque lá quem ordena é o clique
+      // no cabeçalho da coluna — sem isso, voltar pra grade perdia a sincronia do menu.
+      sortControl.hidden = postsView === 'list';
+      renderPostsMenu(el('postsSortMenu'), sortOptions, postsSort, 'sort', 'postsSortLabel', 'Data');
     }
     if (!postsData.length) {
       if (summary) summary.textContent = 'Aguardando a primeira coleta de posts.';
@@ -730,19 +795,23 @@
     return gateway.readPortalStore(key).then(record => record && record.v);
   }
 
-  // Instagram (posts-vonder-v1) e YouTube (youtube-videos-vonder-v1) são coletados por
-  // workflows separados, cada um com seu próprio documento no Firestore — junta os dois aqui
-  // na leitura, marcando a origem de cada item, para o painel "Melhores posts" tratar como uma
-  // lista só (ver isPostsNetworkSelected). Uma falha em um dos dois não derruba o outro.
+  // Instagram (posts-vonder-v1), YouTube (youtube-videos-vonder-v1) e Facebook
+  // (facebook-posts-vonder-v1) são coletados por workflows separados, cada um com seu próprio
+  // documento no Firestore — junta os três aqui na leitura, marcando a origem de cada item, para
+  // o painel "Melhores posts" tratar como uma lista só (ver isPostsNetworkSelected). Uma falha
+  // em um deles não derruba os outros.
   function loadPosts() {
     return Promise.all([
       protectedStore(POSTS_STORE_KEY).catch(() => null),
-      protectedStore(YOUTUBE_VIDEOS_STORE_KEY).catch(() => null)
-    ]).then(([instagram, youtube]) => {
+      protectedStore(YOUTUBE_VIDEOS_STORE_KEY).catch(() => null),
+      protectedStore(FACEBOOK_POSTS_STORE_KEY).catch(() => null)
+    ]).then(([instagram, youtube, facebook]) => {
       const instagramPosts = (instagram && Array.isArray(instagram.posts)) ? instagram.posts : [];
       const youtubePosts = (youtube && Array.isArray(youtube.posts)) ? youtube.posts : [];
+      const facebookPosts = (facebook && Array.isArray(facebook.posts)) ? facebook.posts : [];
       postsData = instagramPosts.map(post => Object.assign({ network: 'Instagram' }, post))
-        .concat(youtubePosts.map(post => Object.assign({ network: 'YouTube' }, post)));
+        .concat(youtubePosts.map(post => Object.assign({ network: 'YouTube' }, post)))
+        .concat(facebookPosts.map(post => Object.assign({ network: 'Facebook' }, post)));
       renderPosts();
     }).catch(() => { postsData = []; renderPosts(); });
   }
@@ -1132,11 +1201,15 @@
   const labels = { '7':'Últimos 7 dias', '15':'Últimos 15 dias', '30':'Últimos 30 dias', month:'Este mês', year:'Este ano', all:'Desde o início', custom:'Personalizado' };
   const periodMenu = el('periodMenu'), periodTrigger = el('periodTrigger'), customRange = el('customRange');
   const actionsMenu = el('actionsMenu'), actionsTrigger = el('actionsTrigger');
+  const postsFormatControl = el('postsFormatControl'), postsFormatTrigger = el('postsFormatTrigger'), postsFormatMenu = el('postsFormatMenu');
+  const postsSortControl = el('postsSortControl'), postsSortTrigger = el('postsSortTrigger'), postsSortMenu = el('postsSortMenu');
   const periodPrevBtn = el('periodPrev'), periodNextBtn = el('periodNext');
   let periodPreset = 'month', periodOffset = 0;
   const closeMenus = () => {
     periodMenu.hidden = true; periodTrigger.setAttribute('aria-expanded', 'false');
     actionsMenu.hidden = true; actionsTrigger.setAttribute('aria-expanded', 'false');
+    if (postsFormatMenu) { postsFormatMenu.hidden = true; postsFormatTrigger.setAttribute('aria-expanded', 'false'); }
+    if (postsSortMenu) { postsSortMenu.hidden = true; postsSortTrigger.setAttribute('aria-expanded', 'false'); }
   };
   const openPeriod = () => { actionsMenu.hidden = true; actionsTrigger.setAttribute('aria-expanded', 'false'); periodMenu.hidden = false; periodTrigger.setAttribute('aria-expanded', 'true'); };
 
@@ -1212,26 +1285,41 @@
     closeMenus();
     if (opening) { actionsMenu.hidden = false; actionsTrigger.setAttribute('aria-expanded', 'true'); }
   });
-  document.addEventListener('click', event => { if (!el('periodControl').contains(event.target) && !el('actionsControl').contains(event.target)) closeMenus(); });
+  document.addEventListener('click', event => {
+    if (!el('periodControl').contains(event.target) && !el('actionsControl').contains(event.target)
+      && (!postsFormatControl || !postsFormatControl.contains(event.target))
+      && (!postsSortControl || !postsSortControl.contains(event.target))) closeMenus();
+  });
   document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenus(); });
   const milestonePrevBtn = el('milestonePrev'), milestoneNextBtn = el('milestoneNext');
   if (milestonePrevBtn) milestonePrevBtn.addEventListener('click', () => shiftMilestoneMonth(-1));
   if (milestoneNextBtn) milestoneNextBtn.addEventListener('click', () => shiftMilestoneMonth(1));
-  const postsSortWrap = el('postsSort');
-  if (postsSortWrap) {
-    postsSortWrap.querySelectorAll('[data-sort]').forEach(button => button.addEventListener('click', () => {
-      postsSort = button.dataset.sort;
-      renderPosts();
-    }));
-  }
-  const postsFormatFilterWrap = el('postsFormatFilter');
-  if (postsFormatFilterWrap) {
-    postsFormatFilterWrap.querySelectorAll('[data-format]').forEach(button => button.addEventListener('click', () => {
-      postsFormat = button.dataset.format;
-      postsFormatFilterWrap.querySelectorAll('[data-format]').forEach(item => item.classList.toggle('is-active', item === button));
-      renderPosts();
-    }));
-  }
+  if (postsFormatTrigger) postsFormatTrigger.addEventListener('click', () => {
+    const opening = postsFormatMenu.hidden;
+    closeMenus();
+    if (opening) { postsFormatMenu.hidden = false; postsFormatTrigger.setAttribute('aria-expanded', 'true'); }
+  });
+  if (postsSortTrigger) postsSortTrigger.addEventListener('click', () => {
+    const opening = postsSortMenu.hidden;
+    closeMenus();
+    if (opening) { postsSortMenu.hidden = false; postsSortTrigger.setAttribute('aria-expanded', 'true'); }
+  });
+  // Menus são reconstruídos a cada renderPosts (opções mudam com a rede em foco), então o
+  // clique é delegado no container em vez de religado item por item.
+  if (postsFormatMenu) postsFormatMenu.addEventListener('click', event => {
+    const button = event.target.closest('[data-format]');
+    if (!button) return;
+    postsFormat = button.dataset.format;
+    closeMenus();
+    renderPosts();
+  });
+  if (postsSortMenu) postsSortMenu.addEventListener('click', event => {
+    const button = event.target.closest('[data-sort]');
+    if (!button) return;
+    postsSort = button.dataset.sort;
+    closeMenus();
+    renderPosts();
+  });
   const postsViewToggle = el('postsViewToggle');
   if (postsViewToggle) {
     postsViewToggle.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {

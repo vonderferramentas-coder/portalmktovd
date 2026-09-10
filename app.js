@@ -247,6 +247,14 @@
     function normalizeStr(s){
       return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
     }
+    function isCommemorativeEditoriaName(name){
+      return normalizeStr(name).includes('comemorat');
+    }
+    function sameDefaultEditoria(a,b){
+      const aName = typeof a === 'string' ? a : a && a.name;
+      const bName = typeof b === 'string' ? b : b && b.name;
+      return aName === bName || (isCommemorativeEditoriaName(aName) && isCommemorativeEditoriaName(bName));
+    }
     // remove pontos/espaços/traços de um código de produto, para comparar independente de formatação
     // (ex: "16.62.075.001" e "1662075001" devem casar)
     function normalizeCode(s){
@@ -2241,12 +2249,13 @@
       Blog: [{ name:'Post', width:1200, height:630, extensions:['JPG','PNG'] }],
       Email: [{ name:'Email', width:600, height:800, extensions:['JPG','PNG'] }]
     };
-    // Trend e Personalizado são universais — toda marca tem as duas, mas cada marca recebe
+    // Estas editorias são universais — toda marca tem as três, mas cada marca recebe
     // sua própria cópia independente (objetos distintos, nunca a mesma referência): editar,
     // renomear ou remover a de uma marca não tem nenhuma correlação com as outras.
     const UNIVERSAL_DEFAULT_EDITORIAS = [
       { name:'Trend', color:'#db2777' },
-      { name:'Personalizado', color:'#64748b' }
+      { name:'Personalizado', color:'#64748b' },
+      { name:'Datas comemorativas', color:'#db2777' }
     ];
     // demais editorias exclusivas de cada marca — diferente das redes/formatos (infraestrutura
     // compartilhada), a categorização de conteúdo é definida por marca: a lista abaixo de
@@ -2296,7 +2305,11 @@
         { name:'Blog', shortName:'BL', color:'#ef4444', formats: NETWORK_DEFAULT_FORMATS.Blog.map(f=>Object.assign({},f)) },
         { name:'Email', shortName:'EM', color:'#374151', formats: NETWORK_DEFAULT_FORMATS.Email.map(f=>Object.assign({},f)) }
       ],
-      editorias: (EDITORIAS_BY_BRAND[BRAND_SUFFIX] || []).concat(UNIVERSAL_DEFAULT_EDITORIAS).map(e=>Object.assign({},e)),
+      // mantém primeiro a definição específica da marca (ex.: cor própria da DWT) e usa a
+      // universal apenas quando ainda não houver uma editoria de datas comemorativas
+      editorias: (EDITORIAS_BY_BRAND[BRAND_SUFFIX] || []).concat(UNIVERSAL_DEFAULT_EDITORIAS)
+        .filter((e,i,list)=> !list.slice(0,i).some(existing=> sameDefaultEditoria(existing,e)))
+        .map(e=>Object.assign({},e)),
       statuses: [
         { name:'Rascunho', color:'#94a3b8' },
         { name:'Em produção', color:'#f59e0b' },
@@ -2335,7 +2348,7 @@
         // em quem já tinha salvo a versão antiga, antes do merge abaixo criar uma duplicata
         { const old = APP_SETTINGS.editorias.find(e=>e.name==='Post e-commerce'); if(old){ old.name = 'Post E-commerce'; migrated = true; } }
         { const before = APP_SETTINGS.editorias.length;
-          DEFAULT_SETTINGS.editorias.forEach(def=>{ if(!APP_SETTINGS.editorias.some(e=>e.name===def.name)) APP_SETTINGS.editorias.push(Object.assign({},def)); });
+          DEFAULT_SETTINGS.editorias.forEach(def=>{ if(!APP_SETTINGS.editorias.some(e=>sameDefaultEditoria(e,def))) APP_SETTINGS.editorias.push(Object.assign({},def)); });
           if(APP_SETTINGS.editorias.length!==before) migrated = true; }
         // limpa editorias da VONDER que vazaram pra outras marcas (de quando o padrão acima
         // ainda era compartilhado por todas) — preserva, porém, qualquer nome que também faça

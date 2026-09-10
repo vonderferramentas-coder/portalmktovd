@@ -1,0 +1,133 @@
+name: Sincronizar posts do Facebook
+
+# Mesmo espírito de sync-meta-posts.yml (Instagram), mas para a Página do Facebook da VONDER —
+# alimenta o mesmo painel "Melhores posts" do followers-dashboard.js, agora também para o
+# Facebook. Usa o /posts da própria Página (só o que a VONDER publicou, não o feed completo) com
+# os campos básicos de engajamento (likes/comments/shares.summary) em vez de métricas de
+# /insights: essas métricas de posts já se mostraram instáveis noutras redes deste projeto (ver
+# diagnostico-meta-facebook-historico.yml, sobre métricas de seguidores descontinuadas pela
+# Meta), enquanto likes/comments/shares são campos estáveis, expostos há anos e cobertos pelo
+# mesmo escopo pages_read_engagement que o token atual já usa em sync-meta-followers.yml. Sem
+# "visualizações" nem "salvamentos" aqui — a Graph API de Página não expõe isso pelos campos
+# básicos do /posts, só via /insights por post (que ficaria pro mesmo tipo de instabilidade
+# acima) — ver POST_SORT_KEYS_BY_NETWORK em followers-dashboard.js.
+
+on:
+  schedule:
+    - cron: '20 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-posts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Coletar posts e métricas
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_FACEBOOK_PAGE_ID: '262406600508752'
+        run: |
+          set -euo pipefail
+          test -n "$META_PAGE_ACCESS_TOKEN"
+          python3 - <<'PY'
+          import json, os, urllib.request
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          token = os.environ['META_PAGE_ACCESS_TOKEN']
+          page_id = os.environ['META_FACEBOOK_PAGE_ID']
+          api = 'https://graph.facebook.com/v26.0'
+
+          def get(url):
+              req = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}'})
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  return json.loads(resp.read().decode('utf-8'))
+
+          fields = (
+              'id,message,story,created_time,permalink_url,full_picture,'
+              'likes.summary(true).limit(0),comments.summary(true).limit(0),shares'
+          )
+          listing = get(f'{api}/{page_id}/posts?fields={fields}&limit=30')
+          items = listing.get('data', [])
+          if not items:
+              raise SystemExit('A Meta não retornou nenhum post — não grava nada para não apagar o snapshot anterior.')
+
+          posts = []
+          for item in items:
+              like_count = ((item.get('likes') or {}).get('summary') or {}).get('total_count', 0) or 0
+              comments_count = ((item.get('comments') or {}).get('summary') or {}).get('total_count', 0) or 0
+              shares_count = (item.get('shares') or {}).get('count', 0) or 0
+              posts.append({
+                  'id': item['id'],
+                  'caption': item.get('message') or item.get('story') or '',
+                  'permalink': item.get('permalink_url'),
+                  'thumbnailUrl': item.get('full_picture'),
+                  'timestamp': item.get('created_time'),
+                  'likeCount': like_count,
+                  'commentsCount': comments_count,
+                  'totalInteractions': like_count + comments_count + shares_count,
+              })
+
+          document = {
+              'version': 1,
+              'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+              'posts': posts,
+          }
+          Path('data/social-facebook-posts.json').write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(f'Coletados {len(posts)} posts.')
+          PY
+
+      - name: Publicar dados atualizados
+        run: |
+          git add data/social-facebook-posts.json
+          if git diff --cached --quiet -- data/social-facebook-posts.json; then
+            echo 'Nenhuma alteração para publicar.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: atualizar posts do Facebook'
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
+
+      # Documento próprio (facebook-posts-vonder-v1), separado de posts-vonder-v1 (Instagram) e
+      # youtube-videos-vonder-v1 (YouTube) — o painel lê os três e junta, mas cada coleta escreve
+      # só o seu, sem risco de uma apagar o snapshot da outra.
+      - name: Publicar posts no Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::warning::FIREBASE_SERVICE_ACCOUNT_KEY não configurado — pulando a gravação em portalStore/facebook-posts-vonder-v1.'
+            exit 0
+          fi
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os, time
+          from pathlib import Path
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+
+          cred = credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY']))
+          firebase_admin.initialize_app(cred)
+          db = firestore.client()
+
+          published = json.loads(Path('data/social-facebook-posts.json').read_text(encoding='utf-8'))
+
+          db.collection('portalStore').document('facebook-posts-vonder-v1').set({
+              'v': published,
+              'updated_at': int(time.time() * 1000),
+              'updatedAt': firestore.SERVER_TIMESTAMP,
+          })
+          print('Firestore atualizado:', len(published['posts']), 'posts em', published['updatedAt'])
+          PY
