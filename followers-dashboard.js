@@ -82,28 +82,34 @@
     const keys = network && POST_SORT_KEYS_BY_NETWORK[network.name];
     return keys ? POST_SORT_OPTIONS.filter(option => keys.includes(option.key)) : POST_SORT_OPTIONS;
   };
-  // Reels só existe no Instagram e Shorts só no YouTube (ver isShortFormat/formatLabel abaixo) —
-  // por isso o dropdown "Tipo de publicação" nunca mistura os dois num mesmo item. O Facebook
-  // fica de fora deste mapa de propósito: os campos básicos do /posts da Graph API não dizem se
-  // um post é um Reels do Facebook ou uma publicação comum, então em vez de chutar essa
-  // classificação o dropdown mostra só "Todos" pra essa rede (ver formatOptionsForNetwork).
+  // Reels só existe no Instagram e Shorts só no YouTube — por isso o dropdown "Tipo de
+  // publicação" nunca mistura os dois num mesmo item. O Facebook não tem uma classificação de
+  // Reels confiável pelos campos básicos do /posts da Graph API, mas dá pra saber se o post é
+  // vídeo (attachments[0].media_type, ver sync-meta-facebook-posts.yml) — por isso ganha só a
+  // divisão Vídeo/Posts, sem Reels.
   const FORMAT_ICON_SHORT = '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 9.5v5l4-2.5-4-2.5Z"/>'; // retrato + play: vídeo curto vertical
   const FORMAT_ICON_POST = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>';
   const FORMAT_ICON_VIDEO = '<circle cx="12" cy="12" r="9"/><path d="m10 8.5 6 3.5-6 3.5Z"/>';
   const FORMAT_ICON_ALL = '<path d="M4 19V9M10 19V5M16 19v-7M22 19V2"/>'; // mesmas barras do botão "Todas as redes"
+  const isShortFormatPost = post => post.mediaProductType === 'REELS';
+  const isVideoFormatPost = post => post.mediaProductType === 'VIDEO';
   const POST_FORMAT_OPTIONS_BY_NETWORK = {
     Instagram: [
-      { key: 'instagram-reels', network: 'Instagram', short: true, label: 'Reels', icon: FORMAT_ICON_SHORT },
-      { key: 'instagram-post', network: 'Instagram', short: false, label: 'Posts', icon: FORMAT_ICON_POST },
+      { key: 'instagram-reels', network: 'Instagram', label: 'Reels', icon: FORMAT_ICON_SHORT, matches: isShortFormatPost },
+      { key: 'instagram-post', network: 'Instagram', label: 'Posts', icon: FORMAT_ICON_POST, matches: post => !isShortFormatPost(post) },
     ],
     YouTube: [
-      { key: 'youtube-shorts', network: 'YouTube', short: true, label: 'Shorts', icon: FORMAT_ICON_SHORT },
-      { key: 'youtube-video', network: 'YouTube', short: false, label: 'Vídeos', icon: FORMAT_ICON_VIDEO },
+      { key: 'youtube-shorts', network: 'YouTube', label: 'Shorts', icon: FORMAT_ICON_SHORT, matches: isShortFormatPost },
+      { key: 'youtube-video', network: 'YouTube', label: 'Vídeos', icon: FORMAT_ICON_VIDEO, matches: post => !isShortFormatPost(post) },
+    ],
+    Facebook: [
+      { key: 'facebook-video', network: 'Facebook', label: 'Vídeos', icon: FORMAT_ICON_VIDEO, matches: isVideoFormatPost },
+      { key: 'facebook-post', network: 'Facebook', label: 'Posts', icon: FORMAT_ICON_POST, matches: post => !isVideoFormatPost(post) },
     ],
   };
   const formatOptionsForNetwork = network => network
     ? (POST_FORMAT_OPTIONS_BY_NETWORK[network.name] || [])
-    : [].concat(POST_FORMAT_OPTIONS_BY_NETWORK.Instagram, POST_FORMAT_OPTIONS_BY_NETWORK.YouTube);
+    : Object.values(POST_FORMAT_OPTIONS_BY_NETWORK).flat();
   const MONTHS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const WEEKDAYS = ['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
@@ -650,11 +656,12 @@
   // completo), então um período fora dessa janela legitimamente não tem post nenhum pra mostrar.
   // 'REELS' cobre tanto Reels do Instagram quanto Shorts do YouTube (ver sync-youtube-videos.yml,
   // que grava o mesmo campo/valor que sync-meta-posts.yml usa para Reels) — daí um filtro só
-  // servir pras duas redes.
-  const isShortFormat = post => post.mediaProductType === 'REELS';
+  // servir pras duas redes. 'VIDEO' cobre vídeo normal do YouTube e vídeo do Facebook (ver
+  // sync-meta-facebook-posts.yml) — nenhuma das duas é Reels/Short, mas ainda é vídeo.
   const formatLabel = post => {
-    if (isShortFormat(post)) return post.network === 'YouTube' ? 'Short' : 'Reels';
-    return post.network === 'YouTube' ? 'Vídeo' : 'Post';
+    if (isShortFormatPost(post)) return post.network === 'YouTube' ? 'Short' : 'Reels';
+    if (isVideoFormatPost(post)) return 'Vídeo';
+    return 'Post';
   };
 
   function postsInPeriod() {
@@ -662,7 +669,7 @@
     const byNetwork = active ? postsData.filter(post => post.network === active.name) : postsData;
     const formatOption = postsFormat !== 'all' && formatOptionsForNetwork(null).find(option => option.key === postsFormat);
     const byFormat = !formatOption ? byNetwork
-      : byNetwork.filter(post => post.network === formatOption.network && isShortFormat(post) === formatOption.short);
+      : byNetwork.filter(post => post.network === formatOption.network && formatOption.matches(post));
     const from = el('startDate').value, to = el('endDate').value;
     if (!from || !to) return byFormat.slice();
     return byFormat.filter(post => {
@@ -770,7 +777,7 @@
       ids.forEach(id => { const node = el(id); if (node) node.textContent = '—'; });
       return;
     }
-    const reels = scoped.filter(isShortFormat).length;
+    const reels = scoped.filter(isShortFormatPost).length;
     const sum = key => scoped.reduce((acc, post) => acc + (Number(post[key]) || 0), 0);
     if (subtitle) subtitle.textContent = `Baseado nos ${format(total)} posts publicados no período selecionado`;
     const values = {

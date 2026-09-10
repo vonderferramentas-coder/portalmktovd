@@ -54,7 +54,7 @@ jobs:
           # O GitHub só mascara automaticamente os secrets originais (client id/secret/refresh
           # token) nos logs — este access token é um valor novo, derivado deles, então precisa
           # ser mascarado explicitamente antes de aparecer em qualquer log (inclusive o dump
-          # de env de outros passos que o recebem via ${{ steps.token.outputs.access_token }}).
+          # de env de outros passos que o recebem pela saída deste passo, steps.token.outputs.access_token).
           echo "::add-mask::$ACCESS_TOKEN"
           echo "access_token=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
 

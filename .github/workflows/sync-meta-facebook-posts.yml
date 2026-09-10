@@ -10,7 +10,11 @@ name: Sincronizar posts do Facebook
 # mesmo escopo pages_read_engagement que o token atual já usa em sync-meta-followers.yml. Sem
 # "visualizações" nem "salvamentos" aqui — a Graph API de Página não expõe isso pelos campos
 # básicos do /posts, só via /insights por post (que ficaria pro mesmo tipo de instabilidade
-# acima) — ver POST_SORT_KEYS_BY_NETWORK em followers-dashboard.js.
+# acima) — ver POST_SORT_KEYS_BY_NETWORK em followers-dashboard.js. Também não distingue Reels de
+# post comum (não existe esse campo aqui), mas dá pra saber se é vídeo: attachments{media_type}
+# diz "video" pro primeiro anexo — grava mediaProductType: 'VIDEO' nesse caso (mesmo campo/valor
+# que sync-youtube-videos.yml já usa pros vídeos normais do YouTube), sem a chave quando o post é
+# só texto ou o anexo é foto/link/álbum.
 
 on:
   schedule:
@@ -58,7 +62,8 @@ jobs:
 
           fields = (
               'id,message,story,created_time,permalink_url,full_picture,'
-              'likes.summary(true).limit(0),comments.summary(true).limit(0),shares'
+              'likes.summary(true).limit(0),comments.summary(true).limit(0),shares,'
+              'attachments{media_type}'
           )
           listing = get(f'{api}/{page_id}/posts?fields={fields}&limit=30')
           items = listing.get('data', [])
@@ -70,7 +75,8 @@ jobs:
               like_count = ((item.get('likes') or {}).get('summary') or {}).get('total_count', 0) or 0
               comments_count = ((item.get('comments') or {}).get('summary') or {}).get('total_count', 0) or 0
               shares_count = (item.get('shares') or {}).get('count', 0) or 0
-              posts.append({
+              anexos = (item.get('attachments') or {}).get('data') or []
+              post = {
                   'id': item['id'],
                   'caption': item.get('message') or item.get('story') or '',
                   'permalink': item.get('permalink_url'),
@@ -79,7 +85,16 @@ jobs:
                   'likeCount': like_count,
                   'commentsCount': comments_count,
                   'totalInteractions': like_count + comments_count + shares_count,
-              })
+              }
+              # 'media_type' do primeiro anexo distingue vídeo de post estático (foto/link/álbum/
+              # texto) — sem chave (em vez de um valor chutado) quando não há anexo (post só-texto),
+              # mesmo tratamento que sync-youtube-videos.yml já usa pra falha de classificação: o
+              # painel trata chave ausente como "Post", igual às demais publicações não-vídeo.
+              # Mesmo nome/valor 'VIDEO' que sync-youtube-videos.yml usa pros vídeos normais do
+              # YouTube, pro painel reconhecer sem precisar de mudança nenhuma em followers-dashboard.js.
+              if anexos and anexos[0].get('media_type') == 'video':
+                  post['mediaProductType'] = 'VIDEO'
+              posts.append(post)
 
           document = {
               'version': 1,
