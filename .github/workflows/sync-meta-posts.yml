@@ -40,11 +40,6 @@ jobs:
           token = os.environ['META_PAGE_ACCESS_TOKEN']
           ig_id = os.environ['META_INSTAGRAM_ID']
           api = 'https://graph.facebook.com/v26.0'
-          # ponytail: legenda do Instagram pode chegar a ~2200 caracteres; o card só mostra até
-          # 140 e a lista até 70 (ver renderPostCard/renderPostsTable em followers-dashboard.js).
-          # Cortar aqui mantém margem de sobra pra exibição e evita que o histórico acumulado
-          # (ver reconstruir-historico-posts.yml) infle demais o documento do Firestore.
-          MAX_CAPTION_CHARS = 300
 
           def get(url):
               req = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}'})
@@ -81,7 +76,11 @@ jobs:
                   falhas += 1
               fetched.append({
                   'id': media_id,
-                  'caption': (item.get('caption') or '')[:MAX_CAPTION_CHARS],
+                  # Legenda completa (sem corte): só os ~30 posts recentes passam por aqui a
+                  # cada rodada, então o custo de armazenamento é desprezível — o corte que
+                  # protege o limite de 1 MiB do Firestore fica só no histórico em massa (ver
+                  # MAX_CAPTION_CHARS em reconstruir-historico-posts.yml).
+                  'caption': item.get('caption') or '',
                   'mediaType': item.get('media_type'),
                   'mediaProductType': item.get('media_product_type'),
                   'permalink': item.get('permalink'),

@@ -42,8 +42,18 @@ jobs:
           token = os.environ['META_PAGE_ACCESS_TOKEN']
           ig_id = os.environ['META_INSTAGRAM_ID']
           api = 'https://graph.facebook.com/v26.0'
-          # Mesmo corte de sync-meta-posts.yml — ver o comentário ponytail lá para o motivo.
+          # ponytail: legenda do Instagram pode chegar a ~2200 caracteres; sync-meta-posts.yml
+          # guarda a legenda completa para os ~30 posts recentes (custo desprezível), mas aqui
+          # o volume é de milhares de posts de uma vez — sem cortar, o histórico acumulado
+          # estoura o limite de 1 MiB por documento do Firestore bem mais cedo. Marca com "…"
+          # quando corta de verdade, para não parecer uma legenda curta por acaso.
           MAX_CAPTION_CHARS = 300
+
+          def clip_caption(caption):
+              caption = caption or ''
+              if len(caption) <= MAX_CAPTION_CHARS:
+                  return caption
+              return caption[:MAX_CAPTION_CHARS].rstrip() + '…'
 
           def get(url):
               req = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}'})
@@ -87,7 +97,7 @@ jobs:
                       falhas += 1
                   added.append({
                       'id': media_id,
-                      'caption': (item.get('caption') or '')[:MAX_CAPTION_CHARS],
+                      'caption': clip_caption(item.get('caption')),
                       'mediaType': item.get('media_type'),
                       'mediaProductType': item.get('media_product_type'),
                       'permalink': item.get('permalink'),
