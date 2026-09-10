@@ -2,8 +2,8 @@
 
 > **Documento vivo.** Atualize este arquivo na mesma alteração que criar, trocar ou remover uma integração, fonte de dados, automação, serviço hospedado ou recurso que possa gerar dúvida para a TI. A validação automatizada do repositório ajuda a cobrar essa atualização para os principais arquivos de integração.
 
-**Última revisão:** 09/09/2026  
-**Escopo desta revisão:** estado identificado no código da branch `main`, incluindo a conexão do YouTube (canal Vonder) ao painel de Redes Sociais.
+**Última revisão:** 10/09/2026  
+**Escopo desta revisão:** estado identificado no código da branch `main`, incluindo o início da conexão do TikTok (conta Vonder) ao painel de Redes Sociais — app em análise (App Review) na TikTok for Developers, ainda sem coleta automática.
 
 ## 1. O que é este projeto
 
@@ -313,3 +313,30 @@ Os dois itens do menu usam classes próprias (`.portal-account-menu-item`, com u
 | Data | Alteração | Responsável |
 |---|---|---|
 | 03/09/2026 | Barra de conta da sidebar virou um menu dropdown (Redefinir senha / Sair) com itens em estilo submenu, mais modal de confirmação antes do envio do e-mail de redefinição — dá ao perfil `user` uma forma própria de trocar a senha. | Equipe de Marketing / manutenção do portal |
+
+## 15. TikTok: conexão em implantação (App Review pendente)
+
+Diferente da Meta e do YouTube, o TikTok não tem uma API pública simples (chave/API Key) para número de seguidores. A única forma oficial é a **TikTok for Developers — Login Kit**, que exige um app próprio, aprovação manual (**App Review**) da TikTok para os escopos usados, e OAuth 2.0 autorizado pela conta dona do perfil.
+
+**Estado em 10/09/2026: app criado, submetido para revisão, aguardando aprovação da TikTok. Ainda não há coleta automática nem workflow do GitHub Actions — `followers-dashboard.js` continua com `TikTok: connected:false` para todas as marcas, incluindo a VONDER.**
+
+- **App:** "Portal MKT OVD" em developers.tiktok.com, propriedade da conta `vonderferramentas@gmail.com` (dona oficial do perfil `@vonderferramentas` no TikTok).
+- **Produto/escopos solicitados:** Login Kit com `user.info.basic` (identificar a conta conectada), `user.info.stats` (`follower_count`, para o mesmo painel de seguidores das outras redes) e `video.list` (lista de vídeos publicados com `view_count`/`like_count`/`comment_count`/`share_count`, para alimentar futuramente um painel de "melhores posts" do TikTok igual ao que já existe para Instagram).
+- **Páginas públicas novas no portal** (sem `auth-guard`, pois precisam ser acessíveis sem login para a TikTok e para o fluxo de autorização):
+  - `termos-de-uso.html` e `politica-de-privacidade.html` — exigidas pelo cadastro do app na TikTok (Terms of Service URL / Privacy Policy URL); também usadas como "Web/Desktop URL" oficial do app.
+  - `tiktok-connect.html` — inicia o fluxo OAuth (botão que monta a URL de autorização do Login Kit com os 3 escopos e redireciona para o TikTok); usada tanto para o vídeo de demonstração do App Review quanto para a autorização real após aprovação.
+  - `tiktok-oauth-callback.html` — Redirect URI cadastrado no Login Kit; recebe `?code=...` na volta do TikTok e exibe o código na tela para cópia manual, já que o GitHub Pages não executa backend para trocar o código por token automaticamente.
+  - `tiktokhv1G86rE8zpzxbR1lF5FW84unJaxlFrD.txt` — arquivo de verificação de propriedade do prefixo de URL (`https://vonderferramentas-coder.github.io/portalmktovd/`) exigido pela TikTok antes de aceitar as URLs de Termos/Privacidade; método "URL prefix / signature file" (a alternativa, verificação de domínio inteiro via DNS, não era viável por não administrarmos o DNS do domínio `github.io`).
+- **Credenciais:** o app tem client key/secret separados para os ambientes **Sandbox** (usado só para testar o fluxo antes da aprovação, com a conta `@vonderferramentas` cadastrada como "Target user") e **Production** (usado depois de aprovado). Nenhum dos dois foi salvo neste repositório; o teste no Sandbox confirmou a leitura real de `follower_count` (4.217) e da lista de vídeos com estatísticas da conta oficial.
+- **Particularidade em relação ao YouTube:** o token de acesso do TikTok expira em 24h e, diferente do Google, o **refresh token é substituído a cada uso** — qualquer workflow de coleta automática vai precisar, a cada execução, gravar de volta um novo refresh token no GitHub Secrets (não só usar e descartar como seria com uma API Key fixa).
+
+**Pendente após a aprovação do App Review:**
+
+1. Repetir a autorização OAuth uma única vez com as credenciais de **Production** (não as de Sandbox) pela conta `@vonderferramentas`, para obter o refresh token definitivo.
+2. Cadastrar `TIKTOK_CLIENT_KEY`/`TIKTOK_CLIENT_SECRET`/`TIKTOK_REFRESH_TOKEN` em GitHub Actions Secrets.
+3. Criar `sync-tiktok-followers.yml` (mesmo padrão de `sync-youtube-followers.yml`: mescla só a chave `TikTok` em `platforms`/`followers`, nunca reconstrói os arquivos inteiros) e, depois, um `sync-tiktok-posts.yml` para o ranking de vídeos.
+4. Atualizar `NETWORKS` em `followers-dashboard.js` para `TikTok: connected:isVonder`.
+
+| Data | Alteração | Responsável |
+|---|---|---|
+| 10/09/2026 | Criado o app "Portal MKT OVD" na TikTok for Developers (Login Kit, escopos `user.info.basic`/`user.info.stats`/`video.list`) e submetido para App Review. Adicionadas as páginas públicas `termos-de-uso.html`, `politica-de-privacidade.html`, `tiktok-connect.html` e `tiktok-oauth-callback.html`, e o arquivo de verificação de domínio da TikTok. Fluxo testado de ponta a ponta no ambiente Sandbox com a conta oficial `@vonderferramentas` (seguidores e lista de vídeos confirmados). Coleta automática e conexão no painel ainda pendentes da aprovação do App Review. | Equipe de Marketing / manutenção do portal |
