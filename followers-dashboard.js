@@ -1652,10 +1652,14 @@
     if (!captionEl) return;
     const expanded = captionEl.classList.toggle('is-expanded');
     postPreviewCaptionToggle.textContent = expanded ? 'ver menos' : 'ver mais';
-    syncPostPreviewImageHeight();
+    // Não precisa re-sincronizar altura aqui: a imagem não muda de tamanho com a legenda (é a
+    // coluna de conteúdo que acompanha a imagem, nunca o contrário) — o min-height já aplicado
+    // continua valendo como piso, e o bloco só cresce além dele se a legenda expandida precisar.
   });
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && postPreview && postPreview.style.display === 'flex') closePostPreview(); });
-  window.addEventListener('resize', () => { if (postPreview && postPreview.style.display === 'flex') syncPostPreviewImageHeight(); });
+  // Só relevante ao cruzar os 680px do media query (empilhar/desempilhar as colunas); com a
+  // imagem em largura fixa, redimensionar sem cruzar essa fronteira não muda nada.
+  window.addEventListener('resize', () => { if (postPreview && postPreview.style.display === 'flex') syncPostPreviewContentHeight(); });
   const postsGridEl = el('postsGrid');
   if (postsGridEl) postsGridEl.addEventListener('click', event => {
     const card = event.target.closest('.post-card');
