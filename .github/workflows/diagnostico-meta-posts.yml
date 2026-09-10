@@ -103,14 +103,19 @@ jobs:
           ultimo=""
           while [ -n "$url" ]; do
             pagina=$((pagina + 1))
-            resposta="$(curl -sS --max-time 30 -H "$AUTH" "$url")" || { echo "Falha na página $pagina." >> "$GITHUB_STEP_SUMMARY"; break; }
+            resposta="$(curl -sS --max-time 30 -H "$AUTH" "$url")" || { echo "Falha na página $pagina." | tee -a "$GITHUB_STEP_SUMMARY"; break; }
             n="$(printf '%s' "$resposta" | jq '.data | length')"
             total=$((total + n))
             [ -z "$primeiro" ] && primeiro="$(printf '%s' "$resposta" | jq -r '.data[0].timestamp // empty')"
             u="$(printf '%s' "$resposta" | jq -r '.data[-1].timestamp // empty')"
             [ -n "$u" ] && ultimo="$u"
             url="$(printf '%s' "$resposta" | jq -r '.paging.next // empty')"
+            echo "Página $pagina: $n posts (acumulado: $total)."
           done
+
+          # Também no stdout (não só no resumo da execução), pra dar pra ler pelo log
+          # (gh run view --log) sem depender da UI do GitHub.
+          echo "RESULTADO: total=$total primeiro=$primeiro ultimo=$ultimo"
 
           {
             echo "Total contado via \`/media\` (todas as páginas): **$total posts**, do mais recente"
