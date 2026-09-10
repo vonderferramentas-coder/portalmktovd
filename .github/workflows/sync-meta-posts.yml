@@ -1,10 +1,14 @@
 name: Sincronizar posts do Instagram
 
-# Coleta os posts recentes do Instagram com curtidas, comentários e as métricas de
-# /insights (interações totais, visualizações, salvamentos — ver diagnostico-meta-posts.yml,
-# que confirmou que o token atual alcança tudo isso sem escopo extra). Diferente do histórico
-# de seguidores, aqui não existe "dia fechado": cada rodada sobrescreve o snapshot inteiro com
-# os números mais recentes dos últimos posts, para alimentar o ranking de melhores posts.
+# Mantém frescos (thumbnail + métricas) os ~30 posts mais recentes do Instagram, com curtidas,
+# comentários e as métricas de /insights (interações totais, visualizações, salvamentos — ver
+# diagnostico-meta-posts.yml, que confirmou que o token atual alcança tudo isso sem escopo
+# extra). Faz MERGE com data/social-posts.json em vez de sobrescrever: o restante do histórico
+# (além desses ~30) vem de reconstruir-historico-posts.yml, que roda uma vez e só adiciona
+# posts que ainda não existem no arquivo — sem isso, filtrar o ranking "Melhores posts" por
+# "Este ano"/"Desde o início" só reordenava os mesmos ~30 posts recentes, e o "melhor post do
+# ano" acabava sempre sendo um post recente por falta de dado, não por ele realmente ser o
+# melhor.
 
 on:
   schedule:
@@ -36,6 +40,11 @@ jobs:
           token = os.environ['META_PAGE_ACCESS_TOKEN']
           ig_id = os.environ['META_INSTAGRAM_ID']
           api = 'https://graph.facebook.com/v26.0'
+          # ponytail: legenda do Instagram pode chegar a ~2200 caracteres; o card só mostra até
+          # 140 e a lista até 70 (ver renderPostCard/renderPostsTable em followers-dashboard.js).
+          # Cortar aqui mantém margem de sobra pra exibição e evita que o histórico acumulado
+          # (ver reconstruir-historico-posts.yml) infle demais o documento do Firestore.
+          MAX_CAPTION_CHARS = 300
 
           def get(url):
               req = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}'})
@@ -54,9 +63,9 @@ jobs:
           listing = get(f'{api}/{ig_id}/media?fields={media_fields}&limit=30')
           items = listing.get('data', [])
           if not items:
-              raise SystemExit('A Meta não retornou nenhum post — não grava nada para não apagar o snapshot anterior.')
+              raise SystemExit('A Meta não retornou nenhum post — nada de errado a corrigir, mas o sinal vale a pena investigar.')
 
-          posts = []
+          fetched = []
           falhas = 0
           for item in items:
               media_id = item['id']
@@ -70,9 +79,9 @@ jobs:
                   # Posts muito antigos ou tipos de mídia sem essas métricas ficam sem elas —
                   # não trava a coleta dos demais, só esse post fica com curtidas/comentários só.
                   falhas += 1
-              posts.append({
+              fetched.append({
                   'id': media_id,
-                  'caption': item.get('caption') or '',
+                  'caption': (item.get('caption') or '')[:MAX_CAPTION_CHARS],
                   'mediaType': item.get('media_type'),
                   'mediaProductType': item.get('media_product_type'),
                   'permalink': item.get('permalink'),
@@ -86,13 +95,23 @@ jobs:
               })
               time.sleep(0.2)  # não martela a API em sequência
 
+          # Mescla por cima do histórico já acumulado (ver reconstruir-historico-posts.yml):
+          # só os ids que vieram nesta página (os ~30 mais recentes) são atualizados — o resto
+          # do histórico permanece intocado, exatamente como foi reconstruído.
+          path = Path('data/social-posts.json')
+          existing = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'version': 1, 'posts': []}
+          by_id = {post['id']: post for post in existing.get('posts', [])}
+          for post in fetched:
+              by_id[post['id']] = post
+          merged = sorted(by_id.values(), key=lambda post: post.get('timestamp') or '', reverse=True)
+
           document = {
               'version': 1,
               'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
-              'posts': posts,
+              'posts': merged,
           }
-          Path('data/social-posts.json').write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-          print(f'Coletados {len(posts)} posts ({falhas} sem insights de post).')
+          path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(f'Atualizados {len(fetched)} posts recentes ({falhas} sem insights de post); histórico acumulado: {len(merged)} posts.')
           PY
 
       - name: Publicar dados atualizados
@@ -129,11 +148,32 @@ jobs:
           db = firestore.client()
 
           published = json.loads(Path('data/social-posts.json').read_text(encoding='utf-8'))
+          posts = published['posts']
+
+          # ponytail: um documento do Firestore tem limite de 1 MiB. Com legenda já cortada
+          # (MAX_CAPTION_CHARS acima) e thumbnail só nos posts recentes (o resto do histórico
+          # vem sem thumbnail — ver reconstruir-historico-posts.yml), cada post fica leve, mas
+          # uma conta com muitos anos de posts ainda pode chegar perto do limite. Em vez da
+          # escrita inteira falhar, publica só os mais recentes que couberem e avisa no log; o
+          # arquivo completo continua em data/social-posts.json. Caminho de evolução se isso
+          # disparar de verdade: shardear por ano (portalStore/posts-vonder-v1-<ano>).
+          FIRESTORE_MAX_BYTES = 900_000
+          encoded = json.dumps(posts, ensure_ascii=False).encode('utf-8')
+          if len(encoded) > FIRESTORE_MAX_BYTES:
+              kept, total = [], 2
+              for post in posts:  # já ordenado do mais recente pro mais antigo
+                  size = len(json.dumps(post, ensure_ascii=False).encode('utf-8')) + 1
+                  if total + size > FIRESTORE_MAX_BYTES:
+                      break
+                  kept.append(post)
+                  total += size
+              print(f'::warning::Histórico de posts ({len(posts)}) passou de {FIRESTORE_MAX_BYTES} bytes — publicando só os {len(kept)} mais recentes no Firestore. Arquivo completo continua em data/social-posts.json.')
+              posts = kept
 
           db.collection('portalStore').document('posts-vonder-v1').set({
-              'v': published,
+              'v': {**published, 'posts': posts},
               'updated_at': int(time.time() * 1000),
               'updatedAt': firestore.SERVER_TIMESTAMP,
           })
-          print('Firestore atualizado:', len(published['posts']), 'posts em', published['updatedAt'])
+          print('Firestore atualizado:', len(posts), 'posts publicados de', len(published['posts']), 'no total em', published['updatedAt'])
           PY

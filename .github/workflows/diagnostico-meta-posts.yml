@@ -2,10 +2,13 @@ name: Diagnóstico de posts na API Meta
 
 # Sonda o que o token atual alcança em nível de POST (não de conta, que já é coberto por
 # diagnostico-meta.yml): listagem de mídia com curtidas/comentários embutidos, e insights
-# por post (alcance, engajamento, salvamentos). Não grava nada e não faz commit — só
-# escreve no resumo da execução, para decidir se dá para construir a coleta de "melhores
-# posts" antes de gastar esforço nela. O token vai no cabeçalho Authorization, e não na
-# URL, para não aparecer em log de erro do curl.
+# por post (alcance, engajamento, salvamentos). Também conta o total de posts que a Graph API
+# enxerga via /media, para comparação manual com a contagem de publicações do app (ver o passo
+# "Contar total..." abaixo) — sonda a suspeita de que posts de Collab recebidos de outra conta
+# (a VONDER convidada, não a iniciadora) não aparecem em /media, já que o dono do objeto de
+# mídia é sempre quem inicia o Collab. Não grava nada e não faz commit — só escreve no resumo
+# da execução. O token vai no cabeçalho Authorization, e não na URL, para não aparecer em log
+# de erro do curl.
 
 on:
   workflow_dispatch:
@@ -73,4 +76,49 @@ jobs:
             echo "\`instagram_manage_insights\`. Se as duas sondagens de \`/insights\` falharem"
             echo "com erro de permissão ou métrica inválida, o nome certo da métrica muda"
             echo "conforme a versão da API — ajusto a coleta definitiva pelo que aparecer aqui."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Sonda a suspeita de que /media não traz posts de Collab em que a VONDER foi convidada
+      # por outra conta (só traria Collabs que a própria VONDER iniciou, já que o dono do objeto
+      # de mídia na Graph API é sempre quem inicia). Não dá pra confirmar isso só pela API: conta
+      # quantos posts a Graph API enxerga no total e deixa pra comparação manual com o que
+      # aparece na grade do perfil no app do Instagram — se o app mostrar mais posts do que este
+      # total, a diferença é candidata forte a serem Collabs recebidos (ou posts removidos).
+      - name: Contar total de posts que a API enxerga (paginação completa)
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_INSTAGRAM_ID: '17841403154695997'
+        run: |
+          set -uo pipefail
+          API="https://graph.facebook.com/v26.0"
+          AUTH="Authorization: Bearer $META_PAGE_ACCESS_TOKEN"
+
+          echo "## Quantos posts a Graph API enxerga no total" >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+
+          url="$API/$META_INSTAGRAM_ID/media?fields=id,timestamp,permalink&limit=100"
+          total=0
+          pagina=0
+          primeiro=""
+          ultimo=""
+          while [ -n "$url" ]; do
+            pagina=$((pagina + 1))
+            resposta="$(curl -sS --max-time 30 -H "$AUTH" "$url")" || { echo "Falha na página $pagina." >> "$GITHUB_STEP_SUMMARY"; break; }
+            n="$(printf '%s' "$resposta" | jq '.data | length')"
+            total=$((total + n))
+            [ -z "$primeiro" ] && primeiro="$(printf '%s' "$resposta" | jq -r '.data[0].timestamp // empty')"
+            u="$(printf '%s' "$resposta" | jq -r '.data[-1].timestamp // empty')"
+            [ -n "$u" ] && ultimo="$u"
+            url="$(printf '%s' "$resposta" | jq -r '.paging.next // empty')"
+          done
+
+          {
+            echo "Total contado via \`/media\` (todas as páginas): **$total posts**, do mais recente"
+            echo "($primeiro) ao mais antigo alcançado ($ultimo)."
+            echo ''
+            echo "Compare esse número com a contagem de publicações que aparece no topo do perfil"
+            echo "da VONDER no app do Instagram. Se o app mostrar um número visivelmente maior, a"
+            echo "diferença é candidata a Collabs recebidos de outras contas (que não pertencem à"
+            echo "VONDER na Graph API, então \`/media\` nunca os lista) — ou posts apagados depois"
+            echo "de contados pelo app, mas isso é bem mais raro que a diferença toda."
           } >> "$GITHUB_STEP_SUMMARY"

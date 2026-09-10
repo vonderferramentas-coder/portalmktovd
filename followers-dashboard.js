@@ -40,13 +40,19 @@
     authPendingObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
   }
 
-  ['social_followers_', 'social_followers_goals_', 'social_followers_v2_', 'social_followers_goals_v2_']
+  // 'social_followers_manual_v3_' era a chave da funcionalidade "Registrar número" (medição
+  // manual de seguidores), removida por não ser mais usada — limpa qualquer valor órfão que
+  // ainda esteja salvo de quando a funcionalidade existia.
+  ['social_followers_', 'social_followers_goals_', 'social_followers_v2_', 'social_followers_goals_v2_', 'social_followers_manual_v3_']
     .forEach(prefix => { try { localStorage.removeItem(prefix + brandKey); } catch (error) { /* sem storage */ } });
 
-  const manualKey = 'social_followers_manual_v3_' + brandKey;
-  const goalsKey = 'social_followers_goals_v3_' + brandKey;
+  // Metas ficavam só em localStorage (goalsLegacyKey) — cada usuário só via a meta que ele
+  // mesmo tinha cadastrado no próprio navegador. Migradas para portalStore (mesma área
+  // protegida e compartilhada do Firestore que followers-vonder-v1 já usa) para que todo
+  // usuário ativo veja e edite a mesma meta, em qualquer dispositivo.
+  const goalsLegacyKey = 'social_followers_goals_v3_' + brandKey;
+  const goalsStoreKey = 'social-goals-v1-' + brandKey;
   const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (error) { return fallback; } };
-  const write = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch (error) { /* sem storage */ } };
 
   const NETWORKS = [
     { name:'Instagram', color:'#E94683', icon:'icons/instagram.svg', connected:isVonder },
@@ -163,7 +169,8 @@
 
   let selectedNetwork = '0';
   let series = [];   // pontos diários fechados, com valor arrastado para a frente
-  let goals = Object.assign({}, isVonder ? DEFAULT_GOALS : {}, read(goalsKey, {}));
+  let goals = Object.assign({}, isVonder ? DEFAULT_GOALS : {}, read(goalsLegacyKey, {}));
+  let goalsVersion = 0;
   let liveSnapshot = null;
   let initialized = false;
   let milestoneMonth = null;  // { year, month } navegado pelo usuário no card "Marcos do mês"
@@ -174,7 +181,7 @@
 
   // ---------------------------------------------------------------- dados
 
-  function buildSeries(published, manual) {
+  function buildSeries(published) {
     const byDate = new Map();
     const insightsByDate = new Map();
     const put = (date, network, value) => {
@@ -186,9 +193,6 @@
       if (!entry || !entry.date) return;
       Object.keys(entry.followers || {}).forEach(network => put(entry.date, network, Number(entry.followers[network])));
       if (entry.insights && typeof entry.insights === 'object') insightsByDate.set(entry.date, entry.insights);
-    });
-    Object.keys(manual || {}).forEach(date => {
-      Object.keys(manual[date] || {}).forEach(network => put(date, network, Number(manual[date][network])));
     });
 
     // Seguidores são um estoque, não um fluxo: entre duas medições vale a última conhecida.
@@ -652,8 +656,12 @@
   }
 
   // Igual ao resto do painel: as métricas abaixo do seletor de período só valem para os dias
-  // dentro dele. O feed em si só guarda os ~30 posts mais recentes coletados (sem histórico
-  // completo), então um período fora dessa janela legitimamente não tem post nenhum pra mostrar.
+  // dentro dele. Instagram acumula o histórico completo (sync-meta-posts.yml mescla os ~30
+  // posts mais recentes por cima do que reconstruir-historico-posts.yml já trouxe do resto da
+  // conta), então qualquer período dentro da vida da conta tem post pra mostrar. YouTube e
+  // Facebook ainda só guardam os ~30 posts mais recentes coletados (sync-youtube-videos.yml e
+  // sync-meta-facebook-posts.yml sobrescrevem o snapshot inteiro a cada rodada, sem acumular) —
+  // um período fora dessa janela para essas duas redes legitimamente não tem post pra mostrar.
   // 'REELS' cobre tanto Reels do Instagram quanto Shorts do YouTube (ver sync-youtube-videos.yml,
   // que grava o mesmo campo/valor que sync-meta-posts.yml usa para Reels) — daí um filtro só
   // servir pras duas redes. 'VIDEO' cobre vídeo normal do YouTube e vídeo do Facebook (ver
@@ -1181,7 +1189,7 @@
     el('channelContext').textContent = 'Todas';
     el('legend').innerHTML = '';
     el('chartY').innerHTML = '';
-    el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">${message}<br>Instagram, Facebook e YouTube são coletados automaticamente; os demais canais podem ser lançados em "Registrar número".</p>`;
+    el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">${message}<br>Instagram, Facebook e YouTube são coletados automaticamente; os demais canais ainda não têm coleta própria.</p>`;
     el('platforms').innerHTML = NETWORKS.map(network => `<div class="platform" style="cursor:default"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${network.connected ? 'Aguardando coleta' : 'Sem API conectada'}</small></span><span class="platform-delta"><strong class="neutral">—</strong></span></div>`).join('');
     el('table').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted)">${message}</td></tr>`;
     const pager = el('historyPager'); if (pager) pager.hidden = true;
@@ -1512,15 +1520,33 @@
         return;
       }
     }
+    const nextGoals = Object.assign({}, goals);
     rows.forEach(row => {
       const targetRaw = row.targetInput.value.replace(/\D/g, '');
       const deadlineRaw = row.deadlineInput.value.trim();
-      if (!targetRaw && !deadlineRaw) { delete goals[row.network.name]; return; }
-      goals[row.network.name] = { target: Number(targetRaw), deadline: deadlineRaw || null };
+      if (!targetRaw && !deadlineRaw) { delete nextGoals[row.network.name]; return; }
+      nextGoals[row.network.name] = { target: Number(targetRaw), deadline: deadlineRaw || null };
     });
-    write(goalsKey, goals);
-    render();
-    closeGoalsControl();
+    const gateway = window.PortalFirebase;
+    if (!gateway || typeof gateway.writePortalStore !== 'function') {
+      alert('A conexão segura com os dados ainda não está pronta. Tente novamente em instantes.');
+      return;
+    }
+    const saveBtn = el('goalsControlSave');
+    if (saveBtn) saveBtn.disabled = true;
+    gateway.writePortalStore(goalsStoreKey, nextGoals, goalsVersion)
+      .then(result => {
+        if (result.conflict) {
+          alert('Alguém salvou outra meta antes de você. Recarregando os valores mais recentes.');
+          return loadGoals().then(() => render());
+        }
+        goalsVersion = result.updated_at;
+        goals = nextGoals;
+        render();
+        closeGoalsControl();
+      })
+      .catch(() => alert('Não foi possível salvar a meta. Tente novamente.'))
+      .finally(() => { if (saveBtn) saveBtn.disabled = false; });
   };
   const goalsControlTrigger = el('goalsControlTrigger');
   if (goalsControlTrigger) goalsControlTrigger.addEventListener('click', openGoalsControl);
@@ -1530,22 +1556,35 @@
   if (goalsControlSaveBtn) goalsControlSaveBtn.addEventListener('click', saveGoalsControl);
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && goalsControl && goalsControl.style.display === 'flex') closeGoalsControl(); });
 
-  el('addMeasurement').addEventListener('click', () => {
-    const answer = prompt('Rede social: Instagram, Facebook, YouTube ou TikTok');
-    if (!answer) return;
-    const network = NETWORKS.find(item => item.name.toLowerCase() === answer.trim().toLowerCase());
-    if (!network) return alert('Rede não encontrada.');
-    const value = Number(prompt(`Total de seguidores para ${network.name}:`));
-    if (!Number.isFinite(value) || value < 0) return;
-    const when = prompt('Data da medição (AAAA-MM-DD):', iso(new Date()));
-    if (!when || !/^\d{4}-\d{2}-\d{2}$/.test(when.trim())) return alert('Data inválida. Use o formato AAAA-MM-DD.');
-    const manual = read(manualKey, {});
-    manual[when.trim()] = Object.assign({}, manual[when.trim()], { [network.name]: value });
-    write(manualKey, manual);
-    load();
-  });
-
   // ---------------------------------------------------------------- carga
+
+  function loadGoals() {
+    const gateway = window.PortalFirebase;
+    if (!gateway || typeof gateway.readPortalStore !== 'function') {
+      goals = Object.assign({}, isVonder ? DEFAULT_GOALS : {}, read(goalsLegacyKey, {}));
+      return Promise.resolve();
+    }
+    return gateway.readPortalStore(goalsStoreKey).then(record => {
+      goalsVersion = record.updated_at || 0;
+      const remote = record.v;
+      if (remote && Object.keys(remote).length) {
+        goals = Object.assign({}, isVonder ? DEFAULT_GOALS : {}, remote);
+        return;
+      }
+      // Nada salvo ainda na área compartilhada: se este navegador tinha uma meta do formato
+      // antigo (só local, por isso ela não aparecia para os demais usuários), usa como base e
+      // já publica na área compartilhada para não perder o que já foi cadastrado.
+      const legacy = read(goalsLegacyKey, null);
+      goals = Object.assign({}, isVonder ? DEFAULT_GOALS : {}, legacy || {});
+      if (legacy && Object.keys(legacy).length) {
+        return gateway.writePortalStore(goalsStoreKey, goals, goalsVersion)
+          .then(result => { if (!result.conflict) goalsVersion = result.updated_at; })
+          .catch(() => {});
+      }
+    }).catch(() => {
+      goals = Object.assign({}, isVonder ? DEFAULT_GOALS : {}, read(goalsLegacyKey, {}));
+    });
+  }
 
   function protectedFollowers() {
     if (!isVonder) return Promise.resolve({ published: null, live: null });
@@ -1563,11 +1602,10 @@
   }
 
   function load() {
-    const manual = read(manualKey, {});
     // Fora da VONDER não há coleta própria: nunca busca dados de outra marca.
-    return protectedFollowers()
-      .then(({ published, live }) => {
-        series = buildSeries(published, manual);
+    return Promise.all([protectedFollowers(), loadGoals()])
+      .then(([{ published, live }]) => {
+        series = buildSeries(published);
         liveSnapshot = live;
         refreshSubtitle(published, live);
         if (!initialized) { resetRange(); initialized = true; }
@@ -1576,7 +1614,7 @@
       .catch(error => {
         const status = el('dataStatus');
         if (status) status.textContent = error.message || 'Não foi possível carregar os dados protegidos.';
-        series = buildSeries(null, manual);
+        series = buildSeries(null);
         liveSnapshot = null;
         if (!initialized) { resetRange(); initialized = true; }
         render();
@@ -1607,7 +1645,7 @@
   // script (clássico, executado durante o parsing) já rodou. Por isso aguardamos o aviso
   // disparado ao final de firebase-client.js antes de tentar ler a área protegida.
   const loadAll = () => { load(); loadPosts(); };
-  if (!isVonder || window.PortalFirebase) loadAll();
+  if (window.PortalFirebase) loadAll();
   else window.addEventListener('portal-firebase-ready', loadAll, { once: true });
   window.setInterval(loadAll, AUTO_REFRESH_MS);
 })();
