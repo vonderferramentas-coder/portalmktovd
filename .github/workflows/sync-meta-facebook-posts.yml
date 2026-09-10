@@ -35,7 +35,7 @@ jobs:
           set -euo pipefail
           test -n "$META_PAGE_ACCESS_TOKEN"
           python3 - <<'PY'
-          import json, os, urllib.request
+          import json, os, urllib.request, urllib.error
           from datetime import datetime, timezone
           from pathlib import Path
 
@@ -45,8 +45,16 @@ jobs:
 
           def get(url):
               req = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}'})
-              with urllib.request.urlopen(req, timeout=30) as resp:
-                  return json.loads(resp.read().decode('utf-8'))
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as resp:
+                      return json.loads(resp.read().decode('utf-8'))
+              except urllib.error.HTTPError as error:
+                  # A Meta manda o motivo real (permissão faltando, campo inválido, etc.) no
+                  # corpo da resposta de erro — sem isto, só sobra "HTTP Error 400" no log,
+                  # sem dizer o porquê.
+                  corpo = error.read().decode('utf-8', errors='replace')
+                  print(f'Resposta de erro da Meta: {corpo}')
+                  raise
 
           fields = (
               'id,message,story,created_time,permalink_url,full_picture,'
