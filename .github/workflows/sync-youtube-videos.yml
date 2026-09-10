@@ -4,8 +4,12 @@ name: Sincronizar vídeos do YouTube
 # alimenta o mesmo painel "Melhores posts" do followers-dashboard.js, agora também para o
 # YouTube. Usa só a YOUTUBE_API_KEY já existente (dados públicos, sem OAuth): não tem
 # endpoint único "listar meus vídeos com estatísticas", então são 3 chamadas em sequência —
-# achar a playlist de uploads do canal, listar os vídeos dela, e pedir as estatísticas em lote.
-# Cada rodada sobrescreve o snapshot inteiro com os números mais recentes, sem histórico por dia.
+# achar a playlist de uploads do canal, listar os vídeos dela (paginando até 150, porque o
+# canal publica Shorts quase todo dia e só os uploads mais recentes ficavam só de Shorts) e
+# pedir estatísticas + duração em lote. A duração vira a heurística de Short (≤3 min, mesmo
+# teto que o YouTube usa desde 2024), gravada em `mediaProductType: 'REELS'`/`'VIDEO'` — o
+# mesmo campo que sync-meta-posts.yml já usa para Reels do Instagram, sem precisar de nenhuma
+# mudança no painel. Cada rodada sobrescreve o snapshot inteiro, sem histórico por dia.
 
 on:
   schedule:
@@ -30,7 +34,7 @@ jobs:
           set -euo pipefail
           test -n "$YOUTUBE_API_KEY"
           python3 - <<'PY'
-          import json, os, urllib.parse, urllib.request
+          import json, os, re, urllib.parse, urllib.request
           from datetime import datetime, timezone
           from pathlib import Path
 
@@ -52,20 +56,54 @@ jobs:
               raise SystemExit('A API do YouTube não retornou o canal — não grava nada para não apagar o snapshot anterior.')
           uploads_playlist = items[0]['contentDetails']['relatedPlaylists']['uploads']
 
-          playlist = get('playlistItems', part='snippet', playlistId=uploads_playlist, maxResults=30)
-          entries = playlist.get('items') or []
+          # O canal publica Shorts quase todo dia — só os 30 uploads mais recentes ficavam só
+          # de Shorts, empurrando os vídeos "normais" mais espaçados para fora da janela. Pagina
+          # até 150 itens (5 páginas de 30) para os dois tipos terem chance de aparecer.
+          entries = []
+          page_token = None
+          while len(entries) < 150:
+              playlist = get('playlistItems', part='snippet', playlistId=uploads_playlist,
+                              maxResults=30, **({'pageToken': page_token} if page_token else {}))
+              entries += playlist.get('items') or []
+              page_token = playlist.get('nextPageToken')
+              if not page_token:
+                  break
           if not entries:
               raise SystemExit('A playlist de uploads não retornou nenhum vídeo — não grava nada para não apagar o snapshot anterior.')
 
           video_ids = [entry['snippet']['resourceId']['videoId'] for entry in entries]
-          stats_response = get('videos', part='statistics', id=','.join(video_ids))
-          stats_by_id = {item['id']: item.get('statistics', {}) for item in stats_response.get('items', [])}
+          # videos.list aceita até 50 ids por chamada — pagina em lotes.
+          stats_by_id = {}
+          for i in range(0, len(video_ids), 50):
+              lote = video_ids[i:i + 50]
+              resposta = get('videos', part='statistics,contentDetails', id=','.join(lote))
+              for item in resposta.get('items', []):
+                  stats_by_id[item['id']] = item
+
+          def duration_seconds(iso8601):
+              # Duração no formato ISO 8601 (ex.: "PT1M3S", "PT45S") — parser simples, só
+              # precisa de horas/minutos/segundos, que é tudo que a API de vídeo devolve aqui.
+              if not iso8601 or not iso8601.startswith('PT'):
+                  return None
+              match = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?', iso8601)
+              if not match:
+                  return None
+              h, m, s = (int(v) if v else 0 for v in match.groups())
+              return h * 3600 + m * 60 + s
+
+          # YouTube não expõe um campo "isto é um Short" na API — a duração é o único sinal
+          # público disponível. O próprio YouTube estendeu o limite de Shorts para 3 minutos
+          # em 2024; usa esse teto como heurística (pode classificar errado um vídeo comum de
+          # até 3 min como Short, mas é o mesmo critério que o YouTube usa para si mesmo).
+          SHORT_MAX_SECONDS = 180
 
           videos = []
           for entry in entries:
               snippet = entry['snippet']
               video_id = snippet['resourceId']['videoId']
-              stats = stats_by_id.get(video_id, {})
+              detalhe = stats_by_id.get(video_id, {})
+              stats = detalhe.get('statistics', {})
+              duracao = duration_seconds((detalhe.get('contentDetails') or {}).get('duration'))
               thumbnails = snippet.get('thumbnails') or {}
               thumb = (thumbnails.get('medium') or thumbnails.get('default') or {}).get('url')
               video = {
@@ -77,6 +115,9 @@ jobs:
                   'timestamp': snippet.get('publishedAt'),
                   'likeCount': int(stats.get('likeCount', 0) or 0),
                   'views': int(stats.get('viewCount', 0) or 0),
+                  # Mesmo nome/valor que sync-meta-posts.yml usa para Reels — o painel já separa
+                  # "Reels vs Estático" por essa chave, sem precisar de nenhuma mudança no JS.
+                  'mediaProductType': 'REELS' if (duracao is not None and duracao <= SHORT_MAX_SECONDS) else 'VIDEO',
               }
               # commentCount some quando os comentários do vídeo estão desativados — omite a
               # chave (em vez de gravar "0", que pareceria zero comentários de verdade); o
