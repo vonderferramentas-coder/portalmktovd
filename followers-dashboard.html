@@ -1033,10 +1033,16 @@
       flex-wrap: wrap
     }
 
-    .posts-sort {
+    .posts-sort,
+    .posts-format-filter {
       display: flex;
       flex-wrap: wrap;
       gap: 6px
+    }
+
+    .posts-format-filter {
+      padding-right: 10px;
+      border-right: 1px solid var(--border)
     }
 
     .posts-view-toggle {
@@ -1197,6 +1203,30 @@
       font-weight: 900;
       padding: 3px 7px;
       border-radius: 999px
+    }
+
+    .post-format-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0, 0, 0, .6);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 999px
+    }
+
+    .posts-table-format {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      background: var(--surface-muted);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 1px 7px;
+      flex: none
     }
 
     .post-body {
@@ -2017,6 +2047,11 @@
               <p class="muted" id="postsSummary">Aguardando a primeira coleta.</p>
             </div>
             <div class="posts-controls">
+              <div class="posts-format-filter" id="postsFormatFilter">
+                <button type="button" class="posts-sort-btn is-active" data-format="all">Todos</button>
+                <button type="button" class="posts-sort-btn" data-format="short">Reels/Shorts</button>
+                <button type="button" class="posts-sort-btn" data-format="long">Posts/Vídeos</button>
+              </div>
               <div class="posts-sort" id="postsSort">
                 <button type="button" class="posts-sort-btn" data-sort="timestamp">Data</button>
                 <button type="button" class="posts-sort-btn is-active" data-sort="likeCount">Curtidas</button>
@@ -2050,12 +2085,12 @@
             <div>
               <h2>Resumo de publicações</h2>
               <p class="muted" id="postsStatsSubtitle">Aguardando a primeira coleta.</p>
-            </div><span class="period-pill">Instagram</span>
+            </div><span class="period-pill" id="postsStatsNetworkPill">Instagram</span>
           </div>
           <div class="metrics" style="margin-top:16px">
             <div class="metric"><span>Publicações coletadas</span><strong id="postsStatTotal">—</strong></div>
-            <div class="metric"><span>Reels</span><strong id="postsStatReels">—</strong></div>
-            <div class="metric"><span>Estáticos</span><strong id="postsStatStatic">—</strong></div>
+            <div class="metric"><span>Reels/Shorts</span><strong id="postsStatReels">—</strong></div>
+            <div class="metric"><span>Posts/Vídeos</span><strong id="postsStatStatic">—</strong></div>
             <div class="metric"><span>Curtidas totais</span><strong id="postsStatLikes">—</strong></div>
             <div class="metric"><span>Comentários totais</span><strong id="postsStatComments">—</strong></div>
             <div class="metric"><span>Engajamento total</span><strong id="postsStatInteractions">—</strong></div>

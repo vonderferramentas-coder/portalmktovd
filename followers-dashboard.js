@@ -125,6 +125,7 @@
   let postsData = [];        // snapshot mais recente de posts (sem histórico por dia)
   let postsSort = 'likeCount';
   let postsView = 'grid';
+  let postsFormat = 'all'; // 'all' | 'short' (Reels/Shorts) | 'long' (posts/vídeos normais)
 
   // ---------------------------------------------------------------- dados
 
@@ -573,7 +574,7 @@
       return `<span class="post-stat${option.key === postsSort ? ' is-primary' : ''}">${postIconSvg(option.key)}<b>${known ? format(Number(value)) : '—'}</b></span>`;
     }).join('');
     return `<a class="post-card" href="${escapeHtml(post.permalink) || '#'}" target="_blank" rel="noopener">
-      <div class="post-thumb">${thumb}<span class="post-rank">#${index + 1}</span></div>
+      <div class="post-thumb">${thumb}<span class="post-rank">#${index + 1}</span><span class="post-format-badge">${formatLabel(post)}</span></div>
       <div class="post-body">
         <p class="post-caption">${caption || '<em>Sem legenda</em>'}</p>
         <span class="post-date${postsSort === 'timestamp' ? ' is-primary' : ''}">${postDateLabel(post.timestamp)}</span>
@@ -596,7 +597,7 @@
         const known = Number.isFinite(Number(value));
         return `<td>${known ? format(Number(value)) : '—'}</td>`;
       }).join('');
-      return `<tr><td class="posts-table-post"><a href="${escapeHtml(post.permalink) || '#'}" target="_blank" rel="noopener">${thumb}<span>${escapeHtml(post.caption).slice(0, 70) || 'Sem legenda'}</span></a></td>${cells}</tr>`;
+      return `<tr><td class="posts-table-post"><a href="${escapeHtml(post.permalink) || '#'}" target="_blank" rel="noopener">${thumb}<span>${escapeHtml(post.caption).slice(0, 70) || 'Sem legenda'}</span></a><span class="posts-table-format">${formatLabel(post)}</span></td>${cells}</tr>`;
     }).join('');
     head.querySelectorAll('[data-sort]').forEach(th => th.addEventListener('click', () => {
       postsSort = th.dataset.sort;
@@ -607,12 +608,23 @@
   // Igual ao resto do painel: as métricas abaixo do seletor de período só valem para os dias
   // dentro dele. O feed em si só guarda os ~30 posts mais recentes coletados (sem histórico
   // completo), então um período fora dessa janela legitimamente não tem post nenhum pra mostrar.
+  // 'REELS' cobre tanto Reels do Instagram quanto Shorts do YouTube (ver sync-youtube-videos.yml,
+  // que grava o mesmo campo/valor que sync-meta-posts.yml usa para Reels) — daí um filtro só
+  // servir pras duas redes.
+  const isShortFormat = post => post.mediaProductType === 'REELS';
+  const formatLabel = post => {
+    if (isShortFormat(post)) return post.network === 'YouTube' ? 'Short' : 'Reels';
+    return post.network === 'YouTube' ? 'Vídeo' : 'Post';
+  };
+
   function postsInPeriod() {
     const active = activeNetworkOrNull();
     const byNetwork = active ? postsData.filter(post => post.network === active.name) : postsData;
+    const byFormat = postsFormat === 'all' ? byNetwork
+      : byNetwork.filter(post => isShortFormat(post) === (postsFormat === 'short'));
     const from = el('startDate').value, to = el('endDate').value;
-    if (!from || !to) return byNetwork.slice();
-    return byNetwork.filter(post => {
+    if (!from || !to) return byFormat.slice();
+    return byFormat.filter(post => {
       const day = String(post.timestamp || '').slice(0, 10);
       return day && day >= from && day <= to;
     });
@@ -673,6 +685,8 @@
     const panel = el('postsStatsPanel');
     if (!panel) return;
     const subtitle = el('postsStatsSubtitle');
+    const networkPill = el('postsStatsNetworkPill');
+    if (networkPill) { const active = activeNetworkOrNull(); networkPill.textContent = active ? active.name : 'Instagram + YouTube'; }
     const ids = ['postsStatTotal', 'postsStatReels', 'postsStatStatic', 'postsStatLikes', 'postsStatComments', 'postsStatInteractions', 'postsStatViews', 'postsStatSaved'];
     if (!isVonder) {
       if (subtitle) subtitle.textContent = 'Esta marca ainda não tem posts conectados.';
@@ -691,7 +705,7 @@
       ids.forEach(id => { const node = el(id); if (node) node.textContent = '—'; });
       return;
     }
-    const reels = scoped.filter(post => post.mediaProductType === 'REELS').length;
+    const reels = scoped.filter(isShortFormat).length;
     const sum = key => scoped.reduce((acc, post) => acc + (Number(post[key]) || 0), 0);
     if (subtitle) subtitle.textContent = `Baseado nos ${format(total)} posts publicados no período selecionado`;
     const values = {
@@ -1207,6 +1221,14 @@
   if (postsSortWrap) {
     postsSortWrap.querySelectorAll('[data-sort]').forEach(button => button.addEventListener('click', () => {
       postsSort = button.dataset.sort;
+      renderPosts();
+    }));
+  }
+  const postsFormatFilterWrap = el('postsFormatFilter');
+  if (postsFormatFilterWrap) {
+    postsFormatFilterWrap.querySelectorAll('[data-format]').forEach(button => button.addEventListener('click', () => {
+      postsFormat = button.dataset.format;
+      postsFormatFilterWrap.querySelectorAll('[data-format]').forEach(item => item.classList.toggle('is-active', item === button));
       renderPosts();
     }));
   }
