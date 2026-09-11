@@ -186,3 +186,164 @@ jobs:
           published = json.loads(Path('data/social-posts.json').read_text(encoding='utf-8'))
           publish('posts-vonder-v1', published, os.environ['FIREBASE_SERVICE_ACCOUNT_KEY'])
           PY
+
+  # Mesma reconstrução para a Ferramentas Gerais. Job separado (não um workflow/cron novo — este
+  # workflow inteiro já é só workflow_dispatch) para que uma falha na paginação de uma marca
+  # nunca derrube a reconstrução da outra, que pode levar dezenas de minutos.
+  reconstruir-ferramentas-gerais:
+    needs: reconstruir
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Paginar histórico completo de posts (Ferramentas Gerais)
+        id: reconstruirFg
+        continue-on-error: true
+        env:
+          META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS: ${{ secrets.META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS }}
+          META_INSTAGRAM_ID: '17841404085550539'
+        run: |
+          set -euo pipefail
+          test -n "$META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS"
+          pip install --quiet Pillow
+          python3 - <<'PY'
+          import json, os, sys, time, urllib.request, urllib.error
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          sys.path.insert(0, 'scripts')
+          from archive_post_thumbnails import archive_thumbnails
+
+          token = os.environ['META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS']
+          ig_id = os.environ['META_INSTAGRAM_ID']
+          api = 'https://graph.facebook.com/v26.0'
+          MAX_CAPTION_CHARS = 300
+
+          def clip_caption(caption):
+              caption = caption or ''
+              if len(caption) <= MAX_CAPTION_CHARS:
+                  return caption
+              return caption[:MAX_CAPTION_CHARS].rstrip() + '…'
+
+          def get(url):
+              req = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}'})
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  return json.loads(resp.read().decode('utf-8'))
+
+          def metric_value(insights, name):
+              for entry in insights.get('data', []):
+                  if entry.get('name') == name:
+                      values = entry.get('values') or []
+                      if values:
+                          return values[0].get('value')
+              return None
+
+          path = Path('data/social-posts-ferramentas-gerais.json')
+          existing = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'version': 1, 'posts': []}
+          known_ids = {post['id'] for post in existing.get('posts', [])}
+
+          media_fields = 'id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url'
+          url = f'{api}/{ig_id}/media?fields={media_fields}&limit=100'
+          added = []
+          falhas = 0
+          pagina = 0
+          while url:
+              pagina += 1
+              listing = get(url)
+              items = listing.get('data', [])
+              novos_da_pagina = 0
+              for item in items:
+                  media_id = item['id']
+                  if media_id in known_ids:
+                      continue
+                  novos_da_pagina += 1
+                  total_interactions = views = saved = None
+                  try:
+                      insights = get(f"{api}/{media_id}/insights?metric=total_interactions,views,saved")
+                      total_interactions = metric_value(insights, 'total_interactions')
+                      views = metric_value(insights, 'views')
+                      saved = metric_value(insights, 'saved')
+                  except urllib.error.HTTPError:
+                      falhas += 1
+                  added.append({
+                      'id': media_id,
+                      'caption': clip_caption(item.get('caption')),
+                      'mediaType': item.get('media_type'),
+                      'mediaProductType': item.get('media_product_type'),
+                      'permalink': item.get('permalink'),
+                      'thumbnailUrl': item.get('thumbnail_url') or item.get('media_url'),
+                      'timestamp': item.get('timestamp'),
+                      'likeCount': item.get('like_count', 0) or 0,
+                      'commentsCount': item.get('comments_count', 0) or 0,
+                      'totalInteractions': total_interactions,
+                      'views': views,
+                      'saved': saved,
+                  })
+                  known_ids.add(media_id)
+                  time.sleep(0.2)
+              print(f'Página {pagina}: {len(items)} posts recebidos, {novos_da_pagina} novos.')
+              url = (listing.get('paging') or {}).get('next')
+
+          by_id = {post['id']: post for post in existing.get('posts', [])}
+          for post in added:
+              by_id[post['id']] = post
+          merged = sorted(by_id.values(), key=lambda post: post.get('timestamp') or '', reverse=True)
+
+          def refetch_thumbnail(media_id):
+              data = get(f'{api}/{media_id}?fields=thumbnail_url,media_url')
+              return data.get('thumbnail_url') or data.get('media_url')
+
+          # Mesmo diretório compartilhado de miniaturas que a VONDER usa: o nome do arquivo é o
+          # id do post, único na Graph API mesmo entre contas diferentes.
+          archive_thumbnails(merged, refetch=refetch_thumbnail)
+
+          document = {
+              'version': 1,
+              'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+              'posts': merged,
+          }
+          path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(f'Reconstrução concluída: +{len(added)} posts novos ({falhas} sem insights), {len(merged)} no total.')
+          PY
+
+      - name: Publicar dados atualizados (Ferramentas Gerais)
+        if: steps.reconstruirFg.outcome == 'success'
+        run: |
+          git add data/social-posts-ferramentas-gerais.json data/social-posts-thumbnails
+          if git diff --cached --quiet -- data/social-posts-ferramentas-gerais.json data/social-posts-thumbnails; then
+            echo 'Nenhum post novo nem miniatura nova encontrado — histórico já estava completo.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: reconstruir histórico de posts do Instagram (Ferramentas Gerais)'
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
+
+      - name: Publicar posts no Firestore (Ferramentas Gerais)
+        if: steps.reconstruirFg.outcome == 'success'
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::warning::FIREBASE_SERVICE_ACCOUNT_KEY não configurado — pulando a gravação em portalStore/posts-ferramentas-gerais-v1.'
+            exit 0
+          fi
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os, sys
+          from pathlib import Path
+
+          sys.path.insert(0, 'scripts')
+          from publish_posts_firestore import publish
+
+          published = json.loads(Path('data/social-posts-ferramentas-gerais.json').read_text(encoding='utf-8'))
+          publish('posts-ferramentas-gerais-v1', published, os.environ['FIREBASE_SERVICE_ACCOUNT_KEY'])
+          PY
