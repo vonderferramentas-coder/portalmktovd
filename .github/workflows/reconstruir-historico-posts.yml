@@ -323,7 +323,10 @@ jobs:
             if git push; then break; fi
             echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
             git fetch origin "$GITHUB_REF_NAME"
-            git rebase "origin/$GITHUB_REF_NAME"
+            if ! git rebase "origin/$GITHUB_REF_NAME"; then
+              git rebase --abort
+              echo 'Rebase conflitou — abortado, tentando de novo do zero.'
+            fi
             [ "$tentativa" -eq 3 ] && exit 1
           done
 

@@ -241,7 +241,11 @@ jobs:
           git commit -m 'chore: reconstruir histórico de seguidores do Facebook (Ferramentas Gerais)'
           for tentativa in 1 2 3; do
             if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
             git fetch origin "$GITHUB_REF_NAME"
-            git rebase "origin/$GITHUB_REF_NAME"
+            if ! git rebase "origin/$GITHUB_REF_NAME"; then
+              git rebase --abort
+              echo 'Rebase conflitou — abortado, tentando de novo do zero.'
+            fi
             [ "$tentativa" -eq 3 ] && exit 1
           done

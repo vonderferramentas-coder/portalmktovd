@@ -244,7 +244,12 @@ jobs:
           doc['updatedAt'] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
           caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
-          primeiro = doc['history'][0]
+          # doc['history'][0] pode ser um dia mais antigo que só tem Facebook (a reconstrução
+          # do Facebook cobre um período bem maior que os ~29 dias do Instagram aqui) — usar o
+          # dia mais antigo que ESTA execução de fato reconstruiu (reconstruidos), não o mais
+          # antigo do arquivo inteiro, senão ['followers']['Instagram'] nem sempre existe.
+          primeiro_dia = min(reconstruidos)
+          primeiro_valor = reconstruidos[primeiro_dia]
           resumo = [
               '## Reconstrução concluída', '',
               f"Total de referência hoje: **{atual:,}**".replace(',', '.'),
@@ -256,7 +261,7 @@ jobs:
                f"pela proporção mediana de {proporcao:.1%} medida nos demais. "
                "Esses dias se corrigem sozinhos quando a Meta liberar o dado."
                if estimados else "Todos os dias vieram medidos."),
-              f"Série agora começa em **{primeiro['date']}** com **{primeiro['followers']['Instagram']:,}**".replace(',', '.'),
+              f"Série agora começa em **{primeiro_dia}** com **{primeiro_valor:,}**".replace(',', '.'),
               '', '| Dia | Entraram | Confere (follower_count) | Saíram | Saldo | Total reconstruído |',
               '|---|---:|---:|---:|---:|---:|'
           ]
@@ -468,12 +473,15 @@ jobs:
           doc['updatedAt'] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
           caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
-          primeiro = doc['history'][0]
+          # Mesmo cuidado do job da VONDER acima: usar o dia mais antigo que esta execução
+          # de fato reconstruiu, não doc['history'][0] (pode ser um dia só-Facebook).
+          primeiro_dia = min(reconstruidos)
+          primeiro_valor = reconstruidos[primeiro_dia]
           resumo = [
               '## Reconstrução concluída (Ferramentas Gerais)', '',
               f"Total de referência hoje: **{atual:,}**".replace(',', '.'),
               f"Dias reconstruídos: **{novos}**",
-              f"Série agora começa em **{primeiro['date']}** com **{primeiro['followers']['Instagram']:,}**".replace(',', '.'),
+              f"Série agora começa em **{primeiro_dia}** com **{primeiro_valor:,}**".replace(',', '.'),
           ]
           Path('resumo-fg.md').write_text('\n'.join(resumo) + '\n', encoding='utf-8')
           PY
@@ -489,9 +497,17 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'chore: reconstruir histórico de seguidores a partir dos insights (Ferramentas Gerais)'
+          # `git rebase` sem o `if !` mataria o script na hora (run: roda com `bash -e` por
+          # padrão), derrubando a tentativa 1/3 antes mesmo de chegar na 2/3 — por isso o `if !`
+          # e o `--abort` explícito em caso de conflito de verdade (mais de um workflow desta
+          # marca escrevendo no mesmo arquivo perto um do outro).
           for tentativa in 1 2 3; do
             if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
             git fetch origin "$GITHUB_REF_NAME"
-            git rebase "origin/$GITHUB_REF_NAME"
+            if ! git rebase "origin/$GITHUB_REF_NAME"; then
+              git rebase --abort
+              echo 'Rebase conflitou — abortado, tentando de novo do zero.'
+            fi
             [ "$tentativa" -eq 3 ] && exit 1
           done
