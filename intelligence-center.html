@@ -112,6 +112,20 @@
     #trendsTableWrap .intel-col-variation { text-align: right }
     .intel-variation-up { color: var(--success); font-weight: 700 }
     .intel-variation-flat { color: var(--text-faint) }
+
+    /* Paginação da tabela — mesmo padrão de #historyPager em followers-dashboard.html. */
+    .intel-pager { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px }
+    .chevron-btn {
+      width: 28px; height: 28px; padding: 0;
+      border: 1px solid var(--border-strong); border-radius: 50%;
+      background: var(--surface-muted); color: var(--text);
+      font-size: 15px; line-height: 1;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: background .15s, border-color .15s
+    }
+    .chevron-btn:hover, .chevron-btn:focus-visible { background: var(--accent-weak); border-color: var(--accent); outline: none }
+    .chevron-btn:disabled { opacity: .4; cursor: default }
+    .intel-page-label { font-size: 10px; font-weight: 800; color: var(--muted); background: var(--surface-muted); border-radius: 7px; padding: 5px 8px }
   </style>
 </head>
 
@@ -203,6 +217,11 @@
               </thead>
               <tbody id="trendsTableBody"></tbody>
             </table>
+          </div>
+          <div class="intel-pager" id="trendsPager" hidden>
+            <button type="button" class="chevron-btn" id="trendsPagerPrev" aria-label="Página anterior">‹</button>
+            <span class="intel-page-label" id="trendsPagerLabel">Página 1 de 1</span>
+            <button type="button" class="chevron-btn" id="trendsPagerNext" aria-label="Próxima página">›</button>
           </div>
         </div>
 

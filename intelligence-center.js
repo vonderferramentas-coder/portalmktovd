@@ -34,9 +34,12 @@
   const setText = (id, text) => { const node = el(id); if (node) node.textContent = text; };
   const escapeHtml = text => String(text ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
+  const PAGE_SIZE = 50;
+
   let TRENDS = null;
   let category = 'all';
   let period = '30d';
+  let page = 0;
 
   function setSyncStatus(text, kind) {
     const node = el('syncStatus'); if (!node) return;
@@ -86,6 +89,7 @@
     const tbody = el('trendsTableBody');
     const empty = el('trendsEmpty');
     const wrap = el('trendsTableWrap');
+    const pager = el('trendsPager');
     const periodLabel = PERIOD_LABELS[period];
 
     if (!rows.length) {
@@ -95,14 +99,19 @@
         ? 'Nenhuma tendência coletada ainda para essa combinação de categoria e período.'
         : 'Ainda não há coleta de tendências — a primeira atualização automática roda no próximo ciclo diário.';
       setText('trendsSummary', '');
+      pager.hidden = true;
       return;
     }
 
+    const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+    page = Math.min(page, totalPages - 1);
+    const pageRows = rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
     wrap.style.display = '';
     empty.style.display = 'none';
-    tbody.innerHTML = rows.map((row, index) => `
+    tbody.innerHTML = pageRows.map((row, index) => `
       <tr>
-        <td class="intel-col-rank">${index + 1}</td>
+        <td class="intel-col-rank">${page * PAGE_SIZE + index + 1}</td>
         <td>${escapeHtml(row.term)}</td>
         <td>${escapeHtml(row.categoryLabel)}</td>
         <td class="intel-col-interest">${row.interest}</td>
@@ -112,6 +121,12 @@
       </tr>
     `).join('');
     setText('trendsSummary', `${rows.length} termo${rows.length === 1 ? '' : 's'}`);
+
+    pager.hidden = rows.length <= PAGE_SIZE;
+    setText('trendsPagerLabel', `Página ${page + 1} de ${totalPages}`);
+    const prevBtn = el('trendsPagerPrev'), nextBtn = el('trendsPagerNext');
+    if (prevBtn) prevBtn.disabled = page <= 0;
+    if (nextBtn) nextBtn.disabled = page >= totalPages - 1;
   }
 
   // ---- dropdowns (Categoria / Período) ----
@@ -147,13 +162,20 @@
   wireDropdown('trendsCategoryControl', 'trendsCategoryTrigger', 'trendsCategoryMenu', button => {
     category = button.dataset.category;
     setText('trendsCategoryLabel', button.textContent.trim());
+    page = 0;
     render();
   });
   wireDropdown('trendsPeriodControl', 'trendsPeriodTrigger', 'trendsPeriodMenu', button => {
     period = button.dataset.period;
     setText('trendsPeriodLabel', button.textContent.trim());
+    page = 0;
     render();
   });
+
+  // ---- paginação (50 termos por página) ----
+  const pagerPrevBtn = el('trendsPagerPrev'), pagerNextBtn = el('trendsPagerNext');
+  if (pagerPrevBtn) pagerPrevBtn.addEventListener('click', () => { if (page > 0) { page--; render(); } });
+  if (pagerNextBtn) pagerNextBtn.addEventListener('click', () => { page++; render(); });
 
   // ---- carregamento ----
   async function load() {
