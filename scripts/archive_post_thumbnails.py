@@ -10,17 +10,22 @@
 import time
 import urllib.error
 import urllib.request
+from io import BytesIO
 from pathlib import Path
+
+from PIL import Image
 
 THUMBS_DIR = Path('data/social-posts-thumbnails')
 LOCAL_PREFIX = 'data/social-posts-thumbnails/'
 
-EXTENSION_BY_CONTENT_TYPE = {
-    'image/jpeg': '.jpg',
-    'image/png': '.png',
-    'image/webp': '.webp',
-    'image/gif': '.gif',
-}
+IMAGE_CONTENT_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
+
+# A Meta devolve a imagem em resolução quase cheia (a maior coluna do painel, o modal de
+# prévia, usa só 340px de largura em CSS — 680px cobre até tela retina 2x com folga).
+# Reencodar pra JPEG nesse tamanho leva o arquivo de ~300KB pra dezenas de KB sem perda
+# visível num card pequeno.
+MAX_WIDTH = 720
+JPEG_QUALITY = 82
 
 
 def _existing_files():
@@ -29,14 +34,25 @@ def _existing_files():
     return {path.stem: path for path in THUMBS_DIR.iterdir() if path.is_file()}
 
 
+def _resize_to_jpeg(raw_bytes):
+    with Image.open(BytesIO(raw_bytes)) as img:
+        img = img.convert('RGB')
+        if img.width > MAX_WIDTH:
+            height = round(img.height * MAX_WIDTH / img.width)
+            img = img.resize((MAX_WIDTH, height), Image.LANCZOS)
+        buffer = BytesIO()
+        img.save(buffer, format='JPEG', quality=JPEG_QUALITY, optimize=True)
+        return buffer.getvalue()
+
+
 def _download_image(url):
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     with urllib.request.urlopen(req, timeout=20) as resp:
         content_type = (resp.headers.get('Content-Type') or '').split(';')[0].strip()
-        ext = EXTENSION_BY_CONTENT_TYPE.get(content_type)
-        if not ext:
+        if content_type not in IMAGE_CONTENT_TYPES:
             return None  # não é imagem (ex.: media_url de vídeo quando falta thumbnail_url)
-        return resp.read(), ext
+        raw = resp.read()
+    return _resize_to_jpeg(raw), '.jpg'
 
 
 def archive_thumbnails(posts, refetch=None):
@@ -66,7 +82,9 @@ def archive_thumbnails(posts, refetch=None):
             continue
         try:
             result = _download_image(url)
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ConnectionError):
+        except Exception:
+            # Cobre falha de rede e imagem corrompida/formato que o Pillow não abre — um post
+            # ruim não pode travar a coleta dos outros milhares.
             result = None
         if not result:
             failed += 1

@@ -32,6 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$META_PAGE_ACCESS_TOKEN"
+          pip install --quiet Pillow
           python3 - <<'PY'
           import json, os, sys, time, urllib.request, urllib.error
           from datetime import datetime, timezone
