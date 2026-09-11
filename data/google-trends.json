@@ -1,0 +1,4072 @@
+{
+  "version": 1,
+  "geo": "BR",
+  "updatedAt": "2026-09-11T20:50:43Z",
+  "categories": {
+    "construction-power-tools": {
+      "label": "Construction & Power Tools",
+      "periods": {
+        "7d": {
+          "collectedAt": "2026-09-11T20:45:59Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "serra",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "broca",
+              "interest": 42,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "makita",
+              "interest": 35,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "lixadeira",
+              "interest": 34,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "lavadora alta pressão",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "martelete",
+              "interest": 26,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "lavadora de pressão",
+              "interest": 25,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "lavadora de alta pressão",
+              "interest": 25,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "serra circular",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "serra copo",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "regua",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "dewalt",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "cantareira",
+              "interest": 14,
+              "variation": "+80%"
+            },
+            {
+              "rank": 14,
+              "term": "cola quente",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "chainsaw",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "martelo",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "cut",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "caixa ferramentas",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "rompedor",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "tool",
+              "interest": 10,
+              "variation": "+110%"
+            },
+            {
+              "rank": 21,
+              "term": "engenho",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "enxada",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "régua",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "chainsaw man",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "caixa de ferramentas",
+              "interest": 9,
+              "variation": null
+            }
+          ]
+        },
+        "30d": {
+          "collectedAt": "2026-09-11T20:46:05Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "serra",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "broca",
+              "interest": 46,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "makita",
+              "interest": 33,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "lixadeira",
+              "interest": 33,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "martelete",
+              "interest": 26,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "lavadora alta pressão",
+              "interest": 25,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "lavadora de pressão",
+              "interest": 24,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "lavadora de alta pressão",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "serra circular",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "regua",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "serra copo",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "dewalt",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "wap",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "martelo",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "cut",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "cola quente",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "caixa ferramentas",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "rompedor",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "furadeira",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "enxada",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "caixa de ferramentas",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "régua",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "engenho",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "lixadeira orbital",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "chainsaw man",
+              "interest": 9,
+              "variation": null
+            }
+          ]
+        },
+        "90d": {
+          "collectedAt": "2026-09-11T20:46:12Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "serra",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "broca",
+              "interest": 44,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "lixadeira",
+              "interest": 37,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "makita",
+              "interest": 37,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "martelete",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "lavadora alta pressão",
+              "interest": 26,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "lavadora de alta pressão",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "serra circular",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "dewalt",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "regua",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "serra copo",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "wap",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "martelo",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "cola quente",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "cut",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "rompedor",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "caixa de ferramentas",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "lixadeira orbital",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "enxada",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "chainsaw man",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "régua",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "serra fita",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "engenho",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "cantareira",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "tools",
+              "interest": 7,
+              "variation": null
+            }
+          ]
+        },
+        "12m": {
+          "collectedAt": "2026-09-11T20:46:19Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "serra",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "makita",
+              "interest": 45,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "broca",
+              "interest": 43,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "lixadeira",
+              "interest": 37,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "martelete",
+              "interest": 29,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "lavadora alta pressão",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "lavadora de pressão",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "lavadora de alta pressão",
+              "interest": 24,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "regua",
+              "interest": 23,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "serra circular",
+              "interest": 23,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "chainsaw",
+              "interest": 22,
+              "variation": "+70%"
+            },
+            {
+              "rank": 12,
+              "term": "dewalt",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "serra copo",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "chainsaw man",
+              "interest": 17,
+              "variation": "+60%"
+            },
+            {
+              "rank": 15,
+              "term": "wap",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "cut",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "cola quente",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "martelo",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "enxada",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "cantareira",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "caixa de ferramentas",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "rompedor",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "serra madeira",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "lixadeira orbital",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "régua",
+              "interest": 9,
+              "variation": null
+            }
+          ]
+        }
+      }
+    },
+    "home-improvement": {
+      "label": "Home Improvement",
+      "periods": {
+        "7d": {
+          "collectedAt": "2026-09-11T20:46:25Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "ar condicionado",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "ar-condicionado",
+              "interest": 29,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "portão",
+              "interest": 25,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "betão",
+              "interest": 25,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "porcelanato",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "ar condicionado inverter",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "churrasqueira",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "betao",
+              "interest": 17,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "telha",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "aquecedor",
+              "interest": 16,
+              "variation": "+60%"
+            },
+            {
+              "rank": 11,
+              "term": "teto",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "travesseiro",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "leroy",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "ar condicionado 9000",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "paint",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "ar condicionado 12000 btus",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "macaco",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "leroy merlin",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "pintura",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "betão bet",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "ar condicionado 9000 btus",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "lixadeira",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "ar condicionado split",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "roleta",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "persiana",
+              "interest": 8,
+              "variation": null
+            }
+          ]
+        },
+        "30d": {
+          "collectedAt": "2026-09-11T20:46:32Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "ar condicionado",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "ar-condicionado",
+              "interest": 23,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "portão",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "porcelanato",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "betão",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "ar condicionado inverter",
+              "interest": 19,
+              "variation": "+50%"
+            },
+            {
+              "rank": 7,
+              "term": "churrasqueira",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "ar condicionado 12000",
+              "interest": 14,
+              "variation": "+40%"
+            },
+            {
+              "rank": 9,
+              "term": "betao",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "telha",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "travesseiro",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "isopor",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "ar condicionado 9000",
+              "interest": 11,
+              "variation": "+40%"
+            },
+            {
+              "rank": 14,
+              "term": "ar condicionado 12000 btus",
+              "interest": 11,
+              "variation": "+50%"
+            },
+            {
+              "rank": 15,
+              "term": "aquecedor",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "macaco",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "leroy",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "ar condicionado lg",
+              "interest": 8,
+              "variation": "+40%"
+            },
+            {
+              "rank": 19,
+              "term": "betão bet",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "leroy merlin",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "ar condicionado 9000 btus",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "verniz",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "climatizador",
+              "interest": 8,
+              "variation": "+120%"
+            },
+            {
+              "rank": 24,
+              "term": "ar condicionado split",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "paint",
+              "interest": 7,
+              "variation": null
+            }
+          ]
+        },
+        "90d": {
+          "collectedAt": "2026-09-11T20:46:40Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "ar condicionado",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "betão",
+              "interest": 36,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "portão",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "ar-condicionado",
+              "interest": 24,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "aquecedor",
+              "interest": 23,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "churrasqueira",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "betao",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "ar condicionado inverter",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "betão bet",
+              "interest": 17,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "telha",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "travesseiro",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "isopor",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "macaco",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "leroy",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "ar condicionado 9000",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "leroy merlin",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "paint",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "ar condicionado 12000 btus",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "lixadeira",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "persiana",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "piso vinilico",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "makita",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "ar condicionado 9000 btus",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "betao bet",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "cimento queimado",
+              "interest": 7,
+              "variation": null
+            }
+          ]
+        },
+        "12m": {
+          "collectedAt": "2026-09-11T20:46:48Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "ar condicionado",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "betão",
+              "interest": 30,
+              "variation": "+60%"
+            },
+            {
+              "rank": 3,
+              "term": "ar-condicionado",
+              "interest": 23,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "ar condicionado inverter",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "betão bet",
+              "interest": 17,
+              "variation": "+60%"
+            },
+            {
+              "rank": 6,
+              "term": "porcelanato",
+              "interest": 17,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "betao",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "churrasqueira",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "ar condicionado 12000",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "aquecedor",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "ar condicionado 12000 btus",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "telha",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "ar condicionado 9000",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "leroy",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "macaco",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "midea",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "travesseiro",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "leroy merlin",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "ar condicionado split",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "textura",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "ar condicionado 9000 btus",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "climatizador",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "lixadeira",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "makita",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "ar condicionado portatil",
+              "interest": 6,
+              "variation": null
+            }
+          ]
+        }
+      }
+    },
+    "yard-patio": {
+      "label": "Yard & Patio",
+      "periods": {
+        "7d": {
+          "collectedAt": "2026-09-11T20:46:54Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "roçadeira",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "fence",
+              "interest": 76,
+              "variation": "+1350%"
+            },
+            {
+              "rank": 3,
+              "term": "deck",
+              "interest": 48,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "cadeira praia",
+              "interest": 39,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "cadeira de praia",
+              "interest": 35,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "patio",
+              "interest": 30,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "rocadeira",
+              "interest": 28,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "vassoura",
+              "interest": 25,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "swing",
+              "interest": 25,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "tenda",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "how to reseed a lawn",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "gazebo",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "roçadeira stihl",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "what is a trellis",
+              "interest": 17,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "cortador de grama",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "guarda sol",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "table",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "best beach umbrellas",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "decks",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "poço",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "grass",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "ombrelone",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "sabo",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "pergola",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "espreguiçadeira",
+              "interest": 9,
+              "variation": null
+            }
+          ]
+        },
+        "30d": {
+          "collectedAt": "2026-09-11T20:47:00Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "roçadeira",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "fence",
+              "interest": 51,
+              "variation": "+850%"
+            },
+            {
+              "rank": 3,
+              "term": "deck",
+              "interest": 49,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "cadeira praia",
+              "interest": 41,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "cadeira de praia",
+              "interest": 35,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "patio",
+              "interest": 28,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "swing",
+              "interest": 28,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "rocadeira",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "abri",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "roçadeira stihl",
+              "interest": 23,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "tenda",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "gazebo",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "cortador de grama",
+              "interest": 18,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "guarda sol",
+              "interest": 18,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "table",
+              "interest": 17,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "how to reseed a lawn",
+              "interest": 17,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "what is a trellis",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "best beach umbrellas",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "poço",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "ombrelone",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "sabo",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "air fryer",
+              "interest": 11,
+              "variation": "+650%"
+            },
+            {
+              "rank": 23,
+              "term": "espreguiçadeira",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "air fryer barbecue",
+              "interest": 10,
+              "variation": "+750%"
+            },
+            {
+              "rank": 25,
+              "term": "cabo de vassoura",
+              "interest": 9,
+              "variation": null
+            }
+          ]
+        },
+        "90d": {
+          "collectedAt": "2026-09-11T20:47:07Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "roçadeira",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "deck",
+              "interest": 49,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "cadeira praia",
+              "interest": 31,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "cadeira de praia",
+              "interest": 26,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "vassoura",
+              "interest": 25,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "swing",
+              "interest": 24,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "patio",
+              "interest": 24,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "rocadeira",
+              "interest": 23,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "abri",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "roçadeira stihl",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "fence",
+              "interest": 17,
+              "variation": "+300%"
+            },
+            {
+              "rank": 12,
+              "term": "tenda",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "table",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "gazebo",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "cortador de grama",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "how to reseed a lawn",
+              "interest": 13,
+              "variation": "+2550%"
+            },
+            {
+              "rank": 17,
+              "term": "guarda sol",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "best beach umbrellas",
+              "interest": 12,
+              "variation": "+2250%"
+            },
+            {
+              "rank": 19,
+              "term": "what is a trellis",
+              "interest": 12,
+              "variation": "+2800%"
+            },
+            {
+              "rank": 20,
+              "term": "poço",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "sabo",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "ombrelone",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "laghetto",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "grass",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "roçadeira toyama",
+              "interest": 8,
+              "variation": null
+            }
+          ]
+        },
+        "12m": {
+          "collectedAt": "2026-09-11T20:47:14Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "roçadeira",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "deck",
+              "interest": 51,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "cadeira praia",
+              "interest": 41,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "cadeira de praia",
+              "interest": 37,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "rocadeira",
+              "interest": 25,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "roçadeira stihl",
+              "interest": 23,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "guarda sol",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "cortador de grama",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "swing",
+              "interest": 18,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "decks",
+              "interest": 17,
+              "variation": "+70%"
+            },
+            {
+              "rank": 11,
+              "term": "patio",
+              "interest": 17,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "vassoura",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "tenda",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "gazebo",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "table",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "ombrelone",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "aparador de grama",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "roçadeira a gasolina",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "espreguiçadeira",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "roçadeira toyama",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "poço",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "steam deck",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "cadeira mor",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "sabo",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "guarda sol praia",
+              "interest": 6,
+              "variation": null
+            }
+          ]
+        }
+      }
+    },
+    "construction-maintenance": {
+      "label": "Construction & Maintenance",
+      "periods": {
+        "7d": {
+          "collectedAt": "2026-09-11T20:47:21Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "ar condicionado",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "construção",
+              "interest": 57,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "ar-condicionado",
+              "interest": 28,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "material de construção",
+              "interest": 25,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "escada",
+              "interest": 24,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "parafusadeira",
+              "interest": 23,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "ar condicionado inverter",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "cimento",
+              "interest": 18,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "furadeira",
+              "interest": 18,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "aquecedor",
+              "interest": 16,
+              "variation": "+80%"
+            },
+            {
+              "rank": 11,
+              "term": "tijolo",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "telhado",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "granito",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "ar condicionado 12000 btus",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "telhas",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "forro pvc",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "ar condicionado 9000 btus",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "laje",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "vaso sanitário",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "ar condicionado split",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "alicate",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "roleta",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "climatizador",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "metrópoles",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "google",
+              "interest": 7,
+              "variation": null
+            }
+          ]
+        },
+        "30d": {
+          "collectedAt": "2026-09-11T20:47:27Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "ar condicionado",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "construção",
+              "interest": 48,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "ar-condicionado",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "portão",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "material de construção",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "escada",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "ar condicionado inverter",
+              "interest": 19,
+              "variation": "+40%"
+            },
+            {
+              "rank": 8,
+              "term": "parafusadeira",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "ferramentas",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "cimento",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "furadeira",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "ar condicionado 12000",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "granito",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "ar condicionado 9000",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "ar condicionado 12000 btus",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "aquecedor",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "forro pvc",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "telhas",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "ar condicionado 9000 btus",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "climatizador",
+              "interest": 7,
+              "variation": "+110%"
+            },
+            {
+              "rank": 21,
+              "term": "ar condicionado split",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "laje",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "vaso sanitário",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "alicate",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "argamassa",
+              "interest": 6,
+              "variation": null
+            }
+          ]
+        },
+        "90d": {
+          "collectedAt": "2026-09-11T20:47:35Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "ar condicionado",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "construção",
+              "interest": 59,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "parafusadeira",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "portão",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "escada",
+              "interest": 26,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "material de construção",
+              "interest": 26,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "aquecedor",
+              "interest": 24,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "ar-condicionado",
+              "interest": 24,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "furadeira",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "ar condicionado inverter",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "cimento",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "tijolo",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "forro pvc",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "ar condicionado 12000 btus",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "laje",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "ar condicionado 9000",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "alicate",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "ponte",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "argamassa",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "ar condicionado 9000 btus",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "esmerilhadeira",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "persiana",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "google",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "roleta",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "porta de madeira",
+              "interest": 7,
+              "variation": null
+            }
+          ]
+        },
+        "12m": {
+          "collectedAt": "2026-09-11T20:47:42Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "ar condicionado",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "material",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "ar-condicionado",
+              "interest": 23,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "material de construção",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "parafusadeira",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "escada",
+              "interest": 18,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "ar condicionado inverter",
+              "interest": 18,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "furadeira",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "ar condicionado 12000",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "cimento",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "aquecedor",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "ar condicionado 9000",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "tijolo",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "ar condicionado 12000 btus",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "granito",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "ar condicionado 9000 btus",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "forro pvc",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "ar condicionado split",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "laje",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "climatizador",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "madeireira",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "ar condicionado portatil",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "google",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "persiana",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "ar condicionado janela",
+              "interest": 6,
+              "variation": null
+            }
+          ]
+        }
+      }
+    },
+    "automotive": {
+      "label": "Automotive",
+      "periods": {
+        "7d": {
+          "collectedAt": "2026-09-11T20:47:49Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "carro",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "moto",
+              "interest": 79,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "detran",
+              "interest": 73,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "honda",
+              "interest": 42,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "apk",
+              "interest": 41,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "fiat",
+              "interest": 41,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "olx",
+              "interest": 33,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "ford",
+              "interest": 30,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "carros",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "santa fe x vasco da gama",
+              "interest": 27,
+              "variation": "+71700%"
+            },
+            {
+              "rank": 11,
+              "term": "cnh",
+              "interest": 26,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "byd",
+              "interest": 24,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "bicicleta",
+              "interest": 18,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "ipva",
+              "interest": 18,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "jeep",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "bmw",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "toyota",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "volkswagen",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "yamaha",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "chevrolet",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "bayern",
+              "interest": 12,
+              "variation": "+500%"
+            },
+            {
+              "rank": 22,
+              "term": "veículo",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "astra",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "renault",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "mercedes",
+              "interest": 11,
+              "variation": null
+            }
+          ]
+        },
+        "30d": {
+          "collectedAt": "2026-09-11T20:47:55Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "carro",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "moto",
+              "interest": 78,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "detran",
+              "interest": 77,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "honda",
+              "interest": 44,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "fiat",
+              "interest": 39,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "olx",
+              "interest": 33,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "palio",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "cnh",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "byd",
+              "interest": 25,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "se",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "corsa",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "corolla",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "ipva",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "caminhão",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "bicicleta",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "tabela fipe",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "jeep",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "bmw",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "yamaha",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "toyota",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "veículo",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "car",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "chevrolet",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "celta",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "volkswagen",
+              "interest": 12,
+              "variation": null
+            }
+          ]
+        },
+        "90d": {
+          "collectedAt": "2026-09-11T20:48:03Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "carro",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "moto",
+              "interest": 83,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "detran",
+              "interest": 77,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "honda",
+              "interest": 41,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "fiat",
+              "interest": 39,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "olx",
+              "interest": 36,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "ford",
+              "interest": 29,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "carros",
+              "interest": 28,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "cnh",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "byd",
+              "interest": 25,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "se",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "ipva",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "bicicleta",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "corolla",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "jeep",
+              "interest": 17,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "tabela fipe",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "bmw",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "s10",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "civic",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "toyota",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "licenciamento",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "yamaha",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "polo",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "veículo",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "volkswagen",
+              "interest": 12,
+              "variation": null
+            }
+          ]
+        },
+        "12m": {
+          "collectedAt": "2026-09-11T20:48:09Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "carro",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "detran",
+              "interest": 93,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "moto",
+              "interest": 85,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "honda",
+              "interest": 45,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "fiat",
+              "interest": 41,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "olx",
+              "interest": 35,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "cnh",
+              "interest": 35,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "ipva",
+              "interest": 34,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "palio",
+              "interest": 31,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "fipe",
+              "interest": 29,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "carros",
+              "interest": 28,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "corsa",
+              "interest": 23,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "bicicleta",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "se",
+              "interest": 21,
+              "variation": "+40%"
+            },
+            {
+              "rank": 15,
+              "term": "byd",
+              "interest": 21,
+              "variation": "+70%"
+            },
+            {
+              "rank": 16,
+              "term": "tabela fipe",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "bmw",
+              "interest": 17,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "s10",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "civic",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "toyota",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "jeep",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "yamaha",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "hilux",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "chevrolet",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "celta",
+              "interest": 13,
+              "variation": null
+            }
+          ]
+        }
+      }
+    },
+    "cleaning-supplies-services": {
+      "label": "Cleaning Supplies & Services",
+      "periods": {
+        "7d": {
+          "collectedAt": "2026-09-11T20:48:16Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "lavar",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "maquina lavar",
+              "interest": 57,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "maquina de lavar",
+              "interest": 53,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "cheiro",
+              "interest": 37,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "sabão",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "máquina de lavar",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "clean",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "brastemp",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "maquina de lavar roupa",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "maquina lavar roupa",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "varal",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "cesta",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "lava e seca",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "electrolux",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "mop",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "máquina de lavar roupa",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "maquina lava e seca",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "sabão líquido",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "sabao liquido",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "maquina de lavar brastemp",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "tanquinho",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "amaciante",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "lava roupa",
+              "interest": 4,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "ulife",
+              "interest": 4,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "máquina de lavar electrolux",
+              "interest": 4,
+              "variation": null
+            }
+          ]
+        },
+        "30d": {
+          "collectedAt": "2026-09-11T20:48:22Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "lavar",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "maquina de lavar",
+              "interest": 53,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "cheiro",
+              "interest": 35,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "sabão",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "máquina de lavar",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "sabao",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "brastemp",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "maquina lavar roupa",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "maquina de lavar roupa",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "clean",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "cesta",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "varal",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "electrolux",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "lava e seca",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "mop",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "máquina de lavar roupa",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "maquina lava e seca",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "sabão líquido",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "brastemp maquina de lavar",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "ulife",
+              "interest": 5,
+              "variation": "+80%"
+            },
+            {
+              "rank": 21,
+              "term": "sabao liquido",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "amaciante",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "tanquinho",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "cesta basica",
+              "interest": 4,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "máquina de lavar electrolux",
+              "interest": 4,
+              "variation": null
+            }
+          ]
+        },
+        "90d": {
+          "collectedAt": "2026-09-11T20:48:28Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "lavar",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "maquina de lavar",
+              "interest": 52,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "cheiro",
+              "interest": 36,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "máquina de lavar",
+              "interest": 23,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "sabão",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "maquina lavar roupa",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "maquina de lavar roupa",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "clean",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "cesta",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "varal",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "electrolux",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "lava e seca",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "mop",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "máquina de lavar roupa",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "maquina lava e seca",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "sabão líquido",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "maquina de lavar brastemp",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "sabao liquido",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "amaciante",
+              "interest": 4,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "máquina de lavar electrolux",
+              "interest": 4,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "ulife",
+              "interest": 4,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "cesta basica",
+              "interest": 4,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "desentupidora",
+              "interest": 3,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "maquina de lavar louça",
+              "interest": 3,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "tanquinho de lavar roupa",
+              "interest": 3,
+              "variation": null
+            }
+          ]
+        },
+        "12m": {
+          "collectedAt": "2026-09-11T20:48:35Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "lavar",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "maquina lavar",
+              "interest": 59,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "maquina de lavar",
+              "interest": 54,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "cheiro",
+              "interest": 36,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "máquina de lavar",
+              "interest": 22,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "brastemp",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "cesta",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "maquina lavar roupa",
+              "interest": 14,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "maquina de lavar roupa",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "varal",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "electrolux",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "lava e seca",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "mop",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "máquina de lavar roupa",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "maquina de lavar brastemp",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "maquina lava e seca",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "clean",
+              "interest": 6,
+              "variation": "+80%"
+            },
+            {
+              "rank": 18,
+              "term": "ulife",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "sabão líquido",
+              "interest": 5,
+              "variation": "+40%"
+            },
+            {
+              "rank": 20,
+              "term": "tanquinho",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "sabao liquido",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "amaciante",
+              "interest": 4,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "máquina de lavar electrolux",
+              "interest": 4,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "cesta basica",
+              "interest": 4,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "desentupidora",
+              "interest": 3,
+              "variation": null
+            }
+          ]
+        }
+      }
+    },
+    "industrial-materials": {
+      "label": "Industrial Materials",
+      "periods": {
+        "7d": {
+          "collectedAt": "2026-09-11T20:48:42Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "bomba",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "mangueira",
+              "interest": 52,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "valvula",
+              "interest": 38,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "máquina",
+              "interest": 35,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "gerador",
+              "interest": 33,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "pressão",
+              "interest": 27,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "rolamento",
+              "interest": 26,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "tanque",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "eixo",
+              "interest": 19,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "maquina",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "caixa de direção",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "retentor",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "parafuso",
+              "interest": 13,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "polia",
+              "interest": 11,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "escavadeira",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "s25",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "gru",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "engrenagem",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "bomba d'água",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "betoneira",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "flange",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "torno",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "empilhadeira",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "filtro de barro",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "maquininha",
+              "interest": 6,
+              "variation": null
+            }
+          ]
+        },
+        "30d": {
+          "collectedAt": "2026-09-11T20:48:48Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "bomba",
+              "interest": 100,
+              "variation": null
+            },
+            {
+              "rank": 2,
+              "term": "mangueira",
+              "interest": 56,
+              "variation": null
+            },
+            {
+              "rank": 3,
+              "term": "valvula",
+              "interest": 40,
+              "variation": null
+            },
+            {
+              "rank": 4,
+              "term": "gerador",
+              "interest": 33,
+              "variation": null
+            },
+            {
+              "rank": 5,
+              "term": "máquina",
+              "interest": 33,
+              "variation": null
+            },
+            {
+              "rank": 6,
+              "term": "pressão",
+              "interest": 29,
+              "variation": null
+            },
+            {
+              "rank": 7,
+              "term": "rolamento",
+              "interest": 26,
+              "variation": null
+            },
+            {
+              "rank": 8,
+              "term": "tanque",
+              "interest": 21,
+              "variation": null
+            },
+            {
+              "rank": 9,
+              "term": "eixo",
+              "interest": 20,
+              "variation": null
+            },
+            {
+              "rank": 10,
+              "term": "maquina",
+              "interest": 16,
+              "variation": null
+            },
+            {
+              "rank": 11,
+              "term": "retentor",
+              "interest": 15,
+              "variation": null
+            },
+            {
+              "rank": 12,
+              "term": "parafuso",
+              "interest": 12,
+              "variation": null
+            },
+            {
+              "rank": 13,
+              "term": "polia",
+              "interest": 10,
+              "variation": null
+            },
+            {
+              "rank": 14,
+              "term": "escavadeira",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 15,
+              "term": "gru",
+              "interest": 9,
+              "variation": null
+            },
+            {
+              "rank": 16,
+              "term": "engrenagem",
+              "interest": 8,
+              "variation": null
+            },
+            {
+              "rank": 17,
+              "term": "betoneira",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 18,
+              "term": "s25",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 19,
+              "term": "flange",
+              "interest": 7,
+              "variation": null
+            },
+            {
+              "rank": 20,
+              "term": "torno",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 21,
+              "term": "bomba de agua",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 22,
+              "term": "retroescavadeira",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 23,
+              "term": "filtro de barro",
+              "interest": 6,
+              "variation": null
+            },
+            {
+              "rank": 24,
+              "term": "mancal",
+              "interest": 5,
+              "variation": null
+            },
+            {
+              "rank": 25,
+              "term": "caterpillar",
+              "interest": 5,
+              "variation": null
+            }
+          ]
+        }
+      }
+    }
+  }
+}
