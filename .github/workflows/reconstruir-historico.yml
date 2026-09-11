@@ -286,7 +286,19 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'chore: reconstruir histórico de seguidores a partir dos insights'
-          git push
+          # `git push` sozinho, sem retry, falhava direto sob concorrência (ex.: o job da
+          # Ferramentas Gerais logo abaixo publicando no mesmo instante) — mesmo padrão de
+          # retry com rebase (e --abort em conflito de verdade) já usado nos demais workflows.
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            if ! git rebase "origin/$GITHUB_REF_NAME"; then
+              git rebase --abort
+              echo 'Rebase conflitou — abortado, tentando de novo do zero.'
+            fi
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
 
   # Mesma reconstrução para a Ferramentas Gerais — job separado (isolamento entre marcas já vem
   # do próprio job, sem precisar de continue-on-error aqui: uma falha nesta reconstrução nunca
