@@ -6,7 +6,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js';
 import {
   getFirestore, doc, getDoc, addDoc, collection, serverTimestamp, updateDoc,
-  runTransaction
+  runTransaction, onSnapshot, writeBatch, query, where
 } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
 
 const config = window.PORTAL_FIREBASE_CONFIG;
@@ -126,8 +126,140 @@ export async function writePortalStore(key, value, expectedVersion) {
     return { conflict: false, updated_at };
   });
 }
+function calendarStoreReference(key) {
+  return doc(db, 'portalStore', `calendar-meta-${encodeURIComponent(String(key))}`);
+}
+
+function calendarPostsReference(key) {
+  // ponytail: a marca inteira mantém busca/exportação globais; se o histórico crescer para dezenas
+  // de milhares de cards, evoluir para partições anuais/mensais carregadas sob demanda.
+  return query(collection(db, 'portalStore'), where('calendarStoreKey', '==', String(key)));
+}
+
+function calendarPostReference(key, postId) {
+  return doc(db, 'portalStore', `calendar-post-${encodeURIComponent(String(key))}-${encodeURIComponent(String(postId))}`);
+}
+
+function postResult(snapshot) {
+  if (!snapshot.exists()) return { post: null, revision: 0 };
+  const data = snapshot.data();
+  return { post: data.v === undefined ? null : data.v, revision: Number(data.revision || 0) };
+}
+
+// Migração idempotente: um lease impede dois navegadores de copiarem a lista legada ao mesmo tempo.
+export async function ensurePostsStore(key, legacyPosts = []) {
+  await currentContext();
+  const storeReference = calendarStoreReference(key);
+  const owner = (globalThis.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+  const leaseMs = 60000;
+
+  for (;;) {
+    const claim = await runTransaction(db, async transaction => {
+      const snapshot = await transaction.get(storeReference);
+      const data = snapshot.exists() ? snapshot.data() : {};
+      if (data.migrated) return 'done';
+      const now = Date.now();
+      if (data.migrationOwner && data.migrationOwner !== owner && Number(data.migrationLeaseUntil || 0) > now) return 'wait';
+      transaction.set(storeReference, {
+        migrationOwner: owner,
+        migrationLeaseUntil: now + leaseMs,
+        migrationStatus: 'migrating'
+      }, { merge: true });
+      return 'claimed';
+    });
+
+    if (claim === 'done') return;
+    if (claim === 'wait') {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      continue;
+    }
+
+    const posts = Array.isArray(legacyPosts) ? legacyPosts.filter(post => post && post.id) : [];
+    for (let offset = 0; offset < posts.length; offset += 400) {
+      const batch = writeBatch(db);
+      posts.slice(offset, offset + 400).forEach(post => {
+        batch.set(calendarPostReference(key, post.id), {
+          kind: 'calendarPost',
+          calendarStoreKey: String(key),
+          postId: String(post.id),
+          v: post,
+          revision: 1,
+          updatedAt: serverTimestamp()
+        });
+      });
+      await batch.commit();
+    }
+
+    await runTransaction(db, async transaction => {
+      const snapshot = await transaction.get(storeReference);
+      const data = snapshot.exists() ? snapshot.data() : {};
+      if (data.migrated) return;
+      if (data.migrationOwner !== owner) throw portalError('posts/migration-lost', 'A migração do calendário foi assumida por outra sessão.');
+      transaction.set(storeReference, {
+        migrated: true,
+        migratedAt: serverTimestamp(),
+        migrationStatus: 'done',
+        migrationOwner: null,
+        migrationLeaseUntil: 0
+      }, { merge: true });
+    });
+    return;
+  }
+}
+
+export async function writePost(key, post, expectedRevision) {
+  await currentContext();
+  const reference = calendarPostReference(key, post.id);
+  return runTransaction(db, async transaction => {
+    const current = await transaction.get(reference);
+    const currentResult = postResult(current);
+    if (currentResult.revision !== Number(expectedRevision || 0)) return { conflict: true, server: currentResult };
+    const revision = currentResult.revision + 1;
+    transaction.set(reference, {
+      kind: 'calendarPost',
+      calendarStoreKey: String(key),
+      postId: String(post.id),
+      v: post, revision, updatedAt: serverTimestamp()
+    });
+    return { conflict: false, revision };
+  });
+}
+
+export async function deletePost(key, postId, expectedRevision) {
+  await currentContext();
+  const reference = calendarPostReference(key, postId);
+  return runTransaction(db, async transaction => {
+    const current = await transaction.get(reference);
+    const currentResult = postResult(current);
+    if (currentResult.revision !== Number(expectedRevision || 0)) return { conflict: true, server: currentResult };
+    if (current.exists()) transaction.delete(reference);
+    return { conflict: false, revision: 0 };
+  });
+}
+
+export async function subscribeToPosts(key, onChange, onError) {
+  await currentContext();
+  let initial = true;
+  return onSnapshot(calendarPostsReference(key), snapshot => {
+    const changes = snapshot.docChanges().map(change => {
+      const result = postResult(change.doc);
+      const data = change.doc.data();
+      return {
+        type: change.type,
+        id: String(data.postId || (result.post && result.post.id) || change.doc.id),
+        ...result,
+        pending: change.doc.metadata.hasPendingWrites
+      };
+    });
+    onChange({ changes, initial, fromCache: snapshot.metadata.fromCache });
+    initial = false;
+  }, onError);
+}
 
 export { app, auth, db, profileFor, audit };
 
-window.PortalFirebase = { readPortalStore, writePortalStore, currentContext, logout, requestPasswordReset };
+window.PortalFirebase = {
+  readPortalStore, writePortalStore, ensurePostsStore, writePost, deletePost, subscribeToPosts,
+  currentContext, logout, requestPasswordReset
+};
 window.dispatchEvent(new Event('portal-firebase-ready'));

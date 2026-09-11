@@ -1,0 +1,88 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste de sincronização concorrente</title>
+<body data-result="running">RUNNING</body>
+<script src="../calendar-post-sync.js"></script>
+<script>
+(async function(){
+  const clone=value=>value==null?value:JSON.parse(JSON.stringify(value));
+  const server=new Map();
+  const listeners=[];
+  let conflicts=0;
+
+  function resultFor(id){
+    const item=server.get(id);
+    return item?{post:clone(item.post),revision:item.revision}:{post:null,revision:0};
+  }
+  function emit(type,id){
+    const result=resultFor(id);
+    listeners.forEach(listener=>listener({
+      initial:false,fromCache:false,
+      changes:[{type,id,...result,pending:false}]
+    }));
+  }
+
+  window.PortalFirebase={
+    ensurePostsStore:async()=>{},
+    subscribeToPosts:async(_key,onChange)=>{
+      listeners.push(onChange);
+      onChange({
+        initial:true,fromCache:false,
+        changes:Array.from(server,([id,item])=>({type:'added',id,post:clone(item.post),revision:item.revision,pending:false}))
+      });
+      return ()=>{};
+    },
+    writePost:async(_key,post,expectedRevision)=>{
+      const current=resultFor(post.id);
+      if(current.revision!==Number(expectedRevision||0)) return {conflict:true,server:current};
+      const revision=current.revision+1;
+      server.set(post.id,{post:clone(post),revision});
+      emit(current.post?'modified':'added',post.id);
+      return {conflict:false,revision};
+    },
+    deletePost:async(_key,id,expectedRevision)=>{
+      const current=resultFor(id);
+      if(current.revision!==Number(expectedRevision||0)) return {conflict:true,server:current};
+      server.delete(id); emit('removed',id);
+      return {conflict:false,revision:0};
+    }
+  };
+
+  ['test-a','test-b'].forEach(suffix=>{
+    localStorage.removeItem('posts-'+suffix);
+    localStorage.removeItem('outbox-'+suffix);
+  });
+  let postsA=[];
+  let postsB=[];
+  const makeSync=(suffix,getPosts,applyPosts)=>CalendarPostSync.create({
+    storeKey:'posts__test',localKey:'posts-'+suffix,outboxKey:'outbox-'+suffix,
+    getPosts,applyPosts,readLegacy:async()=>({v:[]}),onRemoteChange:()=>{},onStatus:()=>{},
+    onConflict:()=>{conflicts++;}
+  });
+  const syncA=makeSync('test-a',()=>postsA,value=>{postsA=value;});
+  const syncB=makeSync('test-b',()=>postsB,value=>{postsB=value;});
+  await Promise.all([syncA.start(),syncB.start()]);
+
+  postsA.push({id:'card-a',title:'Criado por A',date:'2026-09-11',order:0});
+  postsB.push({id:'card-b',title:'Criado por B',date:'2026-09-11',order:0});
+  syncA.save(); syncB.save();
+  await new Promise(resolve=>setTimeout(resolve,100));
+  if(server.size!==2||postsA.length!==2||postsB.length!==2) throw new Error('criações simultâneas não convergiram');
+
+  syncA.beginEdit('card-a'); syncB.beginEdit('card-a');
+  postsA.find(post=>post.id==='card-a').title='Edição A';
+  postsB.find(post=>post.id==='card-a').title='Edição B';
+  syncA.save(); syncB.save();
+  syncA.endEdit('card-a'); syncB.endEdit('card-a');
+  await new Promise(resolve=>setTimeout(resolve,100));
+  const titleA=postsA.find(post=>post.id==='card-a').title;
+  const titleB=postsB.find(post=>post.id==='card-a').title;
+  if(titleA!==titleB||conflicts!==1) throw new Error('edição do mesmo card não foi isolada por revisão');
+
+  document.body.dataset.result='pass';
+  document.body.textContent='PASS: duas criações simultâneas persistem; a edição concorrente do mesmo card gera um conflito isolado.';
+})().catch(error=>{
+  document.body.dataset.result='fail';
+  document.body.textContent='FAIL: '+error.message;
+});
+</script>

@@ -23,6 +23,67 @@
     return `<svg width="${size||16}" height="${size||16}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
   }
 
+  // Aviso compartilhado de conflito de sincronização. Mantém o feedback dentro do portal
+  // (em vez do alert() nativo) e permite que cada tela explique qual área foi atualizada.
+  let syncConflictReturnFocus = null;
+  function ensureSyncConflictModal(){
+    let backdrop = $('portalSyncConflictBackdrop');
+    if(backdrop) return backdrop;
+    backdrop = document.createElement('div');
+    backdrop.id = 'portalSyncConflictBackdrop';
+    backdrop.className = 'modal-backdrop sync-conflict-backdrop';
+    backdrop.innerHTML = `
+      <div class="modal modal-sm sync-conflict-modal" role="alertdialog" aria-modal="true" aria-labelledby="portalSyncConflictTitle" aria-describedby="portalSyncConflictMessage portalSyncConflictHint">
+        <div class="modal-header">
+          <div class="modal-header-title sync-conflict-title">
+            <span class="sync-conflict-icon" aria-hidden="true">${svgIcon('<path d="M20 7h-5V2"/><path d="M4 17h5v5"/><path d="M5.1 9A8 8 0 0 1 18.4 5.6L20 7"/><path d="M18.9 15A8 8 0 0 1 5.6 18.4L4 17"/>', 20)}</span>
+            <div><span>ATUALIZAÇÃO DA EQUIPE</span><h2 id="portalSyncConflictTitle">Alterações sincronizadas</h2></div>
+          </div>
+          <div class="modal-header-actions"><button type="button" class="modal-close" id="portalSyncConflictClose" aria-label="Fechar">${svgIcon('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>', 15)}</button></div>
+        </div>
+        <div class="modal-body sync-conflict-body">
+          <p id="portalSyncConflictMessage"></p>
+          <div class="sync-conflict-hint">${svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/>', 17)}<span id="portalSyncConflictHint">Confira sua última ação. Se ela não aparecer, faça-a novamente.</span></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn" id="portalSyncConflictOk">Entendi</button></div>
+      </div>`;
+    document.body.appendChild(backdrop);
+    const close = ()=> hideSyncConflictModal();
+    $('portalSyncConflictClose').addEventListener('click', close);
+    $('portalSyncConflictOk').addEventListener('click', close);
+    backdrop.addEventListener('click', ev=>{ if(ev.target===backdrop) close(); });
+    backdrop.addEventListener('keydown', ev=>{
+      if(ev.key==='Escape'){ ev.preventDefault(); close(); return; }
+      if(ev.key!=='Tab') return;
+      const focusable = [$('portalSyncConflictClose'), $('portalSyncConflictOk')];
+      const first = focusable[0], last = focusable[focusable.length-1];
+      if(ev.shiftKey && document.activeElement===first){ ev.preventDefault(); last.focus(); }
+      else if(!ev.shiftKey && document.activeElement===last){ ev.preventDefault(); first.focus(); }
+    });
+    return backdrop;
+  }
+  function showSyncConflictModal(options){
+    const context = (options && options.context) || 'posts';
+    const messages = {
+      posts: 'Outra pessoa atualizou o calendário desta marca enquanto você trabalhava. Carregamos a versão mais recente do servidor.',
+      settings: 'Outra pessoa atualizou as configurações desta marca enquanto você trabalhava. Carregamos a versão mais recente do servidor.',
+      intelligence: 'Outra pessoa atualizou a Central de Inteligência enquanto você trabalhava. Carregamos a versão mais recente do servidor.'
+    };
+    const backdrop = ensureSyncConflictModal();
+    if(!backdrop.classList.contains('is-open')) syncConflictReturnFocus = document.activeElement;
+    $('portalSyncConflictMessage').textContent = messages[context] || messages.posts;
+    backdrop.classList.add('is-open');
+    requestAnimationFrame(()=> $('portalSyncConflictOk').focus());
+  }
+  function hideSyncConflictModal(){
+    const backdrop = $('portalSyncConflictBackdrop');
+    if(!backdrop || !backdrop.classList.contains('is-open')) return;
+    backdrop.classList.remove('is-open');
+    if(syncConflictReturnFocus && syncConflictReturnFocus.isConnected) syncConflictReturnFocus.focus();
+    syncConflictReturnFocus = null;
+  }
+  window.PortalSyncConflict = { show:showSyncConflictModal, hide:hideSyncConflictModal };
+
   // ============================================================
   // MARCA ATIVA — resolvida já no topo do arquivo, de forma síncrona (precisa vir ANTES da
   // seção de TEMA logo abaixo: cada marca pode ter uma cor de destaque própria, então é preciso

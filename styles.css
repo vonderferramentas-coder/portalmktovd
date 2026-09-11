@@ -645,6 +645,19 @@
        posicionado sobre o texto do título */
     .modal-close{position:static;width:28px;height:28px;border:0;background:transparent;color:var(--muted);font-size:15px;line-height:1;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s,color .12s}
     .modal-close:hover{background:var(--surface-muted);color:var(--text)}
+    .sync-conflict-backdrop{backdrop-filter:blur(3px)}
+    .sync-conflict-backdrop.is-open{display:flex}
+    .sync-conflict-modal{width:min(460px,calc(100vw - 24px));max-width:460px;box-sizing:border-box;border:1px solid var(--border-strong)}
+    .sync-conflict-title{gap:12px}
+    .sync-conflict-title>div>span{display:block;margin-bottom:3px;color:var(--accent-ink);font-size:9px;font-weight:900;letter-spacing:.1em}
+    .sync-conflict-icon{width:40px;height:40px;border-radius:12px;background:var(--accent-weak);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;flex:0 0 40px}
+    .sync-conflict-body{padding-top:18px;padding-bottom:18px}
+    .sync-conflict-body>p{margin:0;color:var(--text);font-size:13px;line-height:1.6}
+    .sync-conflict-hint{display:flex;align-items:flex-start;gap:9px;margin-top:14px;padding:11px 12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface-muted);color:var(--muted);font-size:11.5px;line-height:1.5}
+    .sync-conflict-hint svg{flex:0 0 auto;margin-top:1px;color:var(--accent-ink)}
+    .sync-conflict-modal :focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+    @media(max-width:520px){.sync-conflict-backdrop{padding:12px}.sync-conflict-title{gap:9px}.sync-conflict-icon{width:36px;height:36px;flex-basis:36px}.sync-conflict-modal .modal-header,.sync-conflict-modal .modal-body,.sync-conflict-modal .modal-footer{padding-left:14px;padding-right:14px}}
+    @media(prefers-reduced-motion:no-preference){.sync-conflict-backdrop.is-open .sync-conflict-modal{animation:sync-conflict-in .18s ease-out both}@keyframes sync-conflict-in{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}}
     /* Botão "Voltar" (ícone + texto), à esquerda do título do modal */
     .modal-back-btn{position:static;flex-shrink:0;border:0;background:transparent;color:var(--muted);font:inherit;font-size:12.5px;font-weight:600;line-height:1;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:4px;padding:6px 8px 6px 6px;transition:background .12s,color .12s}
     .modal-back-btn:hover{background:var(--surface-muted);color:var(--text)}

@@ -6,9 +6,11 @@
     // ============================================================
     const BRAND_SUFFIX = (window.PortalBrand && window.PortalBrand.suffix) || '';
     const LS_POSTS_KEY = 'calendar_posts_v1' + BRAND_SUFFIX;
+    const LS_POSTS_OUTBOX_KEY = 'calendar_posts_outbox_v1' + BRAND_SUFFIX;
     const LS_SETTINGS_KEY = 'calendar_settings_v1' + BRAND_SUFFIX;
     const API_POSTS_KEY = 'posts' + BRAND_SUFFIX;
     const API_SETTINGS_KEY = 'settings' + BRAND_SUFFIX;
+    let postSync = null;
 
     // ============================================================
     // ESTADO GLOBAL DA APLICAÇÃO
@@ -998,7 +1000,10 @@
       upload: (s)=> svgIcon('<path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>', s)
     };
     // gera um id único para uma nova postagem
-    function generateId(){ return 'p-' + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4); }
+    function generateId(){
+      if(window.crypto && typeof window.crypto.randomUUID==='function') return 'p-' + window.crypto.randomUUID();
+      return 'p-' + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
+    }
 
     // ============================================================
     // ORDEM DAS POSTAGENS DENTRO DE UM MESMO DIA — cada post carrega
@@ -1008,7 +1013,7 @@
     // (grade mensal, lista e exportações/briefings futuros).
     // ============================================================
     function sortByOrder(list){
-      return list.slice().sort((a,b)=> (a.order||0) - (b.order||0));
+      return list.slice().sort((a,b)=> ((a.order||0) - (b.order||0)) || String(a.id||'').localeCompare(String(b.id||'')));
     }
     function nextOrderForDate(date, excludeId){
       const existing = state.posts.filter(p=>p.date===date && p.id!==excludeId);
@@ -2199,7 +2204,7 @@
     // ============================================================
     function saveState(){
       localStorage.setItem(LS_POSTS_KEY, JSON.stringify(state.posts));
-      scheduleSyncPush(API_POSTS_KEY, ()=> state.posts);
+      if(postSync) postSync.save();
     }
 
     function migrateLegacyInstagramFeedPlaces(places){
@@ -2467,6 +2472,32 @@
         const el = $(id); return el && el.style.display === 'flex';
       });
     }
+    let pendingRemotePostsRender = null;
+    function renderRemotePostsWhenSafe(){
+      clearTimeout(pendingRemotePostsRender);
+      if(anyModalOpen()){
+        pendingRemotePostsRender = setTimeout(renderRemotePostsWhenSafe, 250);
+        return;
+      }
+      renderAllDynamicUI(); buildCalendar(); render();
+    }
+    function createPostSync(){
+      return CalendarPostSync.create({
+        storeKey: API_POSTS_KEY,
+        localKey: LS_POSTS_KEY,
+        outboxKey: LS_POSTS_OUTBOX_KEY,
+        getPosts: ()=>state.posts,
+        applyPosts: posts=>{ state.posts=posts; migratePostOrders(); },
+        readLegacy: ()=>syncFetch(API_POSTS_KEY),
+        onRemoteChange: renderRemotePostsWhenSafe,
+        onStatus: setSyncStatus,
+        onConflict: ()=>{
+          setSyncStatus('O mesmo card foi alterado por outra pessoa','warn');
+          if(window.PortalSyncConflict) PortalSyncConflict.show({context:'posts'});
+          else alert('Outra pessoa alterou este mesmo card. A versão mais recente do servidor foi mantida; revise o card antes de editar novamente.');
+        }
+      });
+    }
     async function syncFetch(key){
       return SyncBackend.get(key);
     }
@@ -2503,7 +2534,8 @@
             syncVersions[key] = result.server.updated_at;
             if(!anyModalOpen()){ renderAllDynamicUI(); buildCalendar(); render(); }
             setSyncStatus('Atualizado com mudanças de outra pessoa', 'warn');
-            alert('Outra pessoa salvou uma alteração enquanto você editava. Os dados foram atualizados com a versão mais recente do servidor — se sua última ação não aparecer, refaça-a.');
+            if(window.PortalSyncConflict) PortalSyncConflict.show({ context:key===API_POSTS_KEY?'posts':'settings' });
+            else alert('Outra pessoa salvou uma alteração enquanto você editava. Os dados foram atualizados com a versão mais recente do servidor — se sua última ação não aparecer, refaça-a.');
           }
         } else {
           setSyncStatus('Sincronizado com o servidor', 'ok');
@@ -2543,20 +2575,15 @@
     async function syncPull(showIdleStatus){
       if(!SYNC_ENABLED) return;
       try{
-        const [postsRes, settingsRes] = await Promise.all([syncFetch(API_POSTS_KEY), syncFetch(API_SETTINGS_KEY)]);
+        const settingsRes = await syncFetch(API_SETTINGS_KEY);
         let changed = false;
         if(settingsRes.v!==null && settingsRes.updated_at!==syncVersions[API_SETTINGS_KEY]){
           localStorage.setItem(LS_SETTINGS_KEY, JSON.stringify(settingsRes.v));
           loadSettings(); changed = true;
         }
         syncVersions[API_SETTINGS_KEY] = settingsRes.updated_at;
-        if(postsRes.v!==null && postsRes.updated_at!==syncVersions[API_POSTS_KEY]){
-          localStorage.setItem(LS_POSTS_KEY, JSON.stringify(postsRes.v));
-          loadState(); changed = true;
-        }
-        syncVersions[API_POSTS_KEY] = postsRes.updated_at;
         if(changed && !anyModalOpen()){ renderAllDynamicUI(); buildCalendar(); render(); }
-        if(changed || showIdleStatus) setSyncStatus('Sincronizado com o servidor', 'ok');
+        if(changed || showIdleStatus) setSyncStatus('Sincronizado em tempo real', 'ok');
       }catch(e){
         setSyncStatus('Sem conexão com o servidor — usando cópia local', 'warn');
       }
@@ -3738,6 +3765,7 @@
       modalOpenedFromApplyEditoria = false;
       if($('modalBackBtn')) $('modalBackBtn').style.display = 'none';
       isEditing = true; editingId = id;
+      if(postSync) postSync.beginEdit(id);
       // preenche os campos do modal com os dados da postagem
       $('mTitle').value = post.title || '';
       $('mDate').value = post.date || '';
@@ -3787,6 +3815,8 @@
     }
 
     function closeEditState(){
+      const closedEditingId = editingId;
+      if(postSync && closedEditingId) postSync.endEdit(closedEditingId);
       isEditing = false; editingId = null; document.querySelector('#modalBackdrop .modal h2').textContent = 'Criar postagem';
       if($('modalMenuBtn')) $('modalMenuBtn').style.display = 'none';
       document.querySelectorAll('.mNet').forEach(n=>{ n.disabled = false; n.checked = false; });
@@ -4709,6 +4739,7 @@ if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEvent
     if($('editoriasMonthLabel')) $('editoriasMonthLabel').addEventListener('click', (ev)=>{ ev.stopPropagation(); toggleEditoriasMonthPicker(); });
     document.addEventListener('click', ()=> closeEditoriasMonthPicker());
     loadState();
+    if(SYNC_ENABLED) postSync = createPostSync();
     // monta o calendário e, se ainda não houver nenhuma postagem, cria exemplos de demonstração
     // (só no modo local/offline — num calendário sincronizado com o servidor não faz sentido
     // criar posts de exemplo pra toda a equipe; espera o syncPull() trazer os dados reais)
@@ -4728,9 +4759,10 @@ if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEvent
     // primeira renderização da tela
     render();
 
-    // busca a versão do servidor (se disponível) e passa a checar por mudanças de outras
-    // pessoas a cada 20s — ver bloco "SINCRONIZAÇÃO COM O SERVIDOR" mais acima
+    // Cards usam listener em tempo real; apenas configurações e inteligência mantêm a
+    // consulta periódica, pois continuam armazenadas como documentos únicos.
     if(SYNC_ENABLED){
+      postSync.start();
       syncPull();
       setInterval(()=> syncPull(), 20000);
       // mesma cadência pra Central de Inteligência (só leitura aqui — quem treina é intelligence-center.html)

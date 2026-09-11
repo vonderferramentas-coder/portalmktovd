@@ -146,7 +146,8 @@
               renderLibrary();
               renderWorkspace();
               setSyncStatus('Atualizado com mudanças de outra pessoa', 'warn');
-              alert('Outra pessoa salvou uma alteração enquanto você editava. Os dados foram atualizados com a versão mais recente do servidor — se sua última ação não aparecer, refaça-a.');
+              if(window.PortalSyncConflict) PortalSyncConflict.show({ context:'intelligence' });
+              else alert('Outra pessoa salvou uma alteração enquanto você editava. Os dados foram atualizados com a versão mais recente do servidor — se sua última ação não aparecer, refaça-a.');
             }
           } else {
             syncVersion = result.updated_at;
