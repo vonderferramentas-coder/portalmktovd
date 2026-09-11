@@ -282,3 +282,216 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'chore: reconstruir histórico de seguidores a partir dos insights'
           git push
+
+  # Mesma reconstrução para a Ferramentas Gerais — job separado (isolamento entre marcas já vem
+  # do próprio job, sem precisar de continue-on-error aqui: uma falha nesta reconstrução nunca
+  # afeta o job da VONDER acima, que roda antes por causa do `needs`). O snapshot protegido no
+  # Firestore não precisa de passo próprio: sync-meta-followers.yml roda a cada 15 min e já
+  # republica data/social-followers-ferramentas-gerais.json de qualquer jeito.
+  reconstruir-ferramentas-gerais:
+    needs: reconstruir
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Coletar saldo diário na Meta (Ferramentas Gerais)
+        env:
+          META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS: ${{ secrets.META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS }}
+          META_INSTAGRAM_ID: '17841404085550539'
+        run: |
+          set -euo pipefail
+          API="https://graph.facebook.com/v26.0"
+          AUTH="Authorization: Bearer $META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS"
+
+          curl -sS --fail -H "$AUTH" "$API/$META_INSTAGRAM_ID?fields=followers_count" -o atual.json
+          jq -er '.followers_count | numbers' atual.json > /dev/null
+
+          SINCE="$(date -u -d '29 days ago' +%s)"
+          UNTIL="$(date -u -d 'yesterday' +%s)"
+          curl -sS --fail -H "$AUTH" \
+            "$API/$META_INSTAGRAM_ID/insights?metric=follower_count&period=day&since=$SINCE&until=$UNTIL" \
+            -o fronteiras.json
+          curl -sS --fail -H "$AUTH" \
+            "$API/$META_INSTAGRAM_ID/insights?metric=reach&period=day&since=$SINCE&until=$UNTIL" \
+            -o alcance.json
+
+          jq -r '.data[0].values[].end_time' fronteiras.json > limites.txt
+          echo "Dias retornados pela Meta: $(wc -l < limites.txt)"
+
+          jq '[.data[0].values[]?.value] | add // 0' fronteiras.json > entradas_referencia.txt
+
+          extrair() {
+            printf '%s' "$resposta" \
+              | jq -r --arg tipo "$1" '[.data[]?.total_value?.breakdowns[]?.results[]? | select(.dimension_values[0]==$tipo) | .value] | first // empty' \
+              2>/dev/null || true
+          }
+
+          echo '[]' > saldos.json
+          anterior=''
+          while read -r limite; do
+            fim="$(date -u -d "$limite" +%s)"
+            if [ -n "$anterior" ]; then
+              inicio=$((anterior + 1))
+              resposta="$(curl -sS -H "$AUTH" \
+                "$API/$META_INSTAGRAM_ID/insights?metric=follows_and_unfollows&period=day&metric_type=total_value&breakdown=follow_type&since=$inicio&until=$fim")"
+              entraram="$(extrair FOLLOWER)"
+              sairam="$(extrair NON_FOLLOWER)"
+              if [ -n "$entraram" ] && [ -n "$sairam" ]; then
+                dia="$(date -u -d "$limite" +%F)"
+                jq --arg d "$dia" --argjson e "$entraram" --argjson s "$sairam" \
+                  '. + [{date:$d, entraram:$e, sairam:$s, saldo:($e-$s)}]' saldos.json > tmp.json
+                mv tmp.json saldos.json
+              else
+                echo "Sem dado utilizável para o dia que termina em $limite"
+                printf 'Resposta recebida: %s\n' "${resposta:0:300}"
+              fi
+            fi
+            anterior="$fim"
+          done < limites.txt
+
+          echo "Dias com saldo apurado: $(jq 'length' saldos.json)"
+
+          echo '{}' > parcial.json
+          if [ -n "$anterior" ]; then
+            resposta="$(curl -sS -H "$AUTH" \
+              "$API/$META_INSTAGRAM_ID/insights?metric=follows_and_unfollows&period=day&metric_type=total_value&breakdown=follow_type&since=$((anterior + 1))&until=$(date -u +%s)")"
+            e="$(extrair FOLLOWER)"
+            s="$(extrair NON_FOLLOWER)"
+            if [ -n "$e" ] && [ -n "$s" ]; then
+              jq -n --argjson e "$e" --argjson s "$s" '{entraram:$e, sairam:$s, saldo:($e-$s)}' > parcial.json
+              echo "Saldo parcial de hoje: $((e - s))"
+            else
+              echo 'Saldo parcial de hoje indisponível; a âncora ficará com o desvio de um dia.'
+            fi
+          fi
+
+      - name: Reconstruir os totais e mesclar (Ferramentas Gerais)
+        run: |
+          python3 - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          atual = json.loads(Path('atual.json').read_text())['followers_count']
+          saldos = json.loads(Path('saldos.json').read_text())
+          alcance = {item['end_time'][:10]: item['value'] for item in json.loads(Path('alcance.json').read_text()).get('data', [{}])[0].get('values', [])}
+          caminho = Path('data/social-followers-ferramentas-gerais.json')
+          doc = json.loads(caminho.read_text(encoding='utf-8')) if caminho.exists() else {'version': 1, 'history': []}
+
+          referencia = {
+              item['end_time'][:10]: item['value']
+              for item in json.loads(Path('fronteiras.json').read_text())['data'][0]['values']
+          }
+
+          janela_desta_execucao = set(referencia)
+          historico = {
+              item['date']: item for item in doc.get('history', [])
+              if not (item.get('source') in ('reconstruido', 'estimado') and item['date'] in janela_desta_execucao)
+          }
+          esperados = sorted(dia for dia, valor in referencia.items() if valor > 0)[1:]
+          faltando = [dia for dia in esperados if dia not in {item['date'] for item in saldos}]
+
+          proporcoes = sorted(item['sairam'] / item['entraram'] for item in saldos if item['entraram'])
+          proporcao = proporcoes[len(proporcoes) // 2] if proporcoes else None
+          estimados = []
+          if faltando and proporcao is not None and len(faltando) <= 2:
+              for dia in list(faltando):
+                  entradas = referencia.get(dia)
+                  if not entradas:
+                      continue
+                  saidas = round(entradas * proporcao)
+                  saldos.append({'date': dia, 'entraram': entradas, 'sairam': saidas,
+                                 'saldo': entradas - saidas, 'estimado': True})
+                  estimados.append(dia)
+                  faltando.remove(dia)
+
+          divergentes = []
+          for item in saldos:
+              esperado = referencia.get(item['date'])
+              if esperado is None or esperado == 0:
+                  continue
+              desvio = abs(item['entraram'] - esperado) / esperado
+              if desvio > 0.15:
+                  divergentes.append((item['date'], item['entraram'], esperado, desvio))
+
+          if divergentes or faltando:
+              linhas = ['## Reconstrução recusada (Ferramentas Gerais)', '']
+              if faltando:
+                  linhas += [f'**{len(faltando)} dia(s) sem saldo apurado:** {", ".join(faltando[:10])}.', '']
+              if divergentes:
+                  linhas += ['Entradas não batem com o `follower_count` do mesmo dia.', '']
+              linhas += ['Nada foi gravado; o arquivo ficou apenas com as medições reais do coletor.']
+              doc['history'] = [historico[dia] for dia in sorted(historico)]
+              caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+              Path('resumo-fg.md').write_text('\n'.join(linhas) + '\n', encoding='utf-8')
+              raise SystemExit(0)
+
+          parcial = json.loads(Path('parcial.json').read_text())
+          ancora_exata = 'saldo' in parcial
+
+          saldos.sort(key=lambda item: item['date'])
+          total = atual - parcial.get('saldo', 0)
+          reconstruidos = {}
+          for item in reversed(saldos):
+              reconstruidos[item['date']] = total
+              total -= item['saldo']
+
+          novos = 0
+          metricas = {item['date']: item for item in saldos}
+          for dia, valor in sorted(reconstruidos.items()):
+              existente = historico.get(dia)
+              medida = metricas[dia]
+              insights = {
+                  'follows': int(medida['entraram']),
+                  'unfollows': int(medida['sairam']),
+                  'net': int(medida['saldo']),
+              }
+              if dia in alcance:
+                  insights['reach'] = int(alcance[dia])
+              if existente and existente.get('source') not in ('reconstruido', 'estimado'):
+                  entrada = dict(existente)
+              else:
+                  entrada = {
+                      'date': dia,
+                      'followers': {'Instagram': int(valor)},
+                      'source': 'estimado' if dia in set(estimados) else 'reconstruido'
+                  }
+                  novos += 1
+              entrada['insights'] = dict(entrada.get('insights') or {})
+              entrada['insights']['Instagram'] = insights
+              historico[dia] = entrada
+
+          doc['version'] = 2
+          doc['history'] = [historico[dia] for dia in sorted(historico)]
+          doc['updatedAt'] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+          caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          primeiro = doc['history'][0]
+          resumo = [
+              '## Reconstrução concluída (Ferramentas Gerais)', '',
+              f"Total de referência hoje: **{atual:,}**".replace(',', '.'),
+              f"Dias reconstruídos: **{novos}**",
+              f"Série agora começa em **{primeiro['date']}** com **{primeiro['followers']['Instagram']:,}**".replace(',', '.'),
+          ]
+          Path('resumo-fg.md').write_text('\n'.join(resumo) + '\n', encoding='utf-8')
+          PY
+          cat resumo-fg.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar (Ferramentas Gerais)
+        run: |
+          git add data/social-followers-ferramentas-gerais.json
+          if git diff --cached --quiet -- data/social-followers-ferramentas-gerais.json; then
+            echo 'Nada mudou.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: reconstruir histórico de seguidores a partir dos insights (Ferramentas Gerais)'
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
