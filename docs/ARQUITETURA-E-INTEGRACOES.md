@@ -2,8 +2,8 @@
 
 > **Documento vivo.** Atualize este arquivo na mesma alteração que criar, trocar ou remover uma integração, fonte de dados, automação, serviço hospedado ou recurso que possa gerar dúvida para a TI. A validação automatizada do repositório ajuda a cobrar essa atualização para os principais arquivos de integração.
 
-**Última revisão:** 10/09/2026  
-**Escopo desta revisão:** estado identificado no código da branch `main`, incluindo o início da conexão do TikTok (conta Vonder) ao painel de Redes Sociais — app em análise (App Review) na TikTok for Developers, ainda sem coleta automática.
+**Última revisão:** 11/09/2026
+**Escopo desta revisão:** estado identificado no código da branch `main`, incluindo o início da conexão do TikTok (conta Vonder) e o workflow de status e notificações do calendário.
 
 ## 1. O que é este projeto
 
@@ -405,3 +405,7 @@ Diferente da Meta e do YouTube, o TikTok não tem uma API pública simples (chav
 | Data | Alteração | Responsável |
 |---|---|---|
 | 10/09/2026 | Criado o app "Portal MKT OVD" na TikTok for Developers (Login Kit, escopos `user.info.basic`/`user.info.stats`/`video.list`) e submetido para App Review. Adicionadas as páginas públicas `termos-de-uso.html`, `politica-de-privacidade.html`, `tiktok-connect.html` e `tiktok-oauth-callback.html`, e o arquivo de verificação de domínio da TikTok. Fluxo testado de ponta a ponta no ambiente Sandbox com a conta oficial `@vonderferramentas` (seguidores e lista de vídeos confirmados). Coleta automática e conexão no painel ainda pendentes da aprovação do App Review. | Equipe de Marketing / manutenção do portal |
+
+### Notificações de workflow do calendário (11/09/2026)
+O perfil **Social Media** pode ter marcas selecionadas somente para o roteamento de notificações; isso não muda permissões nem acesso às outras marcas. A lista mínima de destinos ativos fica em `portalStore/social-media-notification-routes-v1`. Ao editar um usuário, a rota é gravada com a lista projetada antes de qualquer recarga administrativa; além disso, `notifications.html` confere e autorrepara a rota do próprio usuário autenticado, cobrindo a troca do próprio Administrador para Social Media sem fazer consultas adicionais recorrentes.
+Quando um card passa para **Pronto para ser postado**, a mesma transação que grava sua nova revisão cria um documento `portalStore/post-ready-notification-*` por destinatário. A página `notifications.html` consulta apenas documentos destinados ao usuário atual e o menu lateral mostra, em tempo real, a quantidade ainda não lida. Ao clicar na mensagem, ela é marcada como lida e o calendário aguarda a sincronização inicial para abrir diretamente o card indicado pelos parâmetros `brand`, `post` e `date`. Não há novo serviço, plano, credencial ou regra do Firestore; o fluxo usa `portalStore` e os listeners existentes.

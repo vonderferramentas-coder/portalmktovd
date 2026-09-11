@@ -171,8 +171,10 @@
   }
 
   let BRANDS = loadBrands();
-  let ACTIVE_ID = localStorage.getItem(ACTIVE_BRAND_KEY) || 'default';
+  const requestedBrandId = new URLSearchParams(location.search).get('brand');
+  let ACTIVE_ID = BRANDS.some(b=>b.id===requestedBrandId) ? requestedBrandId : (localStorage.getItem(ACTIVE_BRAND_KEY) || 'default');
   if(!BRANDS.some(b=>b.id===ACTIVE_ID)) ACTIVE_ID = 'default';
+  if(requestedBrandId && ACTIVE_ID===requestedBrandId) localStorage.setItem(ACTIVE_BRAND_KEY, ACTIVE_ID);
 
   window.PortalBrand = {
     activeId: ACTIVE_ID,
@@ -457,6 +459,7 @@
     { href:'business-card-generator.html', label:'Gerador de Cartões', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h5M7 14h3M15.5 10.5h2M15.5 14h2"/>' },
     { href:'followers-dashboard.html', label:'Redes sociais', icon:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>' },
     { href:'intelligence-center.html', label:'Central de Inteligência', icon:'<path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/><path d="M9 18h6"/><path d="M10 22h4"/>' },
+
     // página sensível: fica de fora por padrão pro perfil Usuário (ver defaultHidden em
     // auth-guard.js/admin-users.js) até um administrador marcá-la em Usuários e acessos >
     // Permissões por perfil — deixou de ser um bloqueio fixo de código (ver histórico) porque
@@ -947,6 +950,7 @@
         ${renderNavHtml()}
       </div>
       <div style="margin-top:auto">
+        <a href="notifications.html" class="portal-notifications-link" aria-label="Abrir notificações"><span class="portal-notifications-icon">${svgIcon('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>', 16)}</span><span class="portal-notifications-label">Notificações</span><span class="portal-notifications-count" id="portalNotificationsCount" aria-live="polite" hidden></span></a>
         <div class="portal-account-bar" id="portalAccountBar" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
           <span class="portal-account-avatar">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 14)}</span>
           <span class="portal-account-info"><span class="portal-account-name" id="portalProfileName">Conta</span><span class="portal-account-email" id="portalProfileEmail"></span></span>
@@ -963,8 +967,34 @@
     $('portalSettingsBtn').addEventListener('click', openPortalSettingsModal);
     wireAccountBar();
   }
+  let notificationCountStarted = false;
+  function renderPortalNotificationCount(items){
+    const badge = $('portalNotificationsCount');
+    const link = badge && badge.closest('.portal-notifications-link');
+    if(!badge || !link) return;
+    const unread = (Array.isArray(items) ? items : []).filter(item=>item.kind==='postReadyNotification' && !item.readAt).length;
+    const label = unread===1 ? '1 notificação não lida' : `${unread} notificações não lidas`;
+    badge.textContent = unread>99 ? '99+' : String(unread);
+    badge.hidden = unread===0;
+    badge.title = label;
+    link.setAttribute('aria-label', unread ? `Abrir notificações: ${label}` : 'Abrir notificações');
+  }
+  function startPortalNotificationCount(attempt){
+    const badge = $('portalNotificationsCount');
+    if(!badge || notificationCountStarted) return;
+    if(!window.PortalFirebase || document.body.dataset.authenticated!=='true'){
+      if((attempt||0)<50) setTimeout(()=>startPortalNotificationCount((attempt||0)+1),200);
+      return;
+    }
+    if(document.body.dataset.userRole!=='social-media'){ badge.hidden=true; return; }
+    notificationCountStarted = true;
+    const retry = ()=>{ notificationCountStarted=false; if((attempt||0)<50) setTimeout(()=>startPortalNotificationCount((attempt||0)+1),500); };
+    window.PortalFirebase.subscribeNotifications(renderPortalNotificationCount,retry).catch(retry);
+  }
+
 
   renderSidebar();
+  startPortalNotificationCount();
 
   if(SYNC_ENABLED){
     syncPullBrands();

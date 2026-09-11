@@ -40,7 +40,8 @@ const DEFAULT_PROFILES = [
   { id: 'admin', name: 'Administrador', locked: true },
   { id: 'user', name: 'Usuário' },
   { id: 'gestao', name: 'Gestão' },
-  { id: 'criacao', name: 'Criação' }
+  { id: 'criacao', name: 'Criação' },
+  { id: 'social-media', name: 'Social Media' }
 ];
 let profiles = DEFAULT_PROFILES.map(p => Object.assign({}, p));
 let profilesVersion = 0;
@@ -57,6 +58,7 @@ async function loadProfiles() {
     profilesVersion = record.updated_at || 0;
     if (Array.isArray(record.v) && record.v.length) {
       profiles = record.v;
+      DEFAULT_PROFILES.forEach(def => { if (!profiles.some(profile => profile.id === def.id)) profiles.push(Object.assign({}, def)); });
     } else {
       // primeira vez que esta tela roda com o recurso de perfis: já grava os padrões
       // (Administrador travado + Usuário + Gestão + Criação) em vez de deixar só no cliente.
@@ -78,6 +80,20 @@ async function loadProfiles() {
 // item/card e bloqueia acesso direto pela URL). A lista de páginas vem de
 // window.PortalNavItems (portal-shell.js), fonte única do menu.
 // ============================================================
+const NOTIFICATION_ROUTES_KEY = 'social-media-notification-routes-v1';
+function notificationBrandOptions(selected) {
+  const selectedIds = new Set(Array.isArray(selected) ? selected : []);
+  return (window.PortalBrand && window.PortalBrand.list || []).map(brand => '<label class="chip"><input type="checkbox" name="notificationBrand" value="' + escape(brand.id) + '"' + (selectedIds.has(brand.id) ? ' checked' : '') + '> ' + escape(brand.name) + '</label>').join('');
+}
+function selectedNotificationBrands() { return Array.from(document.querySelectorAll('input[name="notificationBrand"]:checked')).map(input => input.value); }
+async function syncNotificationRoutes(users = latestUsers) {
+  const source = Array.isArray(users) ? users : [];
+  const routes = source.filter(user => user.status === 'active' && user.role === 'social-media').map(user => ({ uid: user.id, brandIds: Array.isArray(user.notificationBrands) ? user.notificationBrands : [] }));
+  const record = await readPortalStore(NOTIFICATION_ROUTES_KEY);
+  const result = await writePortalStore(NOTIFICATION_ROUTES_KEY, routes, record.updated_at);
+  if (result.conflict) { const retry = await readPortalStore(NOTIFICATION_ROUTES_KEY); await writePortalStore(NOTIFICATION_ROUTES_KEY, routes, retry.updated_at); }
+}
+
 const PERMISSIONS_KEY = 'page-permissions-v1';
 let permissionsMap = {};
 let permissionsVersion = 0;
@@ -379,12 +395,13 @@ function renderUserRows() {
     <td>${escape(user.email)}</td>
     <td>${escape(profileName(user.role))}</td>
     <td><span class="admin-badge ${user.status === 'active' ? 'active' : 'blocked'}">${user.status === 'active' ? 'Ativo' : 'Bloqueado'}</span></td>
+    <td><div class="admin-notification-brands">${(user.notificationBrands || []).length ? (user.notificationBrands || []).map(id => { const brand = (window.PortalBrand.list || []).find(item => item.id === id); return `<span class="admin-badge notification-brand">${escape((brand || {}).name || id)}</span>`; }).join('') : '<span class="muted">—</span>'}</div></td>
     <td>${formatDate(user.lastAccessAt)}</td>
     <td><div class="admin-table-actions">
       <button class="btn-icon" type="button" data-edit="${user.id}" title="Editar usuário" aria-label="Editar usuário">${PENCIL_ICON}</button>
       <button class="btn-icon" type="button" data-menu="${user.id}" title="Mais ações" aria-label="Mais ações">${MENU_ICON}</button>
     </div></td>
-  </tr>`).join('') || '<tr><td colspan="6" class="muted">Nenhum usuário aprovado.</td></tr>';
+  </tr>`).join('') || '<tr><td colspan="7" class="muted">Nenhum usuário aprovado.</td></tr>';
 }
 async function load() {
   const snapshot = await getDocs(collection(db, 'users'));
@@ -413,7 +430,7 @@ function buildEditModal() {
       <div class="auth-form">
         <div class="auth-field"><label for="editUserName">Nome</label><input id="editUserName" type="text" required></div>
         <div class="auth-field"><label for="editUserEmail">E-mail</label><input id="editUserEmail" type="email" required></div>
-        <div class="auth-field"><label for="editUserRole">Perfil</label><select id="editUserRole"></select></div>
+        <div class="auth-field"><label for="editUserRole">Perfil</label><select id="editUserRole"></select></div><div class="auth-field" id="editNotificationBrandsField" hidden><label>Marcas para notificações</label><p class="muted">Isso não altera o acesso às marcas. Só perfis Social Media recebem os avisos.</p><div id="editNotificationBrands" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -431,16 +448,20 @@ function buildEditModal() {
     const name = $('editUserName').value.trim();
     const email = $('editUserEmail').value.trim().toLowerCase();
     const role = $('editUserRole').value;
+    const notificationBrands = selectedNotificationBrands();
     if (!name) { $('editUserName').focus(); return; }
     if (!email) { $('editUserEmail').focus(); return; }
     const btn = backdrop.querySelector('#saveEditUser');
     btn.disabled = true;
     try {
-      await updateDoc(doc(db, 'users', id), { name, email, role });
+      const nextUsers = latestUsers.map(user => user.id === id ? Object.assign({}, user, { name, email, role, notificationBrands }) : user);
+      await updateDoc(doc(db, 'users', id), { name, email, role, notificationBrands });
+      latestUsers = nextUsers;
+      renderUserRows();
+      await syncNotificationRoutes(nextUsers);
       await audit('user_updated', { targetUid: id, name, email, role });
       close();
       show('Usuário atualizado.', true);
-      await load();
     } catch (error) {
       show('Não foi possível atualizar o usuário.');
     } finally {
@@ -455,6 +476,8 @@ function openEditModal(user) {
   $('editUserName').value = user.name || '';
   $('editUserEmail').value = user.email || '';
   $('editUserRole').innerHTML = roleOptionsHtml(user.role);
+  $('editNotificationBrands').innerHTML = notificationBrandOptions(user.notificationBrands);
+  $('editNotificationBrandsField').hidden = false;
   editModalEl.style.display = 'flex';
   $('editUserName').focus();
 }
@@ -513,6 +536,7 @@ function openRowMenu(anchor, user) {
       await updateDoc(doc(db, 'users', user.id), { status: next });
       await audit('user_status_changed', { targetUid: user.id, status: next });
       await load();
+      await syncNotificationRoutes();
     } catch (error) {
       show('Não foi possível concluir esta ação.');
     }
@@ -554,7 +578,7 @@ function buildCreateModal() {
       <div class="auth-form">
         <div class="auth-field"><label for="newName">Nome</label><input id="newName" type="text" required></div>
         <div class="auth-field"><label for="newEmail">E-mail corporativo</label><input id="newEmail" type="email" required></div>
-        <div class="auth-field"><label for="newRole">Perfil</label><select id="newRole"></select></div>
+        <div class="auth-field"><label for="newRole">Perfil</label><select id="newRole"></select></div><div class="auth-field" id="newNotificationBrandsField" hidden><label>Marcas para notificações</label><p class="muted">Isso não altera o acesso às marcas. Só perfis Social Media recebem os avisos.</p><div id="newNotificationBrands" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -576,6 +600,7 @@ function buildCreateModal() {
     const name = $('newName').value.trim();
     const email = $('newEmail').value.trim().toLowerCase();
     const role = $('newRole').value;
+    const notificationBrands = selectedNotificationBrands();
     if (!name) { $('newName').focus(); return; }
     if (!email) { $('newEmail').focus(); return; }
     const btn = backdrop.querySelector('#submitCreateUser');
@@ -586,7 +611,7 @@ function buildCreateModal() {
       const random = crypto.getRandomValues(new Uint32Array(8));
       const password = Array.from(random, n => n.toString(36)).join('') + 'Aa!9';
       const created = await createUserWithEmailAndPassword(tempAuth, email, password);
-      await setDoc(doc(db, 'users', created.user.uid), { name, email, role, status: 'active', createdAt: serverTimestamp(), lastAccessAt: null });
+      await setDoc(doc(db, 'users', created.user.uid), { name, email, role, notificationBrands, status: 'active', createdAt: serverTimestamp(), lastAccessAt: null });
       await sendPasswordResetEmail(auth, email);
       await audit('user_created', { targetUid: created.user.uid, role });
       await signOut(tempAuth);
@@ -594,6 +619,7 @@ function buildCreateModal() {
       close();
       show('Usuário criado. Enviamos um link para definição segura de senha.', true);
       await load();
+      await syncNotificationRoutes();
     } catch (error) {
       showCreateMessage(error.code === 'auth/email-already-in-use' ? 'Este e-mail já possui uma conta.' : 'Não foi possível criar o usuário: ' + (error.message || 'erro inesperado'));
     } finally {
@@ -608,6 +634,8 @@ function openCreateModal() {
   $('newEmail').value = '';
   const defaultRole = profiles.some(p => p.id === 'user') ? 'user' : ((sortedProfiles()[0] || {}).id || '');
   $('newRole').innerHTML = roleOptionsHtml(defaultRole);
+  $('newNotificationBrands').innerHTML = notificationBrandOptions([]);
+  $('newNotificationBrandsField').hidden = false;
   const createMessage = $('createUserMessage');
   createMessage.textContent = '';
   createMessage.className = 'auth-message';

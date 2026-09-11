@@ -59,7 +59,7 @@
     }
 
     function commitLocal(map,notify){
-      const posts = Array.from(map.values());
+      const posts = Array.from(map.values(),clone);
       options.applyPosts(posts);
       localStorage.setItem(options.localKey,JSON.stringify(posts));
       if(notify) options.onRemoteChange();
@@ -120,9 +120,10 @@
       await Promise.all(entries.map(async ([id,item])=>{
         try{
           const desired=clone(item.post);
+          const notification=desired&&options.getReadyNotificationRecipients ? await options.getReadyNotificationRecipients(desired) : null;
           const result=desired==null
             ? await api.deletePost(options.storeKey,id,item.expectedRevision)
-            : await api.writePost(options.storeKey,desired,item.expectedRevision);
+            : await api.writePost(options.storeKey,desired,item.expectedRevision,notification);
           const currentEntry=outbox.get(id);
           if(!currentEntry) return;
           if(result.conflict){

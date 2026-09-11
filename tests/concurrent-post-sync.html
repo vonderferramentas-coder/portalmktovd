@@ -6,9 +6,11 @@
 <script>
 (async function(){
   const clone=value=>value==null?value:JSON.parse(JSON.stringify(value));
-  const server=new Map();
+  const existingPost={id:'card-existing',title:'Card existente',date:'2026-09-11',status:'Rascunho',order:0};
+  const server=new Map([[existingPost.id,{post:clone(existingPost),revision:1}]]);
   const listeners=[];
   let conflicts=0;
+  let notifications=0;
 
   function resultFor(id){
     const item=server.get(id);
@@ -32,11 +34,12 @@
       });
       return ()=>{};
     },
-    writePost:async(_key,post,expectedRevision)=>{
+    writePost:async(_key,post,expectedRevision,notification)=>{
       const current=resultFor(post.id);
       if(current.revision!==Number(expectedRevision||0)) return {conflict:true,server:current};
       const revision=current.revision+1;
       server.set(post.id,{post:clone(post),revision});
+      if(post.status==='Pronto para ser postado' && notification?.recipientIds?.length) notifications++;
       emit(current.post?'modified':'added',post.id);
       return {conflict:false,revision};
     },
@@ -57,17 +60,24 @@
   const makeSync=(suffix,getPosts,applyPosts)=>CalendarPostSync.create({
     storeKey:'posts__test',localKey:'posts-'+suffix,outboxKey:'outbox-'+suffix,
     getPosts,applyPosts,readLegacy:async()=>({v:[]}),onRemoteChange:()=>{},onStatus:()=>{},
+    getReadyNotificationRecipients:async post=>post.status==='Pronto para ser postado'
+      ?{recipientIds:['social-media-test'],brandId:'test',brandName:'Teste'}:null,
     onConflict:()=>{conflicts++;}
   });
   const syncA=makeSync('test-a',()=>postsA,value=>{postsA=value;});
   const syncB=makeSync('test-b',()=>postsB,value=>{postsB=value;});
   await Promise.all([syncA.start(),syncB.start()]);
 
+  postsA.find(post=>post.id==='card-existing').status='Pronto para ser postado';
+  syncA.save();
+  await new Promise(resolve=>setTimeout(resolve,100));
+  if(server.get('card-existing').post.status!=='Pronto para ser postado'||notifications!==1) throw new Error('alteração de status em card carregado não gerou notificação');
+
   postsA.push({id:'card-a',title:'Criado por A',date:'2026-09-11',order:0});
   postsB.push({id:'card-b',title:'Criado por B',date:'2026-09-11',order:0});
   syncA.save(); syncB.save();
   await new Promise(resolve=>setTimeout(resolve,100));
-  if(server.size!==2||postsA.length!==2||postsB.length!==2) throw new Error('criações simultâneas não convergiram');
+  if(server.size!==3||postsA.length!==3||postsB.length!==3) throw new Error('criações simultâneas não convergiram');
 
   syncA.beginEdit('card-a'); syncB.beginEdit('card-a');
   postsA.find(post=>post.id==='card-a').title='Edição A';
@@ -80,7 +90,7 @@
   if(titleA!==titleB||conflicts!==1) throw new Error('edição do mesmo card não foi isolada por revisão');
 
   document.body.dataset.result='pass';
-  document.body.textContent='PASS: duas criações simultâneas persistem; a edição concorrente do mesmo card gera um conflito isolado.';
+  document.body.textContent='PASS: status de card carregado gera notificação; criações simultâneas persistem; edição concorrente gera conflito isolado.';
 })().catch(error=>{
   document.body.dataset.result='fail';
   document.body.textContent='FAIL: '+error.message;

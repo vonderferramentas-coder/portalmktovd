@@ -22,6 +22,14 @@
     const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     // Abre sempre no mês vigente; a navegação continua livre a partir daqui.
     let viewDate = new Date();
+    const notificationTargetParams = new URLSearchParams(location.search);
+    const requestedPostId = notificationTargetParams.get('post');
+    const requestedPostDate = notificationTargetParams.get('date');
+    let requestedPostOpened = false;
+    if(/^\d{4}-\d{2}-\d{2}$/.test(requestedPostDate || '')){
+      const [requestedYear,requestedMonth] = requestedPostDate.split('-').map(Number);
+      viewDate = new Date(requestedYear, requestedMonth-1, 1);
+    }
     let activeTabs = []; // redes selecionadas no filtro rápido da toolbar; vazio = "Todas"
     let currentView = 'month'; // 'month' | 'biweek' | 'week' | 'list'
     // alturas das células do dia capturadas por buildCalendar() logo antes de reconstruir o grid;
@@ -1600,6 +1608,25 @@
       return { btn };
     }
 
+    let quickStatusMenuEl = null;
+    function closeQuickStatusMenu(){ if(quickStatusMenuEl) quickStatusMenuEl.remove(); quickStatusMenuEl = null; }
+    function openQuickStatusMenu(anchor, post){
+      closeQuickStatusMenu();
+      const menu = quickStatusMenuEl = document.createElement('div');
+      menu.className = 'quick-status-menu';
+      menu.innerHTML = (APP_SETTINGS.statuses||[]).map(status=>`<button type="button" data-quick-status="${escapeHtml(status.name)}"><span class="post-status-dot" style="background:${status.color}" aria-hidden="true"></span>${escapeHtml(status.name)}</button>`).join('');
+      menu.querySelectorAll('[data-quick-status]').forEach(button=>button.addEventListener('click', event=>{
+        event.stopPropagation();
+        if(post.status !== button.dataset.quickStatus){ post.status = button.dataset.quickStatus; saveState(); render(); }
+        closeQuickStatusMenu();
+      }));
+      document.body.appendChild(menu);
+      const rect = anchor.getBoundingClientRect();
+      menu.style.top = `${rect.bottom + 5}px`;
+      menu.style.left = `${Math.max(5, rect.right - 205)}px`;
+    }
+    document.addEventListener('click', closeQuickStatusMenu);
+    window.addEventListener('scroll', closeQuickStatusMenu, true);
     // Ações de card passam por uma confirmação visual centralizada, coerente com os demais modais.
     let pendingCardAction = null;
     function openCardActionConfirm(action,id){
@@ -1704,7 +1731,7 @@
         reorderPost(draggedPost, p, before);
       });
       div.addEventListener('click', (ev)=>{ ev.stopPropagation(); openEditModal(p.id); });
-      { const { btn } = buildCardMenu(p, 'event-menu-btn'); div.appendChild(btn); }
+      { const dot = document.createElement('button'); dot.type='button'; dot.className='event-status-dot'; dot.style.background=((APP_SETTINGS.statuses||[]).find(status=>status.name===p.status)||{}).color || '#94a3b8'; dot.title='Alterar status: '+(p.status || 'Rascunho'); dot.setAttribute('aria-label',dot.title); dot.addEventListener('click', event=>{ event.stopPropagation(); openQuickStatusMenu(dot,p); }); div.appendChild(dot); const { btn } = buildCardMenu(p, 'event-menu-btn'); div.appendChild(btn); }
       return div;
     }
 
@@ -1719,6 +1746,7 @@
       const typeLabel = entries.some(c=>(c.types||[]).some(t=>(t||'').toLowerCase()==='video')) ? 'Vídeo' : 'Estático';
       row.title = [p.status, postChannelsDetailText(p)].filter(Boolean).join(' · ');
       row.innerHTML = `<span class="drag-handle" title="Arraste para reordenar">${UI_ICONS.grip(14)}</span><span class="list-row-bar" style="background:${eyebrowColor}"></span><div class="list-row-body"><div class="list-row-nets">${netsIconsHtml}</div><div class="list-row-eyebrow" style="color:${eyebrowColor}">${escapeHtml(eyebrowText)}</div><div class="list-row-title">${escapeHtml(p.title)}</div><div class="list-row-subtitle">${typeLabel}</div></div>`;
+      const dot = document.createElement('span'); dot.className = 'list-status-dot'; dot.style.background = ((APP_SETTINGS.statuses||[]).find(status=>status.name===p.status)||{}).color || '#94a3b8'; dot.title = p.status || 'Rascunho'; row.insertBefore(dot, row.querySelector('.list-row-body'));
       const { btn: menuBtn } = buildCardMenu(p, 'list-row-menu-btn');
       row.appendChild(menuBtn);
       row.addEventListener('click', ()=> openEditModal(p.id));
@@ -2064,7 +2092,27 @@
       }
     }
 
+    function renderModalStatus(selected){
+      const field = $('mStatus'); if(!field) return;
+      field.innerHTML = (APP_SETTINGS.statuses||[]).map(status=>`<option value="${escapeHtml(status.name)}">${escapeHtml(status.name)}</option>`).join('');
+      field.value = selected || ((APP_SETTINGS.statuses[0]||{}).name || 'Rascunho');
+      updateModalStatusDot();
+      renderModalStatusChoices();
+    }
+    function updateModalStatusDot(){
+      const dot = $('mStatusDot'), field = $('mStatus'); if(!dot || !field) return;
+      dot.style.background = ((APP_SETTINGS.statuses||[]).find(status=>status.name===field.value)||{}).color || '#94a3b8';
+    }
+    function renderModalStatusChoices(){
+      const field = $('mStatus'), control = $('modalStatusControl'); if(!field || !control) return;
+      const statuses = APP_SETTINGS.statuses || [];
+      const current = statuses.find(status=>status.name===field.value) || statuses[0];
+      control.innerHTML = `<button type="button" id="modalStatusTrigger" class="modal-status-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="post-status-dot" style="background:${current.color}" aria-hidden="true"></span><span>${escapeHtml(current.name)}</span><svg class="modal-status-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div id="modalStatusChoices" class="modal-status-choices" role="listbox">${statuses.map(status=>`<button type="button" role="option" aria-selected="${status.name===current.name}" data-status-choice="${escapeHtml(status.name)}"><span class="post-status-dot" style="background:${status.color}" aria-hidden="true"></span>${escapeHtml(status.name)}</button>`).join('')}</div>`;
+      control.querySelector('#modalStatusTrigger').addEventListener('click', event=>{ event.stopPropagation(); const menu = $('modalStatusChoices'); const open = !menu.classList.contains('open'); menu.classList.toggle('open',open); event.currentTarget.setAttribute('aria-expanded',String(open)); });
+      control.querySelectorAll('[data-status-choice]').forEach(button=>button.addEventListener('click', ()=>{ field.value=button.dataset.statusChoice; if(isEditing && editingId){ const post=state.posts.find(item=>item.id===editingId); if(post && post.status!==field.value){ post.status=field.value; saveState(); render(); } } renderModalStatusChoices(); }));
+    }
     function openModal(dateStr){
+      closeQuickStatusMenu();
       $('modalBackdrop').style.display = 'flex';
       modalOpenedFromApplyEditoria = false;
       // só fica setada quando este open vem do fluxo de confirmação de data comemorativa (ver
@@ -2076,6 +2124,7 @@
       // da semana) ou, na ausência dela, o mês/dia atualmente visível no calendário
       const defaultDate = dateStr || viewDate.toISOString().slice(0,10);
       $('mDate').value = defaultDate;
+      renderModalStatus();
       // limpa os campos do formulário
       $('mTitle').value=''; $('mNotes').value=''; $('mProductName').value='';
       $('mBriefingLink').value=''; $('mReferencesLink').value=''; $('mArtsLink').value='';
@@ -2126,6 +2175,7 @@
       // agora é feita pela edição em lote, com várias postagens selecionadas) — postagem nova
       // recebe o primeiro status configurado e collab desligado; ao editar, ambos são preservados
       const defaultStatus = (APP_SETTINGS.statuses[0] && APP_SETTINGS.statuses[0].name) || 'Rascunho';
+      const status = $('mStatus') ? $('mStatus').value : defaultStatus;
       const notes = $('mNotes').value.trim();
       const commemorativePostType=commemorativeEditoriaIsSelected() && $('mCommemorativePostType') ? $('mCommemorativePostType').value : '';
       const isInstitutionalCommemorative=commemorativePostType==='institutional';
@@ -2149,7 +2199,7 @@
         if(!post) return;
         const before = Object.assign({}, post);
         const dateChanged = post.date !== date;
-        post.title = title; post.date = date; post.notes = notes;
+        post.title = title; post.date = date; post.notes = notes; post.status = status;
         post.briefingLink = briefingLink; post.referencesLink = referencesLink; post.artsLink = artsLink;
         post.imageLink = imageLink; post.imageNotes = imageNotes; post.noProduct = noProduct;
         post.commemorativePostType = commemorativePostType || '';
@@ -2176,7 +2226,7 @@
       const p = {
         id: generateId(), title, date, channel: nets[0], place: place.slice(), type,
         channels: nets.map(net=>({ channel: net, types: [type], places: place.slice() })),
-        status: defaultStatus, notes, briefingLink, referencesLink, artsLink, imageLink, imageNotes,
+        status, notes, briefingLink, referencesLink, artsLink, imageLink, imageNotes,
         referenceImages: editingReferenceImages.slice(),
         noProduct, commemorativePostType: commemorativePostType || '', collab: false, color: null, editoria: editorias, products: products.slice(), order: nextOrderForDate(date)
       };
@@ -2212,17 +2262,25 @@
       return places==='Feed Vertical' ? 'Feed' : places;
     }
 
+    function migrateLegacyPostStatus(post){
+      if(post.status==='Aprovado'){ post.status='Pronto para ser postado'; return true; }
+      if(post.status==='Agendado'){ post.status='Publicado'; return true; }
+      return false;
+    }
     function loadState(){
       const raw = localStorage.getItem(LS_POSTS_KEY);
       if(raw){ try{ state.posts = JSON.parse(raw) || []; }catch(e){ state.posts=[]; } }
       // garante que toda postagem tenha id e status válidos
       const defaultStatus = (APP_SETTINGS.statuses[0] && APP_SETTINGS.statuses[0].name) || 'Rascunho';
+      let statusesMigrated = false;
       state.posts.forEach(p=>{
+        if(migrateLegacyPostStatus(p)) statusesMigrated = true;
         if(!p.id) p.id = generateId();
         if(!p.status) p.status = defaultStatus;
         if(Array.isArray(p.channels)) p.channels.forEach(c=>{ if(c.channel==='Instagram') c.places = migrateLegacyInstagramFeedPlaces(c.places); });
         if(p.channel==='Instagram') p.place = migrateLegacyInstagramFeedPlaces(p.place);
       });
+      if(statusesMigrated) localStorage.setItem(LS_POSTS_KEY,JSON.stringify(state.posts));
       // atribui `order` às postagens salvas antes desse campo existir
       migratePostOrders();
     }
@@ -2317,9 +2375,11 @@
         .map(e=>Object.assign({},e)),
       statuses: [
         { name:'Rascunho', color:'#94a3b8' },
-        { name:'Em produção', color:'#f59e0b' },
-        { name:'Aprovado', color:'#10b981' },
-        { name:'Agendado', color:'#6366f1' }
+        { name:'Em produção', color:'#3b82f6' },
+        { name:'Em revisão', color:'#f59e0b' },
+        { name:'Em ajuste', color:'#ef4444' },
+        { name:'Pronto para ser postado', color:'#10b981' },
+        { name:'Publicado', color:'#6366f1' }
       ],
       catalog: [],
       // datas comemorativas personalizadas (ex: aniversário da empresa, um evento específico)
@@ -2345,7 +2405,11 @@
       // como o Editor de Posts, ou outro computador puxando do servidor, continuava vendo a
       // versão antiga e incompleta para sempre.
       let migrated = !raw;
-      if(raw){ try{ const s = JSON.parse(raw); APP_SETTINGS = Object.assign({}, DEFAULT_SETTINGS, s||{}); if(!APP_SETTINGS.statuses || !APP_SETTINGS.statuses.length) APP_SETTINGS.statuses = DEFAULT_SETTINGS.statuses.slice();
+      if(raw){ try{ const s = JSON.parse(raw); APP_SETTINGS = Object.assign({}, DEFAULT_SETTINGS, s||{}); const savedStatuses = Array.isArray(APP_SETTINGS.statuses) ? APP_SETTINGS.statuses : [];
+        const officialStatusNames = new Set(DEFAULT_SETTINGS.statuses.map(item=>item.name));
+        const customStatuses = savedStatuses.filter(item=>item && !['Aprovado','Agendado'].includes(item.name) && !officialStatusNames.has(item.name));
+        const normalizedStatuses = DEFAULT_SETTINGS.statuses.map(item=>Object.assign({},item)).concat(customStatuses);
+        if(JSON.stringify(savedStatuses)!==JSON.stringify(normalizedStatuses)){ APP_SETTINGS.statuses=normalizedStatuses; migrated=true; }
         // acrescenta às editorias já salvas as categorizações default que ainda não existem
         // (por nome), sem mexer nas que o usuário já tinha customizado
         if(!APP_SETTINGS.editorias) APP_SETTINGS.editorias = [];
@@ -2479,7 +2543,7 @@
         pendingRemotePostsRender = setTimeout(renderRemotePostsWhenSafe, 250);
         return;
       }
-      renderAllDynamicUI(); buildCalendar(); render();
+      renderAllDynamicUI(); buildCalendar(); render(); openRequestedPostWhenReady();
     }
     function createPostSync(){
       return CalendarPostSync.create({
@@ -2487,9 +2551,15 @@
         localKey: LS_POSTS_KEY,
         outboxKey: LS_POSTS_OUTBOX_KEY,
         getPosts: ()=>state.posts,
-        applyPosts: posts=>{ state.posts=posts; migratePostOrders(); },
+        applyPosts: posts=>{ state.posts=posts; state.posts.forEach(migrateLegacyPostStatus); migratePostOrders(); },
         readLegacy: ()=>syncFetch(API_POSTS_KEY),
         onRemoteChange: renderRemotePostsWhenSafe,
+        getReadyNotificationRecipients: async post => {
+          if(post.status !== 'Pronto para ser postado' || !window.PortalFirebase) return null;
+          const routes = await window.PortalFirebase.readPortalStore('social-media-notification-routes-v1');
+          const brand = (window.PortalBrand.list || []).find(item => item.id === window.PortalBrand.activeId) || {};
+          return { recipientIds: (Array.isArray(routes.v) ? routes.v : []).filter(route => (route.brandIds || []).includes(brand.id)).map(route => route.uid), brandId: brand.id, brandName: brand.name };
+        },
         onStatus: setSyncStatus,
         onConflict: ()=>{
           setSyncStatus('O mesmo card foi alterado por outra pessoa','warn');
@@ -3761,6 +3831,7 @@
     // com os dados do post clicado no calendário/lista
     // ============================================================
     function openEditModal(id){
+      closeQuickStatusMenu();
       const post = state.posts.find(p=>p.id===id); if(!post) return;
       modalOpenedFromApplyEditoria = false;
       if($('modalBackBtn')) $('modalBackBtn').style.display = 'none';
@@ -3768,6 +3839,7 @@
       if(postSync) postSync.beginEdit(id);
       // preenche os campos do modal com os dados da postagem
       $('mTitle').value = post.title || '';
+      renderModalStatus(post.status);
       $('mDate').value = post.date || '';
       $('mNotes').value = post.notes || '';
       $('mBriefingLink').value = post.briefingLink || '';
@@ -3812,6 +3884,25 @@
       renderIntelValidation(null);
       $('modalBackdrop').style.display = 'flex';
       setGuidedPostStep(1);
+    }
+
+    function openRequestedPostWhenReady(){
+      if(!requestedPostId || requestedPostOpened || anyModalOpen()) return false;
+      const post = state.posts.find(item=>item.id===requestedPostId);
+      if(!post) return false;
+      const dateMatch = /^(\d{4})-(\d{2})-\d{2}$/.exec(post.date || '');
+      if(dateMatch){
+        const targetYear = Number(dateMatch[1]);
+        const targetMonth = Number(dateMatch[2])-1;
+        if(viewDate.getFullYear()!==targetYear || viewDate.getMonth()!==targetMonth){
+          viewDate = new Date(targetYear,targetMonth,1);
+          buildCalendar();
+          render();
+        }
+      }
+      requestedPostOpened = true;
+      openEditModal(post.id);
+      return true;
     }
 
     function closeEditState(){
@@ -4038,6 +4129,14 @@
     });
     if($('mTitle')) $('mTitle').addEventListener('input', refreshModalDynamic);
     if($('mDate')) $('mDate').addEventListener('input', refreshModalDynamic);
+    if($('mStatus')) $('mStatus').addEventListener('change', ()=>{
+      updateModalStatusDot();
+      if(!isEditing || !editingId) return;
+      const post = state.posts.find(item=>item.id===editingId);
+      if(!post || post.status === $('mStatus').value) return;
+      post.status = $('mStatus').value;
+      saveState(); render();
+    });
     if($('mCommemorativePostType')) $('mCommemorativePostType').addEventListener('change', refreshModalDynamic);
     if($('mOpenInstitutionalCommemorativeEditorBtn')) $('mOpenInstitutionalCommemorativeEditorBtn').addEventListener('click', ()=> saveModal({openInstitutionalEditor:true}));
     if($('mArtsLink')) $('mArtsLink').addEventListener('input', refreshModalDynamic);
@@ -4637,6 +4736,20 @@ if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEvent
       const footer = modal && modal.querySelector('.modal-footer');
       const save = $('saveModal');
       if(!modal || !body || !grid || !preview || !footer || !save) return;
+      const statusField = $('mStatus');
+      const headerActions = modal.querySelector('.modal-header-actions');
+      if(statusField && headerActions && !$('modalStatusControl')){
+        const statusControl = document.createElement('div');
+        statusControl.id = 'modalStatusControl';
+        statusControl.className = 'modal-status-control';
+        headerActions.before(statusControl);
+        const statusLabel = statusField.parentElement && statusField.parentElement.previousElementSibling;
+        const statusWrap = statusField.parentElement;
+        if(statusLabel && statusLabel.htmlFor === 'mStatus') statusLabel.remove();
+        statusControl.after(statusField);
+        statusField.hidden = true;
+        if(statusWrap) statusWrap.remove();
+      }
 
       modal.classList.add('modal--guided-post');
       footer.classList.add('guided-post-footer');
@@ -4758,6 +4871,7 @@ if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEvent
     $('redoBtn').addEventListener('click', redo);
     // primeira renderização da tela
     render();
+    openRequestedPostWhenReady();
 
     // Cards usam listener em tempo real; apenas configurações e inteligência mantêm a
     // consulta periódica, pois continuam armazenadas como documentos únicos.

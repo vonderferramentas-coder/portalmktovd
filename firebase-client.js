@@ -140,6 +140,10 @@ function calendarPostReference(key, postId) {
   return doc(db, 'portalStore', `calendar-post-${encodeURIComponent(String(key))}-${encodeURIComponent(String(postId))}`);
 }
 
+function postReadyNotificationReference(key, postId, revision, recipientUid) {
+  return doc(db, 'portalStore', `post-ready-notification-${encodeURIComponent(String(key))}-${encodeURIComponent(String(postId))}-${revision}-${encodeURIComponent(String(recipientUid))}`);
+}
+
 function postResult(snapshot) {
   if (!snapshot.exists()) return { post: null, revision: 0 };
   const data = snapshot.data();
@@ -207,7 +211,7 @@ export async function ensurePostsStore(key, legacyPosts = []) {
   }
 }
 
-export async function writePost(key, post, expectedRevision) {
+export async function writePost(key, post, expectedRevision, notification) {
   await currentContext();
   const reference = calendarPostReference(key, post.id);
   return runTransaction(db, async transaction => {
@@ -221,6 +225,18 @@ export async function writePost(key, post, expectedRevision) {
       postId: String(post.id),
       v: post, revision, updatedAt: serverTimestamp()
     });
+    const becameReady = currentResult.post && !['Pronto para ser postado','Aprovado'].includes(currentResult.post.status)
+      && post.status === 'Pronto para ser postado';
+    if (becameReady && notification && Array.isArray(notification.recipientIds)) {
+      [...new Set(notification.recipientIds.filter(Boolean))].forEach(recipientUid => {
+        transaction.set(postReadyNotificationReference(key, post.id, revision, recipientUid), {
+          kind: 'postReadyNotification', recipientUid: String(recipientUid),
+          brandId: String(notification.brandId || ''), brandName: String(notification.brandName || ''),
+          postId: String(post.id), postDate: String(post.date || ''), postTitle: String(post.title || 'Postagem'),
+          readAt: null, createdAt: serverTimestamp()
+        });
+      });
+    }
     return { conflict: false, revision };
   });
 }
@@ -256,10 +272,25 @@ export async function subscribeToPosts(key, onChange, onError) {
   }, onError);
 }
 
+export async function subscribeNotifications(onChange, onError) {
+  const context = await currentContext();
+  return onSnapshot(query(collection(db, 'portalStore'), where('recipientUid', '==', context.user.uid)), snapshot => {
+    onChange(snapshot.docs.map(item => ({ id: item.id, ...item.data(), pending: item.metadata.hasPendingWrites })));
+  }, onError);
+}
+
+export async function markNotificationRead(id) {
+  const context = await currentContext();
+  const reference = doc(db, 'portalStore', String(id));
+  const snapshot = await getDoc(reference);
+  if (!snapshot.exists() || snapshot.data().kind !== 'postReadyNotification' || snapshot.data().recipientUid !== context.user.uid) return;
+  if (!snapshot.data().readAt) await updateDoc(reference, { readAt: serverTimestamp() });
+}
+
 export { app, auth, db, profileFor, audit };
 
 window.PortalFirebase = {
   readPortalStore, writePortalStore, ensurePostsStore, writePost, deletePost, subscribeToPosts,
-  currentContext, logout, requestPasswordReset
+  subscribeNotifications, markNotificationRead, currentContext, logout, requestPasswordReset
 };
 window.dispatchEvent(new Event('portal-firebase-ready'));
