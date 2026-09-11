@@ -16,6 +16,11 @@ tmp/
 *.sqlite-journal
 *.db
 
+# Exports pessoais do Instagram ("Baixe suas informações") usados como fonte pontual para
+# reconstruir histórico — contêm dado pessoal (username/link) de cada seguidor e não devem
+# ir pro repositório; só o resultado já agregado em data/social-followers-*.json é publicado.
+data/instagram-*-20*/
+
 # Segredos — nunca commitar
 .env
 .env.*
