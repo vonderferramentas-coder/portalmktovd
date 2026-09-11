@@ -24,6 +24,15 @@ on:
 permissions:
   contents: write
 
+# Serializa TODOS os workflows deste projeto que fazem git push num único grupo: evita duas
+# execuções colidindo no mesmo commit/arquivo de dados (visto na prática entre a coleta da
+# VONDER e da Ferramentas Gerais rodando perto uma da outra — retry sozinho não bastava
+# quando o conflito era de conteúdo de verdade, não só "não estava atualizado"). Uma
+# execução espera a outra terminar em vez de tentar em paralelo e falhar.
+concurrency:
+  group: portal-dados-git-push
+  cancel-in-progress: false
+
 jobs:
   sync-posts:
     runs-on: ubuntu-latest
