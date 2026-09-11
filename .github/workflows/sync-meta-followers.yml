@@ -184,3 +184,175 @@ jobs:
           })
           print('Firestore atualizado:', live['platforms']['Instagram']['followers'], 'seguidores em', live['updatedAt'])
           PY
+
+  # Segunda marca coletada no MESMO agendamento acima — nunca um cron/workflow novo (ver
+  # docs/ARQUITETURA-E-INTEGRACOES.md, pedido explícito de não multiplicar disparos no GitHub
+  # Actions). Arquivos e documento do Firestore próprios (nunca os -vonder-*) para manter as
+  # marcas isoladas, mesmo padrão de followers-dashboard.js. Cada passo de rede tem
+  # `continue-on-error: true` para que uma falha pontual da API da Meta pra essa marca nunca
+  # derrube a coleta da VONDER, que já rodou acima nos passos anteriores deste mesmo job.
+  sync-instagram-ferramentas-gerais:
+    needs: sync-instagram
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Consultar seguidores do Instagram (Ferramentas Gerais)
+        id: metaFg
+        continue-on-error: true
+        env:
+          META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS: ${{ secrets.META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS }}
+          META_INSTAGRAM_ID: '17841404085550539'
+        run: |
+          set -euo pipefail
+          test -n "$META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS"
+          curl --fail --silent --show-error --get \
+            "https://graph.facebook.com/v26.0/$META_INSTAGRAM_ID" \
+            --data-urlencode 'fields=followers_count,username' \
+            --data-urlencode "access_token=$META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS" \
+            --output meta-fg-response.json
+          echo "followers=$(jq -er '.followers_count | numbers' meta-fg-response.json)" >> "$GITHUB_OUTPUT"
+          echo "username=$(jq -er '.username | strings' meta-fg-response.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Consultar seguidores do Facebook (Ferramentas Gerais)
+        id: metaFacebookFg
+        continue-on-error: true
+        env:
+          META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS: ${{ secrets.META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS }}
+          META_FACEBOOK_PAGE_ID: '219931821407833'
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --get \
+            "https://graph.facebook.com/v26.0/$META_FACEBOOK_PAGE_ID" \
+            --data-urlencode 'fields=followers_count,name' \
+            --data-urlencode "access_token=$META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS" \
+            --output meta-facebook-fg-response.json
+          echo "followers=$(jq -er '.followers_count | numbers' meta-facebook-fg-response.json)" >> "$GITHUB_OUTPUT"
+          echo "name=$(jq -er '.name | strings' meta-facebook-fg-response.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Atualizar snapshot público (Ferramentas Gerais)
+        if: steps.metaFg.outcome == 'success'
+        env:
+          FOLLOWERS: ${{ steps.metaFg.outputs.followers }}
+          USERNAME: ${{ steps.metaFg.outputs.username }}
+          FB_OUTCOME: ${{ steps.metaFacebookFg.outcome }}
+          FB_FOLLOWERS: ${{ steps.metaFacebookFg.outputs.followers }}
+          FB_NAME: ${{ steps.metaFacebookFg.outputs.name }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          path = Path('data/social-followers-ferramentas-gerais-live.json')
+          document = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'version': 2, 'platforms': {}}
+          platforms = dict(document.get('platforms') or {})
+          platforms['Instagram'] = {
+              'accountId': '17841404085550539',
+              'username': os.environ['USERNAME'],
+              'followers': int(os.environ['FOLLOWERS']),
+              'source': 'meta_graph_api'
+          }
+          if os.environ.get('FB_OUTCOME') == 'success' and os.environ.get('FB_FOLLOWERS'):
+              platforms['Facebook'] = {
+                  'accountId': '219931821407833',
+                  'username': os.environ['FB_NAME'],
+                  'followers': int(os.environ['FB_FOLLOWERS']),
+                  'source': 'meta_graph_api'
+              }
+          document.update({
+              'version': 2,
+              'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+              'platforms': platforms
+          })
+          path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Fechar histórico diário (Ferramentas Gerais)
+        if: steps.metaFg.outcome == 'success' && (github.event.schedule == '55 2 * * *' || github.event_name == 'workflow_dispatch')
+        env:
+          FOLLOWERS: ${{ steps.metaFg.outputs.followers }}
+          FB_OUTCOME: ${{ steps.metaFacebookFg.outcome }}
+          FB_FOLLOWERS: ${{ steps.metaFacebookFg.outputs.followers }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timedelta, timezone
+          from pathlib import Path
+
+          path = Path('data/social-followers-ferramentas-gerais.json')
+          document = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'version': 2, 'history': []}
+          closing_date = (datetime.now(timezone.utc) - timedelta(hours=3)).date().isoformat()
+          history = {item['date']: item for item in document.get('history', []) if item.get('date')}
+          existing_day = dict(history.get(closing_date) or {'date': closing_date})
+          existing_day['followers'] = dict(existing_day.get('followers') or {})
+          existing_day['followers']['Instagram'] = int(os.environ['FOLLOWERS'])
+          if os.environ.get('FB_OUTCOME') == 'success' and os.environ.get('FB_FOLLOWERS'):
+              existing_day['followers']['Facebook'] = int(os.environ['FB_FOLLOWERS'])
+          history[closing_date] = existing_day
+          history = [history[day] for day in sorted(history)]
+          document.update({
+              'version': 2,
+              'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+              'history': history
+          })
+          path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Publicar dados atualizados (Ferramentas Gerais)
+        if: steps.metaFg.outcome == 'success'
+        run: |
+          git add data/social-followers-ferramentas-gerais.json data/social-followers-ferramentas-gerais-live.json
+          if git diff --cached --quiet -- data/social-followers-ferramentas-gerais.json data/social-followers-ferramentas-gerais-live.json; then
+            echo 'Nenhuma alteração para publicar.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: atualizar snapshot Meta (Ferramentas Gerais)'
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
+
+      # Documento próprio (followers-ferramentas-gerais-v1), nunca followers-vonder-v1 — mesmo
+      # isolamento por marca que o resto do painel já segue.
+      - name: Publicar snapshot protegido no Firestore (Ferramentas Gerais)
+        if: steps.metaFg.outcome == 'success'
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::warning::FIREBASE_SERVICE_ACCOUNT_KEY não configurado — pulando a gravação em portalStore/followers-ferramentas-gerais-v1.'
+            exit 0
+          fi
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os, time
+          from pathlib import Path
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+
+          cred = credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY']))
+          firebase_admin.initialize_app(cred)
+          db = firestore.client()
+
+          live_path = Path('data/social-followers-ferramentas-gerais-live.json')
+          published_path = Path('data/social-followers-ferramentas-gerais.json')
+          live = json.loads(live_path.read_text(encoding='utf-8')) if live_path.exists() else {'version': 2, 'platforms': {}}
+          published = json.loads(published_path.read_text(encoding='utf-8')) if published_path.exists() else {'version': 2, 'history': []}
+
+          db.collection('portalStore').document('followers-ferramentas-gerais-v1').set({
+              'v': {'published': published, 'live': live},
+              'updated_at': int(time.time() * 1000),
+              'updatedAt': firestore.SERVER_TIMESTAMP,
+          })
+          print('Firestore atualizado (Ferramentas Gerais):', live.get('platforms', {}).get('Instagram', {}).get('followers'), 'seguidores em', live.get('updatedAt'))
+          PY

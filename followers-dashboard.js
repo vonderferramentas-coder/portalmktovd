@@ -9,16 +9,23 @@
 
   const brand = (window.PortalBrand && (window.PortalBrand.list || []).find(item => item.id === window.PortalBrand.activeId)) || {};
   const brandKey = brand.id || 'default';
-  // 'default' é o id fixo da VONDER (ver DEFAULT_BRANDS em portal-shell.js) — hoje é a única
-  // marca com coleta automática (Meta Graph API para Instagram/Facebook, YouTube Data API
-  // para o YouTube). As demais marcas ainda não têm integração própria, então não devem
-  // herdar os números nem as metas/projeções da VONDER: usam este sinal para não buscar os
-  // arquivos publicados e mostrar uma mensagem de "não conectado".
+  // 'default' é o id fixo da VONDER (ver DEFAULT_BRANDS em portal-shell.js). Cada marca com
+  // coleta automática própria (workflows .github/workflows/sync-meta-*.yml) tem uma entrada
+  // aqui, com o sufixo dos documentos que ela grava no Firestore (portalStore/<rede>-<sufixo>-v1)
+  // e quais redes de fato têm coleta. Marcas fora deste mapa (ainda sem integração) nunca
+  // buscam dados publicados nem herdam número/meta de outra marca — mostram "não conectado".
+  const BRAND_INTEGRATIONS = {
+    'default': { storeSuffix: 'vonder', instagram: true, facebook: true, youtube: true },
+    'ferramentas-gerais': { storeSuffix: 'ferramentas-gerais', instagram: true, facebook: true, youtube: false },
+  };
+  const integration = BRAND_INTEGRATIONS[brandKey] || null;
   const isVonder = brandKey === 'default';
-  const FOLLOWERS_STORE_KEY = 'followers-vonder-v1';
-  const POSTS_STORE_KEY = 'posts-vonder-v1';
-  const YOUTUBE_VIDEOS_STORE_KEY = 'youtube-videos-vonder-v1';
-  const FACEBOOK_POSTS_STORE_KEY = 'facebook-posts-vonder-v1';
+  const hasAnyIntegration = !!integration;
+  const storeSuffix = integration ? integration.storeSuffix : brandKey;
+  const FOLLOWERS_STORE_KEY = `followers-${storeSuffix}-v1`;
+  const POSTS_STORE_KEY = `posts-${storeSuffix}-v1`;
+  const YOUTUBE_VIDEOS_STORE_KEY = `youtube-videos-${storeSuffix}-v1`;
+  const FACEBOOK_POSTS_STORE_KEY = `facebook-posts-${storeSuffix}-v1`;
   const POSTS_DISPLAY_LIMIT = 10;
   const AUTO_REFRESH_MS = 60000;
   const MAX_BUCKETS = 60;
@@ -55,9 +62,9 @@
   const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (error) { return fallback; } };
 
   const NETWORKS = [
-    { name:'Instagram', color:'#E94683', icon:'icons/instagram.svg', connected:isVonder },
-    { name:'Facebook',  color:'#287BE0', icon:'icons/facebook.svg',  connected:isVonder },
-    { name:'YouTube',   color:'#F04444', icon:'icons/youtube.svg',   connected:isVonder },
+    { name:'Instagram', color:'#E94683', icon:'icons/instagram.svg', connected: !!(integration && integration.instagram) },
+    { name:'Facebook',  color:'#287BE0', icon:'icons/facebook.svg',  connected: !!(integration && integration.facebook) },
+    { name:'YouTube',   color:'#F04444', icon:'icons/youtube.svg',   connected: !!(integration && integration.youtube) },
     { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected:false }
   ];
   const POST_SORT_OPTIONS = [
@@ -285,7 +292,7 @@
     const points = (from && to) ? inRange(series, from, to) : series.slice();
 
     if (!points.length) {
-      const message = !isVonder
+      const message = !hasAnyIntegration
         ? 'A integração de redes sociais desta marca ainda não foi conectada.'
         : (series.length ? 'Nenhuma medição no período selecionado.' : 'Aguardando a primeira coleta.');
       renderEmpty(message);
@@ -550,7 +557,7 @@
       label.textContent = '—';
       if (nextBtn) nextBtn.disabled = true;
       head.innerHTML = '<th>Rede social</th>';
-      const message = !isVonder ? 'A integração de redes sociais desta marca ainda não foi conectada.' : 'Aguardando a primeira coleta.';
+      const message = !hasAnyIntegration ? 'A integração de redes sociais desta marca ainda não foi conectada.' : 'Aguardando a primeira coleta.';
       body.innerHTML = `<tr><td style="text-align:center;color:var(--muted);padding:20px">${message}</td></tr>`;
       return;
     }
@@ -704,7 +711,7 @@
     const formatControl = el('postsFormatControl'), sortControl = el('postsSortControl');
     renderPostsStats();
     if (!grid) return;
-    if (!isVonder) {
+    if (!hasAnyIntegration) {
       if (summary) summary.textContent = 'Esta marca ainda não tem posts conectados.';
       if (formatControl) formatControl.hidden = true;
       if (sortControl) sortControl.hidden = true;
@@ -768,7 +775,7 @@
     const networkPill = el('postsStatsNetworkPill');
     if (networkPill) { const active = activeNetworkOrNull(); networkPill.textContent = active ? active.name : 'Instagram + YouTube'; }
     const ids = ['postsStatTotal', 'postsStatReels', 'postsStatStatic', 'postsStatLikes', 'postsStatComments', 'postsStatInteractions', 'postsStatViews', 'postsStatSaved'];
-    if (!isVonder) {
+    if (!hasAnyIntegration) {
       if (subtitle) subtitle.textContent = 'Esta marca ainda não tem posts conectados.';
       ids.forEach(id => { const node = el(id); if (node) node.textContent = '—'; });
       return;
@@ -802,7 +809,7 @@
   }
 
   function protectedStore(key) {
-    if (!isVonder) return Promise.resolve(null);
+    if (!hasAnyIntegration) return Promise.resolve(null);
     const gateway = window.PortalFirebase;
     if (!gateway || typeof gateway.readPortalStore !== 'function') {
       return Promise.reject(new Error('A conexão segura com os dados ainda não está pronta.'));
@@ -1719,7 +1726,7 @@
   }
 
   function protectedFollowers() {
-    if (!isVonder) return Promise.resolve({ published: null, live: null });
+    if (!hasAnyIntegration) return Promise.resolve({ published: null, live: null });
     const gateway = window.PortalFirebase;
     if (!gateway || typeof gateway.readPortalStore !== 'function') {
       return Promise.reject(new Error('A conexão segura com os dados ainda não está pronta.'));
@@ -1759,7 +1766,7 @@
     subtitle.textContent = `Acompanhe a evolução da comunidade da ${brand.name || 'marca'} em cada canal.`;
     const status = el('dataStatus');
     if (!status) return;
-    if (!isVonder) {
+    if (!hasAnyIntegration) {
       status.textContent = 'Esta marca ainda não tem uma rede social conectada. Os números e metas de outras marcas nunca aparecem aqui.';
       return;
     }
