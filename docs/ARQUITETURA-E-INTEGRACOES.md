@@ -3,7 +3,7 @@
 > **Documento vivo.** Atualize este arquivo na mesma alteração que criar, trocar ou remover uma integração, fonte de dados, automação, serviço hospedado ou recurso que possa gerar dúvida para a TI. A validação automatizada do repositório ajuda a cobrar essa atualização para os principais arquivos de integração.
 
 **Última revisão:** 11/09/2026
-**Escopo desta revisão:** estado identificado no código da branch `main`, incluindo o início da conexão do TikTok (conta Vonder) e o workflow de status e notificações do calendário.
+**Escopo desta revisão:** estado identificado no código da branch `main`, incluindo o início da conexão do TikTok (conta Vonder), o workflow de status e notificações do calendário, e a troca de conceito da Central de Inteligência para painel de tendências do Google Trends (seção 16).
 
 ## 1. O que é este projeto
 
@@ -40,15 +40,16 @@ GitHub Actions + segredo META_PAGE_ACCESS_TOKEN ------> Meta Graph API / Instagr
 GitHub Actions + segredo META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS -> Meta Graph API / Instagram + Facebook (Ferramentas Gerais)
 GitHub Actions + segredo YOUTUBE_API_KEY -------------> YouTube Data API v3 / canal Vonder
 GitHub Actions + segredos YOUTUBE_OAUTH_* ------------> YouTube Analytics API / canal Vonder
+GitHub Actions (pytrends, sem credencial) ------------> Google Trends / Central de Inteligência
 ```
 
 ## 4. Componentes do portal
 
 | Componente | Arquivos principais | Finalidade | Dados |
 |---|---|---|---|
-| Calendário | `index.html`, `app.js` | Planejar posts, redes, editorias e configurações | Firebase; cópia local como cache/fallback |
+| Calendário | `index.html`, `app.js`, `intelligence-data.js` | Planejar posts, redes, editorias e configurações; sugerir/validar conteúdo com o DNA de editoria já gerado | Firebase; cópia local como cache/fallback |
 | Portal de marcas | `portal-shell.js` | Selecionar/configurar marcas do grupo | Firebase; cópia local |
-| Central de Inteligência | `intelligence-center.html`, `intelligence-data.js` | Manter referências e aprendizados por editoria | Firebase; cópia local |
+| Central de Inteligência | `intelligence-center.html`, `intelligence-center.js` | Painel de consulta de tendências de pesquisa do Google Trends, por categoria/período/região | Firestore (`portalStore/trends-v1`), coletado 1x/dia via GitHub Actions |
 | Editor de posts | `post-editor.html`, `post-editor.js` | Montar artes e usar catálogos de produtos | Catálogos versionados; preferências locais; Firebase para configurações |
 | Painel de seguidores | `followers-dashboard.*` | Visualizar histórico, metas e ranking dos melhores posts | JSON atualizado pelo GitHub Actions; lançamentos manuais locais |
 | Cartões de visita | `business-card-generator.*` | Gerar cartões e exportações | Principalmente armazenamento local |
@@ -63,6 +64,7 @@ GitHub Actions + segredos YOUTUBE_OAUTH_* ------------> YouTube Analytics API / 
 | Meta Graph API | Coleta indicadores do Instagram e da Página do Facebook da VONDER | Instagram: seguidores, entradas, saídas, alcance; e por post: legenda, permalink, miniatura, data, curtidas, comentários, interações totais, visualizações e salvamentos. Facebook: seguidores/curtidas da Página (`followers_count`/`fan_count`) | `META_PAGE_ACCESS_TOKEN` em GitHub Secrets — mesmo token de Página usado para o Instagram, já alcança a Página sem escopo adicional | Token nunca vai para o navegador; requer rotação e escopos mínimos |
 | YouTube Data API v3 | Coleta inscritos/visualizações do canal Vonder no YouTube | inscritos (`subscriberCount`) e visualizações totais (`viewCount`) do canal — agregados e públicos | `YOUTUBE_API_KEY` em GitHub Secrets — API Key restrita à YouTube Data API v3, sem OAuth (só lê dado público de canal) | Chave nunca vai para o navegador; se o canal ocultar a contagem de inscritos, a API para de devolver o número real |
 | YouTube Analytics API | Reconstrução única do histórico de inscritos do canal Vonder | inscritos ganhos/perdidos por dia (`subscribersGained`/`subscribersLost`) — agregado do canal, sem dado pessoal de quem se inscreveu | `YOUTUBE_OAUTH_CLIENT_ID`/`YOUTUBE_OAUTH_CLIENT_SECRET`/`YOUTUBE_OAUTH_REFRESH_TOKEN` em GitHub Secrets — OAuth 2.0, autorizado uma única vez por quem administra o canal | Refresh token nunca vai para o navegador; se revogado (troca de senha, revogação manual), a reconstrução exige nova autorização única |
+| Google Trends (via `pytrends`) | Coleta diária o ranking de termos de pesquisa por categoria para a Central de Inteligência | termos de busca, índice de interesse (0-100) e variação por categoria/período, agregados e públicos — nenhum dado pessoal | Nenhuma — `pytrends` é uma biblioteca não-oficial que espelha o site público do Google Trends, sem chave/token | O Google não garante estabilidade dessa API não-oficial; pode bloquear/limitar por taxa (HTTP 429) — o workflow tolera falha por combinação categoria/período e preserva o último dado bom |
 | GitHub Actions | Executa a coleta automática e publica JSON | dados agregados de seguidores; e snapshot dos posts recentes com suas métricas | GitHub Secret + permissão de escrita | Gera commits automáticos |
 | `app.ovd.com.br` | Fonte de fotos oficiais de produto | imagem pública por código | sem credencial no código | Imagem passa pelo Worker/PHP para viabilizar CORS no editor |
 | `fg.com.br` | Fonte de ofertas no editor FG | título, marca, SKU, preço e disponibilidade públicos | sem credencial no código | Worker aceita apenas domínio FG e subdomínios |
@@ -409,3 +411,45 @@ Diferente da Meta e do YouTube, o TikTok não tem uma API pública simples (chav
 ### Notificações de workflow do calendário (11/09/2026)
 O perfil **Social Media** pode ter marcas selecionadas somente para o roteamento de notificações; isso não muda permissões nem acesso às outras marcas. A lista mínima de destinos ativos fica em `portalStore/social-media-notification-routes-v1`. Ao editar um usuário, a rota é gravada com a lista projetada antes de qualquer recarga administrativa; além disso, `notifications.html` confere e autorrepara a rota do próprio usuário autenticado, cobrindo a troca do próprio Administrador para Social Media sem fazer consultas adicionais recorrentes.
 Quando um card passa para **Pronto para ser postado**, a mesma transação que grava sua nova revisão cria um documento `portalStore/post-ready-notification-*` por destinatário. A página `notifications.html` consulta apenas documentos destinados ao usuário atual e o menu lateral mostra, em tempo real, a quantidade ainda não lida. Ao clicar na mensagem, ela é marcada como lida e o calendário aguarda a sincronização inicial para abrir diretamente o card indicado pelos parâmetros `brand`, `post` e `date`. Não há novo serviço, plano, credencial ou regra do Firestore; o fluxo usa `portalStore` e os listeners existentes.
+
+## 16. Google Trends e GitHub Actions: painel de tendências (Central de Inteligência)
+
+A **Central de Inteligência** (`intelligence-center.html`) trocou de conceito por inteiro em 11/09/2026: deixou de ser a tela de treinamento de DNA por editoria (referências, briefings, legendas aprovadas) e passou a ser um **painel de consulta de tendências de pesquisa do Google Trends**, filtrável por categoria, período e região. A funcionalidade anterior de DNA/validação de posts não foi removida do projeto — ela continua ativa dentro do calendário (`visual-editor.html`/`app.js`, via `intelligence-data.js`, ver seção 4) — só deixou de ter uma tela dedicada própria; se uma nova tela de administração desse DNA for necessária no futuro, ela precisa ser reconstruída.
+
+**Nesta primeira versão o painel é só de consulta/visualização.** Não há geração automática de conteúdo, sugestão de posts, análise de produto nem cruzamento com catálogo — o cruzamento com o catálogo de produtos (JSON) é um passo explicitamente adiado para uma etapa futura.
+
+### Como os dados chegam
+
+O Google não tem API oficial para o Trends. A coleta usa **`pytrends`**, uma biblioteca Python não-oficial que reproduz as mesmas chamadas que o site `trends.google.com` faz no navegador — sem chave, sem cadastro, sem custo. `.github/workflows/sync-google-trends.yml` (agendado, diário às 03:30 de São Paulo, mais `workflow_dispatch` manual) consulta, para cada uma das 7 categorias monitoradas e para 4 janelas de tempo (7 dias, 30 dias, 90 dias, 12 meses), a "Central de Inteligência" do Trends **sem informar nenhum termo de busca** (`kw_list=['']`, só a categoria) — é o mesmo request que o site faz quando a pessoa explora só por categoria, sem digitar nada na busca. O retorno de `related_queries()` vira o ranking: a lista "top" (popularidade relativa 0-100) alimenta a coluna Interesse, e a lista "rising" (crescimento) alimenta a coluna Variação quando o termo aparece nas duas listas.
+
+As 7 categorias monitoradas usam os IDs oficiais de categoria do próprio Google Trends (confirmados em duas fontes independentes antes de codificar):
+
+| Filtro do painel | Categoria no Google Trends | ID |
+|---|---|---|
+| Construction & Power Tools | Construction & Power Tools | 950 |
+| Home Improvement | Home Improvement | 158 |
+| Yard & Patio | Yard & Patio | 953 |
+| Construction & Maintenance | Construction & Maintenance | 48 |
+| Automotive | Autos & Vehicles | 47 |
+| Cleaning Supplies & Services | Cleaning Supplies & Services | 949 |
+| Industrial Materials | Industrial Materials & Equipment | 287 |
+
+O filtro "Comparativo anual" do painel reaproveita o mesmo balde de dados de "Últimos 12 meses" — o `pytrends` não devolve duas séries (ano atual x anterior) sem uma lista de termos fixa para comparar, e o "rising" de uma janela de 12 meses já reflete o crescimento em relação ao período anterior. Região é fixa em Brasil (`geo=BR`) nesta primeira versão.
+
+### Onde os dados ficam
+
+Mesmo padrão já usado para Meta/YouTube: o workflow grava `data/google-trends.json` (backup público versionado no repositório, schema `{version, geo, updatedAt, categories: {<slug>: {label, periods: {<7d|30d|90d|12m>: {collectedAt, terms: [{rank, term, interest, variation}]}}}}}`) e publica o mesmo conteúdo em `portalStore/trends-v1` no Firestore via **Admin SDK**, reaproveitando o secret `FIREBASE_SERVICE_ACCOUNT_KEY` já cadastrado — nenhum secret novo foi necessário. `intelligence-center.js` só lê `portalStore/trends-v1` (via `window.PortalFirebase.readPortalStore`, mesmo gateway do painel de seguidores); nunca busca `data/google-trends.json` nem chama o Google Trends direto do navegador (impossível de qualquer forma: o Trends bloqueia CORS e `pytrends` é Python).
+
+### Limitações conhecidas (ponytail)
+
+- **Sem lista de termos por categoria.** O ranking reflete o que o próprio Google já agrupa dentro de cada categoria (`related_queries` por categoria, sem termo semente) — não é filtrado pelo catálogo de produtos da OVD. Um termo genérico e sem relação direta com o portfólio pode aparecer no ranking; o cruzamento com o catálogo (JSON) fica para uma etapa futura já combinada com a diretoria de marketing.
+- **API não-oficial, sem SLA.** Testado manualmente durante o desenvolvimento: chamadas consecutivas ao `pytrends` retornaram HTTP 429 (limite de taxa) depois de poucas requisições seguidas. O workflow tenta cada combinação categoria/período até 3 vezes com espera crescente e, se todas falharem, preserva o último dado bom daquela combinação em vez de apagá-lo — uma categoria pode ficar um dia sem atualizar sem que o painel fique vazio. Caminho de evolução se a taxa de falha for alta na prática: migrar para uma API paga estruturada (ex. SerpApi) — decisão consciente de não usar nesta primeira versão para não exigir cadastro/custo de terceiro antes de validar o conceito.
+- **"Rising" pode trazer ruído.** Para categorias de nicho B2B (ex. "Industrial Materials"), a lista de termos em alta do Google às vezes inclui termos sem relação nenhuma com a categoria (ex. criptomoedas) — é o próprio algoritmo de tendência do Google reagindo a um volume de busca baixo na categoria, não um bug da coleta. Nenhuma filtragem adicional foi aplicada nesta primeira versão.
+
+### Arquivos alterados
+
+`intelligence-center.html`, `intelligence-center.js` (reescritos por inteiro), `.github/workflows/sync-google-trends.yml` (novo), `data/google-trends.json` (novo, criado pela primeira execução do workflow). `intelligence-data.js` não foi alterado nem removido — só deixou de ser carregado por `intelligence-center.html`; continua em uso por `visual-editor.html`/`app.js`.
+
+| Data | Alteração | Responsável |
+|---|---|---|
+| 11/09/2026 | Central de Inteligência trocou de conceito: de treinamento de DNA por editoria para painel de consulta de tendências do Google Trends (categoria/período/região). Criado `sync-google-trends.yml` (coleta diária via `pytrends`, sem credencial nova) publicando em `data/google-trends.json` e `portalStore/trends-v1`. Só consulta/visualização nesta primeira versão — sem geração de conteúdo, sugestão de posts, análise de produto ou cruzamento com catálogo. | Equipe de Marketing / manutenção do portal |

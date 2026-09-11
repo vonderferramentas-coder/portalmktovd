@@ -1,0 +1,189 @@
+name: Sincronizar tendências do Google
+
+# Coleta diária do Google Trends (painel "Central de Inteligência") via pytrends — biblioteca
+# não-oficial que espelha o site do Trends (o Google não tem API oficial). Para cada uma das 7
+# categorias monitoradas, consulta a "Central de Inteligência" no site do Google Trends sem
+# informar um termo de busca (kw_list=['']), só a categoria — é o mesmo request que o site faz
+# quando a pessoa explora só por categoria, sem digitar nada na busca — e usa o retorno de
+# related_queries() como ranking de termos da categoria (top = interesse; rising = variação).
+# ponytail: sem lista de termos pré-definida por categoria nesta primeira versão — o cruzamento
+# com o catálogo de produtos (JSON) fica para uma etapa futura.
+
+on:
+  schedule:
+    # 03:30 em São Paulo — depois dos fechamentos diários de Meta/YouTube (23:50/23:55 SP).
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Mesmo grupo compartilhado por todos os workflows deste projeto que fazem git push — evita
+# colidir no mesmo commit com as demais coletas (ver docs/ARQUITETURA-E-INTEGRACOES.md, seção 8).
+concurrency:
+  group: portal-dados-git-push
+  cancel-in-progress: false
+
+jobs:
+  sync-google-trends:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Coletar tendências por categoria
+        run: |
+          pip install --quiet pytrends
+          python3 - <<'PY'
+          import json, time
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          from pytrends.request import TrendReq
+
+          GEO = 'BR'
+          CATEGORIES = [
+              ('construction-power-tools', 'Construction & Power Tools', 950),
+              ('home-improvement', 'Home Improvement', 158),
+              ('yard-patio', 'Yard & Patio', 953),
+              ('construction-maintenance', 'Construction & Maintenance', 48),
+              # No Google Trends o nome oficial desta categoria é "Autos & Vehicles"
+              # (id 47) — mantido como "Automotive" aqui por ser o nome pedido pro filtro.
+              ('automotive', 'Automotive', 47),
+              ('cleaning-supplies-services', 'Cleaning Supplies & Services', 949),
+              # Nome oficial no Google Trends: "Industrial Materials & Equipment" (id 287).
+              ('industrial-materials', 'Industrial Materials', 287),
+          ]
+          # "Comparativo anual" (filtro do front-end) reaproveita o balde 12m — o pytrends não
+          # devolve duas séries (ano atual x anterior) sem uma lista de termos fixa pra comparar,
+          # e o "rising" de uma janela de 12 meses já reflete o crescimento vs. o período anterior.
+          TIMEFRAMES = [
+              ('7d', 'now 7-d'),
+              ('30d', 'today 1-m'),
+              ('90d', 'today 3-m'),
+              ('12m', 'today 12-m'),
+          ]
+
+          def format_variation(value):
+              if value is None:
+                  return None
+              try:
+                  return f'+{round(float(value))}%'
+              except (TypeError, ValueError):
+                  # pytrends pode devolver "Breakout" (string) em vez de número quando o
+                  # crescimento parte de uma base próxima de zero.
+                  return 'Alta'
+
+          def fetch_related(cat_id, timeframe, attempts=3):
+              last_error = None
+              for attempt in range(1, attempts + 1):
+                  try:
+                      pytrends = TrendReq(hl='pt-BR', tz=180, timeout=(5, 25))
+                      pytrends.build_payload(kw_list=[''], cat=cat_id, timeframe=timeframe, geo=GEO)
+                      return pytrends.related_queries().get('', {})
+                  except Exception as error:  # noqa: BLE001 — qualquer falha de rede/rate-limit do Google
+                      last_error = error
+                      print(f'  tentativa {attempt}/{attempts} falhou: {type(error).__name__}: {error}')
+                      time.sleep(8 * attempt)
+              print(f'  desistindo após {attempts} tentativas: {last_error}')
+              return None
+
+          path = Path('data/google-trends.json')
+          document = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {
+              'version': 1, 'geo': GEO, 'updatedAt': None, 'categories': {}
+          }
+          categories = dict(document.get('categories') or {})
+          any_success = False
+
+          for slug, label, cat_id in CATEGORIES:
+              bucket = dict(categories.get(slug) or {'label': label, 'periods': {}})
+              bucket['label'] = label
+              periods = dict(bucket.get('periods') or {})
+              for period_key, timeframe in TIMEFRAMES:
+                  print(f'{label} / {period_key} ({timeframe})...')
+                  result = fetch_related(cat_id, timeframe)
+                  top = None if result is None else result.get('top')
+                  if top is None or top.empty:
+                      print('  sem dado novo — mantendo o que já existia.')
+                      time.sleep(5)
+                      continue
+                  rising = result.get('rising')
+                  rising_lookup = {}
+                  if rising is not None and not rising.empty:
+                      for _, row in rising.iterrows():
+                          rising_lookup[str(row['query']).strip().lower()] = row['value']
+                  terms = []
+                  for rank, (_, row) in enumerate(top.iterrows(), start=1):
+                      term = str(row['query']).strip()
+                      terms.append({
+                          'rank': rank,
+                          'term': term,
+                          'interest': int(row['value']),
+                          'variation': format_variation(rising_lookup.get(term.lower())),
+                      })
+                  periods[period_key] = {
+                      'collectedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+                      'terms': terms,
+                  }
+                  any_success = True
+                  time.sleep(5)
+              bucket['periods'] = periods
+              categories[slug] = bucket
+
+          if any_success:
+              document['updatedAt'] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+          document['version'] = 1
+          document['geo'] = GEO
+          document['categories'] = categories
+          path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print('Nenhuma categoria coletada com sucesso nesta execução.' if not any_success else 'Coleta concluída.')
+          PY
+
+      - name: Publicar dados atualizados
+        run: |
+          git add data/google-trends.json
+          if git diff --cached --quiet -- data/google-trends.json; then
+            echo 'Nenhuma alteração para publicar.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: atualizar snapshot Google Trends'
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            if ! git rebase "origin/$GITHUB_REF_NAME"; then git rebase --abort; fi
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
+
+      # Mesmo mecanismo dos demais workflows de coleta: grava o snapshot direto em
+      # portalStore/trends-v1 via Admin SDK, reaproveitando o secret FIREBASE_SERVICE_ACCOUNT_KEY
+      # já cadastrado — a Central de Inteligência lê só o Firestore, nunca o arquivo estático.
+      - name: Publicar snapshot no Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::warning::FIREBASE_SERVICE_ACCOUNT_KEY não configurado — pulando a gravação em portalStore/trends-v1.'
+            exit 0
+          fi
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os, time
+          from pathlib import Path
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+
+          cred = credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY']))
+          firebase_admin.initialize_app(cred)
+          db = firestore.client()
+
+          snapshot = json.loads(Path('data/google-trends.json').read_text(encoding='utf-8'))
+          db.collection('portalStore').document('trends-v1').set({
+              'v': snapshot,
+              'updated_at': int(time.time() * 1000),
+              'updatedAt': firestore.SERVER_TIMESTAMP,
+          })
+          print('Firestore atualizado:', snapshot.get('updatedAt'))
+          PY
