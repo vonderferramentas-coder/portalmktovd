@@ -453,3 +453,10 @@ Mesmo padrão já usado para Meta/YouTube: o workflow grava `data/google-trends.
 | Data | Alteração | Responsável |
 |---|---|---|
 | 11/09/2026 | Central de Inteligência trocou de conceito: de treinamento de DNA por editoria para painel de consulta de tendências do Google Trends (categoria/período/região). Criado `sync-google-trends.yml` (coleta diária via `pytrends`, sem credencial nova) publicando em `data/google-trends.json` e `portalStore/trends-v1`. Só consulta/visualização nesta primeira versão — sem geração de conteúdo, sugestão de posts, análise de produto ou cruzamento com catálogo. | Equipe de Marketing / manutenção do portal |
+
+--- docs/ARQUITETURA-E-INTEGRACOES.md
++++ docs/ARQUITETURA-E-INTEGRACOES.md
+@@ tabela Componentes do portal
++| Protótipo de tradução de PSD | `_spanish-post-prototype.html` | Testar substituição de camadas de texto e exportação PNG, sem entrada no menu | Somente memória do navegador; biblioteca local `vendor/ag-psd/bundle.js` |
+@@ tabela Integrações e conexões
++| `ag-psd` 14.3.2 (vendorizado) | Lê PSD e suas camadas no protótipo de tradução | PSD, textos e fontes processados apenas na memória do navegador | Nenhuma credencial | Biblioteca local; o compositor experimental não reproduz todos os recursos avançados do Photoshop |

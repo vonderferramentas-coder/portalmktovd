@@ -144,6 +144,25 @@
   const looksLikeTypedYear = isoDate => { const year = Number(isoDate.slice(0, 4)); return year >= 2000 && year <= 2099; };
 
   const el = id => document.getElementById(id);
+  const dashboardHeader = document.querySelector('.social .page-header');
+  if (dashboardHeader) {
+    const portalSidebar = document.querySelector('.portal-sidebar');
+    let stickyHeaderFrame = null;
+    const updateStickyHeader = () => {
+      stickyHeaderFrame = null;
+      const headerRect = dashboardHeader.getBoundingClientRect();
+      const sidebarWidth = portalSidebar ? portalSidebar.getBoundingClientRect().width : 0;
+      dashboardHeader.style.setProperty('--sticky-backdrop-left', `${sidebarWidth - headerRect.left}px`);
+      dashboardHeader.style.setProperty('--sticky-backdrop-width', `${window.innerWidth - sidebarWidth}px`);
+      dashboardHeader.classList.toggle('is-sticky', headerRect.top <= 16);
+    };
+    window.addEventListener('scroll', () => {
+      if (stickyHeaderFrame === null) stickyHeaderFrame = window.requestAnimationFrame(updateStickyHeader);
+    }, { passive: true });
+    window.addEventListener('resize', updateStickyHeader);
+    if (portalSidebar && 'ResizeObserver' in window) new ResizeObserver(updateStickyHeader).observe(portalSidebar);
+    updateStickyHeader();
+  }
   const setText = (id, value) => { const node = el(id); if (node) node.textContent = value; };
   const setTone = (id, value) => { const node = el(id); if (node) node.className = value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral'; };
   const format = value => Number(value || 0).toLocaleString('pt-BR');
@@ -317,6 +336,8 @@
     // plataforma selecionada (mesmo tom usado nos ícones/badges dela), e volta ao dourado
     // padrão quando "Todas" está selecionado.
     const totalCard = el('totalCard');
+    const totalWatermark = el('totalWatermark');
+    const totalWatermarkMask = el('totalWatermarkMask');
     if (totalCard) {
       if (active) {
         totalCard.style.setProperty('--social-hero-start', shadeColor(active.color, 0.35));
@@ -325,6 +346,14 @@
         totalCard.style.removeProperty('--social-hero-start');
         totalCard.style.removeProperty('--social-hero-end');
       }
+    }
+    if (totalWatermark) {
+      totalWatermark.hidden = !active || active.name !== 'YouTube';
+      if (active) totalWatermark.src = active.icon;
+    }
+    if (totalWatermarkMask) {
+      totalWatermarkMask.hidden = !active || active.name === 'YouTube';
+      if (active && active.name !== 'YouTube') totalWatermarkMask.style.setProperty('--total-watermark', `url("${active.icon}")`);
     }
     // O YouTube arredonda o total de inscritos que devolve por API (confirmado na própria
     // documentação do Google) — sinalizamos isso em vez de fingir precisão que a API não tem;
@@ -1205,6 +1234,10 @@
     if (approxBadge) approxBadge.hidden = true;
     const totalCard = el('totalCard');
     if (totalCard) { totalCard.style.removeProperty('--social-hero-start'); totalCard.style.removeProperty('--social-hero-end'); }
+    const totalWatermark = el('totalWatermark');
+    if (totalWatermark) totalWatermark.hidden = true;
+    const totalWatermarkMask = el('totalWatermarkMask');
+    if (totalWatermarkMask) totalWatermarkMask.hidden = true;
     el('growth').className = 'growth-line';
     setText('growth', message);
     ['newFollowers','avg','bestChannel'].forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = 'neutral'; });
@@ -1319,6 +1352,8 @@
   if (periodPrevBtn) periodPrevBtn.addEventListener('click', () => applyPreset(periodPreset, true, periodOffset - 1));
   if (periodNextBtn) periodNextBtn.addEventListener('click', () => applyPreset(periodPreset, true, periodOffset + 1));
   periodTrigger.addEventListener('click', () => periodMenu.hidden ? openPeriod() : closeMenus());
+  const printReportBtn = el('printReport');
+  if (printReportBtn) printReportBtn.addEventListener('click', () => window.print());
   actionsTrigger.addEventListener('click', () => {
     const opening = actionsMenu.hidden;
     closeMenus();
