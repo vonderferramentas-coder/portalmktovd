@@ -13,6 +13,16 @@
   const STORE_PATH = '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>';
   const ADS_PATH = '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>';
   const LOCK_PATH = '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>';
+  const X_PATH = '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>';
+  // mesmo ícone de "Mais ações" em admin-users.js
+  const MENU_DOTS_PATH = '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>';
+  const TRASH_PATH = '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>';
+  const IMAGE_PATH = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.5-3.5a2 2 0 0 0-2.8 0L5 21"/>';
+  // Tamanho comum aos ícones de botão de ação (fechar, adicionar, editar, copiar) — cada um usava
+  // um número diferente (13 a 16px) e o "×" do fechar nem era SVG (era o caractere de texto "×",
+  // que renderiza com peso/tamanho visual diferente de um SVG mesmo em font-size igual), então os
+  // quatro ficavam visivelmente desalinhados lado a lado no cabeçalho do modal.
+  const ACTION_ICON_SIZE = 15;
 
   // ---------------------------------------------------------------- marca ativa
   const brand = (window.PortalBrand && (window.PortalBrand.list || []).find(item => item.id === window.PortalBrand.activeId)) || {};
@@ -33,7 +43,12 @@
       { id: 'tiktok-shop', name: 'TikTok Shop', bg: '#010101', ink: '#ffffff', image: '' }
     ]
   };
-  const marketplaces = MARKETPLACES_BY_BRAND[brandKey] || [];
+  // BASE_* são o ponto de partida fixo (nunca mutado); admin pode editar nome/foto (patch em
+  // overrides.channels), duplicar (vira um registro completo em overrides.customChannels) ou
+  // excluir (marca deleted:true nos BASE_* — não dá pra remover do array fixo; ou remove de
+  // customChannels direto, já que esses não têm base nenhuma). Ver visibleMarketplaces/
+  // visibleInstitucionais logo depois da seção de persistência.
+  const BASE_MARKETPLACES = MARKETPLACES_BY_BRAND[brandKey] || [];
 
   // Canais institucionais (sites/portais próprios da VONDER, não marketplaces de terceiros) — mesmo
   // padrão de card/modal/cadeado dos marketplaces acima, só numa seção própria e sem identidade
@@ -47,10 +62,7 @@
       { id: 'reclame-aqui', name: 'Reclame AQUI', bg: '#FFC629', ink: '#1a1a1a', image: '' }
     ]
   };
-  const institucionais = INSTITUCIONAIS_BY_BRAND[brandKey] || [];
-  // Lookup único usado pelo modal (card clicado pode vir de qualquer uma das duas galerias, mas
-  // reaproveitam o mesmo modal — ver openModal/showCategoryView/showFormatsView).
-  const allChannels = marketplaces.concat(institucionais);
+  const BASE_INSTITUCIONAIS = INSTITUCIONAIS_BY_BRAND[brandKey] || [];
 
   // Área de atuação dentro do marketplace — os formatos de Loja Oficial e de Ads são peças
   // diferentes (medidas, contexto de uso), então cada marketplace tem os dois conjuntos
@@ -218,6 +230,90 @@
     });
   }
 
+  // Cards de marketplace/institucional (nome + foto), só pra admin (ver applyAdminVisibility) —
+  // mesma mecânica de overrides acima, só que por canal em vez de por formato.
+  // overrides.channels[id] = patch (name/image) por cima de um BASE_* existente, ou {deleted:true}
+  // pra "excluir" um BASE_* (não dá pra remover de um array fixo no código).
+  // overrides.customChannels[id] = registro completo (duplicado pelo admin), sem base nenhuma pra
+  // herdar — excluir aqui é remover a chave de verdade, não só marcar deleted.
+  function saveChannelPatch(channelId, patch) {
+    const gateway = window.PortalFirebase;
+    if (!gateway || typeof gateway.writePortalStore !== 'function') {
+      return Promise.reject(new Error('A conexão segura com os dados ainda não está pronta. Tente novamente em instantes.'));
+    }
+    const brandOverrides = Object.assign({}, overrides);
+    brandOverrides.channels = Object.assign({}, brandOverrides.channels);
+    brandOverrides.channels[channelId] = Object.assign({}, brandOverrides.channels[channelId], patch);
+    const nextFull = Object.assign({}, fullStore, { [brandKey]: brandOverrides });
+    return gateway.writePortalStore(STORE_KEY, nextFull, storeVersion).then(result => {
+      if (result.conflict) return Promise.reject(Object.assign(new Error('conflict'), { conflict: true }));
+      storeVersion = result.updated_at;
+      fullStore = nextFull;
+      overrides = brandOverrides;
+    });
+  }
+  function saveCustomChannel(channelId, fullRecord) {
+    const gateway = window.PortalFirebase;
+    if (!gateway || typeof gateway.writePortalStore !== 'function') {
+      return Promise.reject(new Error('A conexão segura com os dados ainda não está pronta. Tente novamente em instantes.'));
+    }
+    const brandOverrides = Object.assign({}, overrides);
+    brandOverrides.customChannels = Object.assign({}, brandOverrides.customChannels);
+    brandOverrides.customChannels[channelId] = fullRecord;
+    const nextFull = Object.assign({}, fullStore, { [brandKey]: brandOverrides });
+    return gateway.writePortalStore(STORE_KEY, nextFull, storeVersion).then(result => {
+      if (result.conflict) return Promise.reject(Object.assign(new Error('conflict'), { conflict: true }));
+      storeVersion = result.updated_at;
+      fullStore = nextFull;
+      overrides = brandOverrides;
+    });
+  }
+  function deleteCustomChannel(channelId) {
+    const gateway = window.PortalFirebase;
+    if (!gateway || typeof gateway.writePortalStore !== 'function') {
+      return Promise.reject(new Error('A conexão segura com os dados ainda não está pronta. Tente novamente em instantes.'));
+    }
+    const brandOverrides = Object.assign({}, overrides);
+    brandOverrides.customChannels = Object.assign({}, brandOverrides.customChannels);
+    delete brandOverrides.customChannels[channelId];
+    const nextFull = Object.assign({}, fullStore, { [brandKey]: brandOverrides });
+    return gateway.writePortalStore(STORE_KEY, nextFull, storeVersion).then(result => {
+      if (result.conflict) return Promise.reject(Object.assign(new Error('conflict'), { conflict: true }));
+      storeVersion = result.updated_at;
+      fullStore = nextFull;
+      overrides = brandOverrides;
+    });
+  }
+  function isCustomChannel(channelId) {
+    return !!(overrides.customChannels && overrides.customChannels[channelId]);
+  }
+  function channelData(base) {
+    const ov = overrides.channels && overrides.channels[base.id];
+    if (!ov) return base;
+    return Object.assign({}, base, {
+      name: ov.name != null ? ov.name : base.name,
+      image: ov.image != null ? ov.image : base.image
+    });
+  }
+  function isChannelDeleted(channelId) {
+    const ov = overrides.channels && overrides.channels[channelId];
+    return !!(ov && ov.deleted);
+  }
+  function customChannelsFor(group) {
+    return Object.values(overrides.customChannels || {}).filter(c => c.group === group);
+  }
+  function visibleMarketplaces() {
+    return BASE_MARKETPLACES.filter(b => !isChannelDeleted(b.id)).map(channelData).concat(customChannelsFor('marketplaces'));
+  }
+  function visibleInstitucionais() {
+    return BASE_INSTITUCIONAIS.filter(b => !isChannelDeleted(b.id)).map(channelData).concat(customChannelsFor('institucionais'));
+  }
+  // Lookup único usado pelo modal de formatos (card clicado pode vir de qualquer uma das duas
+  // galerias, mas reaproveitam o mesmo modal — ver openModal/showCategoryView/showFormatsView).
+  function allVisibleChannels() {
+    return visibleMarketplaces().concat(visibleInstitucionais());
+  }
+
   // ---------------------------------------------------------------- galeria
   // Composição do card seguindo a referência anexada: foto de capa 3:4, gradiente escuro por
   // cima pra legibilidade do texto, nome + estatística, e um botão pill semi-transparente no
@@ -244,8 +340,13 @@
   // Canal travado: card em tons de cinza com cadeado no lugar da seta, sem clique — ainda não
   // temos as medidas reais dele pra mostrar (ver DEFAULT_MODULES/isChannelLocked). Mesma função
   // desenha tanto a galeria de Marketplaces quanto a de Institucionais — ambas reaproveitam o
-  // mesmo modal de formatos (ver allChannels/openModal).
-  function renderChannelGallery(rowId, emptyId, list, emptyMessage) {
+  // mesmo modal de formatos (ver allVisibleChannels/openModal).
+  //
+  // O card virou <div role="button"> em vez de <button> pra caber o botão de reticências (só
+  // admin, ver applyAdminVisibility) como filho de verdade — um <button> dentro de outro <button>
+  // é HTML inválido e o navegador "recupera" fechando o de fora cedo, quebrando o clique. O div
+  // replica o comportamento de botão nativo (tabindex, Enter/Espaço) só quando não está travado.
+  function renderChannelGallery(rowId, emptyId, list, group, emptyMessage) {
     const row = document.getElementById(rowId);
     const empty = document.getElementById(emptyId);
     if (!list.length) {
@@ -258,8 +359,12 @@
     row.innerHTML = list.map(m => {
       const locked = isChannelLocked(m.id);
       return `
-      <button type="button" class="tpl-card${locked ? ' is-locked' : ''}" data-channel="${m.id}" ${locked ? 'disabled title="Formatos ainda não cadastrados"' : ''} style="background:${cardBackground(m)}">
+      <div class="tpl-card${locked ? ' is-locked' : ''}" data-channel="${m.id}" data-channel-group="${group}"
+        role="button" tabindex="${locked ? '-1' : '0'}" aria-disabled="${locked}"
+        aria-label="${locked ? 'Formatos ainda não cadastrados' : 'Ver formatos de ' + escapeHtml(m.name)}"
+        style="background:${cardBackground(m)}">
         <span class="tpl-card-scrim" aria-hidden="true"></span>
+        <button type="button" class="tpl-card-menu-btn" data-channel-menu="${m.id}" hidden title="Mais ações" aria-label="Mais ações de ${escapeHtml(m.name)}">${svgIcon(MENU_DOTS_PATH, ACTION_ICON_SIZE)}</button>
         ${locked ? `<span class="tpl-card-lock" aria-hidden="true">${svgIcon(LOCK_PATH, 15)}</span>` : ''}
         <span class="tpl-card-body">
           <span class="tpl-card-name">${escapeHtml(m.name)}</span>
@@ -268,16 +373,224 @@
           ? `<span class="tpl-card-cta">Em breve ${svgIcon(LOCK_PATH, 13)}</span>`
           : `<span class="tpl-card-cta">Ver formatos ${svgIcon(CHEVRON_RIGHT_PATH, 15)}</span>`}
         </span>
-      </button>`;
+      </div>`;
     }).join('');
-    row.querySelectorAll('.tpl-card:not(.is-locked)').forEach(btn => {
-      btn.addEventListener('click', () => openModal(btn.dataset.channel));
+    row.querySelectorAll('.tpl-card:not(.is-locked)').forEach(card => {
+      card.addEventListener('click', () => openModal(card.dataset.channel));
+      card.addEventListener('keydown', ev => {
+        if (ev.key !== 'Enter' && ev.key !== ' ') return;
+        ev.preventDefault();
+        openModal(card.dataset.channel);
+      });
     });
+    row.querySelectorAll('.tpl-card-menu-btn').forEach(btn => {
+      btn.addEventListener('click', ev => {
+        ev.stopPropagation();
+        openChannelMenu(btn, btn.dataset.channelMenu, btn.closest('.tpl-card').dataset.channelGroup);
+      });
+    });
+    applyAdminVisibility();
   }
   function renderGalleries() {
-    renderChannelGallery('tplInstGalleryRow', 'tplInstGalleryEmpty', institucionais, 'Nenhum canal institucional configurado para esta marca ainda.');
-    renderChannelGallery('tplGalleryRow', 'tplGalleryEmpty', marketplaces, 'Nenhum marketplace configurado para esta marca ainda.');
+    renderChannelGallery('tplInstGalleryRow', 'tplInstGalleryEmpty', visibleInstitucionais(), 'institucionais', 'Nenhum canal institucional configurado para esta marca ainda.');
+    renderChannelGallery('tplGalleryRow', 'tplGalleryEmpty', visibleMarketplaces(), 'marketplaces', 'Nenhum marketplace configurado para esta marca ainda.');
   }
+
+  // ---------------------------------------------------------------- admin: editar/duplicar/excluir card
+  // "... " só aparece pra quem está logado como admin (ver auth-guard.js, que grava o papel em
+  // document.body.dataset.userRole depois que a sessão resolve — como é um script módulo, pode
+  // resolver depois deste script clássico, daí o polling, mesmo padrão que a badge de notificação
+  // usa em portal-shell.js).
+  let isAdmin = false;
+  function applyAdminVisibility() {
+    document.querySelectorAll('.tpl-card-menu-btn').forEach(btn => { btn.hidden = !isAdmin; });
+  }
+  function checkAdminRole(attempt) {
+    if (document.body.dataset.authenticated !== 'true') {
+      if ((attempt || 0) < 50) window.setTimeout(() => checkAdminRole((attempt || 0) + 1), 200);
+      return;
+    }
+    isAdmin = document.body.dataset.userRole === 'admin';
+    applyAdminVisibility();
+  }
+
+  // Menu flutuante "Editar / Duplicar / Excluir" — mesmo componente (.portal-brand-popover /
+  // .portal-account-menu) e mecânica de posicionamento/fechamento (fixed sob o botão, fecha ao
+  // clicar fora/rolar/redimensionar) do menu "Mais ações" de admin-users.js.
+  let channelMenuEl = null;
+  function closeChannelMenu() {
+    if (!channelMenuEl) return;
+    channelMenuEl.remove();
+    channelMenuEl = null;
+    document.removeEventListener('mousedown', onDocClickCloseChannelMenu);
+    window.removeEventListener('scroll', closeChannelMenu, true);
+    window.removeEventListener('resize', closeChannelMenu);
+  }
+  function onDocClickCloseChannelMenu(ev) {
+    if (channelMenuEl && !channelMenuEl.contains(ev.target) && !ev.target.closest('[data-channel-menu]')) closeChannelMenu();
+  }
+  function openChannelMenu(anchor, channelId, group) {
+    const reopening = channelMenuEl && channelMenuEl.dataset.forChannel === channelId;
+    closeChannelMenu();
+    if (reopening) return;
+    channelMenuEl = document.createElement('div');
+    channelMenuEl.className = 'portal-brand-popover portal-account-menu';
+    channelMenuEl.dataset.forChannel = channelId;
+    channelMenuEl.innerHTML = `
+      <button type="button" class="portal-account-menu-item" data-channel-action="edit">${svgIcon(PENCIL_PATH, ACTION_ICON_SIZE)}<span>Editar</span></button>
+      <button type="button" class="portal-account-menu-item" data-channel-action="duplicate">${svgIcon(COPY_PATH, ACTION_ICON_SIZE)}<span>Duplicar</span></button>
+      <div class="portal-account-menu-divider"></div>
+      <button type="button" class="portal-account-menu-item danger" data-channel-action="delete">${svgIcon(TRASH_PATH, ACTION_ICON_SIZE)}<span>Excluir</span></button>
+    `;
+    document.body.appendChild(channelMenuEl);
+    const r = anchor.getBoundingClientRect();
+    channelMenuEl.style.position = 'fixed';
+    channelMenuEl.style.top = (r.bottom + 6) + 'px';
+    channelMenuEl.style.right = Math.max(8, window.innerWidth - r.right) + 'px';
+    channelMenuEl.querySelector('[data-channel-action="edit"]').addEventListener('click', () => { closeChannelMenu(); openChannelEditModal(channelId, group); });
+    channelMenuEl.querySelector('[data-channel-action="duplicate"]').addEventListener('click', () => { closeChannelMenu(); openChannelConfirm('duplicate', channelId, group); });
+    channelMenuEl.querySelector('[data-channel-action="delete"]').addEventListener('click', () => { closeChannelMenu(); openChannelConfirm('delete', channelId, group); });
+    document.addEventListener('mousedown', onDocClickCloseChannelMenu);
+    window.addEventListener('scroll', closeChannelMenu, true);
+    window.addEventListener('resize', closeChannelMenu);
+  }
+  function findChannelInGroup(channelId, group) {
+    const list = group === 'marketplaces' ? visibleMarketplaces() : visibleInstitucionais();
+    return list.find(c => c.id === channelId) || null;
+  }
+
+  // ---------------------------------------------------------------- admin: modal de editar (nome + foto)
+  function readChannelPhoto(file, cb) {
+    if (!/^image\//.test(file.type)) { alert('Envie um arquivo de imagem.'); return; }
+    if (file.size > 6 * 1024 * 1024) { alert('Imagem muito grande (máx. 6MB).'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        // recorta pro mesmo 3:4 do card (cover, sem distorcer) antes de comprimir — assim a foto
+        // usada em cardBackground já chega pronta pro enquadramento, sem depender do CSS pra cortar.
+        const targetRatio = 3 / 4;
+        const srcRatio = img.width / img.height;
+        let sx = 0, sy = 0, sw = img.width, sh = img.height;
+        if (srcRatio > targetRatio) { sw = img.height * targetRatio; sx = (img.width - sw) / 2; }
+        else { sh = img.width / targetRatio; sy = (img.height - sh) / 2; }
+        const outW = 480, outH = Math.round(outW / targetRatio);
+        const canvas = document.createElement('canvas');
+        canvas.width = outW; canvas.height = outH;
+        canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
+        cb(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+  }
+  function setChannelPhotoPreview(image) {
+    const preview = document.getElementById('tplChannelEditPhotoPreview');
+    preview.innerHTML = image ? `<img src="${image}" alt="" />` : svgIcon(IMAGE_PATH, 22);
+    preview.dataset.image = image || '';
+  }
+  let editingChannel = null;
+  function openChannelEditModal(channelId, group) {
+    const ch = findChannelInGroup(channelId, group);
+    if (!ch) return;
+    editingChannel = { id: channelId, group, isCustom: isCustomChannel(channelId), base: ch };
+    document.getElementById('tplChannelEditTitle').textContent = 'Editar ' + ch.name;
+    document.getElementById('tplChannelEditName').value = ch.name;
+    setChannelPhotoPreview(ch.image);
+    document.getElementById('tplChannelEditBackdrop').style.display = 'flex';
+    document.getElementById('tplChannelEditName').focus();
+  }
+  function closeChannelEditModal() {
+    document.getElementById('tplChannelEditBackdrop').style.display = 'none';
+    editingChannel = null;
+  }
+  document.getElementById('tplChannelEditPhotoInput').addEventListener('change', ev => {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if (!file) return;
+    readChannelPhoto(file, dataUrl => setChannelPhotoPreview(dataUrl));
+  });
+  document.getElementById('tplChannelEditForm').addEventListener('submit', ev => {
+    ev.preventDefault();
+    if (!editingChannel) return;
+    const name = document.getElementById('tplChannelEditName').value.trim();
+    if (!name) return;
+    const image = document.getElementById('tplChannelEditPhotoPreview').dataset.image || '';
+    const saveBtn = ev.target.querySelector('[type=submit]');
+    saveBtn.disabled = true;
+    const { id, isCustom, base } = editingChannel;
+    const request = isCustom
+      ? saveCustomChannel(id, Object.assign({}, base, { name, image }))
+      : saveChannelPatch(id, { name, image });
+    request.then(() => {
+      closeChannelEditModal();
+      renderGalleries();
+    }).catch(err => {
+      saveBtn.disabled = false;
+      if (err && err.conflict) {
+        alert('Alguém salvou outra edição antes de você. Recarregando os valores mais recentes.');
+        loadOverrides().then(renderGalleries);
+      } else {
+        alert((err && err.message) || 'Não foi possível salvar. Tente novamente.');
+      }
+    });
+  });
+  document.getElementById('tplChannelEditCancel').addEventListener('click', closeChannelEditModal);
+  document.getElementById('tplChannelEditClose').addEventListener('click', closeChannelEditModal);
+  document.getElementById('tplChannelEditBackdrop').addEventListener('click', ev => { if (ev.target.id === 'tplChannelEditBackdrop') closeChannelEditModal(); });
+
+  // ---------------------------------------------------------------- admin: confirmação (duplicar/excluir)
+  let pendingChannelAction = null;
+  function openChannelConfirm(action, channelId, group) {
+    const ch = findChannelInGroup(channelId, group);
+    if (!ch) return;
+    pendingChannelAction = { action, id: channelId, group, ch };
+    const isDelete = action === 'delete';
+    document.getElementById('tplChannelConfirmTitle').textContent = isDelete ? 'Excluir card?' : 'Duplicar card?';
+    document.getElementById('tplChannelConfirmMessage').textContent = isDelete
+      ? `"${ch.name}" será removido desta lista. Essa ação não pode ser desfeita.`
+      : `Será criada uma cópia de "${ch.name}" com o mesmo nome e foto — fica pendente (com cadeado) até alguém cadastrar os formatos dela.`;
+    const okBtn = document.getElementById('tplChannelConfirmOk');
+    okBtn.textContent = isDelete ? 'Excluir' : 'Duplicar';
+    okBtn.classList.toggle('ghost', isDelete);
+    okBtn.classList.toggle('danger', isDelete);
+    document.getElementById('tplChannelConfirmBackdrop').style.display = 'flex';
+  }
+  function closeChannelConfirm() {
+    document.getElementById('tplChannelConfirmBackdrop').style.display = 'none';
+    pendingChannelAction = null;
+  }
+  function performChannelDuplicate(id, group, ch) {
+    const newId = 'custom-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    return saveCustomChannel(newId, { id: newId, name: ch.name + ' (cópia)', image: ch.image || '', bg: ch.bg, ink: ch.ink, group });
+  }
+  function performChannelDelete(id) {
+    return isCustomChannel(id) ? deleteCustomChannel(id) : saveChannelPatch(id, { deleted: true });
+  }
+  document.getElementById('tplChannelConfirmOk').addEventListener('click', () => {
+    if (!pendingChannelAction) return;
+    const { action, id, group, ch } = pendingChannelAction;
+    const okBtn = document.getElementById('tplChannelConfirmOk');
+    okBtn.disabled = true;
+    const request = action === 'duplicate' ? performChannelDuplicate(id, group, ch) : performChannelDelete(id);
+    request.then(() => {
+      okBtn.disabled = false;
+      closeChannelConfirm();
+      renderGalleries();
+    }).catch(err => {
+      okBtn.disabled = false;
+      if (err && err.conflict) {
+        alert('Alguém salvou outra edição antes de você. Recarregando os valores mais recentes.');
+        closeChannelConfirm();
+        loadOverrides().then(renderGalleries);
+      } else {
+        alert((err && err.message) || 'Não foi possível concluir. Tente novamente.');
+      }
+    });
+  });
+  document.getElementById('tplChannelConfirmCancel').addEventListener('click', closeChannelConfirm);
+  document.getElementById('tplChannelConfirmClose').addEventListener('click', closeChannelConfirm);
+  document.getElementById('tplChannelConfirmBackdrop').addEventListener('click', ev => { if (ev.target.id === 'tplChannelConfirmBackdrop') closeChannelConfirm(); });
 
   // ---------------------------------------------------------------- forma em escala real
   // A pré-visualização de cada versão é desenhada na proporção EXATA do tamanho mínimo daquela
@@ -322,7 +635,7 @@
   function copyToClipboard(text, btn) {
     const original = btn.innerHTML;
     const done = () => {
-      btn.innerHTML = svgIcon(CHECK_PATH, 14);
+      btn.innerHTML = svgIcon(CHECK_PATH, ACTION_ICON_SIZE);
       btn.classList.add('is-copied');
       window.setTimeout(() => { btn.innerHTML = original; btn.classList.remove('is-copied'); }, 1400);
     };
@@ -351,7 +664,7 @@
       <div class="tpl-format-block" data-format-id="${f.id}">
         <div class="tpl-format-block-head">
           <h4 class="tpl-spec-title">${escapeHtml(f.label)}</h4>
-          <button type="button" class="btn-icon tpl-copy-btn" data-copy-format="${f.id}" title="Copiar informações" aria-label="Copiar informações de ${escapeHtml(f.label)}">${svgIcon(COPY_PATH, 14)}</button>
+          <button type="button" class="btn-icon tpl-copy-btn" data-copy-format="${f.id}" title="Copiar informações" aria-label="Copiar informações de ${escapeHtml(f.label)}">${svgIcon(COPY_PATH, ACTION_ICON_SIZE)}</button>
         </div>
         <div class="tpl-format-grid">
           <div class="tpl-format-preview">${shapeBoxSvg(f.min, groupMaxWidth)}</div>
@@ -388,7 +701,7 @@
             <span class="tpl-module-chevron">${svgIcon(CHEVRON_PATH, 14)}</span>
             <span class="tpl-module-name">${escapeHtml(m.name)}</span>
           </button>
-          <button type="button" class="btn-icon" data-edit-module title="Editar informações" aria-label="Editar informações de ${escapeHtml(m.name)}">${svgIcon(PENCIL_PATH, 15)}</button>
+          <button type="button" class="btn-icon" data-edit-module title="Editar informações" aria-label="Editar informações de ${escapeHtml(m.name)}">${svgIcon(PENCIL_PATH, ACTION_ICON_SIZE)}</button>
         </div>
         <div class="tpl-module-panel" style="height:${open ? 'auto' : '0'}">
           <div class="tpl-module-panel-inner">${open ? moduleFormatsHtml(m, groupMaxWidth) : ''}</div>
@@ -601,7 +914,7 @@
     document.getElementById('tplFormatsView').style.display = 'none';
     document.getElementById('tplBackBtn').style.display = 'none';
     document.getElementById('tplAddModuleBtn').style.display = 'none';
-    const mk = allChannels.find(m => m.id === currentChannelId);
+    const mk = allVisibleChannels().find(m => m.id === currentChannelId);
     document.getElementById('tplModalTitle').textContent = mk ? mk.name : '';
   }
   function showFormatsView() {
@@ -609,7 +922,7 @@
     document.getElementById('tplFormatsView').style.display = '';
     document.getElementById('tplBackBtn').style.display = '';
     document.getElementById('tplAddModuleBtn').style.display = '';
-    const mk = allChannels.find(m => m.id === currentChannelId);
+    const mk = allVisibleChannels().find(m => m.id === currentChannelId);
     const cat = CATEGORIES.find(c => c.id === currentCategoryId);
     document.getElementById('tplModalTitle').textContent = `${mk ? mk.name : ''} · ${cat ? cat.name : ''}`;
   }
@@ -627,15 +940,18 @@
   let modalLastFocus = null;
 
   function openModal(channelId) {
-    const mk = allChannels.find(m => m.id === channelId);
+    const mk = allVisibleChannels().find(m => m.id === channelId);
     if (!mk || isChannelLocked(channelId)) return;
     modalLastFocus = document.activeElement;
     const logo = document.getElementById('tplModalLogo');
     logo.textContent = mk.name.slice(0, 2).toUpperCase();
     logo.style.background = mk.bg;
     logo.style.color = mk.ink;
-    document.getElementById('tplModalTitle').style.color = mk.ink;
-    document.getElementById('tplModalHeader').style.setProperty('--tpl-modal-accent', mk.bg);
+    // --tpl-modal-ink é a cor de texto/ícone do cabeçalho inteiro (título, Voltar, fechar,
+    // adicionar) — ver comentário de .tpl-modal .modal-header em templates.html pra saber por quê.
+    const header = document.getElementById('tplModalHeader');
+    header.style.setProperty('--tpl-modal-accent', mk.bg);
+    header.style.setProperty('--tpl-modal-ink', mk.ink);
 
     currentChannelId = channelId;
     currentCategoryId = null;
@@ -655,9 +971,15 @@
   document.getElementById('tplModalClose').addEventListener('click', closeModal);
   document.getElementById('tplAddModuleBtn').addEventListener('click', addNewModule);
   document.getElementById('tplBackBtn').addEventListener('click', () => { currentCategoryId = null; showCategoryView(); });
-  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && modalBackdrop.style.display === 'flex') closeModal(); });
+  document.addEventListener('keydown', ev => {
+    if (ev.key !== 'Escape') return;
+    if (modalBackdrop.style.display === 'flex') closeModal();
+    else if (document.getElementById('tplChannelEditBackdrop').style.display === 'flex') closeChannelEditModal();
+    else if (document.getElementById('tplChannelConfirmBackdrop').style.display === 'flex') closeChannelConfirm();
+  });
 
   // ---------------------------------------------------------------- init
   renderGalleries();
-  loadOverrides();
+  checkAdminRole();
+  loadOverrides().then(renderGalleries);
 })();

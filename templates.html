@@ -22,10 +22,13 @@
 
     /* Card do marketplace — proporção 3:4, foto de capa (ou gradiente com a cor da marca
        enquanto a foto não chega, ver cardBackground em templates.js) com um véu escuro por baixo
-       pra legibilidade do texto, e um botão pill semi-transparente no rodapé. */
+       pra legibilidade do texto, e um botão pill semi-transparente no rodapé. Borda sutil (em vez
+       de 0): marca com cor de identidade bem escura (ex.: TikTok Shop, #010101) quase sumia contra
+       o fundo do modo escuro (#121214) — sem contorno nenhum, o card virava um retângulo preto
+       sobre um fundo quase preto. */
     .tpl-card {
       position: relative; flex: 0 0 auto; width: 176px; aspect-ratio: 3 / 4;
-      border: 0; border-radius: 20px; overflow: hidden; cursor: pointer; padding: 0;
+      border: 1px solid var(--border); border-radius: 20px; overflow: hidden; cursor: pointer; padding: 0;
       background-size: cover; background-position: center; font-family: inherit;
       box-shadow: var(--shadow-md); transition: transform .15s, box-shadow .15s;
     }
@@ -43,8 +46,9 @@
     }
     .tpl-card-cta svg { flex: 0 0 auto }
 
-    /* Marketplace sem instruções cadastradas ainda (ver isMarketplaceLocked em templates.js) —
-       card em tons de cinza, sem hover/clique (disabled nativo), cadeado no lugar da seta. */
+    /* Canal sem instruções cadastradas ainda (ver isChannelLocked em templates.js) — card em
+       tons de cinza, sem hover/clique (tabindex="-1", sem listener — ver renderChannelGallery),
+       cadeado no lugar da seta. */
     .tpl-card.is-locked { cursor: not-allowed; filter: grayscale(1); opacity: .8 }
     .tpl-card.is-locked:hover, .tpl-card.is-locked:focus-visible { transform: none; box-shadow: var(--shadow-md) }
     .tpl-card-lock {
@@ -53,12 +57,59 @@
       -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
     }
 
-    /* Modal — reaproveita .modal-backdrop/.modal/.modal--wide de styles.css; só o cabeçalho
-       ganha a cor de identidade do marketplace clicado (ver openModal em templates.js) */
-    .tpl-modal .modal-header { background: var(--tpl-modal-accent, var(--card)); transition: background .15s }
+    /* Botão de reticências (editar/duplicar/excluir o card) — só admin (hidden por padrão, ver
+       applyAdminVisibility em templates.js). Some pro lado do cadeado quando os dois coexistem
+       (canal travado + admin), em vez de sobrepor. */
+    .tpl-card-menu-btn {
+      position: absolute; top: 10px; right: 10px; z-index: 2; display: flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; border-radius: 999px; border: 0; background: rgba(0,0,0,.45); color: #fff; cursor: pointer;
+      -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); transition: background .12s;
+    }
+    .tpl-card-menu-btn:hover, .tpl-card-menu-btn:focus-visible { background: rgba(0,0,0,.65); outline: none }
+    .tpl-card.is-locked .tpl-card-menu-btn { right: 44px }
+    /* [hidden] some vencer o display:flex acima — mesmo gotcha documentado em .portal-nav-item[hidden]
+       no styles.css: a regra nativa do navegador pra [hidden] tem prioridade mais baixa que
+       qualquer seletor do autor, então precisa ser repetida aqui pra esconder de verdade quem não
+       é admin (ver applyAdminVisibility em templates.js). */
+    .tpl-card-menu-btn[hidden] { display: none }
+
+    /* Foto de fundo no modal de editar card (nome + foto) — mesma proporção 3:4 do card de
+       verdade, pra o admin já ver como vai ficar. Clique em qualquer parte abre o seletor de
+       arquivo (label envolvendo um input file escondido, mesmo padrão do "Editar marca" em
+       portal-shell.js). */
+    .tpl-channel-photo-picker {
+      display: block; position: relative; width: 140px; aspect-ratio: 3 / 4; margin: 0 auto 16px;
+      border-radius: var(--radius-md); overflow: hidden; cursor: pointer; background: var(--surface-muted);
+      border: 1px solid var(--border);
+    }
+    .tpl-channel-photo-picker-media { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-faint) }
+    .tpl-channel-photo-picker-media img { width: 100%; height: 100%; object-fit: cover; display: block }
+    .tpl-channel-photo-picker-hint {
+      position: absolute; left: 0; right: 0; bottom: 0; padding: 6px; text-align: center;
+      font-size: 10.5px; font-weight: 700; color: #fff; background: rgba(0,0,0,.55);
+    }
+
+    /* Modal — reaproveita .modal-backdrop/.modal/.modal--wide de styles.css; só o cabeçalho ganha
+       a cor de identidade do marketplace clicado (ver openModal em templates.js). --tpl-modal-ink
+       é a cor de texto/ícone que contrasta com esse fundo — sem ela, "Voltar" e os botões de
+       fechar/adicionar ficavam com var(--muted)/var(--text) do TEMA (claro/escuro), que não tem
+       relação nenhuma com o fundo da marca: contra um amarelo bem claro (ex.: Mercado Livre), o
+       cinza claro do --muted no modo escuro quase sumia. Os botões herdam a cor do cabeçalho por
+       padrão; o hover usa color-mix com a própria cor pra continuar legível em fundo claro OU
+       escuro sem precisar de um valor fixo (preto ou branco) que só funcionaria pra um dos dois. */
+    .tpl-modal .modal-header { background: var(--tpl-modal-accent, var(--card)); color: var(--tpl-modal-ink, var(--text)); transition: background .15s, color .15s }
+    /* h2 tem color:var(--text) direto em styles.css (h1,h2,h3...) — uma regra que MIRA o elemento
+       sempre vence a herança do pai, então sem esse override o título ficava sempre na cor do
+       tema (branco no modo escuro) por cima do amarelo, ignorando --tpl-modal-ink por completo. */
+    .tpl-modal .modal-header h2 { color: var(--tpl-modal-ink, var(--text)) }
+    .tpl-modal .modal-header .modal-back-btn,
+    .tpl-modal .modal-header .modal-close { color: var(--tpl-modal-ink, var(--muted)) }
+    .tpl-modal .modal-header .modal-back-btn:hover,
+    .tpl-modal .modal-header .modal-close:hover { background: color-mix(in srgb, var(--tpl-modal-ink, var(--text)) 15%, transparent); color: var(--tpl-modal-ink, var(--text)) }
     .tpl-modal-logo {
       display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
       width: 30px; height: 30px; border-radius: 8px; font: 800 12px/1 var(--font-display);
+      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
     }
     .tpl-modal-modules { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
 
@@ -194,13 +245,19 @@
         <div class="modal-header-actions">
           <button type="button" class="modal-close" id="tplAddModuleBtn" style="display:none" title="Adicionar novo formato"
             aria-label="Adicionar novo formato">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
               stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 12h14" />
               <path d="M12 5v14" />
             </svg>
           </button>
-          <button type="button" class="modal-close" id="tplModalClose" aria-label="Fechar">×</button>
+          <button type="button" class="modal-close" id="tplModalClose" aria-label="Fechar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
         </div>
       </div>
       <div class="modal-body">
@@ -212,6 +269,68 @@
         <div id="tplFormatsView" style="display:none">
           <div class="tpl-modal-modules" id="tplModuleList"></div>
         </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Editar card (nome + foto de fundo) — só admin, aberto pelo menu de reticências do card
+       (ver openChannelEditModal em templates.js). Reaproveita .modal-backdrop/.modal/.modal-sm. -->
+  <div class="modal-backdrop" id="tplChannelEditBackdrop" aria-hidden="true">
+    <section class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="tplChannelEditTitle">
+      <div class="modal-header">
+        <div class="modal-header-title"><h2 id="tplChannelEditTitle">Editar</h2></div>
+        <div class="modal-header-actions">
+          <button type="button" class="modal-close" id="tplChannelEditClose" aria-label="Fechar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <form id="tplChannelEditForm">
+        <div class="modal-body">
+          <label class="tpl-channel-photo-picker" title="Clique para alterar a foto">
+            <span class="tpl-channel-photo-picker-media" id="tplChannelEditPhotoPreview"></span>
+            <input type="file" accept="image/*" id="tplChannelEditPhotoInput" style="display:none" />
+            <span class="tpl-channel-photo-picker-hint">Alterar foto</span>
+          </label>
+          <div class="form-group" style="background:transparent;border:0;padding:0;margin:0">
+            <label>Nome<input type="text" id="tplChannelEditName" required /></label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn ghost" id="tplChannelEditCancel">Cancelar</button>
+          <button type="submit" class="btn">Salvar</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- Confirmação de duplicar/excluir card — só admin, mesmo padrão do #cardActionConfirmBackdrop
+       em visual-editor.html (título/mensagem trocados por JS conforme a ação, ver
+       openChannelConfirm em templates.js). -->
+  <div class="modal-backdrop" id="tplChannelConfirmBackdrop" aria-hidden="true">
+    <section class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="tplChannelConfirmTitle">
+      <div class="modal-header">
+        <div class="modal-header-title"><h2 id="tplChannelConfirmTitle">Confirmar ação</h2></div>
+        <div class="modal-header-actions">
+          <button type="button" class="modal-close" id="tplChannelConfirmClose" aria-label="Fechar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p id="tplChannelConfirmMessage" style="margin:0;font-size:13px;line-height:1.55;color:var(--text)"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn ghost" id="tplChannelConfirmCancel">Cancelar</button>
+        <button type="button" class="btn" id="tplChannelConfirmOk">Confirmar</button>
       </div>
     </section>
   </div>
