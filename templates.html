@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Templates — Calendário de Postagens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Space+Grotesk:wght@500;600;700&family=Urbanist:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="auth.css" />
+  <script>document.documentElement.classList.add('auth-pending');</script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="auth-guard.js"></script>
+  <style>
+    /* Layout específico desta página — os componentes reutilizáveis (modal, botões, cards de
+       formulário) vêm de styles.css; aqui só o que é próprio da tela Templates. */
+    .tpl-gallery-row { display: flex; gap: 16px; overflow-x: auto; padding: 4px 4px 10px }
+
+    /* Card do marketplace — proporção 3:4, foto de capa (ou gradiente com a cor da marca
+       enquanto a foto não chega, ver cardBackground em templates.js) com um véu escuro por baixo
+       pra legibilidade do texto, e um botão pill semi-transparente no rodapé. */
+    .tpl-card {
+      position: relative; flex: 0 0 auto; width: 176px; aspect-ratio: 3 / 4;
+      border: 0; border-radius: 20px; overflow: hidden; cursor: pointer; padding: 0;
+      background-size: cover; background-position: center; font-family: inherit;
+      box-shadow: var(--shadow-md); transition: transform .15s, box-shadow .15s;
+    }
+    .tpl-card:hover, .tpl-card:focus-visible { transform: translateY(-3px); box-shadow: var(--shadow-lg); outline: none }
+    .tpl-card:active { transform: translateY(-1px) }
+    .tpl-card-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 38%, rgba(0,0,0,.78) 100%) }
+    .tpl-card-body { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px; display: flex; flex-direction: column; gap: 3px; color: #fff; text-align: left }
+    .tpl-card-name { font: 800 16px/1.2 var(--font-display); text-shadow: 0 1px 3px rgba(0,0,0,.35) }
+    .tpl-card-stats { font-size: 10.5px; font-weight: 600; opacity: .85 }
+    .tpl-card-cta {
+      margin-top: 9px; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      height: 32px; padding: 0 6px 0 11px; border-radius: 999px; background: rgba(0,0,0,.4);
+      -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+      font-size: 11.5px; font-weight: 700;
+    }
+    .tpl-card-cta svg { flex: 0 0 auto }
+
+    /* Marketplace sem instruções cadastradas ainda (ver isMarketplaceLocked em templates.js) —
+       card em tons de cinza, sem hover/clique (disabled nativo), cadeado no lugar da seta. */
+    .tpl-card.is-locked { cursor: not-allowed; filter: grayscale(1); opacity: .8 }
+    .tpl-card.is-locked:hover, .tpl-card.is-locked:focus-visible { transform: none; box-shadow: var(--shadow-md) }
+    .tpl-card-lock {
+      position: absolute; top: 10px; right: 10px; z-index: 1; display: flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; border-radius: 999px; background: rgba(0,0,0,.45); color: #fff;
+      -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    }
+
+    /* Modal — reaproveita .modal-backdrop/.modal/.modal--wide de styles.css; só o cabeçalho
+       ganha a cor de identidade do marketplace clicado (ver openModal em templates.js) */
+    .tpl-modal .modal-header { background: var(--tpl-modal-accent, var(--card)); transition: background .15s }
+    .tpl-modal-logo {
+      display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+      width: 30px; height: 30px; border-radius: 8px; font: 800 12px/1 var(--font-display);
+    }
+    .tpl-modal-modules { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
+
+    /* Tela de escolha da área (Loja Oficial / Ads), primeiro passo dentro do modal — cards
+       simples (sem foto, ao contrário do card do marketplace) já que são só duas opções fixas */
+    .tpl-category-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px }
+    .tpl-category-card {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 20px;
+      border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-muted);
+      cursor: pointer; text-align: left; font-family: inherit; transition: border-color .12s, background .12s, transform .06s;
+    }
+    .tpl-category-card:hover, .tpl-category-card:focus-visible { border-color: var(--accent); background: var(--accent-weak); outline: none }
+    .tpl-category-card:active { transform: translateY(1px) }
+    .tpl-category-icon {
+      display: flex; align-items: center; justify-content: center; width: 44px; height: 44px;
+      border-radius: 12px; background: var(--card); color: var(--accent-ink); box-shadow: var(--shadow-sm);
+    }
+    .tpl-category-name { font: 800 16px var(--font-display); color: var(--text) }
+    .tpl-category-desc { font-size: 12px; color: var(--muted); line-height: 1.5 }
+    @media (max-width: 520px) { .tpl-category-grid { grid-template-columns: 1fr } }
+
+    .tpl-module { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-muted); overflow: hidden }
+    .tpl-module-head-row { display: flex; align-items: center; gap: 6px; padding: 4px 8px 4px 4px }
+    .tpl-module-toggle { flex: 1 1 auto; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 10px 8px; border: 0; background: transparent; color: var(--text); font: 700 13.5px inherit; text-align: left; cursor: pointer; border-radius: var(--radius-sm) }
+    .tpl-module-toggle:hover, .tpl-module-toggle:focus-visible { background: var(--surface-muted); outline: none }
+    .tpl-module-chevron { display: flex; flex: 0 0 auto; color: var(--muted); transition: transform .2s ease }
+    .tpl-module-toggle[aria-expanded="true"] .tpl-module-chevron { transform: rotate(180deg) }
+    .tpl-module-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+
+    /* Abertura/fechamento do dropdown — altura animada com valores medidos em pixel (ver
+       openPanelFrom/closePanel em templates.js), não só CSS: o truque de grid-template-rows
+       0fr→1fr parecia funcionar, mas a caixa de pré-visualização tem min-height próprio, que
+       contamina o cálculo automático do CSS e o painel nunca chegava a 0 de verdade — sobrava um
+       resto do formato fechado visível por baixo do próximo. .tpl-module-panel é só a casca que
+       anima (por isso zero padding aqui: padding não-zero nunca deixa a altura chegar a 0 de
+       verdade, mesmo com box-sizing:border-box) — o padding de verdade mora no
+       .tpl-module-panel-inner, que pode ficar arbitrariamente alto por dentro sem afetar o
+       colapso, porque overflow:hidden da casca corta tudo que sobra. */
+    .tpl-module-panel { overflow: hidden; height: 0; transition: height .28s ease }
+    .tpl-module-panel-inner { padding: 4px 16px 16px }
+    @media (prefers-reduced-motion: reduce) { .tpl-module-panel { transition-duration: 1ms } }
+
+    .tpl-spec-title { margin: 0; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted) }
+    .tpl-spec-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--text) }
+    .tpl-practices { margin-top: 12px }
+    .tpl-practices p { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--text) }
+
+    /* Desktop e Mobile são a mesma peça, então aparecem juntos dentro do dropdown — cada versão
+       tem seu próprio botão de copiar (ícone), que copia as informações pra colar num briefing.
+       Cada versão vira um bloco de duas colunas: pré-visualização na proporção real à esquerda,
+       tamanho mínimo/peso/arquivo/boas práticas daquela versão à direita. Grid com 1fr/1fr faz as
+       duas colunas ocuparem toda a largura disponível em partes iguais; o stretch padrão do grid
+       (align-items não sobrescrito) já iguala a altura das duas ao maior conteúdo das duas, sem
+       precisar fixar um tamanho. A pré-visualização em si é um SVG com viewBox (ver shapeBoxSvg em
+       templates.js) — ele encaixa sozinho dentro da coluna preservando a proporção real, do jeito
+       que um <img> faria com object-fit:contain, então acompanha a coluna fluida sem JS. */
+    .tpl-format-block { padding: 14px 0; border-top: 1px solid var(--border) }
+    .tpl-module-panel-inner > .tpl-format-block:first-child { border-top: 0; padding-top: 0 }
+    .tpl-format-block-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px }
+    .tpl-copy-btn { width: 26px; height: 26px }
+    .tpl-copy-btn.is-copied { color: var(--success); border-color: var(--success-border) }
+
+    .tpl-format-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px }
+    .tpl-format-preview, .tpl-format-info {
+      box-sizing: border-box; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card);
+    }
+    .tpl-format-preview { display: flex; align-items: center; justify-content: center; padding: 16px; min-height: 120px }
+    /* a largura vem inline (% relativa ao maior formato do grupo, ver shapeBoxSvg em
+       templates.js) — a altura é automática, derivada do viewBox, então o retângulo nunca
+       distorce; max-height é só uma proteção pra formatos retrato extremos não estourarem a
+       coluna, algo que não acontece com os formatos cadastrados hoje (todos paisagem/quadrados) */
+    .tpl-format-preview .tpl-shape-box { display: block; height: auto; max-height: 100%; overflow: visible }
+    .tpl-format-preview .tpl-shape-box rect { fill: var(--surface-muted); stroke: var(--border-strong); stroke-width: 3 }
+    .tpl-format-info { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px }
+    .tpl-format-info .tpl-practices { margin-top: 0 }
+    @media (max-width: 560px) { .tpl-format-grid { grid-template-columns: 1fr } .tpl-format-preview { min-height: 160px } }
+
+    .tpl-edit-form { display: flex; flex-direction: column }
+    .tpl-edit-form .form-group { margin-bottom: 10px }
+    .tpl-edit-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; font-weight: 700; color: var(--muted); margin-bottom: 8px }
+    .tpl-edit-form label:last-child { margin-bottom: 0 }
+    .tpl-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px }
+  </style>
+</head>
+
+<body>
+  <div class="portal-shell">
+    <!-- Menu do portal (navegação entre ferramentas + seletor de marca), montado por portal-shell.js -->
+    <aside class="portal-sidebar" id="portalSidebar"></aside>
+    <div class="portal-main">
+      <div class="container">
+
+        <div class="page-header">
+          <div>
+            <h1>Templates</h1>
+            <p class="page-subtitle">Referência de formatos por marketplace: medidas, peso máximo e boas práticas de
+              cada peça.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="fg-label" style="margin:0 0 12px">Institucionais</h3>
+          <div class="tpl-gallery-row" id="tplInstGalleryRow"></div>
+          <div class="bg-empty" id="tplInstGalleryEmpty" style="display:none"></div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h3 class="fg-label" style="margin:0 0 12px">Marketplaces</h3>
+          <div class="tpl-gallery-row" id="tplGalleryRow"></div>
+          <div class="bg-empty" id="tplGalleryEmpty" style="display:none"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de formatos — um único modal reaproveitado para qualquer marketplace clicado -->
+  <div class="modal-backdrop" id="tplModalBackdrop" aria-hidden="true">
+    <section class="modal modal--wide tpl-modal" id="tplModal" role="dialog" aria-modal="true"
+      aria-labelledby="tplModalTitle">
+      <div class="modal-header" id="tplModalHeader">
+        <div class="modal-header-title">
+          <button type="button" id="tplBackBtn" class="modal-back-btn" style="display:none" aria-label="Voltar às áreas"
+            title="Voltar às áreas">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg><span>Voltar</span>
+          </button>
+          <span class="tpl-modal-logo" id="tplModalLogo" aria-hidden="true"></span>
+          <h2 id="tplModalTitle"></h2>
+        </div>
+        <div class="modal-header-actions">
+          <button type="button" class="modal-close" id="tplAddModuleBtn" style="display:none" title="Adicionar novo formato"
+            aria-label="Adicionar novo formato">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14" />
+              <path d="M12 5v14" />
+            </svg>
+          </button>
+          <button type="button" class="modal-close" id="tplModalClose" aria-label="Fechar">×</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <!-- Antes de escolher um formato, o usuário escolhe a área do marketplace (Loja Oficial
+             ou Ads) — os formatos e medidas mudam conforme a área, ver CATEGORIES em templates.js -->
+        <div id="tplCategoryView">
+          <div class="tpl-category-grid" id="tplCategoryGrid"></div>
+        </div>
+        <div id="tplFormatsView" style="display:none">
+          <div class="tpl-modal-modules" id="tplModuleList"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="sync-backend.js"></script>
+  <script src="portal-shell.js"></script>
+  <script src="templates.js"></script>
+</body>
+
+</html>

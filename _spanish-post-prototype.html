@@ -1,32 +1,734 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Protótipo — Tradução de posts</title>
-<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="auth.css"><script>document.documentElement.classList.add('auth-pending')</script><script src="firebase-config.js"></script><script type="module" src="auth-guard.js"></script>
-<style>
-.sp{--green:#0f766e;--soft:#ccfbf1;max-width:1800px;margin:auto}[hidden]{display:none!important}:root[data-theme=dark] .sp{--green:#5eead4;--soft:#123b37}.head{display:flex;justify-content:space-between;gap:20px;margin-bottom:18px}.head p{max-width:760px;color:var(--muted);font-size:14px;line-height:1.55}.kicker{color:var(--green);font:800 11px var(--font-ui);letter-spacing:.12em;text-transform:uppercase}.back,.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px;border:1px solid var(--border-strong);border-radius:9px;background:var(--card);color:var(--text);cursor:pointer;font-weight:800;text-decoration:none}.btn.primary{border-color:var(--green);background:var(--green);color:#fff}.btn:disabled{cursor:not-allowed;opacity:.5}.question,.card,.alert{border:1px solid var(--border);border-radius:14px;background:var(--card)}.question{margin-bottom:16px;padding:13px 15px;border-left:4px solid var(--green);color:var(--muted);font-size:13px}.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}.step{display:flex;align-items:center;gap:9px;padding:11px;border:1px solid var(--border);border-radius:11px;background:var(--card);color:var(--muted)}.step>span{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--surface-muted);font-weight:900}.step strong,.step small{display:block}.step strong{color:var(--text);font-size:13px}.step small{font-size:10px}.step.active{border-color:var(--green);background:var(--soft)}.step.active>span,.step.done>span{background:var(--green);color:#fff}.alert{margin-bottom:14px;padding:12px;border-color:var(--danger-border);background:var(--danger-bg);color:var(--danger);font-size:12px}.import{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;padding:18px}.drop{display:grid;min-height:230px;place-items:center;border:2px dashed var(--border-strong);border-radius:12px;background:var(--surface-muted);cursor:pointer;text-align:center}.drop:hover,.drop.drag{border-color:var(--green);background:var(--soft)}.drop input,.font-drop input{position:absolute;width:1px;height:1px;opacity:0}.drop strong,.drop small{display:block}.drop small,.guide p{color:var(--muted);font-size:11px;line-height:1.5}.upload{display:grid;place-items:center;width:48px;height:48px;margin:0 auto 12px;border-radius:14px;background:var(--green);color:#fff;font-size:24px}.tabs{display:flex;gap:4px;padding:4px;border-radius:9px;background:var(--surface-muted)}.tab{flex:1;min-height:38px;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;font-size:10px;font-weight:900}.tab[aria-selected=true]{background:var(--card);color:var(--text)}.scenario{color:var(--muted);font-size:12px;line-height:1.5}.engine{margin-top:12px;color:var(--muted);font-size:10px}.engine:before{display:inline-block;width:8px;height:8px;margin-right:7px;border-radius:50%;background:var(--success);content:''}.workspace{display:grid;grid-template-columns:minmax(320px,390px) minmax(420px,1fr) minmax(240px,300px);gap:15px;align-items:start}.panel{overflow:hidden}.panel-head,.toolbar,.export{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;border-bottom:1px solid var(--border)}.panel-head h2{font-size:15px}.panel-head small,.toolbar small,.export small{color:var(--muted);font-size:10px}.text-list{display:flex;max-height:calc(100vh - 240px);overflow:auto;flex-direction:column;gap:10px;padding:12px}.text-card{padding:11px;border:1px solid var(--border);border-radius:11px;background:var(--surface-muted)}.text-card.confirmed{border-color:var(--success-border);background:var(--success-bg)}.text-meta,.actions{display:flex;align-items:center;justify-content:space-between;gap:7px}.layer,.badge{color:var(--muted);font-size:10px;font-weight:800}.badge{padding:3px 7px;border-radius:99px;background:var(--card)}.confirmed .badge{background:var(--success);color:#fff}.original{padding:7px;border-left:3px solid var(--border-strong);background:var(--card);color:var(--muted);font-size:11px;white-space:pre-wrap}.text-card label{display:block;margin:7px 0 4px;font-size:11px;font-weight:800}.translation{width:100%;min-height:76px;resize:vertical;padding:8px;border:1px solid var(--border-strong);border-radius:8px;background:var(--card);color:var(--text)}.actions .btn{min-height:36px;padding:0 9px;font-size:10px}.size{width:54px;height:36px}.stage{position:sticky;top:14px;overflow:hidden}.toggle{display:flex;gap:3px;padding:3px;border-radius:7px;background:var(--surface-muted)}.toggle button{min-height:34px;border:0;border-radius:5px;background:transparent;color:var(--muted);cursor:pointer;font-size:10px;font-weight:900}.toggle button[aria-pressed=true]{background:var(--card);color:var(--text)}.preview-area{display:grid;min-height:560px;place-items:center;padding:16px;background:var(--surface-muted)}.preview{display:block;max-width:100%;max-height:70vh;object-fit:contain;box-shadow:0 10px 32px #0003}.export{border-top:1px solid var(--border);border-bottom:0}.audit-body{padding:13px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px}.metric{padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted)}.metric strong,.metric span{display:block}.metric strong{font-size:18px}.metric span{color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase}.progress{height:7px;margin:10px 0 5px;border-radius:99px;background:var(--surface-muted);overflow:hidden}.progress span{display:block;height:100%;background:var(--green)}.audit h3{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;text-transform:uppercase}.audit ul{padding:0;list-style:none;color:var(--muted);font-size:11px;line-height:1.5}.font-warning{padding:9px;border:1px solid #fed7aa;border-radius:8px;background:#fff7ed;color:#9a3412;font-size:11px}.modal-bg{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:18px;background:var(--backdrop)}.modal{width:min(520px,100%);padding:20px;border-radius:14px;background:var(--card)}.font-drop{display:grid;min-height:90px;place-items:center;border:1px dashed var(--border-strong);border-radius:9px;cursor:pointer;text-align:center}.modal-actions{display:flex;justify-content:flex-end;margin-top:14px}
-@media(max-width:1250px){.workspace{grid-template-columns:360px 1fr}.audit{grid-column:1/-1}}@media(max-width:850px){.head{display:block}.back{margin-top:12px}.import,.workspace{grid-template-columns:1fr}.stage{position:static}.audit{grid-column:auto}.preview-area{min-height:380px}.text-list{max-height:none}}@media(max-width:560px){.portal-main.sp{padding:16px 12px}.step small{display:none}.tabs{flex-direction:column}.export{align-items:stretch;flex-direction:column}}
-</style></head>
-<body><div class="portal-shell"><aside class="portal-sidebar" id="portalSidebar"></aside><main class="portal-main sp">
-<header class="head"><div><span class="kicker">Experimento interno · fora do menu</span><h1>Tradução de posts para espanhol</h1><p>Importe o PSD original, revise somente os textos e baixe a arte final em PNG. As demais camadas permanecem bloqueadas.</p></div><a class="back" href="post-editor.html">← Voltar ao Editor</a></header>
-<div class="question"><strong>Pergunta do protótipo:</strong> os PSDs reais mantêm fidelidade quando somente as camadas de texto são recriadas no navegador?</div>
-<nav class="flow" aria-label="Etapas"><div class="step active" data-step="1"><span>1</span><div><strong>Importar PSD</strong><small>Análise automática</small></div></div><div class="step" data-step="2"><span>2</span><div><strong>Revisar espanhol</strong><small>Confirmação humana</small></div></div><div class="step" data-step="3"><span>3</span><div><strong>Exportar PNG</strong><small>Resolução original</small></div></div></nav><div class="alert" id="alert" role="alert" tabindex="-1" hidden></div>
-<section class="card import" id="importView"><label class="drop" id="drop" for="psdFile"><input id="psdFile" type="file" accept=".psd,image/vnd.adobe.photoshop"><span><span class="upload">↑</span><strong>Solte o PSD original aqui</strong><small>Ou clique para escolher. Limite: 250 MB.<br>O arquivo nunca sai deste navegador.</small></span></label><div class="guide"><h2>Roteiros para avaliar</h2><p>Comece pelo caminho comum e depois teste as exceções.</p><div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="true" aria-controls="normal">PSD comum</button><button class="tab" role="tab" aria-selected="false" aria-controls="font">Sem fonte</button><button class="tab" role="tab" aria-selected="false" aria-controls="edge">Exceções</button></div><div class="scenario" id="normal"><ol><li>Envie um post sem preparação.</li><li>Compare português e espanhol.</li><li>Confirme e exporte.</li></ol></div><div class="scenario" id="font" hidden><ol><li>Envie um PSD com fonte ausente.</li><li>Confira o nome detectado.</li><li>Carregue a fonte.</li></ol></div><div class="scenario" id="edge" hidden><ol><li>Teste máscaras e objetos inteligentes.</li><li>Confira o diagnóstico.</li><li>Anote diferenças visuais.</li></ol></div><div class="engine" id="engineStatus">Leitor de PSD pronto</div><p>Processamento 100% local com ag-psd. Nada é enviado ou armazenado.</p></div></section>
-<section class="workspace" id="workspace" hidden><aside class="card panel"><div class="panel-head"><div><h2>Textos encontrados</h2><small id="fileSummary"></small></div><button class="btn" id="changeFile" type="button">Outro PSD</button></div><div class="text-list" id="textList"></div></aside><section class="card stage"><div class="toolbar"><div><strong>Pré-visualização</strong><br><small id="renderStatus">Render original</small></div><div class="toggle"><button type="button" data-preview="original" aria-pressed="false">Português</button><button type="button" data-preview="current" aria-pressed="true">Espanhol</button></div></div><div class="preview-area"><span id="previewEmpty">Preparando a arte…</span><img class="preview" id="preview" alt="Prévia da arte" hidden></div><div class="export"><small id="exportHint">Confirme cada tradução antes de baixar.</small><button class="btn primary" id="exportPng" type="button" disabled>Baixar PNG</button></div></section><aside class="card audit"><div class="panel-head"><div><h2>Diagnóstico</h2><small>Estado completo</small></div></div><div class="audit-body"><div class="metrics"><div class="metric"><strong id="metricTexts">0</strong><span>textos</span></div><div class="metric"><strong id="metricIssues">0</strong><span>alertas</span></div></div><div class="progress"><span id="progress"></span></div><small id="progressLabel"></small><h3>Arquivo</h3><ul id="fileAudit"></ul><h3>Fontes</h3><div id="fontAudit"></div></div></aside></section>
-</main></div><div class="modal-bg" id="fontModal" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="fontTitle"><h2 id="fontTitle">Fontes possivelmente ausentes</h2><p>Envie os arquivos correspondentes para aproximar a renderização.</p><ul id="missingList"></ul><label class="font-drop" for="fontFiles"><input id="fontFiles" type="file" accept=".otf,.ttf" multiple><span><strong>Selecionar `.otf` ou `.ttf`</strong><br><small>Uso temporário nesta sessão.</small></span></label><div class="modal-actions"><button class="btn" id="closeFont" type="button">Continuar sem enviar</button></div></div></div>
-<script src="sync-backend.js"></script><script src="portal-shell.js"></script><script src="vendor/ag-psd/bundle.js"></script><script>
-(()=>{'use strict';
-const Machine=(()=>{const initial={phase:'idle',file:null,width:0,height:0,texts:[],issues:[],missingFonts:[],confirmed:0};function reduce(s,a){switch(a.type){case'IMPORT':return{...initial,phase:'importing',file:a.file};case'LOADED':return{...s,...a.data,phase:'ready'};case'EDIT':return{...s,texts:s.texts.map((x,i)=>i===a.i?{...x,translation:a.value,confirmed:false}:x),confirmed:s.texts.filter((x,i)=>i!==a.i&&x.confirmed).length};case'SCALE':return{...s,texts:s.texts.map((x,i)=>i===a.i?{...x,scale:a.value,confirmed:false}:x),confirmed:s.texts.filter((x,i)=>i!==a.i&&x.confirmed).length};case'CONFIRM':return{...s,texts:s.texts.map((x,i)=>i===a.i?{...x,confirmed:!x.confirmed}:x),confirmed:s.texts.reduce((n,x,i)=>n+(i===a.i?!x.confirmed:x.confirmed?1:0),0)};case'FONTS':return{...s,missingFonts:a.value};case'PHASE':return{...s,phase:a.value};default:return s}}return{initial,reduce}})();console.assert(Machine.reduce(Machine.initial,{type:'IMPORT',file:{}}).phase==='importing','import transition');
-const $=id=>document.getElementById(id),MAX=250*1024*1024;let state={...Machine.initial},psd,background,output,originalUrl='',currentUrl='',currentBlob,mode='current',timer,lastFocus,loadedFonts=new Set();const esc=v=>{let d=document.createElement('div');d.textContent=String(v??'');return d.innerHTML};function send(a){state=Machine.reduce(state,a);paintState()}function fail(message){$('alert').innerHTML=message;$('alert').hidden=false;$('alert').focus()}
-function paintState(){let has=!!state.file;$('importView').hidden=has;$('workspace').hidden=!has;let step=!has?1:(state.texts.length&&state.confirmed===state.texts.length?3:2);document.querySelectorAll('.step').forEach(x=>{let n=+x.dataset.step;x.classList.toggle('active',n===step);x.classList.toggle('done',n<step)});if(!has)return;$('fileSummary').textContent=`${state.file.name} · ${state.width} × ${state.height}px`;$('metricTexts').textContent=state.texts.length;$('metricIssues').textContent=state.issues.length;$('progress').style.width=(state.texts.length?state.confirmed/state.texts.length*100:0)+'%';$('progressLabel').textContent=`${state.confirmed} de ${state.texts.length} confirmados`;$('exportPng').disabled=state.phase==='rendering'||!state.texts.length||state.confirmed!==state.texts.length;$('exportHint').textContent=state.texts.length&&state.confirmed===state.texts.length?'Tudo revisado. PNG pronto.':'Confirme cada tradução antes de baixar.'}
-function validate(buffer){let v=new DataView(buffer);if(v.byteLength<26||String.fromCharCode(...new Uint8Array(buffer,0,4))!=='8BPS'||v.getUint16(4)!==1)throw Error('Cabeçalho PSD inválido.');let h=v.getUint32(14),w=v.getUint32(18);if(w>12000||h>12000)throw Error('Dimensões acima de 12.000 px.')}
-function fontAvailable(name){if(!name||loadedFonts.has(name))return true;let c=document.createElement('canvas').getContext('2d'),s='mmmmmmWW00';c.font=`48px "${name}",monospace`;let a=c.measureText(s).width;c.font='48px monospace';let b=c.measureText(s).width;c.font=`48px "${name}",serif`;let d=c.measureText(s).width;c.font='48px serif';return Math.abs(a-b)>.1||Math.abs(d-c.measureText(s).width)>.1}
-function collect(layers,texts,issues,visible=true){(layers||[]).forEach(l=>{let v=visible&&!l.hidden;if(l.children)return collect(l.children,texts,issues,v);if(!v)return;if(l.text){let t=l.text,st=t.style||t.styleRuns?.[0]?.style||{},font=st.font?.name||'';texts.push({layer:l,name:l.name||`Texto ${texts.length+1}`,original:t.text||'',translation:t.text||'',font,size:+st.fontSize||24,scale:100,confirmed:false});if(t.warp?.style&&t.warp.style!=='none')issues.push(`Texto deformado: ${l.name}`);if(t.orientation==='vertical')issues.push(`Texto vertical: ${l.name}`);return}if(l.placedLayer)issues.push(`Objeto inteligente: ${l.name}`);if(l.adjustment)issues.push(`Camada de ajuste: ${l.name}`);if(l.mask||l.vectorMask)issues.push(`Máscara: ${l.name}`);if(l.clipping)issues.push(`Recorte: ${l.name}`)})}
-const blend={normal:'source-over',multiply:'multiply',screen:'screen',overlay:'overlay','soft light':'soft-light','hard light':'hard-light',darken:'darken',lighten:'lighten',difference:'difference'};function composite(ctx,layers,alpha=1){[...(layers||[])].reverse().forEach(l=>{if(l.hidden)return;let a=alpha*(l.opacity==null?1:l.opacity);if(l.children)return composite(ctx,l.children,a);if(l.text||!l.canvas)return;ctx.save();ctx.globalAlpha=a;ctx.globalCompositeOperation=blend[l.blendMode]||'source-over';ctx.drawImage(l.canvas,+l.left||0,+l.top||0);ctx.restore()})}
-function color(c){return c?.r!=null?`rgba(${c.r},${c.g},${c.b},${c.a??1})`:'#000'}function wrap(ctx,text,max){let out=[];String(text).split(/\r?\n/).forEach(row=>{let current='';row.split(/\s+/).forEach(w=>{let test=current?current+' '+w:w;if(current&&ctx.measureText(test).width>max){out.push(current);current=w}else current=test});out.push(current)});return out}function drawText(ctx,x){let l=x.layer,t=l.text||{},st=t.style||t.styleRuns?.[0]?.style||{},size=Math.max(6,x.size*x.scale/100),left=+l.left||0,top=+l.top||0,right=+l.right||left+500,width=Math.max(40,right-left),para=t.paragraphStyle||t.paragraphStyleRuns?.[0]?.style||{},lh=+st.leading||size*1.18;ctx.save();ctx.fillStyle=color(st.fillColor);ctx.font=`${st.fauxItalic?'italic ':''}${st.fauxBold?'700 ':'400 '}${size}px "${x.font||'Arial'}",Arial,sans-serif`;ctx.textBaseline='top';ctx.textAlign=para.justification==='center'?'center':para.justification==='right'?'right':'left';let px=ctx.textAlign==='center'?left+width/2:ctx.textAlign==='right'?right:left;wrap(ctx,x.translation,width).forEach((line,i)=>ctx.fillText(line,px,top+i*lh));ctx.restore()}
-async function imageUrl(canvas){return new Promise(resolve=>canvas.toBlob(blob=>resolve({blob,url:URL.createObjectURL(blob)}),'image/png'))}async function setImage(kind,canvas){let made=await imageUrl(canvas);if(kind==='original'){if(originalUrl)URL.revokeObjectURL(originalUrl);originalUrl=made.url}else{if(currentUrl)URL.revokeObjectURL(currentUrl);currentUrl=made.url;currentBlob=made.blob}show(mode)}function show(kind){mode=kind;document.querySelectorAll('[data-preview]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.preview===kind)));let url=kind==='original'?originalUrl:currentUrl;if(url){$('preview').src=url;$('preview').hidden=false;$('previewEmpty').hidden=true}}
-async function importPsd(file){$('alert').hidden=true;if(!/\.psd$/i.test(file.name))return fail('<strong>Escolha um arquivo .psd.</strong>');if(file.size>MAX)return fail('<strong>Use um PSD de até 250 MB.</strong>');send({type:'IMPORT',file:{name:file.name,size:file.size}});$('engineStatus').textContent='Analisando PSD…';try{await new Promise(r=>setTimeout(r,20));let buffer=await file.arrayBuffer();validate(buffer);psd=agPsd.readPsd(buffer,{skipThumbnail:true});let texts=[],issues=[];collect(psd.children,texts,issues);let missing=[...new Set(texts.map(x=>x.font).filter(x=>x&&!fontAvailable(x)))];background=document.createElement('canvas');background.width=psd.width;background.height=psd.height;composite(background.getContext('2d'),psd.children);output=document.createElement('canvas');output.width=psd.width;output.height=psd.height;send({type:'LOADED',data:{width:psd.width,height:psd.height,texts,issues:[...new Set(issues)],missingFonts:missing}});await setImage('original',psd.canvas||background);await renderCurrent();renderTexts();renderAudit();$('engineStatus').textContent='PSD processado localmente';if(!texts.length)fail('<strong>Nenhuma camada de texto editável foi encontrada.</strong>');if(missing.length)openFonts()}catch(e){send({type:'PHASE',value:'error'});$('engineStatus').textContent='Falha ao ler PSD';fail(`<strong>Não foi possível abrir o PSD.</strong> ${esc(e.message)}`)}}
-function suggest(t){let map={'aproveite!':'¡Aprovecha!','saiba mais':'Conoce más','compre agora':'Compra ahora','feliz natal':'Feliz Navidad','feliz ano novo':'Feliz Año Nuevo'},k=t.trim().toLowerCase();if(map[k])return map[k];return [[/\bmais\b/gi,'más'],[/\bseu\b/gi,'tu'],[/\bsua\b/gi,'tu'],[/\btrabalho\b/gi,'trabajo'],[/\bqualidade\b/gi,'calidad'],[/\bpotência\b/gi,'potencia'],[/\bsegurança\b/gi,'seguridad'],[/\bprodutos\b/gi,'productos'],[/\bproduto\b/gi,'producto']].reduce((v,p)=>v.replace(p[0],p[1]),t)}
-function renderTexts(){$('textList').innerHTML=state.texts.map((x,i)=>`<article class="text-card${x.confirmed?' confirmed':''}"><div class="text-meta"><span class="layer">${esc(x.name)}</span><span class="badge">${x.confirmed?'Confirmado':'Pendente'}</span></div><p class="original">${esc(x.original)}</p><label for="tr${i}">Tradução em espanhol</label><textarea class="translation" id="tr${i}" data-action="edit" data-i="${i}">${esc(x.translation)}</textarea><div class="actions"><button class="btn" type="button" data-action="suggest" data-i="${i}">Sugerir</button><button class="btn" type="button" data-action="confirm" data-i="${i}">${x.confirmed?'Reabrir':'Confirmar'}</button><label>Tamanho <input class="size" type="number" min="60" max="140" step="5" value="${x.scale}" data-action="scale" data-i="${i}">%</label></div></article>`).join('')}
-function renderAudit(){let items=state.issues.slice(0,5).map(x=>`<li>⚠ ${esc(x)}</li>`).join('');$('fileAudit').innerHTML=`<li>✓ ${state.width} × ${state.height}px</li><li>✓ ${(state.file.size/1048576).toFixed(1)} MB · processamento local</li>${items}`;if(state.missingFonts.length){$('fontAudit').innerHTML=`<div class="font-warning"><strong>Possivelmente ausentes:</strong><div>${state.missingFonts.map(esc).join(', ')}</div><button class="btn" id="openFonts" type="button">Enviar fontes</button></div>`;$('openFonts').onclick=openFonts}else $('fontAudit').innerHTML='<small>✓ Fontes detectadas ou carregadas.</small>'}
-function schedule(){clearTimeout(timer);timer=setTimeout(renderCurrent,450);$('renderStatus').textContent='Alterações pendentes…'}async function renderCurrent(){if(!output||state.phase==='rendering')return;send({type:'PHASE',value:'rendering'});$('renderStatus').textContent='Renderizando…';await new Promise(r=>requestAnimationFrame(r));let c=output.getContext('2d');c.clearRect(0,0,output.width,output.height);c.drawImage(background,0,0);state.texts.forEach(x=>drawText(c,x));await setImage('current',output);send({type:'PHASE',value:'ready'});$('renderStatus').textContent='Prévia atualizada'}
-function openFonts(){lastFocus=document.activeElement;$('missingList').innerHTML=state.missingFonts.map(x=>`<li>${esc(x)}</li>`).join('');$('fontModal').hidden=false;$('fontFiles').focus()}function closeFonts(){$('fontModal').hidden=true;if(lastFocus?.focus)lastFocus.focus()}async function uploadFonts(files){try{let pending=[...state.missingFonts];for(let file of files){let base=file.name.replace(/\.(otf|ttf)$/i,''),norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,''),key=pending.find(x=>norm(x)===norm(base)||norm(x).includes(norm(base))||norm(base).includes(norm(x)))||(pending.length===1?pending[0]:base),face=new FontFace(key,await file.arrayBuffer());await face.load();document.fonts.add(face);loadedFonts.add(key);pending=pending.filter(x=>x!==key)}send({type:'FONTS',value:pending});renderAudit();if(!pending.length)closeFonts();else $('missingList').innerHTML=pending.map(x=>`<li>${esc(x)}</li>`).join('');await renderCurrent()}catch(e){fail(`<strong>Falha ao carregar fonte.</strong> ${esc(e.message)}`)}}
-$('psdFile').onchange=e=>{let f=e.target.files[0];if(f)importPsd(f);e.target.value=''};let drop=$('drop');['dragenter','dragover'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add('drag')}));['dragleave','drop'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove('drag')}));drop.ondrop=e=>{let f=e.dataTransfer.files[0];if(f)importPsd(f)};$('changeFile').onclick=()=>$('psdFile').click();$('textList').onchange=e=>{let x=e.target,i=+x.dataset.i;if(x.dataset.action==='edit'){send({type:'EDIT',i,value:x.value});renderTexts();schedule()}if(x.dataset.action==='scale'){send({type:'SCALE',i,value:Math.max(60,Math.min(140,+x.value||100))});renderTexts();schedule()}};$('textList').onclick=e=>{let b=e.target.closest('button[data-action]');if(!b)return;let i=+b.dataset.i;if(b.dataset.action==='suggest'){send({type:'EDIT',i,value:suggest(state.texts[i].original)});renderTexts();schedule()}else{send({type:'CONFIRM',i});renderTexts()}};document.querySelectorAll('[data-preview]').forEach(b=>b.onclick=()=>show(b.dataset.preview));$('exportPng').onclick=async()=>{await renderCurrent();if(currentBlob){let a=document.createElement('a');a.href=currentUrl;a.download=state.file.name.replace(/\.psd$/i,'')+'-es.png';a.click()}};$('fontFiles').onchange=e=>uploadFonts([...e.target.files]);$('closeFont').onclick=closeFonts;$('fontModal').onclick=e=>{if(e.target===$('fontModal'))closeFonts()};document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',String(x===t)));document.querySelectorAll('.scenario').forEach(x=>x.hidden=x.id!==t.getAttribute('aria-controls'))});addEventListener('beforeunload',()=>{if(originalUrl)URL.revokeObjectURL(originalUrl);if(currentUrl)URL.revokeObjectURL(currentUrl)});
-})();</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Protótipo — Tradução de posts</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="auth.css">
+    <script>document.documentElement.classList.add('auth-pending')</script>
+    <script src="firebase-config.js"></script>
+    <script type="module" src="auth-guard.js"></script>
+    <style>
+        .sp {
+            --green: #0f766e;
+            --soft: #ccfbf1;
+            max-width: 1800px;
+            margin: auto
+        }
+
+        [hidden] {
+            display: none !important
+        }
+
+        :root[data-theme=dark] .sp {
+            --green: #5eead4;
+            --soft: #123b37
+        }
+
+        .head {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 18px
+        }
+
+        .head p {
+            max-width: 760px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.55
+        }
+
+        .kicker {
+            color: var(--green);
+            font: 800 11px var(--font-ui);
+            letter-spacing: .12em;
+            text-transform: uppercase
+        }
+
+        .back,
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            padding: 0 14px;
+            border: 1px solid var(--border-strong);
+            border-radius: 9px;
+            background: var(--card);
+            color: var(--text);
+            cursor: pointer;
+            font-weight: 800;
+            text-decoration: none
+        }
+
+        .btn.primary {
+            border-color: var(--green);
+            background: var(--green);
+            color: #fff
+        }
+
+        .btn:disabled {
+            cursor: not-allowed;
+            opacity: .5
+        }
+
+        .question,
+        .card,
+        .alert {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--card)
+        }
+
+        .question {
+            margin-bottom: 16px;
+            padding: 13px 15px;
+            border-left: 4px solid var(--green);
+            color: var(--muted);
+            font-size: 13px
+        }
+
+        .flow {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 16px
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 11px;
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            background: var(--card);
+            color: var(--muted)
+        }
+
+        .step>span {
+            display: grid;
+            place-items: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--surface-muted);
+            font-weight: 900
+        }
+
+        .step strong,
+        .step small {
+            display: block
+        }
+
+        .step strong {
+            color: var(--text);
+            font-size: 13px
+        }
+
+        .step small {
+            font-size: 10px
+        }
+
+        .step.active {
+            border-color: var(--green);
+            background: var(--soft)
+        }
+
+        .step.active>span,
+        .step.done>span {
+            background: var(--green);
+            color: #fff
+        }
+
+        .alert {
+            margin-bottom: 14px;
+            padding: 12px;
+            border-color: var(--danger-border);
+            background: var(--danger-bg);
+            color: var(--danger);
+            font-size: 12px
+        }
+
+        .import {
+            display: grid;
+            grid-template-columns: 1.2fr .8fr;
+            gap: 18px;
+            padding: 18px
+        }
+
+        .drop {
+            display: grid;
+            min-height: 230px;
+            place-items: center;
+            border: 2px dashed var(--border-strong);
+            border-radius: 12px;
+            background: var(--surface-muted);
+            cursor: pointer;
+            text-align: center
+        }
+
+        .drop:hover,
+        .drop.drag {
+            border-color: var(--green);
+            background: var(--soft)
+        }
+
+        .drop input,
+        .font-drop input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0
+        }
+
+        .drop strong,
+        .drop small {
+            display: block
+        }
+
+        .drop small,
+        .guide p {
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.5
+        }
+
+        .upload {
+            display: grid;
+            place-items: center;
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 12px;
+            border-radius: 14px;
+            background: var(--green);
+            color: #fff;
+            font-size: 24px
+        }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            border-radius: 9px;
+            background: var(--surface-muted)
+        }
+
+        .tab {
+            flex: 1;
+            min-height: 38px;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: 900
+        }
+
+        .tab[aria-selected=true] {
+            background: var(--card);
+            color: var(--text)
+        }
+
+        .scenario {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5
+        }
+
+        .engine {
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 10px
+        }
+
+        .engine:before {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            margin-right: 7px;
+            border-radius: 50%;
+            background: var(--success);
+            content: ''
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: minmax(320px, 390px) minmax(420px, 1fr) minmax(240px, 300px);
+            gap: 15px;
+            align-items: start
+        }
+
+        .panel {
+            overflow: hidden
+        }
+
+        .panel-head,
+        .toolbar,
+        .export {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 13px 14px;
+            border-bottom: 1px solid var(--border)
+        }
+
+        .panel-head h2 {
+            font-size: 15px
+        }
+
+        .panel-head small,
+        .toolbar small,
+        .export small {
+            color: var(--muted);
+            font-size: 10px
+        }
+
+        .text-list {
+            display: flex;
+            max-height: calc(100vh - 240px);
+            overflow: auto;
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px
+        }
+
+        .text-card {
+            padding: 11px;
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            background: var(--surface-muted)
+        }
+
+        .text-card.confirmed {
+            border-color: var(--success-border);
+            background: var(--success-bg)
+        }
+
+        .text-meta,
+        .actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 7px
+        }
+
+        .layer,
+        .badge {
+            color: var(--muted);
+            font-size: 10px;
+            font-weight: 800
+        }
+
+        .badge {
+            padding: 3px 7px;
+            border-radius: 99px;
+            background: var(--card)
+        }
+
+        .confirmed .badge {
+            background: var(--success);
+            color: #fff
+        }
+
+        .original {
+            padding: 7px;
+            border-left: 3px solid var(--border-strong);
+            background: var(--card);
+            color: var(--muted);
+            font-size: 11px;
+            white-space: pre-wrap
+        }
+
+        .text-card label {
+            display: block;
+            margin: 7px 0 4px;
+            font-size: 11px;
+            font-weight: 800
+        }
+
+        .translation {
+            width: 100%;
+            min-height: 76px;
+            resize: vertical;
+            padding: 8px;
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            background: var(--card);
+            color: var(--text)
+        }
+
+        .actions .btn {
+            min-height: 36px;
+            padding: 0 9px;
+            font-size: 10px
+        }
+
+        .size {
+            width: 54px;
+            height: 36px
+        }
+
+        .stage {
+            position: sticky;
+            top: 14px;
+            overflow: hidden
+        }
+
+        .toggle {
+            display: flex;
+            gap: 3px;
+            padding: 3px;
+            border-radius: 7px;
+            background: var(--surface-muted)
+        }
+
+        .toggle button {
+            min-height: 34px;
+            border: 0;
+            border-radius: 5px;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: 900
+        }
+
+        .toggle button[aria-pressed=true] {
+            background: var(--card);
+            color: var(--text)
+        }
+
+        .preview-area {
+            display: grid;
+            min-height: 560px;
+            place-items: center;
+            padding: 16px;
+            background: var(--surface-muted)
+        }
+
+        .preview {
+            display: block;
+            max-width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+            box-shadow: 0 10px 32px #0003
+        }
+
+        .export {
+            border-top: 1px solid var(--border);
+            border-bottom: 0
+        }
+
+        .audit-body {
+            padding: 13px
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px
+        }
+
+        .metric {
+            padding: 9px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface-muted)
+        }
+
+        .metric strong,
+        .metric span {
+            display: block
+        }
+
+        .metric strong {
+            font-size: 18px
+        }
+
+        .metric span {
+            color: var(--muted);
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase
+        }
+
+        .progress {
+            height: 7px;
+            margin: 10px 0 5px;
+            border-radius: 99px;
+            background: var(--surface-muted);
+            overflow: hidden
+        }
+
+        .progress span {
+            display: block;
+            height: 100%;
+            background: var(--green)
+        }
+
+        .audit h3 {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            font-size: 11px;
+            text-transform: uppercase
+        }
+
+        .audit ul {
+            padding: 0;
+            list-style: none;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.5
+        }
+
+        .font-warning {
+            padding: 9px;
+            border: 1px solid #fed7aa;
+            border-radius: 8px;
+            background: #fff7ed;
+            color: #9a3412;
+            font-size: 11px
+        }
+
+        .modal-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 500;
+            display: grid;
+            place-items: center;
+            padding: 18px;
+            background: var(--backdrop)
+        }
+
+        .modal {
+            width: min(520px, 100%);
+            padding: 20px;
+            border-radius: 14px;
+            background: var(--card)
+        }
+
+        .font-drop {
+            display: grid;
+            min-height: 90px;
+            place-items: center;
+            border: 1px dashed var(--border-strong);
+            border-radius: 9px;
+            cursor: pointer;
+            text-align: center
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 14px
+        }
+
+        @media(max-width:1250px) {
+            .workspace {
+                grid-template-columns: 360px 1fr
+            }
+
+            .audit {
+                grid-column: 1/-1
+            }
+        }
+
+        @media(max-width:850px) {
+            .head {
+                display: block
+            }
+
+            .back {
+                margin-top: 12px
+            }
+
+            .import,
+            .workspace {
+                grid-template-columns: 1fr
+            }
+
+            .stage {
+                position: static
+            }
+
+            .audit {
+                grid-column: auto
+            }
+
+            .preview-area {
+                min-height: 380px
+            }
+
+            .text-list {
+                max-height: none
+            }
+        }
+
+        @media(max-width:560px) {
+            .portal-main.sp {
+                padding: 16px 12px
+            }
+
+            .step small {
+                display: none
+            }
+
+            .tabs {
+                flex-direction: column
+            }
+
+            .export {
+                align-items: stretch;
+                flex-direction: column
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="portal-shell">
+        <aside class="portal-sidebar" id="portalSidebar"></aside>
+        <main class="portal-main sp">
+            <header class="head">
+                <div><span class="kicker">Experimento interno · fora do menu</span>
+                    <h1>Tradução de posts para espanhol</h1>
+                    <p>Importe o PSD original, revise somente os textos e baixe a arte final em PNG. As demais camadas
+                        permanecem bloqueadas.</p>
+                </div><a class="back" href="post-editor.html">← Voltar ao Editor</a>
+            </header>
+            <div class="question"><strong>Pergunta do protótipo:</strong> os PSDs reais mantêm fidelidade quando somente
+                as camadas de texto são recriadas no navegador?</div>
+            <nav class="flow" aria-label="Etapas">
+                <div class="step active" data-step="1"><span>1</span>
+                    <div><strong>Importar PSD</strong><small>Análise automática</small></div>
+                </div>
+                <div class="step" data-step="2"><span>2</span>
+                    <div><strong>Revisar espanhol</strong><small>Confirmação humana</small></div>
+                </div>
+                <div class="step" data-step="3"><span>3</span>
+                    <div><strong>Exportar PNG</strong><small>Resolução original</small></div>
+                </div>
+            </nav>
+            <div class="alert" id="alert" role="alert" tabindex="-1" hidden></div>
+            <section class="card import" id="importView"><label class="drop" id="drop" for="psdFile"><input id="psdFile"
+                        type="file" accept=".psd,image/vnd.adobe.photoshop"><span><span
+                            class="upload">↑</span><strong>Solte o PSD original aqui</strong><small>Ou clique para
+                            escolher. Limite: 250 MB.<br>O arquivo nunca sai deste navegador.</small></span></label>
+                <div class="guide">
+                    <h2>Roteiros para avaliar</h2>
+                    <p>Comece pelo caminho comum e depois teste as exceções.</p>
+                    <div class="tabs" role="tablist"><button class="tab" role="tab" aria-selected="true"
+                            aria-controls="normal">PSD comum</button><button class="tab" role="tab"
+                            aria-selected="false" aria-controls="font">Sem fonte</button><button class="tab" role="tab"
+                            aria-selected="false" aria-controls="edge">Exceções</button></div>
+                    <div class="scenario" id="normal">
+                        <ol>
+                            <li>Envie um post sem preparação.</li>
+                            <li>Compare português e espanhol.</li>
+                            <li>Confirme e exporte.</li>
+                        </ol>
+                    </div>
+                    <div class="scenario" id="font" hidden>
+                        <ol>
+                            <li>Envie um PSD com fonte ausente.</li>
+                            <li>Confira o nome detectado.</li>
+                            <li>Carregue a fonte.</li>
+                        </ol>
+                    </div>
+                    <div class="scenario" id="edge" hidden>
+                        <ol>
+                            <li>Teste máscaras e objetos inteligentes.</li>
+                            <li>Confira o diagnóstico.</li>
+                            <li>Anote diferenças visuais.</li>
+                        </ol>
+                    </div>
+                    <div class="engine" id="engineStatus">Leitor de PSD pronto</div>
+                    <p>Processamento 100% local com ag-psd. Nada é enviado ou armazenado.</p>
+                </div>
+            </section>
+            <section class="workspace" id="workspace" hidden>
+                <aside class="card panel">
+                    <div class="panel-head">
+                        <div>
+                            <h2>Textos encontrados</h2><small id="fileSummary"></small>
+                        </div><button class="btn" id="changeFile" type="button">Outro PSD</button>
+                    </div>
+                    <div class="text-list" id="textList"></div>
+                </aside>
+                <section class="card stage">
+                    <div class="toolbar">
+                        <div><strong>Pré-visualização</strong><br><small id="renderStatus">Render original</small></div>
+                        <div class="toggle"><button type="button" data-preview="original"
+                                aria-pressed="false">Português</button><button type="button" data-preview="current"
+                                aria-pressed="true">Espanhol</button></div>
+                    </div>
+                    <div class="preview-area"><span id="previewEmpty">Preparando a arte…</span><img class="preview"
+                            id="preview" alt="Prévia da arte" hidden></div>
+                    <div class="export"><small id="exportHint">Confirme cada tradução antes de baixar.</small><button
+                            class="btn primary" id="exportPng" type="button" disabled>Baixar PNG</button></div>
+                </section>
+                <aside class="card audit">
+                    <div class="panel-head">
+                        <div>
+                            <h2>Diagnóstico</h2><small>Estado completo</small>
+                        </div>
+                    </div>
+                    <div class="audit-body">
+                        <div class="metrics">
+                            <div class="metric"><strong id="metricTexts">0</strong><span>textos</span></div>
+                            <div class="metric"><strong id="metricIssues">0</strong><span>alertas</span></div>
+                        </div>
+                        <div class="progress"><span id="progress"></span></div><small id="progressLabel"></small>
+                        <h3>Arquivo</h3>
+                        <ul id="fileAudit"></ul>
+                        <h3>Fontes</h3>
+                        <div id="fontAudit"></div>
+                    </div>
+                </aside>
+            </section>
+        </main>
+    </div>
+    <div class="modal-bg" id="fontModal" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="fontTitle">
+            <h2 id="fontTitle">Fontes possivelmente ausentes</h2>
+            <p>Envie os arquivos correspondentes para aproximar a renderização.</p>
+            <ul id="missingList"></ul><label class="font-drop" for="fontFiles"><input id="fontFiles" type="file"
+                    accept=".otf,.ttf" multiple><span><strong>Selecionar `.otf` ou `.ttf`</strong><br><small>Uso
+                        temporário nesta sessão.</small></span></label>
+            <div class="modal-actions"><button class="btn" id="closeFont" type="button">Continuar sem enviar</button>
+            </div>
+        </div>
+    </div>
+    <script src="sync-backend.js"></script>
+    <script src="portal-shell.js"></script>
+    <script src="vendor/ag-psd/bundle.js"></script>
+    <script>
+                (() => {
+                    'use strict';
+                    const Machine = (() => { const initial = { phase: 'idle', file: null, width: 0, height: 0, texts: [], issues: [], missingFonts: [], confirmed: 0 }; function reduce(s, a) { switch (a.type) { case 'IMPORT': return { ...initial, phase: 'importing', file: a.file }; case 'LOADED': return { ...s, ...a.data, phase: 'ready' }; case 'EDIT': return { ...s, texts: s.texts.map((x, i) => i === a.i ? { ...x, translation: a.value, confirmed: false } : x), confirmed: s.texts.filter((x, i) => i !== a.i && x.confirmed).length }; case 'SCALE': return { ...s, texts: s.texts.map((x, i) => i === a.i ? { ...x, scale: a.value, confirmed: false } : x), confirmed: s.texts.filter((x, i) => i !== a.i && x.confirmed).length }; case 'CONFIRM': return { ...s, texts: s.texts.map((x, i) => i === a.i ? { ...x, confirmed: !x.confirmed } : x), confirmed: s.texts.reduce((n, x, i) => n + (i === a.i ? !x.confirmed : x.confirmed ? 1 : 0), 0) }; case 'FONTS': return { ...s, missingFonts: a.value }; case 'PHASE': return { ...s, phase: a.value }; default: return s } } return { initial, reduce } })(); console.assert(Machine.reduce(Machine.initial, { type: 'IMPORT', file: {} }).phase === 'importing', 'import transition');
+                    const $ = id => document.getElementById(id), MAX = 250 * 1024 * 1024; let state = { ...Machine.initial }, psd, background, output, originalUrl = '', currentUrl = '', currentBlob, mode = 'current', timer, lastFocus, loadedFonts = new Set(); const esc = v => { let d = document.createElement('div'); d.textContent = String(v ?? ''); return d.innerHTML }; function send(a) { state = Machine.reduce(state, a); paintState() } function fail(message) { $('alert').innerHTML = message; $('alert').hidden = false; $('alert').focus() }
+                    function paintState() { let has = !!state.file; $('importView').hidden = has; $('workspace').hidden = !has; let step = !has ? 1 : (state.texts.length && state.confirmed === state.texts.length ? 3 : 2); document.querySelectorAll('.step').forEach(x => { let n = +x.dataset.step; x.classList.toggle('active', n === step); x.classList.toggle('done', n < step) }); if (!has) return; $('fileSummary').textContent = `${state.file.name} · ${state.width} × ${state.height}px`; $('metricTexts').textContent = state.texts.length; $('metricIssues').textContent = state.issues.length; $('progress').style.width = (state.texts.length ? state.confirmed / state.texts.length * 100 : 0) + '%'; $('progressLabel').textContent = `${state.confirmed} de ${state.texts.length} confirmados`; $('exportPng').disabled = state.phase === 'rendering' || !state.texts.length || state.confirmed !== state.texts.length; $('exportHint').textContent = state.texts.length && state.confirmed === state.texts.length ? 'Tudo revisado. PNG pronto.' : 'Confirme cada tradução antes de baixar.' }
+                    function validate(buffer) { let v = new DataView(buffer); if (v.byteLength < 26 || String.fromCharCode(...new Uint8Array(buffer, 0, 4)) !== '8BPS' || v.getUint16(4) !== 1) throw Error('Cabeçalho PSD inválido.'); let h = v.getUint32(14), w = v.getUint32(18); if (w > 12000 || h > 12000) throw Error('Dimensões acima de 12.000 px.') }
+                    function fontAvailable(name) { if (!name || loadedFonts.has(name)) return true; let c = document.createElement('canvas').getContext('2d'), s = 'mmmmmmWW00'; c.font = `48px "${name}",monospace`; let a = c.measureText(s).width; c.font = '48px monospace'; let b = c.measureText(s).width; c.font = `48px "${name}",serif`; let d = c.measureText(s).width; c.font = '48px serif'; return Math.abs(a - b) > .1 || Math.abs(d - c.measureText(s).width) > .1 }
+                    function collect(layers, texts, issues, visible = true) { (layers || []).forEach(l => { let v = visible && !l.hidden; if (l.children) return collect(l.children, texts, issues, v); if (!v) return; if (l.text) { let t = l.text, st = t.style || t.styleRuns?.[0]?.style || {}, font = st.font?.name || ''; texts.push({ layer: l, name: l.name || `Texto ${texts.length + 1}`, original: t.text || '', translation: t.text || '', font, size: +st.fontSize || 24, scale: 100, confirmed: false }); if (t.warp?.style && t.warp.style !== 'none') issues.push(`Texto deformado: ${l.name}`); if (t.orientation === 'vertical') issues.push(`Texto vertical: ${l.name}`); return } if (l.placedLayer) issues.push(`Objeto inteligente: ${l.name}`); if (l.adjustment) issues.push(`Camada de ajuste: ${l.name}`); if (l.mask || l.vectorMask) issues.push(`Máscara: ${l.name}`); if (l.clipping) issues.push(`Recorte: ${l.name}`) }) }
+                    const blend = { normal: 'source-over', multiply: 'multiply', screen: 'screen', overlay: 'overlay', 'soft light': 'soft-light', 'hard light': 'hard-light', darken: 'darken', lighten: 'lighten', difference: 'difference' }; function composite(ctx, layers, alpha = 1) { [...(layers || [])].reverse().forEach(l => { if (l.hidden) return; let a = alpha * (l.opacity == null ? 1 : l.opacity); if (l.children) return composite(ctx, l.children, a); if (l.text || !l.canvas) return; ctx.save(); ctx.globalAlpha = a; ctx.globalCompositeOperation = blend[l.blendMode] || 'source-over'; ctx.drawImage(l.canvas, +l.left || 0, +l.top || 0); ctx.restore() }) }
+                    function color(c) { return c?.r != null ? `rgba(${c.r},${c.g},${c.b},${c.a ?? 1})` : '#000' } function wrap(ctx, text, max) { let out = []; String(text).split(/\r?\n/).forEach(row => { let current = ''; row.split(/\s+/).forEach(w => { let test = current ? current + ' ' + w : w; if (current && ctx.measureText(test).width > max) { out.push(current); current = w } else current = test }); out.push(current) }); return out } function drawText(ctx, x) { let l = x.layer, t = l.text || {}, st = t.style || t.styleRuns?.[0]?.style || {}, size = Math.max(6, x.size * x.scale / 100), left = +l.left || 0, top = +l.top || 0, right = +l.right || left + 500, width = Math.max(40, right - left), para = t.paragraphStyle || t.paragraphStyleRuns?.[0]?.style || {}, lh = +st.leading || size * 1.18; ctx.save(); ctx.fillStyle = color(st.fillColor); ctx.font = `${st.fauxItalic ? 'italic ' : ''}${st.fauxBold ? '700 ' : '400 '}${size}px "${x.font || 'Arial'}",Arial,sans-serif`; ctx.textBaseline = 'top'; ctx.textAlign = para.justification === 'center' ? 'center' : para.justification === 'right' ? 'right' : 'left'; let px = ctx.textAlign === 'center' ? left + width / 2 : ctx.textAlign === 'right' ? right : left; wrap(ctx, x.translation, width).forEach((line, i) => ctx.fillText(line, px, top + i * lh)); ctx.restore() }
+                    async function imageUrl(canvas) { return new Promise(resolve => canvas.toBlob(blob => resolve({ blob, url: URL.createObjectURL(blob) }), 'image/png')) } async function setImage(kind, canvas) { let made = await imageUrl(canvas); if (kind === 'original') { if (originalUrl) URL.revokeObjectURL(originalUrl); originalUrl = made.url } else { if (currentUrl) URL.revokeObjectURL(currentUrl); currentUrl = made.url; currentBlob = made.blob } show(mode) } function show(kind) { mode = kind; document.querySelectorAll('[data-preview]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.preview === kind))); let url = kind === 'original' ? originalUrl : currentUrl; if (url) { $('preview').src = url; $('preview').hidden = false; $('previewEmpty').hidden = true } }
+                    async function importPsd(file) { $('alert').hidden = true; if (!/\.psd$/i.test(file.name)) return fail('<strong>Escolha um arquivo .psd.</strong>'); if (file.size > MAX) return fail('<strong>Use um PSD de até 250 MB.</strong>'); send({ type: 'IMPORT', file: { name: file.name, size: file.size } }); $('engineStatus').textContent = 'Analisando PSD…'; try { await new Promise(r => setTimeout(r, 20)); let buffer = await file.arrayBuffer(); validate(buffer); psd = agPsd.readPsd(buffer, { skipThumbnail: true }); let texts = [], issues = []; collect(psd.children, texts, issues); let missing = [...new Set(texts.map(x => x.font).filter(x => x && !fontAvailable(x)))]; background = document.createElement('canvas'); background.width = psd.width; background.height = psd.height; composite(background.getContext('2d'), psd.children); output = document.createElement('canvas'); output.width = psd.width; output.height = psd.height; send({ type: 'LOADED', data: { width: psd.width, height: psd.height, texts, issues: [...new Set(issues)], missingFonts: missing } }); await setImage('original', psd.canvas || background); await renderCurrent(); renderTexts(); renderAudit(); $('engineStatus').textContent = 'PSD processado localmente'; if (!texts.length) fail('<strong>Nenhuma camada de texto editável foi encontrada.</strong>'); if (missing.length) openFonts() } catch (e) { send({ type: 'PHASE', value: 'error' }); $('engineStatus').textContent = 'Falha ao ler PSD'; fail(`<strong>Não foi possível abrir o PSD.</strong> ${esc(e.message)}`) } }
+                    function suggest(t) { let map = { 'aproveite!': '¡Aprovecha!', 'saiba mais': 'Conoce más', 'compre agora': 'Compra ahora', 'feliz natal': 'Feliz Navidad', 'feliz ano novo': 'Feliz Año Nuevo' }, k = t.trim().toLowerCase(); if (map[k]) return map[k]; return [[/\bmais\b/gi, 'más'], [/\bseu\b/gi, 'tu'], [/\bsua\b/gi, 'tu'], [/\btrabalho\b/gi, 'trabajo'], [/\bqualidade\b/gi, 'calidad'], [/\bpotência\b/gi, 'potencia'], [/\bsegurança\b/gi, 'seguridad'], [/\bprodutos\b/gi, 'productos'], [/\bproduto\b/gi, 'producto']].reduce((v, p) => v.replace(p[0], p[1]), t) }
+                    function renderTexts() { $('textList').innerHTML = state.texts.map((x, i) => `<article class="text-card${x.confirmed ? ' confirmed' : ''}"><div class="text-meta"><span class="layer">${esc(x.name)}</span><span class="badge">${x.confirmed ? 'Confirmado' : 'Pendente'}</span></div><p class="original">${esc(x.original)}</p><label for="tr${i}">Tradução em espanhol</label><textarea class="translation" id="tr${i}" data-action="edit" data-i="${i}">${esc(x.translation)}</textarea><div class="actions"><button class="btn" type="button" data-action="suggest" data-i="${i}">Sugerir</button><button class="btn" type="button" data-action="confirm" data-i="${i}">${x.confirmed ? 'Reabrir' : 'Confirmar'}</button><label>Tamanho <input class="size" type="number" min="60" max="140" step="5" value="${x.scale}" data-action="scale" data-i="${i}">%</label></div></article>`).join('') }
+                    function renderAudit() { let items = state.issues.slice(0, 5).map(x => `<li>⚠ ${esc(x)}</li>`).join(''); $('fileAudit').innerHTML = `<li>✓ ${state.width} × ${state.height}px</li><li>✓ ${(state.file.size / 1048576).toFixed(1)} MB · processamento local</li>${items}`; if (state.missingFonts.length) { $('fontAudit').innerHTML = `<div class="font-warning"><strong>Possivelmente ausentes:</strong><div>${state.missingFonts.map(esc).join(', ')}</div><button class="btn" id="openFonts" type="button">Enviar fontes</button></div>`; $('openFonts').onclick = openFonts } else $('fontAudit').innerHTML = '<small>✓ Fontes detectadas ou carregadas.</small>' }
+                    function schedule() { clearTimeout(timer); timer = setTimeout(renderCurrent, 450); $('renderStatus').textContent = 'Alterações pendentes…' } async function renderCurrent() { if (!output || state.phase === 'rendering') return; send({ type: 'PHASE', value: 'rendering' }); $('renderStatus').textContent = 'Renderizando…'; await new Promise(r => requestAnimationFrame(r)); let c = output.getContext('2d'); c.clearRect(0, 0, output.width, output.height); c.drawImage(background, 0, 0); state.texts.forEach(x => drawText(c, x)); await setImage('current', output); send({ type: 'PHASE', value: 'ready' }); $('renderStatus').textContent = 'Prévia atualizada' }
+                    function openFonts() { lastFocus = document.activeElement; $('missingList').innerHTML = state.missingFonts.map(x => `<li>${esc(x)}</li>`).join(''); $('fontModal').hidden = false; $('fontFiles').focus() } function closeFonts() { $('fontModal').hidden = true; if (lastFocus?.focus) lastFocus.focus() } async function uploadFonts(files) { try { let pending = [...state.missingFonts]; for (let file of files) { let base = file.name.replace(/\.(otf|ttf)$/i, ''), norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, ''), key = pending.find(x => norm(x) === norm(base) || norm(x).includes(norm(base)) || norm(base).includes(norm(x))) || (pending.length === 1 ? pending[0] : base), face = new FontFace(key, await file.arrayBuffer()); await face.load(); document.fonts.add(face); loadedFonts.add(key); pending = pending.filter(x => x !== key) } send({ type: 'FONTS', value: pending }); renderAudit(); if (!pending.length) closeFonts(); else $('missingList').innerHTML = pending.map(x => `<li>${esc(x)}</li>`).join(''); await renderCurrent() } catch (e) { fail(`<strong>Falha ao carregar fonte.</strong> ${esc(e.message)}`) } }
+                    $('psdFile').onchange = e => { let f = e.target.files[0]; if (f) importPsd(f); e.target.value = '' }; let drop = $('drop');['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('drag') }));['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('drag') })); drop.ondrop = e => { let f = e.dataTransfer.files[0]; if (f) importPsd(f) }; $('changeFile').onclick = () => $('psdFile').click(); $('textList').onchange = e => { let x = e.target, i = +x.dataset.i; if (x.dataset.action === 'edit') { send({ type: 'EDIT', i, value: x.value }); renderTexts(); schedule() } if (x.dataset.action === 'scale') { send({ type: 'SCALE', i, value: Math.max(60, Math.min(140, +x.value || 100)) }); renderTexts(); schedule() } }; $('textList').onclick = e => { let b = e.target.closest('button[data-action]'); if (!b) return; let i = +b.dataset.i; if (b.dataset.action === 'suggest') { send({ type: 'EDIT', i, value: suggest(state.texts[i].original) }); renderTexts(); schedule() } else { send({ type: 'CONFIRM', i }); renderTexts() } }; document.querySelectorAll('[data-preview]').forEach(b => b.onclick = () => show(b.dataset.preview)); $('exportPng').onclick = async () => { await renderCurrent(); if (currentBlob) { let a = document.createElement('a'); a.href = currentUrl; a.download = state.file.name.replace(/\.psd$/i, '') + '-es.png'; a.click() } }; $('fontFiles').onchange = e => uploadFonts([...e.target.files]); $('closeFont').onclick = closeFonts; $('fontModal').onclick = e => { if (e.target === $('fontModal')) closeFonts() }; document.querySelectorAll('.tab').forEach(t => t.onclick = () => { document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', String(x === t))); document.querySelectorAll('.scenario').forEach(x => x.hidden = x.id !== t.getAttribute('aria-controls')) }); addEventListener('beforeunload', () => { if (originalUrl) URL.revokeObjectURL(originalUrl); if (currentUrl) URL.revokeObjectURL(currentUrl) });
+                })();</script>
+</body>
+
+</html>
