@@ -486,12 +486,22 @@ Investigação confirmou que o Realtime Database **não é mais usado por nenhum
 
 Corrigido publicando `{"rules": {".read": false, ".write": false}}` nas regras do `mkt-ovd`. Sem impacto no portal — nenhum código atual depende desse banco (ver validação abaixo). Por consequência, também não há nada para copiar para o `mkt-ovd-hml`: o Realtime Database do projeto novo permanece no modo bloqueado padrão da criação, e isso já é suficiente.
 
+### Dados de Redes Sociais/Trends no HML: cópia pontual, não coleta contínua
+
+Os workflows de coleta (Meta, YouTube, Trends — seções 8, 9 e 16) só sabem gravar no Firestore de produção (`mkt-ovd`); nunca ouviram falar do `mkt-ovd-hml`. Sem isso, o painel de Redes Sociais e a Central de Inteligência ficam vazios no HML, mesmo com o resto do ambiente funcionando.
+
+Em vez de duplicar os ~11 workflows agendados para também gravar no HML (mais uma superfície pra manter sincronizada, sem necessidade real — HML é pra testar interface, não pra acompanhar métrica ao vivo), foi criado `.github/workflows/copiar-dados-prd-para-hml.yml`, **só `workflow_dispatch`** (nunca agendado): copia, sob demanda, os documentos de leitura agregada (`followers-*-v1`, `posts-*-v1` com suas partes `__2`/`__3`/..., `youtube-videos-vonder-v1`, `facebook-posts-*-v1`, `trends-v1`) de `mkt-ovd` para `mkt-ovd-hml`, via `scripts/copy_portalstore_to_hml.py`.
+
+**Nunca copia a coleção `portalStore` inteira** — calendário (`calendar-post-*`), perfis/permissões (`user-profiles-v1`, `page-permissions-v1`) e notificações são estado interativo do próprio HML; sobrescrever isso destruiria testes em andamento e o isolamento que a separação HML/PRD existe pra garantir. A lista de documentos copiados é uma allowlist explícita no próprio script, não um filtro por padrão de nome.
+
+Credencial: novo secret `FIREBASE_SERVICE_ACCOUNT_KEY_HML` em GitHub Actions Secrets (chave de conta de serviço do `mkt-ovd-hml`, gerada em Firebase Console → Configurações do projeto → Contas de serviço → Gerar nova chave privada) — nunca exposta ao navegador, mesmo padrão do `FIREBASE_SERVICE_ACCOUNT_KEY` já usado pelas coletas de produção.
+
 ### Pendências conhecidas
 
-- Primeiro administrador do `mkt-ovd-hml` ainda precisa ser criado manualmente no Firestore (mesmo processo do bootstrap original de produção, seção 14).
 - GitHub Pages e Cloudflare Pages agora coexistem como dois links de produção equivalentes; não há decisão tomada de consolidar em um só.
 
 | Data | Alteração | Responsável |
 |---|---|---|
-| 15/09/2026 | Criado ambiente HML separado de PRD: projeto Cloudflare Pages `portalmktovd` (branch `main` → produção, qualquer outra branch → preview automático) ao lado do GitHub Pages existente; projeto Firebase `mkt-ovd-hml` isolado (Spark, e-mail/senha apenas); `firebase-config.js` passou a escolher a configuração por `location.hostname`; `cloudflare-worker.js` liberou os novos domínios `.pages.dev` no CORS. Localizado e encerrado um script de auto-sync (`​.autosync/auto-sync.ps1`) rodando havia semanas numa máquina não identificada da rede, publicando direto em `main`. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | Criado ambiente HML separado de PRD: projeto Cloudflare Pages `portalmktovd` (branch `main` → produção, qualquer outra branch → preview automático) ao lado do GitHub Pages existente; projeto Firebase `mkt-ovd-hml` isolado (Spark, e-mail/senha apenas); `firebase-config.js` passou a escolher a configuração por `location.hostname`; `cloudflare-worker.js` liberou os novos domínios `.pages.dev` no CORS. Localizado e encerrado um script de auto-sync (`​.autosync/auto-sync.ps1`) rodando havia semanas numa máquina não identificada da rede, publicando direto em `main`. Primeiro administrador do `mkt-ovd-hml` criado e validado. | Equipe de Marketing / manutenção do portal |
 | 15/09/2026 | Corrigidas as regras do Realtime Database de produção (`mkt-ovd`), que estavam públicas — `.read`/`.write` travados para `false`. Confirmado que o Realtime Database não é mais usado por nenhum código do portal desde a migração da sincronização para o Firestore; sem impacto funcional. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | Criado `copiar-dados-prd-para-hml.yml` (`workflow_dispatch`, cópia pontual, não agendada) para preencher o painel de Redes Sociais/Central de Inteligência no HML com uma amostra dos dados de produção — allowlist explícita de documentos agregados, nunca a coleção `portalStore` inteira. Novo secret `FIREBASE_SERVICE_ACCOUNT_KEY_HML`. | Equipe de Marketing / manutenção do portal |
