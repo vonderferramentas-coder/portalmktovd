@@ -90,8 +90,8 @@ As chaves principais são `posts`, `settings`, `intel` e `brands`. Cada marca po
 
 ### O que a TI deve validar no Firebase
 
-- **Regras de acesso:** a URL do banco não é segredo; a proteção real está nas regras do Realtime Database, ausentes deste repositório. Confirmar quem pode ler/escrever e se acesso anônimo é aceitável.
-- **Autenticação:** o código usa REST direto, sem login Firebase no navegador. Se os dados não puderem ser públicos, adotar Firebase Authentication e regras por usuário/grupo ou uma API corporativa autenticada.
+- **Regras de acesso:** **desatualizado** — esta descrição do Realtime Database é anterior à migração da sincronização para o Firestore (seção 14). `sync-backend.js` hoje só fala com `PortalFirebase.readPortalStore`/`writePortalStore` (Firestore); nenhum arquivo do projeto usa mais o SDK do Realtime Database. Em 15/09/2026 foi descoberto que as regras do Realtime Database de produção estavam **públicas** (`.read`/`.write` liberados para qualquer pessoa) — corrigido para `.read`/`.write: false`, sem impacto no portal (ver seção 17). O node `store/` remanescente é dado órfão da era pré-Firestore.
+- **Autenticação:** desatualizado pelo mesmo motivo — a sincronização real hoje passa por Firebase Authentication + regras do Firestore (`firestore.rules`, seção 14), não por REST anônimo no Realtime Database.
 - **Dados pessoais:** não armazenar documentos, senhas, tokens, imagens pessoais em base64 ou dados desnecessários.
 - **Concorrência:** há leitura seguida de escrita, não transação atômica. É proteção prática para o volume atual, mas alterações simultâneas no mesmo instante ainda são um risco residual.
 - **Continuidade:** `localStorage` é cache/fallback, não backup corporativo.
@@ -478,12 +478,20 @@ Desenvolvimento local publica na branch `hml`; o merge `hml → main` (o que efe
 
 **Achado durante esta mudança:** foi localizado um script `​.autosync/auto-sync.ps1` (gitignorado, nunca versionado), rodando havia semanas como processo contínuo em uma máquina não identificada da rede, comitando e publicando (`git push origin main`) qualquer alteração pendente na pasta do repositório às 12h/17h em dias úteis — autor dos commits "Auto-sync: \<data/hora\>". O script está hardcoded para a branch `main` (nunca tocaria `hml`), mas foi localizado e encerrado (processo morto via `Stop-Process`) por segurança, já que ninguém da equipe lembrava de tê-lo deixado rodando. **Para a TI:** se alguém precisar desse tipo de automação de novo, prefira um mecanismo supervisionado (GitHub Actions, por exemplo) a um script solto rodando indefinidamente numa máquina qualquer.
 
+### Realtime Database de produção estava com regras públicas (corrigido, 15/09/2026)
+
+Ao comparar as regras do Realtime Database de produção com o que seria copiado para o `mkt-ovd-hml`, o próprio console do Firebase acusou: **as regras de `mkt-ovd` estavam públicas** (`.read`/`.write` liberados para qualquer pessoa com a URL do banco — URL essa que não é segredo, está em `firebase-config.js`, visível a quem abrir o site). Qualquer pessoa poderia ler, alterar ou apagar o que estivesse em `store/` sem nenhuma autenticação.
+
+Investigação confirmou que o Realtime Database **não é mais usado por nenhum código do portal**: `sync-backend.js` (único ponto de entrada de sincronização) só fala com `PortalFirebase.readPortalStore`/`writePortalStore`, que são Firestore (seção 14); nenhum arquivo do projeto importa o SDK do Realtime Database. O node `store/` visível no console é dado órfão de antes da migração para Firestore.
+
+Corrigido publicando `{"rules": {".read": false, ".write": false}}` nas regras do `mkt-ovd`. Sem impacto no portal — nenhum código atual depende desse banco (ver validação abaixo). Por consequência, também não há nada para copiar para o `mkt-ovd-hml`: o Realtime Database do projeto novo permanece no modo bloqueado padrão da criação, e isso já é suficiente.
+
 ### Pendências conhecidas
 
-- Regras do Realtime Database do projeto `mkt-ovd-hml` precisam ser replicadas manualmente a partir do console do projeto de produção (não são versionadas neste repositório).
 - Primeiro administrador do `mkt-ovd-hml` ainda precisa ser criado manualmente no Firestore (mesmo processo do bootstrap original de produção, seção 14).
 - GitHub Pages e Cloudflare Pages agora coexistem como dois links de produção equivalentes; não há decisão tomada de consolidar em um só.
 
 | Data | Alteração | Responsável |
 |---|---|---|
 | 15/09/2026 | Criado ambiente HML separado de PRD: projeto Cloudflare Pages `portalmktovd` (branch `main` → produção, qualquer outra branch → preview automático) ao lado do GitHub Pages existente; projeto Firebase `mkt-ovd-hml` isolado (Spark, e-mail/senha apenas); `firebase-config.js` passou a escolher a configuração por `location.hostname`; `cloudflare-worker.js` liberou os novos domínios `.pages.dev` no CORS. Localizado e encerrado um script de auto-sync (`​.autosync/auto-sync.ps1`) rodando havia semanas numa máquina não identificada da rede, publicando direto em `main`. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | Corrigidas as regras do Realtime Database de produção (`mkt-ovd`), que estavam públicas — `.read`/`.write` travados para `false`. Confirmado que o Realtime Database não é mais usado por nenhum código do portal desde a migração da sincronização para o Firestore; sem impacto funcional. | Equipe de Marketing / manutenção do portal |
