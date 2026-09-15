@@ -3,7 +3,7 @@
 > **Documento vivo.** Atualize este arquivo na mesma alteração que criar, trocar ou remover uma integração, fonte de dados, automação, serviço hospedado ou recurso que possa gerar dúvida para a TI. A validação automatizada do repositório ajuda a cobrar essa atualização para os principais arquivos de integração.
 
 **Última revisão:** 15/09/2026
-**Escopo desta revisão:** correção das regras públicas do Realtime Database de produção (seção 6).
+**Escopo desta revisão:** workflow de cópia pontual de dados de Redes Sociais/Trends para ambientes de teste (seção 17).
 
 ## 1. O que é este projeto
 
@@ -454,9 +454,16 @@ Mesmo padrão já usado para Meta/YouTube: o workflow grava `data/google-trends.
 |---|---|---|
 | 11/09/2026 | Central de Inteligência trocou de conceito: de treinamento de DNA por editoria para painel de consulta de tendências do Google Trends (categoria/período/região). Criado `sync-google-trends.yml` (coleta diária via `pytrends`, sem credencial nova) publicando em `data/google-trends.json` e `portalStore/trends-v1`. Só consulta/visualização nesta primeira versão — sem geração de conteúdo, sugestão de posts, análise de produto ou cruzamento com catálogo. | Equipe de Marketing / manutenção do portal |
 
---- docs/ARQUITETURA-E-INTEGRACOES.md
-+++ docs/ARQUITETURA-E-INTEGRACOES.md
-@@ tabela Componentes do portal
-+| Protótipo de tradução de PSD | `_spanish-post-prototype.html` | Testar substituição de camadas de texto e exportação PNG, sem entrada no menu | Somente memória do navegador; biblioteca local `vendor/ag-psd/bundle.js` |
-@@ tabela Integrações e conexões
-+| `ag-psd` 14.3.2 (vendorizado) | Lê PSD e suas camadas no protótipo de tradução | PSD, textos e fontes processados apenas na memória do navegador | Nenhuma credencial | Biblioteca local; o compositor experimental não reproduz todos os recursos avançados do Photoshop |
+## 17. Cópia pontual de dados de Redes Sociais/Trends para ambientes de teste
+
+A equipe passou a manter também um ambiente de homologação (HML), com hospedagem e projeto Firebase próprios, separados de produção — detalhes de como esse ambiente foi montado ficam registrados na branch onde ele é mantido, não neste histórico de `main`. Esta seção documenta só a parte que também vive em produção: o mecanismo que alimenta esse ambiente de teste com uma amostra de dados reais.
+
+Os workflows de coleta (Meta, YouTube, Trends — seções 8, 9 e 16) só sabem gravar no Firestore de produção (`mkt-ovd`); um ambiente de teste com Firebase próprio nasce com o painel de Redes Sociais e a Central de Inteligência vazios. Em vez de duplicar os workflows agendados para também gravar num segundo projeto (mais uma superfície pra manter sincronizada, sem necessidade real — um ambiente de teste não precisa de métrica ao vivo, só de uma amostra pra testar a interface), foi criado `.github/workflows/copiar-dados-prd-para-hml.yml`, **só `workflow_dispatch`** (nunca agendado): copia, sob demanda, os documentos de leitura agregada (`followers-*-v1`, `posts-*-v1` com suas partes `__2`/`__3`/..., `youtube-videos-vonder-v1`, `facebook-posts-*-v1`, `trends-v1`) de `mkt-ovd` para o projeto de teste, via `scripts/copy_portalstore_to_hml.py`.
+
+**Nunca copia a coleção `portalStore` inteira** — calendário (`calendar-post-*`), perfis/permissões (`user-profiles-v1`, `page-permissions-v1`) e notificações são estado interativo do próprio ambiente de destino; sobrescrever isso destruiria testes em andamento e o isolamento que a separação de ambientes existe pra garantir. A lista de documentos copiados é uma allowlist explícita no próprio script, não um filtro por padrão de nome.
+
+Credencial: novo secret `FIREBASE_SERVICE_ACCOUNT_KEY_HML` em GitHub Actions Secrets (chave de conta de serviço do projeto Firebase de teste, gerada em Firebase Console → Configurações do projeto → Contas de serviço → Gerar nova chave privada) — nunca exposta ao navegador, mesmo padrão do `FIREBASE_SERVICE_ACCOUNT_KEY` já usado pelas coletas de produção.
+
+| Data | Alteração | Responsável |
+|---|---|---|
+| 15/09/2026 | Criado `copiar-dados-prd-para-hml.yml` (`workflow_dispatch`, cópia pontual, não agendada) para preencher o painel de Redes Sociais/Central de Inteligência de um ambiente de teste com uma amostra dos dados de produção — allowlist explícita de documentos agregados, nunca a coleção `portalStore` inteira. Novo secret `FIREBASE_SERVICE_ACCOUNT_KEY_HML`. | Equipe de Marketing / manutenção do portal |

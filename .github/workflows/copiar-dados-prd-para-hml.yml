@@ -1,0 +1,29 @@
+name: Copiar dados de Redes Sociais/Trends para o HML
+
+# Só workflow_dispatch: cópia pontual sob demanda, não agendada. HML não precisa de dado ao
+# vivo (ver docs/ARQUITETURA-E-INTEGRACOES.md, seção 17) — só de uma amostra pra testar a
+# interface do painel de Redes Sociais e da Central de Inteligência sem ficar vazia.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  copiar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Copiar documentos de produção para o HML
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+          FIREBASE_SERVICE_ACCOUNT_KEY_HML: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY_HML }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ] || [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY_HML" ]; then
+            echo '::error::Faltam os secrets FIREBASE_SERVICE_ACCOUNT_KEY e/ou FIREBASE_SERVICE_ACCOUNT_KEY_HML.'
+            exit 1
+          fi
+          pip install --quiet firebase-admin
+          python3 scripts/copy_portalstore_to_hml.py
