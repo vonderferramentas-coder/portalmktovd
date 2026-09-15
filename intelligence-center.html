@@ -112,6 +112,8 @@
     #trendsTableWrap .intel-col-variation { text-align: right }
     .intel-variation-up { color: var(--success); font-weight: 700 }
     .intel-variation-flat { color: var(--text-faint) }
+    .intel-matched-products summary { cursor: pointer; color: var(--muted); font-size: 12px }
+    .intel-matched-products ul { margin: 6px 0 0; padding-left: 16px; font-size: 12px; color: var(--muted) }
 
     /* Paginação da tabela — mesmo padrão de #historyPager em followers-dashboard.html. */
     .intel-pager { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px }
@@ -213,6 +215,7 @@
                   <th class="intel-col-variation">Variação</th>
                   <th>Período analisado</th>
                   <th>Última atualização</th>
+                  <th>Produtos</th>
                 </tr>
               </thead>
               <tbody id="trendsTableBody"></tbody>

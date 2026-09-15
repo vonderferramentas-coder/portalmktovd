@@ -3,7 +3,7 @@
 > **Documento vivo.** Atualize este arquivo na mesma alteração que criar, trocar ou remover uma integração, fonte de dados, automação, serviço hospedado ou recurso que possa gerar dúvida para a TI. A validação automatizada do repositório ajuda a cobrar essa atualização para os principais arquivos de integração.
 
 **Última revisão:** 15/09/2026
-**Escopo desta revisão:** workflow de cópia pontual de dados de Redes Sociais/Trends para ambientes de teste (seção 17).
+**Escopo desta revisão:** workflow de cópia pontual de dados de Redes Sociais/Trends para ambientes de teste (seção 17); backup diário do Firestore de produção para repositório GitHub privado dedicado (seção 18); esclarecida a razão de GitHub Pages e Cloudflare Pages coexistirem (seção 17); corrigida divergência real entre os três proxies redundantes de imagem/oferta (seção 7); confirmadas como decisões conscientes (não pendências esquecidas) a ausência de lockout/auditoria robusta no plano Spark (seção 14) e a ausência de sincronização/backup no gerador de cartões de visita (seção 4); implementado o cruzamento de termos do Trends com o catálogo de produtos (seção 16); avaliada com dado real de execução a confiabilidade do `pytrends` (seção 16), sem mudança; conectados ao CI os três testes que já existiam, antes só manuais — incluindo `concurrent-post-sync.html` em Chrome headless (seção 12); e avaliada com dado real do Console a folga de cota do Firestore Spark à medida que mais marcas entram na coleta automática, sem ação necessária por ora (seção 19).
 
 ## 1. O que é este projeto
 
@@ -54,6 +54,8 @@ GitHub Actions (pytrends, sem credencial) ------------> Google Trends / Central 
 | Painel de seguidores | `followers-dashboard.*` | Visualizar histórico, metas e ranking dos melhores posts | JSON atualizado pelo GitHub Actions; lançamentos manuais locais |
 | Cartões de visita | `business-card-generator.*` | Gerar cartões e exportações | Principalmente armazenamento local |
 
+**Decisão consciente (revisada em 15/09/2026):** diferente do calendário/config (Firestore) e do painel de seguidores, o gerador de cartões continua **100% `localStorage` por marca** — sem sincronização entre navegadores/máquinas e sem backup. Trocar de máquina ou limpar o navegador perde os cartões em edição. Avaliado e aceito por ora: é um processo de ciclo curto (importar planilha → editar → exportar PDF em uma sessão), sem o mesmo valor de continuidade de longo prazo que o calendário editorial tem — não é uma lacuna esquecida, é a mesma lógica de custo/benefício já aplicada ao HML (seção 17) e ao lockout de auditoria (seção 14). **Gatilho para reavaliar:** se o fluxo de trabalho real passar a depender de retomar uma edição de cartão em outra máquina/dia, ou perdas de trabalho em andamento começarem a acontecer na prática.
+
 ## 5. Integrações e conexões
 
 | Serviço | Função | Dados envolvidos | Credenciais | Ponto de atenção da TI |
@@ -69,6 +71,7 @@ GitHub Actions (pytrends, sem credencial) ------------> Google Trends / Central 
 | `app.ovd.com.br` | Fonte de fotos oficiais de produto | imagem pública por código | sem credencial no código | Imagem passa pelo Worker/PHP para viabilizar CORS no editor |
 | `fg.com.br` | Fonte de ofertas no editor FG | título, marca, SKU, preço e disponibilidade públicos | sem credencial no código | Worker aceita apenas domínio FG e subdomínios |
 | Google Fonts | Carrega tipografias da interface | requisição técnica do navegador/IP | não aplicável | Dependência de terceiro: avaliar política corporativa de privacidade |
+| GitHub (repo privado `portalmktovd-backups`) | Backup diário de `portalStore`/`users` do Firestore de produção | cópia comprimida de todo `portalStore` (calendário, config, permissões, dados coletados) e `users` | `FIREBASE_SERVICE_ACCOUNT_KEY` (leitura do Firestore, já existente) + `BACKUP_REPO_TOKEN` (fine-grained PAT, escrita restrita só nesse repositório) | Repositório privado dedicado, nunca o repo público do site. Ver seção 18 |
 
 ## 6. Firebase: o que é e por que está conectado
 
@@ -111,7 +114,7 @@ O Worker é uma ponte controlada: recebe o pedido, valida parâmetros e domínio
 | `/product-image?code=...` | `app.ovd.com.br/fotos/produto` | imagem pública | aceita código numérico de 5 a 20 dígitos; CORS público por ser imagem pública |
 | `/product-offer?url=...` | página em `fg.com.br` | título, marca, SKUs, preço, disponibilidade e desconto | aceita apenas `http/https` no domínio `fg.com.br` ou subdomínio |
 
-`post-editor.js` consome o Worker publicado em `https://ecommerce-fg.vonderferramentas.workers.dev`. Para uso local existem `product-image.php`, `product-image-proxy.ps1` e `fg-offer-proxy.ps1`.
+`post-editor.js` consome o Worker publicado em `https://ecommerce-fg.vonderferramentas.workers.dev`. Para uso local existem `product-image.php`, `scripts/product-image-proxy.ps1` e `scripts/fg-offer-proxy.ps1`.
 
 ### O que a TI deve validar no Cloudflare
 
@@ -121,6 +124,16 @@ O Worker é uma ponte controlada: recebe o pedido, valida parâmetros e domínio
 - limites de uso/custo e comportamento quando o Worker falhar;
 - manutenção da validação de host para evitar que o Worker vire proxy aberto;
 - termos de uso das fontes, especialmente se a coleta de ofertas crescer.
+
+### Divergência real encontrada entre as três implementações redundantes (15/09/2026)
+
+`cloudflare-worker.js`, `product-image.php` e os dois proxies locais (`scripts/product-image-proxy.ps1`, `scripts/fg-offer-proxy.ps1`) implementam o mesmo contrato em três linguagens/runtimes sem nenhum código compartilhado — risco já registrado como Gotcha em `docs/CODEBASE_MAP.md`. Uma revisão pontual confirmou que o risco já tinha se concretizado:
+
+1. **Desconto calculado diferente:** `scripts/fg-offer-proxy.ps1` usava `Math.Floor` para `discountPercent`, enquanto `cloudflare-worker.js` usa `Math.Round` — a mesma oferta real podia aparecer com uma porcentagem de desconto diferente dependendo de qual proxy respondesse. Corrigido para `Math.Round` nos dois.
+2. **Campo `offerCta` ausente no proxy local:** `cloudflare-worker.js` sempre devolve `offerCta` (texto do botão de oferta); `scripts/fg-offer-proxy.ps1` nunca devolvia esse campo. Mascarado na prática por um recálculo de fallback em `post-editor.js` (`offerCta()`), mas o contrato dos dois ficava inconsistente. Corrigido para calcular e devolver o mesmo campo.
+3. **`product-image.php` podia enviar `Content-Type: image/webp` com bytes JPEG dentro:** ao redimensionar (`w=`) uma foto de origem WEBP num servidor PHP cujo GD não tem `imagewebp()`, o código caía para gerar JPEG mas nunca atualizava a variável usada no cabeçalho — o navegador recebia um cabeçalho que não correspondia aos bytes reais. Corrigido para atualizar o `mime` junto com a troca de codificador.
+
+Nenhuma das três teve teste automatizado cobrindo esse comportamento antes — os três arquivos ganharam um comentário `ponytail:` apontando os gêmeos e o histórico de divergência, para quem for alterar uma regra de parsing/cálculo lembrar de replicar nos outros. Não foi criada nenhuma abstração nova para compartilhar código entre os três runtimes (JS de Worker, PHP, PowerShell) — inviável sem introduzir um build step, que este projeto deliberadamente não tem.
 
 ## 8. Meta e GitHub Actions: painel de seguidores
 
@@ -224,6 +237,10 @@ Há duas barreiras de processo:
 
 O workflow não substitui revisão humana: qualquer nova dependência remota, mesmo fora da lista monitorada, exige atualização. Para bloquear o merge, a proteção da branch `main` deve exigir o check **Validar documentação de arquitetura**.
 
+### Testes automatizados no CI (15/09/2026)
+
+Até aqui, nenhum teste deste projeto rodava sozinho — os 3 arquivos em `tests/` eram todos manuais, incluindo `concurrent-post-sync.html`, que já era um teste de comportamento completo (mocka `window.PortalFirebase`, simula duas sessões, criação simultânea, conflito isolado no mesmo card, usa `throw`/grava o resultado em `document.body.dataset.result`) mas exigia uma pessoa abrir no navegador e julgar visualmente. Criado `.github/workflows/testes.yml` (roda em todo `push`/`pull_request`, sem custo — GitHub Actions é ilimitado em repositório público): executa `tests/concurrent-post-storage.test.ps1` (checagem estática de nomes de função, não comportamento), `tests/match_trends_catalog.test.py` (assert de verdade) e `tests/concurrent-post-sync.html` em Chrome headless (`--virtual-time-budget` adianta os `setTimeout()` do teste sem esperar tempo real; `--dump-dom` captura o DOM final; o passo falha se `data-result` não vier `"pass"`). Nenhum teste novo foi escrito nesta mudança, só os que já existiam passaram a rodar automaticamente — validado manualmente nos dois sentidos (injetei uma falha forçada numa cópia temporária e confirmei que `data-result="fail"` é detectado corretamente antes de descartar a cópia).
+
 ## 13. Histórico deste documento
 
 | Data | Alteração | Responsável |
@@ -262,9 +279,12 @@ A proteção por login (`auth-guard.js`) já está ativa em todas as páginas do
 
 O projeto permanece no plano Spark. Não há Cloud Functions nem outro backend privado pago. Portanto, o Firebase aplica seus mecanismos nativos contra abuso, mas o portal não implementa bloqueio temporário customizado por número de tentativas. Os registros em `securityAudit` são básicos e append-only pelas regras, porém não têm o mesmo nível de confiança de uma auditoria produzida exclusivamente por backend. Para requisitos de auditoria inviolável, desativação de conta no Firebase Auth e lockout customizado, será necessária uma camada administrativa de backend no futuro.
 
+**Revisado em 15/09/2026, decisão consciente de não implementar agora:** Cloud Functions (o caminho nativo do Firebase para lockout customizado e desativação de conta via Admin SDK) exige o plano **Blaze** — mesma trava encontrada ao desenhar o backup do Firestore (seção 18) e ao tentar habilitar o Cloud Storage. Como o projeto se mantém deliberadamente 100% gratuito, esta limitação **fica aceita por ora**, não é uma pendência esquecida. **Gatilho para reavaliar:** se algum requisito de compliance/LGPD ou um incidente real de abuso de tentativas de login exigir lockout/auditoria à prova de adulteração, essa é a hora de reconsiderar o upgrade para Blaze (ou uma alternativa fora do Firebase).
+
 | Data | Alteração | Responsável |
 |---|---|---|
 | 03/09/2026 | Firebase Authentication (e-mail/senha e Google), Firestore e regras de acesso criados; iniciada integração visual de login sem custo. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | Revisada a lacuna de lockout/auditoria robusta (exige Cloud Functions, plano Blaze): confirmado como decisão consciente de manter o projeto gratuito, não pendência esquecida. Sem mudança técnica. | Equipe de Marketing / manutenção do portal |
 
 A sincronização das telas do portal foi redirecionada de `sync-backend.js` para `portalStore` no Firestore. O acesso exige perfil ativo e é avaliado pelas regras do Firestore. O painel administrativo (`admin-users.html`) permite, no modo sem custo, criar perfis, enviar redefinição de senha, alterar status e registrar eventos básicos. A desativação bloqueia o acesso aos dados pelas regras, embora não desabilite a conta diretamente no Firebase Authentication — essa ação requer backend administrativo.
 
@@ -278,7 +298,7 @@ Uma outbox por marca em `localStorage` (`calendar_posts_outbox_v1{suffix}`) guar
 
 A migração é automática, idempotente e protegida por lease: uma sessão copia o array legado em lotes de até 400 gravações, enquanto as demais aguardam. Não há Cloud Function, servidor novo, dependência nova, alteração de plano nem ampliação das regras; os novos documentos continuam dentro de `portalStore`, com o mesmo acesso restrito a usuários ativos. Depois da carga inicial, cada mudança custa uma leitura transacional e uma gravação do card alterado, além da leitura entregue a cada listener conectado — volume compatível com o plano Spark no uso interno previsto. `tests/concurrent-post-sync.html` simula duas sessões para garantir duas criações simultâneas e conflito isolado na edição do mesmo card.
 
-**Ponto de atenção para a TI:** as regras atuais liberam leitura e escrita de qualquer documento em `portalStore` (calendário, configurações, marcas, seguidores) para **qualquer** pessoa com perfil ativo, não somente administradores — `migrate-followers.html` exige perfil `admin` apenas na tela (client-side); nada nas regras do Firestore impede uma pessoa ativa não administradora de gravar diretamente em `portalStore/followers-vonder-v1` fora da tela. Isso é uma decisão de desenho consistente com o restante do portal (o calendário também depende de qualquer usuário ativo poder gravar), não uma falha introduzida por esta migração — mas vale revisão caso se queira reservar algum documento a administradores.
+**Corrigido em 15/09/2026** (ver seção 17): as regras liberavam leitura e escrita de qualquer documento em `portalStore` (calendário, configurações, marcas, seguidores) para **qualquer** pessoa com perfil ativo, não somente administradores — `migrate-followers.html` exigia perfil `admin` apenas na tela (client-side); nada nas regras do Firestore impedia uma pessoa ativa não administradora de gravar diretamente em `portalStore/user-profiles-v1`/`page-permissions-v1` fora da tela e se autopromover a admin, ou forjar `portalStore/followers-vonder-v1` e os demais documentos só escritos pela coleta automática. `firestore.rules` ganhou `isControlDoc()`/`isCollectedDataDoc()`: esses documentos específicos agora exigem `admin()` pra escrita; o calendário e o resto de `portalStore` continuam abertos a qualquer usuário ativo, sem mudança de comportamento pra ninguém que já usava o portal normalmente.
 
 ### Migração do painel de seguidores
 
@@ -416,7 +436,19 @@ Quando um card passa para **Pronto para ser postado**, a mesma transação que g
 
 A **Central de Inteligência** (`intelligence-center.html`) trocou de conceito por inteiro em 11/09/2026: deixou de ser a tela de treinamento de DNA por editoria (referências, briefings, legendas aprovadas) e passou a ser um **painel de consulta de tendências de pesquisa do Google Trends**, filtrável por categoria, período e região. A funcionalidade anterior de DNA/validação de posts não foi removida do projeto — ela continua ativa dentro do calendário (`visual-editor.html`/`app.js`, via `intelligence-data.js`, ver seção 4) — só deixou de ter uma tela dedicada própria; se uma nova tela de administração desse DNA for necessária no futuro, ela precisa ser reconstruída.
 
-**Nesta primeira versão o painel é só de consulta/visualização.** Não há geração automática de conteúdo, sugestão de posts, análise de produto nem cruzamento com catálogo — o cruzamento com o catálogo de produtos (JSON) é um passo explicitamente adiado para uma etapa futura.
+**O painel é de consulta/visualização.** Não há geração automática de conteúdo nem sugestão de posts. Desde 15/09/2026 há cruzamento com o catálogo de produtos (abaixo) — o resto (análise de produto, sugestão automática de pauta) continua fora de escopo.
+
+### Cruzamento com o catálogo de produtos (15/09/2026)
+
+Cada termo do Trends ganhou um campo `matchedProducts`: até 5 produtos de `data/catalog-vonder.json` cujo nome tem palavras em comum com o termo, ranqueados por quantas palavras bateram. Calculado uma vez por dia por `scripts/match_trends_catalog.py`, chamado dentro de `sync-google-trends.yml` logo após a coleta e antes de publicar — o resultado já sai anotado no mesmo `data/google-trends.json`/`portalStore/trends-v1` de sempre, sem documento novo nem secret novo.
+
+**Por que não roda no navegador:** `data/catalog-vonder.json` tem **10.001 produtos e 12 MB** — a Central de Inteligência hoje não carrega o catálogo, e baixar 12 MB só pra essa checagem tornaria a página pesada. Calcular uma vez por dia no workflow e entregar só o resultado (nome + código, não o produto inteiro) mantém a página do jeito que era.
+
+**Algoritmo (ponytail, deliberadamente simples):** casamento por palavra normalizada (minúsculo, sem acento, sem stopword em pt-BR, ≥4 letras) contra o **nome** do produto — não a descrição, pra conter ruído. Um produto entra na lista de um termo se tiver **pelo menos uma** palavra significativa em comum; o ranking (não o filtro) usa quantas palavras bateram. Escolha deliberada de favorecer mais candidatos a menos: melhor a pessoa da equipe descartar um produto pouco relevante do que o painel nunca mostrar um produto relevante de verdade. Sem sinônimos (“furadeira” não bate com “parafusadeira”) e sem categoria própria do catálogo — o catálogo não tem esse campo hoje. **Caminho de evolução se o ruído incomodar na prática:** lista de sinônimos curada manualmente por produto, não IA/LLM (evita custo/dependência nova).
+
+**UI:** cada linha da tabela ganhou uma coluna "Produtos" com um `<details>/<summary>` nativo do HTML (zero JavaScript novo pra abrir/fechar) — mostra "—" quando não há match, ou "N produtos" expansível com os nomes.
+
+**Teste mínimo:** `tests/match_trends_catalog.test.py` (mesmo padrão informal de `tests/concurrent-post-storage.test.ps1` — sem framework, script com `assert`).
 
 ### Como os dados chegam
 
@@ -442,28 +474,124 @@ Mesmo padrão já usado para Meta/YouTube: o workflow grava `data/google-trends.
 
 ### Limitações conhecidas (ponytail)
 
-- **Sem lista de termos por categoria.** O ranking reflete o que o próprio Google já agrupa dentro de cada categoria (`related_queries` por categoria, sem termo semente) — não é filtrado pelo catálogo de produtos da OVD. Um termo genérico e sem relação direta com o portfólio pode aparecer no ranking; o cruzamento com o catálogo (JSON) fica para uma etapa futura já combinada com a diretoria de marketing.
+- **Sem lista de termos por categoria.** O ranking reflete o que o próprio Google já agrupa dentro de cada categoria (`related_queries` por categoria, sem termo semente) — um termo genérico e sem relação direta com o portfólio pode aparecer no ranking mesmo assim (o cruzamento com o catálogo, acima, ajuda a ver isso na hora — termo sem produto nenhum listado é sinal de baixa relevância pro portfólio).
 - **API não-oficial, sem SLA.** Testado manualmente durante o desenvolvimento: chamadas consecutivas ao `pytrends` retornaram HTTP 429 (limite de taxa) depois de poucas requisições seguidas. O workflow tenta cada combinação categoria/período até 3 vezes com espera crescente e, se todas falharem, preserva o último dado bom daquela combinação em vez de apagá-lo — uma categoria pode ficar um dia sem atualizar sem que o painel fique vazio. Caminho de evolução se a taxa de falha for alta na prática: migrar para uma API paga estruturada (ex. SerpApi) — decisão consciente de não usar nesta primeira versão para não exigir cadastro/custo de terceiro antes de validar o conceito.
+
+  **Avaliação com dado real (15/09/2026):** histórico das 5 execuções desde que o workflow existe (`gh run view --log`) — taxa de falha por combinação categoria/período: 11/09 2/28 (7%), 12/09 2/28 (7%), 13/09 cancelada antes de rodar (sem relação com o Google), 14/09 9/28 (32%, pior dia até agora), 15/09 0/28 (0%). Em nenhum dos dias o painel ficou vazio, e nenhuma categoria ficou presa em dado velho por mais de 1 dia — o dia ruim (14/09) se recuperou sozinho no dia seguinte. A coluna "Última atualização" já mostra a data de coleta por linha (não só um indicador global), então uma categoria que ficasse dias sem atualizar de verdade já seria visível sem mudança nenhuma. **Decisão: manter como está, sem migrar pra SerpApi agora** — a amostra é pequena (5 dias), mas nada nela justifica gastar dinheiro/cadastro novo pra um problema que os dados não mostram que exista. Reavaliar se o padrão mudar (uma categoria ficando dias seguidos sem atualizar de verdade).
 - **"Rising" pode trazer ruído.** Para categorias de nicho B2B (ex. "Industrial Materials"), a lista de termos em alta do Google às vezes inclui termos sem relação nenhuma com a categoria (ex. criptomoedas) — é o próprio algoritmo de tendência do Google reagindo a um volume de busca baixo na categoria, não um bug da coleta. Nenhuma filtragem adicional foi aplicada nesta primeira versão.
 
 ### Arquivos alterados
 
-`intelligence-center.html`, `intelligence-center.js` (reescritos por inteiro), `.github/workflows/sync-google-trends.yml` (novo), `data/google-trends.json` (novo, criado pela primeira execução do workflow). `intelligence-data.js` não foi alterado nem removido — só deixou de ser carregado por `intelligence-center.html`; continua em uso por `visual-editor.html`/`app.js`.
+`intelligence-center.html`, `intelligence-center.js` (reescritos por inteiro), `.github/workflows/sync-google-trends.yml` (novo), `data/google-trends.json` (novo, criado pela primeira execução do workflow). `intelligence-data.js` não foi alterado nem removido — só deixou de ser carregado por `intelligence-center.html`; continua em uso por `visual-editor.html`/`app.js`. Cruzamento com catálogo (15/09/2026): `scripts/match_trends_catalog.py` (novo), `tests/match_trends_catalog.test.py` (novo), `.github/workflows/sync-google-trends.yml`, `intelligence-center.html`/`.js`.
 
 | Data | Alteração | Responsável |
 |---|---|---|
 | 11/09/2026 | Central de Inteligência trocou de conceito: de treinamento de DNA por editoria para painel de consulta de tendências do Google Trends (categoria/período/região). Criado `sync-google-trends.yml` (coleta diária via `pytrends`, sem credencial nova) publicando em `data/google-trends.json` e `portalStore/trends-v1`. Só consulta/visualização nesta primeira versão — sem geração de conteúdo, sugestão de posts, análise de produto ou cruzamento com catálogo. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | Implementado o cruzamento de termos do Trends com o catálogo de produtos (`scripts/match_trends_catalog.py`), rodando uma vez por dia dentro de `sync-google-trends.yml` — nunca no navegador, porque o catálogo tem 10.001 produtos/12 MB. Casamento por palavra normalizada no nome do produto, até 5 produtos por termo, ranqueados por sobreposição de palavras. Painel ganhou coluna "Produtos" com `<details>` nativo. | Equipe de Marketing / manutenção do portal |
 
-## 17. Cópia pontual de dados de Redes Sociais/Trends para ambientes de teste
+## 17. Ambientes HML e PRD (15/09/2026)
 
-A equipe passou a manter também um ambiente de homologação (HML), com hospedagem e projeto Firebase próprios, separados de produção — detalhes de como esse ambiente foi montado ficam registrados na branch onde ele é mantido, não neste histórico de `main`. Esta seção documenta só a parte que também vive em produção: o mecanismo que alimenta esse ambiente de teste com uma amostra de dados reais.
+Até aqui o portal tinha um único ambiente: a branch `main`, publicada no GitHub Pages, sobre o único projeto Firebase de produção (`mkt-ovd`). Qualquer teste da equipe mexia direto no dado real (calendário, seguidores, posts). Foi criado um ambiente de homologação (HML) isolado, para testes internos sem risco de afetar produção (PRD).
 
-Os workflows de coleta (Meta, YouTube, Trends — seções 8, 9 e 16) só sabem gravar no Firestore de produção (`mkt-ovd`); um ambiente de teste com Firebase próprio nasce com o painel de Redes Sociais e a Central de Inteligência vazios. Em vez de duplicar os workflows agendados para também gravar num segundo projeto (mais uma superfície pra manter sincronizada, sem necessidade real — um ambiente de teste não precisa de métrica ao vivo, só de uma amostra pra testar a interface), foi criado `.github/workflows/copiar-dados-prd-para-hml.yml`, **só `workflow_dispatch`** (nunca agendado): copia, sob demanda, os documentos de leitura agregada (`followers-*-v1`, `posts-*-v1` com suas partes `__2`/`__3`/..., `youtube-videos-vonder-v1`, `facebook-posts-*-v1`, `trends-v1`) de `mkt-ovd` para o projeto de teste, via `scripts/copy_portalstore_to_hml.py`.
+### Hospedagem: Cloudflare Pages
 
-**Nunca copia a coleção `portalStore` inteira** — calendário (`calendar-post-*`), perfis/permissões (`user-profiles-v1`, `page-permissions-v1`) e notificações são estado interativo do próprio ambiente de destino; sobrescrever isso destruiria testes em andamento e o isolamento que a separação de ambientes existe pra garantir. A lista de documentos copiados é uma allowlist explícita no próprio script, não um filtro por padrão de nome.
+Criado o projeto **Cloudflare Pages** `portalmktovd`, conectado ao mesmo repositório GitHub, sem build command (site estático, sem bundler). Branch de produção: `main`, publicada em `https://portalmktovd.pages.dev`. Qualquer outra branch gera automaticamente um deploy de preview em `https://<branch>.portalmktovd.pages.dev` — a branch `hml` publica em `https://hml.portalmktovd.pages.dev`. Essa URL de preview não é divulgada nem indexada; o controle de acesso continua sendo o login Firebase já existente.
 
-Credencial: novo secret `FIREBASE_SERVICE_ACCOUNT_KEY_HML` em GitHub Actions Secrets (chave de conta de serviço do projeto Firebase de teste, gerada em Firebase Console → Configurações do projeto → Contas de serviço → Gerar nova chave privada) — nunca exposta ao navegador, mesmo padrão do `FIREBASE_SERVICE_ACCOUNT_KEY` já usado pelas coletas de produção.
+O **GitHub Pages não foi alterado** e continua publicando `main` normalmente — a partir de agora há dois links de produção equivalentes (GitHub Pages e Cloudflare Pages), ambos servindo o mesmo código/dados; nenhuma migração ou desativação foi feita.
+
+### Isolamento de dados: segundo projeto Firebase
+
+Criado o projeto Firebase **`mkt-ovd-hml`** (plano Spark, gratuito), com Authentication (e-mail/senha — Google não foi ativado, por decisão da equipe, que quis restringir a acesso com e-mail corporativo), Firestore e Realtime Database próprios, regras replicadas de `firestore.rules` e das regras do Realtime Database de produção.
+
+`firebase-config.js` passou a escolher a configuração do Firebase em runtime, por `location.hostname`, em vez de um único objeto fixo: uma lista de domínios de produção conhecidos (`vonderferramentas-coder.github.io`, `portalmktovd.pages.dev`) usa o Firebase real (`mkt-ovd`); **qualquer outro host — incluindo o preview do HML e `localhost` de desenvolvimento local — cai por padrão no Firebase de testes (`mkt-ovd-hml`)**. Isso também corrige, de brinde, o fato de que abrir o portal localmente sempre gravou no Firebase de produção até aqui.
+
+`cloudflare-worker.js` (Worker `ecommerce-fg`, ver seção 7) ganhou `https://portalmktovd.pages.dev` e `https://hml.portalmktovd.pages.dev` em `ALLOWED_ORIGINS`, para o editor de artes continuar buscando imagem/oferta sem erro de CORS nos dois novos hosts.
+
+### Fluxo de trabalho
+
+Desenvolvimento local publica na branch `hml`; o merge `hml → main` (o que efetivamente vira produção) só acontece sob pedido explícito de quem está conduzindo o trabalho — não é automático.
+
+**Achado durante esta mudança:** foi localizado um script `​.autosync/auto-sync.ps1` (gitignorado, nunca versionado), rodando havia semanas como processo contínuo em uma máquina não identificada da rede, comitando e publicando (`git push origin main`) qualquer alteração pendente na pasta do repositório às 12h/17h em dias úteis — autor dos commits "Auto-sync: \<data/hora\>". O script está hardcoded para a branch `main` (nunca tocaria `hml`), mas foi localizado e encerrado (processo morto via `Stop-Process`) por segurança, já que ninguém da equipe lembrava de tê-lo deixado rodando. **Para a TI:** se alguém precisar desse tipo de automação de novo, prefira um mecanismo supervisionado (GitHub Actions, por exemplo) a um script solto rodando indefinidamente numa máquina qualquer.
+
+### Realtime Database de produção estava com regras públicas (corrigido, 15/09/2026)
+
+Ao comparar as regras do Realtime Database de produção com o que seria copiado para o `mkt-ovd-hml`, o próprio console do Firebase acusou: **as regras de `mkt-ovd` estavam públicas** (`.read`/`.write` liberados para qualquer pessoa com a URL do banco — URL essa que não é segredo, está em `firebase-config.js`, visível a quem abrir o site). Qualquer pessoa poderia ler, alterar ou apagar o que estivesse em `store/` sem nenhuma autenticação.
+
+Investigação confirmou que o Realtime Database **não é mais usado por nenhum código do portal**: `sync-backend.js` (único ponto de entrada de sincronização) só fala com `PortalFirebase.readPortalStore`/`writePortalStore`, que são Firestore (seção 14); nenhum arquivo do projeto importa o SDK do Realtime Database. O node `store/` visível no console é dado órfão de antes da migração para Firestore.
+
+Corrigido publicando `{"rules": {".read": false, ".write": false}}` nas regras do `mkt-ovd`. Sem impacto no portal — nenhum código atual depende desse banco (ver validação abaixo). Por consequência, também não há nada para copiar para o `mkt-ovd-hml`: o Realtime Database do projeto novo permanece no modo bloqueado padrão da criação, e isso já é suficiente.
+
+### Dados de Redes Sociais/Trends no HML: cópia pontual, não coleta contínua
+
+Os workflows de coleta (Meta, YouTube, Trends — seções 8, 9 e 16) só sabem gravar no Firestore de produção (`mkt-ovd`); nunca ouviram falar do `mkt-ovd-hml`. Sem isso, o painel de Redes Sociais e a Central de Inteligência ficam vazios no HML, mesmo com o resto do ambiente funcionando.
+
+Em vez de duplicar os ~11 workflows agendados para também gravar no HML (mais uma superfície pra manter sincronizada, sem necessidade real — HML é pra testar interface, não pra acompanhar métrica ao vivo), foi criado `.github/workflows/copiar-dados-prd-para-hml.yml`, **só `workflow_dispatch`** (nunca agendado): copia, sob demanda, os documentos de leitura agregada (`followers-*-v1`, `posts-*-v1` com suas partes `__2`/`__3`/..., `youtube-videos-vonder-v1`, `facebook-posts-*-v1`, `trends-v1`) de `mkt-ovd` para `mkt-ovd-hml`, via `scripts/copy_portalstore_to_hml.py`.
+
+**Nunca copia a coleção `portalStore` inteira** — calendário (`calendar-post-*`), perfis/permissões (`user-profiles-v1`, `page-permissions-v1`) e notificações são estado interativo do próprio HML; sobrescrever isso destruiria testes em andamento e o isolamento que a separação HML/PRD existe pra garantir. A lista de documentos copiados é uma allowlist explícita no próprio script, não um filtro por padrão de nome.
+
+Credencial: novo secret `FIREBASE_SERVICE_ACCOUNT_KEY_HML` em GitHub Actions Secrets (chave de conta de serviço do `mkt-ovd-hml`, gerada em Firebase Console → Configurações do projeto → Contas de serviço → Gerar nova chave privada) — nunca exposta ao navegador, mesmo padrão do `FIREBASE_SERVICE_ACCOUNT_KEY` já usado pelas coletas de produção.
+
+### Ajuste de horário: sync-youtube-videos.yml não disparava mais junto com sync-meta-facebook-posts.yml
+
+Revisão dos horários de todos os workflows que fazem `git push` (grupo `portal-dados-git-push`) encontrou uma coincidência sem propósito: `sync-meta-facebook-posts.yml` e `sync-youtube-videos.yml`, ambos a cada 6h, disparavam no mesmo minuto exato (`20 */6 * * *` os dois) — diferente dos pares de 15 em 15 min (Meta/YouTube seguidores), que já têm um deslocamento proposital documentado no próprio código. Não era um risco real (o grupo de concorrência compartilhado já evita colisão, só enfileira), mas sem necessidade. `sync-youtube-videos.yml` passou para `25 */6 * * *` (5 min depois), reduzindo fila sem nenhuma mudança de comportamento.
+
+### Pendências conhecidas
+
+- **GitHub Pages e Cloudflare Pages coexistem por motivo, não por falta de decisão** (revisado em 15/09/2026): consolidar em um só hoje traria mais risco do que benefício, porque cada link sustenta algo diferente. Cloudflare Pages deixou de ser redundante — é a base do preview automático por branch que sustenta todo o ambiente HML (seção 17); GitHub Pages segue sendo a URL de verificação de domínio cadastrada na TikTok for Developers (seção 15), com o App Review **ainda em análise, sem previsão** ("This version of Portal MKT OVD is in review", confirmado em 15/09/2026). Desativar o Cloudflare Pages agora quebraria o HML; desativar o GitHub Pages agora arriscaria complicar uma aprovação em andamento que depende dessa URL exata. **Gatilho para reavaliar:** quando a TikTok aprovar o app, checar se a URL de verificação pode ser re-emitida contra o domínio do Cloudflare Pages sem precisar reabrir o processo de revisão; só então vale reconsiderar consolidar em um único link.
 
 | Data | Alteração | Responsável |
 |---|---|---|
-| 15/09/2026 | Criado `copiar-dados-prd-para-hml.yml` (`workflow_dispatch`, cópia pontual, não agendada) para preencher o painel de Redes Sociais/Central de Inteligência de um ambiente de teste com uma amostra dos dados de produção — allowlist explícita de documentos agregados, nunca a coleção `portalStore` inteira. Novo secret `FIREBASE_SERVICE_ACCOUNT_KEY_HML`. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | Criado ambiente HML separado de PRD: projeto Cloudflare Pages `portalmktovd` (branch `main` → produção, qualquer outra branch → preview automático) ao lado do GitHub Pages existente; projeto Firebase `mkt-ovd-hml` isolado (Spark, e-mail/senha apenas); `firebase-config.js` passou a escolher a configuração por `location.hostname`; `cloudflare-worker.js` liberou os novos domínios `.pages.dev` no CORS. Localizado e encerrado um script de auto-sync (`​.autosync/auto-sync.ps1`) rodando havia semanas numa máquina não identificada da rede, publicando direto em `main`. Primeiro administrador do `mkt-ovd-hml` criado e validado. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | Corrigidas as regras do Realtime Database de produção (`mkt-ovd`), que estavam públicas — `.read`/`.write` travados para `false`. Confirmado que o Realtime Database não é mais usado por nenhum código do portal desde a migração da sincronização para o Firestore; sem impacto funcional. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | Criado `copiar-dados-prd-para-hml.yml` (`workflow_dispatch`, cópia pontual, não agendada) para preencher o painel de Redes Sociais/Central de Inteligência no HML com uma amostra dos dados de produção — allowlist explícita de documentos agregados, nunca a coleção `portalStore` inteira. Novo secret `FIREBASE_SERVICE_ACCOUNT_KEY_HML`. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | `sync-youtube-videos.yml` deslocado de `20 */6 * * *` para `25 */6 * * *` — disparava no mesmo minuto que `sync-meta-facebook-posts.yml` por coincidência, sem propósito (diferente dos pares de 15 em 15 min, já deslocados de propósito). Sem risco real (grupo de concorrência já evitava colisão), só reduz fila. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | `firestore.rules`: `portalStore` deixou de liberar escrita irrestrita a qualquer usuário ativo — documentos de controle (`user-profiles-v1`, `page-permissions-v1`, `social-media-notification-routes-v1`) e de dados coletados (`followers-*`, `posts-*`, `youtube-videos-*`, `facebook-posts-*`, `trends-*`) agora exigem `admin()`; fechava um caminho de autopromoção a admin via console do navegador. Calendário e o resto de `portalStore` continuam abertos a qualquer usuário ativo. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | Revisada a pendência "dois links de produção sem decisão de consolidar": confirmado que a coexistência é proposital, não esquecida — Cloudflare Pages sustenta o preview automático do HML, GitHub Pages sustenta a URL de verificação de domínio da TikTok, cujo App Review continua em análise sem previsão. Sem mudança técnica; só o texto da pendência ficou explícito sobre o porquê e o gatilho pra reavaliar. | Equipe de Marketing / manutenção do portal |
+
+## 18. Backup diário do Firestore de produção
+
+Até aqui não havia nenhum backup do Firestore de produção (`mkt-ovd`) além do `localStorage` de cada navegador — explicitamente documentado como cache/fallback, nunca backup corporativo (seção 6). Um bug de regra, exclusão manual errada ou incidente na conta administrativa não tinha caminho de recuperação.
+
+**Por que não o export nativo do Firestore, nem o Cloud Storage do Firebase:** o mecanismo oficial do Google (`gcloud firestore export` para um bucket, agendável via Cloud Scheduler) exige o plano **Blaze** (pago) — o projeto permanece deliberadamente no Spark (seção 14). A primeira tentativa desta funcionalidade tentou usar o Firebase Cloud Storage do mesmo projeto como destino, mas o Google também passou a exigir upgrade para Blaze só para **ativar** o produto Storage (mudança de política; não é mais gratuito nem para começar a usar), então essa rota foi descartada antes de ir para produção.
+
+**Solução adotada — repositório GitHub privado dedicado:** um repositório separado e **privado**, `vonderferramentas-coder/portalmktovd-backups` (criado manualmente por quem administra a organização — o backup contém dado interno/pessoal, então nunca pode ser o repositório público do site). Repositórios privados e GitHub Actions são gratuitos sem exigir conta de faturamento, diferente das duas alternativas descartadas acima.
+
+**Como funciona:** `backup-portalstore.yml` (agendado diariamente às 04:00 de São Paulo, mais `workflow_dispatch` manual):
+
+1. Clona `portalmktovd-backups` usando o secret `BACKUP_REPO_TOKEN` — um **fine-grained Personal Access Token** com acesso restrito só a esse repositório (permissão `Contents: Read and write`, mais `Metadata: Read-only` obrigatório), gerado manualmente por quem administra a organização, configurado **sem expiração**. Sem data de vencimento, nada força a renovação automaticamente — diferente de um PAT com prazo, aqui não há um "workflow parou de funcionar" pra avisar que ele precisa ser trocado. **Ponto de atenção da TI:** revisar periodicamente (ex. auditoria anual) se esse token ainda é necessário e se o dono da conta que o gerou continua ativo na equipe; revogar e regerar se a pessoa saísse ou se o token for exposto.
+2. Roda `scripts/backup_portalstore.py`, que lê toda a coleção `portalStore` (calendário, configurações, permissões e os documentos de dados coletados) e a coleção `users` via **Admin SDK** com o secret `FIREBASE_SERVICE_ACCOUNT_KEY` já existente (nenhum secret novo desse lado), comprime tudo num único JSON (`gzip`) e grava em `portalStore/<AAAA-MM-DD>.json.gz` dentro do repositório clonado.
+3. Apaga, na mesma execução, qualquer backup com mais de 30 dias (`RETENTION_DAYS` em `scripts/backup_portalstore.py`) — retenção fixa por contagem de dias, mantendo o repositório de backup pequeno.
+4. Comita e envia (`git push`) o repositório de backup — nunca o repositório principal do site.
+
+`securityAudit` fica fora do escopo do backup de propósito: é log append-only, não estado a restaurar.
+
+**Controle de acesso:** o repositório de backup é privado por padrão do GitHub — só quem tem acesso explícito a ele (mais o dono do PAT) consegue ler. Diferente do repositório do site, nunca é público.
+
+**Plano de falha/rollback:** este workflow **falha** (`exit 1`) se `BACKUP_REPO_TOKEN` ou `FIREBASE_SERVICE_ACCOUNT_KEY` não estiverem configurados — diferente dos workflows de sync (que só avisam com `::warning::` para não travar a coleta pública), o único propósito deste é o backup, então uma falha silenciosa não tem valor. Para restaurar um documento a partir de um backup: baixar o `.json.gz` do repositório de backup, descomprimir, localizar o documento em `portalStore`/`users` no JSON e regravá-lo manualmente no Firestore (Console ou um script pontual com Admin SDK) — não há automação de restauração, é procedimento manual deliberadamente simples para um caminho usado raramente.
+
+**Classificação/LGPD:** o backup replica os mesmos dados já classificados como "Interno" (calendário, config) e "Confidencial/restrito" só na medida em que `users` guarda nome/e-mail de quem acessa o portal (seção 11) — por isso fica só no repositório privado, nunca no repositório público do site.
+
+**Arquivos/workflows:** `.github/workflows/backup-portalstore.yml` (novo), `scripts/backup_portalstore.py` (novo), repositório novo `vonderferramentas-coder/portalmktovd-backups` (privado).
+
+| Data | Alteração | Responsável |
+|---|---|---|
+| 15/09/2026 | Criado backup diário de `portalStore`/`users` do Firestore de produção para um repositório GitHub privado dedicado (`portalmktovd-backups`), via `backup-portalstore.yml` + `scripts/backup_portalstore.py`, com retenção de 30 dias. Duas alternativas foram descartadas antes desta por exigirem o plano Blaze (pago): export nativo do Firestore e Cloud Storage do Firebase (este último mudou de política e passou a exigir Blaze até para ativar). Novo secret `BACKUP_REPO_TOKEN` (fine-grained PAT restrito ao repositório de backup, configurado sem expiração — revisar periodicamente se ainda é necessário e se o dono da conta continua ativo na equipe). | Equipe de Marketing / manutenção do portal |
+
+## 19. Capacidade e cotas à medida que mais marcas entram na coleta automática
+
+Cada marca nova conectada à coleta automática (seguidores/posts do Instagram/Facebook, hoje VONDER e Ferramentas Gerais) soma no mesmo projeto Firebase (`mkt-ovd`, plano Spark) e na mesma fila de publicação do GitHub Actions. Revisado com dado real em 15/09/2026, para não escalar decisões nesta área por suposição.
+
+**GitHub Actions não é o gargalo.** O repositório é público — minutos de CI são ilimitados e gratuitos, independentemente de quantas marcas/execuções existirem. "Volume de GitHub Actions" não é, por si só, uma restrição de custo.
+
+**O que de fato tem um teto:**
+
+1. **Cota diária do Firestore (plano Spark)** — compartilhada por todas as marcas no mesmo projeto. Uso real conferido no Console (`mkt-ovd` → Uso e faturamento), já com VONDER e Ferramentas Gerais ativas e uso normal da equipe somado: **escritas 207/20.000 (1%), leituras 4.500/50.000 (9%), exclusões 12/20.000 (0,1%)**. Sobra espaço de sobra — mesmo dobrando esse consumo várias vezes (novas marcas), a cota mais apertada (leituras, 9%) ainda estaria longe do limite.
+2. **Fila compartilhada de publicação** (`concurrency: portal-dados-git-push`, ver seção 8) — todo workflow que faz `git push` espera a vez nela. Mais marcas somam mais execuções na mesma fila; hoje o atraso é de "alguns minutos", aceitável pelos workflows de coleta/reconstrução. Sem número de teto formal (não é uma cota, é fila), mas é o ponto que mais cedo sentiria o crescimento na prática — via atraso perceptível, não erro.
+3. **Cota da YouTube Data API** (10 mil unidades/dia, projeto `mkt-ovd`) — hoje só a VONDER usa YouTube; não escala por marca ainda, mas escalaria se outra marca conectasse canal próprio.
+4. **Meta Graph API** — já isolada por marca (App Meta próprio por marca, ver seção 8); uma marca não consome o limite da outra, não é uma preocupação de escala aqui.
+
+**Decisão: nenhuma ação necessária agora.** O uso real do Firestore está em single digits percentuais mesmo com duas marcas ativas — o receio original ("volume crescendo") não se confirma nos números. **Gatilho para reavaliar:** checar novamente o painel de Uso do Firebase quando uma terceira marca for conectada à coleta automática, ou se leituras/escritas diárias se aproximarem de 50-70% da cota — o que vier primeiro. Se a fila de publicação começar a gerar atrasos de dezenas de minutos (não só alguns), também vale revisar ali antes da cota do Firestore virar problema.
+
+| Data | Alteração | Responsável |
+|---|---|---|
+| 15/09/2026 | Avaliado com dado real do Console Firebase (Uso e faturamento) se o crescimento de marcas na coleta automática está perto de esgotar a cota diária do Firestore (Spark). Uso atual: 1% escritas, 9% leituras, 0,1% exclusões — longe do limite. Nenhuma ação tomada; gatilho de reavaliação definido para a próxima marca conectada ou 50-70% de uso da cota. | Equipe de Marketing / manutenção do portal |

@@ -19,7 +19,11 @@ name: Sincronizar vídeos do YouTube
 
 on:
   schedule:
-    - cron: '20 */6 * * *'
+    # Offset de 5 min em relação ao sync-meta-facebook-posts.yml (também a cada 6h): os dois
+    # tinham o mesmo minuto por coincidência, sem nenhum deslocamento entre si (diferente dos
+    # pares de 15 em 15 min, que já são espaçados de propósito) — reduz a fila no grupo
+    # compartilhado portal-dados-git-push, mesmo sem risco real (a fila já evita colisão).
+    - cron: '25 */6 * * *'
   workflow_dispatch:
 
 permissions:

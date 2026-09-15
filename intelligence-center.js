@@ -72,6 +72,7 @@
         interest: term.interest,
         variation: term.variation,
         collectedAt: periodData.collectedAt,
+        matchedProducts: Array.isArray(term.matchedProducts) ? term.matchedProducts : [],
       }));
     });
     rows.sort((a, b) => b.interest - a.interest);
@@ -82,6 +83,16 @@
     if (!variation) return '<span class="intel-variation-flat">—</span>';
     const isUp = variation === 'Alta' || variation.startsWith('+');
     return `<span class="${isUp ? 'intel-variation-up' : ''}">${escapeHtml(variation)}</span>`;
+  }
+
+  // Cruzamento com o catálogo de produtos, calculado uma vez por dia pelo próprio workflow de
+  // coleta (scripts/match_trends_catalog.py) — aqui só exibe o que já veio pronto no documento,
+  // nenhum cálculo/carregamento de catálogo acontece no navegador (ver
+  // docs/ARQUITETURA-E-INTEGRACOES.md, seção 16).
+  function renderMatchedProducts(products) {
+    if (!products || !products.length) return '<span class="intel-variation-flat">—</span>';
+    const items = products.map(p => `<li>${escapeHtml(p.name)}</li>`).join('');
+    return `<details class="intel-matched-products"><summary>${products.length} produto${products.length === 1 ? '' : 's'}</summary><ul>${items}</ul></details>`;
   }
 
   function render() {
@@ -118,6 +129,7 @@
         <td class="intel-col-variation">${renderVariation(row.variation)}</td>
         <td>${escapeHtml(periodLabel)}</td>
         <td>${formatDateTime(row.collectedAt)}</td>
+        <td>${renderMatchedProducts(row.matchedProducts)}</td>
       </tr>
     `).join('');
     setText('trendsSummary', `${rows.length} termo${rows.length === 1 ? '' : 's'}`);

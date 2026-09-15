@@ -566,32 +566,9 @@
           </div>
         </div>
 
-        <!-- Modal de confirmação: criar postagem específica pra uma data comemorativa (clique no
-         texto da data comemorativa no cabeçalho do dia, no calendário) -->
-        <div id="commemorativeConfirmBackdrop" class="modal-backdrop">
-          <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="commemorativeConfirmTitle">
-            <div class="modal-header">
-              <div class="modal-header-title">
-                <h2 id="commemorativeConfirmTitle">Criar postagem para esta data?</h2>
-              </div>
-
-              <div class="modal-header-actions"><button type="button" id="commemorativeConfirmCloseBtn"
-                  class="modal-close" aria-label="Fechar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 6 6 18" />
-                    <path d="M6 6l12 12" />
-                  </svg></button></div>
-            </div>
-            <div class="modal-body">
-              <p id="commemorativeConfirmMessage" style="margin:0;font-size:13px;line-height:1.55;color:var(--text)">
-              </p>
-            </div>
-            <div class="modal-footer"><button type="button" id="commemorativeConfirmCancel" class="btn ghost">Agora
-                não</button><button type="button" id="commemorativeConfirmOk" class="btn">Criar postagem</button></div>
-          </div>
-        </div>
-
-        <!-- Escolha específica da Osten ao clicar em uma data comemorativa -->
+        <!-- Escolha ao clicar numa data comemorativa: briefing personalizado ou abrir direto no
+             Editor de Posts (só habilitado pra marcas com template institucional, ver
+             brandHasCommemorativeEditorShortcut em app.js) -->
         <div id="ostenCommemorativeChoiceBackdrop" class="modal-backdrop">
           <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="ostenCommemorativeChoiceTitle">
             <div class="modal-header">
@@ -608,7 +585,9 @@
             </div>
             <div class="modal-body">
               <p id="ostenCommemorativeChoiceMessage"
-                style="margin:0;font-size:13px;line-height:1.55;color:var(--text)"></p>
+                style="margin:0;font-size:14px;line-height:1.5;color:var(--text);font-weight:600"></p>
+              <p id="ostenCommemorativeChoiceNote" class="muted"
+                style="margin:8px 0 0;font-size:12px;line-height:1.5" hidden></p>
             </div>
             <div class="modal-footer"><button type="button" id="ostenCommemorativeCreateBriefing"
                 class="btn ghost">Criar card para briefing</button><button type="button"

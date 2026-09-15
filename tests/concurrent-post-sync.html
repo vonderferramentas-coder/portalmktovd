@@ -89,8 +89,16 @@
   const titleB=postsB.find(post=>post.id==='card-a').title;
   if(titleA!==titleB||conflicts!==1) throw new Error('edição do mesmo card não foi isolada por revisão');
 
+  // Regressão do atalho "Abrir editor de posts direto" (datas comemorativas, ver app.js): ele
+  // navega pra post-editor.html logo após criar o card, então precisa que flush() só resolva
+  // depois da gravação confirmar no servidor — sem isso o card nunca chegava a existir no Firestore.
+  postsA.push({id:'card-direct',title:'Criado com flush direto',date:'2026-09-11',order:0});
+  syncA.save();
+  await syncA.flush();
+  if(!server.has('card-direct')) throw new Error('flush() resolveu antes da gravação confirmar no servidor');
+
   document.body.dataset.result='pass';
-  document.body.textContent='PASS: status de card carregado gera notificação; criações simultâneas persistem; edição concorrente gera conflito isolado.';
+  document.body.textContent='PASS: status de card carregado gera notificação; criações simultâneas persistem; edição concorrente gera conflito isolado; flush() espera a gravação confirmar.';
 })().catch(error=>{
   document.body.dataset.result='fail';
   document.body.textContent='FAIL: '+error.message;

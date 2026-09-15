@@ -18,6 +18,20 @@ service cloud.firestore {
       return activeUser() && currentUser().role == 'admin';
     }
 
+    // Documentos de controle (quem pode ver o quê, pra onde notificações vão) — ninguém edita
+    // isso direto na tela, sempre passa por uma ação administrativa. Sem essa checagem, um
+    // usuário comum conseguiria se autopromover a admin escrevendo direto nesses documentos
+    // pelo console do navegador (a tela de Usuários e acessos só bloqueia pela interface).
+    function isControlDoc(id) {
+      return id in ['user-profiles-v1', 'page-permissions-v1', 'social-media-notification-routes-v1'];
+    }
+    // Seguidores/posts/vídeos/trends: só o GitHub Actions grava isso (Admin SDK, que ignora
+    // estas regras por definição) — nenhum caminho legítimo de escrita pelo navegador. Travar
+    // pra admin não tira função de ninguém e evita que um usuário comum forje esses números.
+    function isCollectedDataDoc(id) {
+      return id.matches('^(followers|posts|youtube-videos|facebook-posts|trends)-.*');
+    }
+
     match /users/{userId} {
       allow get: if authenticated() && (request.auth.uid == userId || admin());
       allow list: if admin();
@@ -33,7 +47,8 @@ service cloud.firestore {
     }
 
     match /portalStore/{recordId} {
-      allow read, write: if activeUser();
+      allow read: if activeUser();
+      allow write: if activeUser() && (admin() || (!isControlDoc(recordId) && !isCollectedDataDoc(recordId)));
     }
   }
 }

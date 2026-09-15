@@ -1,0 +1,56 @@
+name: Testes
+
+# Roda os testes que já existem em tests/ a cada push/PR — nenhum deles rodava
+# automaticamente antes de hoje (15/09/2026), só manual, então um bug podia passar
+# despercebido até acontecer em produção. Grátis: GitHub Actions é ilimitado em
+# repositório público (confirmado via `gh repo view`), e python3/pwsh já vêm
+# instalados nos runners — nenhuma dependência paga nova.
+#
+# ponytail: só conecta os testes que já existiam (checagem estática de nomes de
+# função em concurrent-post-storage.test.ps1, os asserts de
+# match_trends_catalog.test.py, e a simulação de concurrent-post-sync.html rodada
+# em Chrome headless) — não escreve teste novo nesta mudança.
+#
+# concurrent-post-sync.html já era um teste de comportamento completo (mocka
+# window.PortalFirebase, simula duas sessões, usa throw/assert e grava o
+# resultado em document.body.dataset.result), só faltava rodar sem depender de
+# uma pessoa abrir no navegador e olhar. --virtual-time-budget faz o Chrome
+# headless adiantar os setTimeout() do teste sem esperar o tempo real, e
+# --dump-dom captura o DOM final pra grep decidir pass/fail.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Checagem estática de sincronização concorrente
+        shell: pwsh
+        run: tests/concurrent-post-storage.test.ps1
+
+      - name: Cruzamento Trends x catálogo
+        run: python3 tests/match_trends_catalog.test.py
+
+      - name: Simulação de sincronização concorrente (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          if [ -z "$CHROME" ]; then
+            echo '::error::Nenhum Chrome/Chromium encontrado no runner.'
+            exit 1
+          fi
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions \
+            --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 \
+            --dump-dom "file://$(pwd)/tests/concurrent-post-sync.html" > /tmp/concurrent-post-sync-dump.html
+          cat /tmp/concurrent-post-sync-dump.html
+          if ! grep -q 'data-result="pass"' /tmp/concurrent-post-sync-dump.html; then
+            echo '::error::Simulação de sincronização concorrente falhou — ver o corpo da página acima (data-result != "pass").'
+            exit 1
+          fi

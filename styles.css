@@ -249,6 +249,10 @@
 
     /* Botões — altura igual à dos campos de texto/select/cor, para ficarem alinhados quando lado a lado */
     .btn{height:var(--control-h);display:inline-flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;background:var(--accent);color:var(--on-accent);padding:0 14px;border-radius:var(--radius-sm);border:0;cursor:pointer;font-weight:700;font-size:13px;transition:background .12s,transform .06s,box-shadow .12s;font-family:inherit}
+    /* [hidden] some vencer o display:inline-flex acima — a regra nativa do navegador pra [hidden]
+       tem prioridade mais baixa que qualquer seletor do autor (mesmo caso do .tool-card em
+       index.css, do botão do Google em auth.css e do item do menu lateral em styles.css). */
+    .btn[hidden]{display:none}
     .btn svg{flex-shrink:0}
     .btn:hover{background:var(--accent-hover);box-shadow:var(--shadow-sm)}
     .btn:active{transform:translateY(1px)}

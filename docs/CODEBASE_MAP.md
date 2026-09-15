@@ -43,7 +43,7 @@ graph TB
     subgraph Proxies["Proxies de imagem/oferta (3 implementações redundantes)"]
         Worker[Cloudflare Worker<br/>ecommerce-fg.vonderferramentas.workers.dev]
         PhpProxy[product-image.php]
-        LocalProxy[product-image-proxy.ps1 + fg-offer-proxy.ps1<br/>127.0.0.1:8765/8766]
+        LocalProxy[scripts/product-image-proxy.ps1 + scripts/fg-offer-proxy.ps1<br/>127.0.0.1:8765/8766]
     end
 
     subgraph Externo["Serviços externos"]
@@ -123,7 +123,7 @@ graph TB
 ├── import-legacy-calendar.html                 Ferramenta one-off de importação de planilha
 ├── _pilar-*.html                                Harnesses de QA visual (screenshot headless), não são páginas do produto
 ├── cloudflare-worker.js                        Worker (proxy CORS: fotos + scraping oferta FG)
-├── product-image.php / product-image-proxy.ps1 / fg-offer-proxy.ps1   Implementações redundantes do mesmo proxy
+├── product-image.php / scripts/product-image-proxy.ps1 / scripts/fg-offer-proxy.ps1   Implementações redundantes do mesmo proxy
 ├── "Abrir Calendario.cmd"                       Launcher local (sobe os proxies PS1 + abre index.html)
 ├── data/
 │   ├── social-posts.json                       Snapshot CI (auditoria; consumidor real é o Firestore)
@@ -160,7 +160,7 @@ graph TB
 **Dependências externas**: Firebase (Auth + Firestore, plano Spark — sem Cloud Functions), Google Fonts, CDN `animejs` (mouse-light).
 
 **Gotchas críticos**:
-- `firestore.rules` libera **qualquer usuário ativo** (não só admin) para ler/escrever qualquer documento em `portalStore` — inclusive dados de seguidores/posts e a lista de permissões por página. A restrição de telas como `migrate-followers.html`/`admin-users.html` a admins é só client-side (`data-auth-role`), não reforçada nas regras.
+- `firestore.rules` libera **qualquer usuário ativo** (não só admin) para ler/escrever a maior parte de `portalStore` (calendário, configurações). Desde 15/09/2026, dados de seguidores/posts e a lista de permissões por página (`isControlDoc`/`isCollectedDataDoc`) exigem `admin()` nas próprias regras. A restrição de telas como `migrate-followers.html`/`admin-users.html` a admins continua também client-side (`data-auth-role`), mas hoje é reforçada nas regras para esses documentos — não é mais só cosmética.
 - `apiKey`/config do Firebase Web em `firebase-config.js` é pública por natureza do SDK, mas não deve nunca ganhar companhia de uma chave de conta de serviço — isso fica só em GitHub Actions Secrets (`FIREBASE_SERVICE_ACCOUNT_KEY`).
 - `.gitignore` exclui explicitamente `.env*`, `*.key`, `*.pem`, `*.sqlite*`.
 - Sessão usa `browserSessionPersistence` (não sobrevive a fechar o navegador) — decisão deliberada, documentada como correção histórica.
@@ -219,7 +219,7 @@ Três implementações independentes do mesmo contrato (`?code=&w=` para foto de
 |---|---|---|
 | `cloudflare-worker.js` | Produção | `ecommerce-fg.vonderferramentas.workers.dev/product-image` e `/product-offer` |
 | `product-image.php` | Hospedagem PHP própria (fallback) | mesma rota, via cURL/GD |
-| `product-image-proxy.ps1` + `fg-offer-proxy.ps1` | Local/offline (`Abrir Calendario.cmd`) | `127.0.0.1:8765` / `:8766` |
+| `scripts/product-image-proxy.ps1` + `scripts/fg-offer-proxy.ps1` | Local/offline (`Abrir Calendario.cmd`) | `127.0.0.1:8765` / `:8766` |
 
 Upstream real das fotos: `app.ovd.com.br/fotos/produto`. Upstream de oferta: `fg.com.br` (parser de objeto `skuJson_0` embutido no HTML, duplicado em JS e PowerShell).
 
@@ -234,8 +234,10 @@ Todos usam o secret `META_PAGE_ACCESS_TOKEN` contra a Meta Graph API v26.0 para 
 | `reconstruir-historico.yml` | cron diário (após coleta) + manual | Reconstrói histórico retroativo com conferência cruzada (rejeita se divergência >15%) |
 | `diagnostico-meta.yml` / `diagnostico-meta-posts.yml` | manual | Sondagem de escopos/métricas disponíveis na API (não grava nada) |
 | `validar-documentacao-arquitetura.yml` | PR/push | Falha o check se arquivo de integração mudou sem `docs/ARQUITETURA-E-INTEGRACOES.md` mudar junto |
+| `backup-portalstore.yml` | cron diário 04:00 SP + manual | Despeja `portalStore`+`users` comprimido no repositório privado `portalmktovd-backups` (retenção 30 dias); **falha** (não só avisa) sem `BACKUP_REPO_TOKEN`/`FIREBASE_SERVICE_ACCOUNT_KEY` — ver `docs/ARQUITETURA-E-INTEGRACOES.md` seção 18 |
+| `testes.yml` | push + pull_request | Roda os 3 testes de `tests/` — checagem estática (`.ps1`), assert (`match_trends_catalog.test.py`) e `concurrent-post-sync.html` em Chrome headless — desde 15/09/2026; antes nenhum teste deste projeto rodava sozinho, só manual |
 
-**Gotcha**: sem `FIREBASE_SERVICE_ACCOUNT_KEY`, os workflows de sync emitem só `::warning::` e não falham — o painel fica "desatualizado" silenciosamente.
+**Gotcha**: sem `FIREBASE_SERVICE_ACCOUNT_KEY`, os workflows de *sync* emitem só `::warning::` e não falham — o painel fica "desatualizado" silenciosamente. `backup-portalstore.yml` é a exceção deliberada: como o único propósito dele é o backup, ele falha de verdade se algum dos dois secrets faltar.
 
 ## Data Flow
 
@@ -346,14 +348,16 @@ sequenceDiagram
 
 ## Gotchas
 
-- **Firestore `portalStore` é liberado a qualquer usuário ativo**, não só admin — telas "restritas a admin" (`admin-users.html`, `migrate-followers.html`) só bloqueiam no client, não nas regras.
+- **Firestore `portalStore` é liberado a qualquer usuário ativo para o calendário e o restante do store** — mas documentos de controle (`user-profiles-v1`, `page-permissions-v1`, `social-media-notification-routes-v1`) e de dados coletados (`followers-*`, `posts-*`, `youtube-videos-*`, `facebook-posts-*`, `trends-*`) exigem `admin()` nas próprias `firestore.rules` desde 15/09/2026 (`isControlDoc`/`isCollectedDataDoc`) — não é mais só bloqueio client-side.
 - **`isVonder` hard-coded** em `followers-dashboard.js` ao id `'default'` — se o id da marca VONDER mudar em `portal-shell.js`, o dashboard passa a tratar VONDER como "sem integração" silenciosamente.
 - **Dashboard de seguidores nunca lê os JSONs de `data/` diretamente** — precisa da migração manual (`migrate-followers.html`) rodar depois de cada atualização do CI, senão mostra dados desatualizados.
 - **Sem `FIREBASE_SERVICE_ACCOUNT_KEY`**, os workflows de sync Meta só avisam (`::warning::`) e não falham — falha silenciosa de atualização.
 - **`business-card-generator.js` é 100% local** (`localStorage` por marca) — trocar de máquina/navegador perde os cartões em edição; não há backup automático.
 - **Central de Inteligência não usa IA/LLM real** — o "DNA de editoria" é heurística de texto/imagem local (frequência de palavras, regex de CTA, cor média), documentado explicitamente no código para não criar expectativa errada.
-- **Três implementações redundantes e não compartilhadas** do proxy de imagem/oferta (Worker, PHP, PowerShell local) — corrigir um bug de parsing (`skuJson_0`) exige repetir a correção nos três.
+- **Cruzamento Trends x catálogo (15/09/2026) também é heurística simples, não IA/LLM** — `scripts/match_trends_catalog.py` casa por palavra normalizada no nome do produto (sem sinônimo, sem categoria própria do catálogo), calculado uma vez por dia dentro de `sync-google-trends.yml`, nunca no navegador (catálogo tem 10.001 produtos/12 MB). Ver `docs/ARQUITETURA-E-INTEGRACOES.md` seção 16.
+- **Três implementações redundantes e não compartilhadas** do proxy de imagem/oferta (Worker, PHP, PowerShell local) — corrigir um bug de parsing (`skuJson_0`) exige repetir a correção nos três. Já aconteceu de verdade (15/09/2026): `scripts/fg-offer-proxy.ps1` arredondava o desconto diferente do Worker (`Floor` vs `Round`) e não devolvia `offerCta`; `product-image.php` podia mandar `Content-Type: image/webp` com bytes JPEG dentro. Corrigido; os quatro arquivos ganharam comentário `ponytail:` apontando os gêmeos, ver `docs/ARQUITETURA-E-INTEGRACOES.md` seção 7.
 - **Arquivos de backup/snapshot na raiz** (`calendar-recovery-*.json`, `data/catalog-vonder.backup-*.json`, `data/social-posts.json`) não são dados ativos — nenhum tem referência em código; não confundir com os arquivos "vivos" de mesmo prefixo.
+- **Cobertura de teste era praticamente nula pra uma área que já teve bug real de concorrência** (calendário multi-marca, revisão transacional por card). Até 15/09/2026, nenhum dos 3 arquivos em `tests/` rodava sozinho. `testes.yml` passou a rodar os três a cada push/PR: `concurrent-post-storage.test.ps1` (checagem estática de nomes de função, não comportamento real), `match_trends_catalog.test.py` (assert de verdade) e `concurrent-post-sync.html` (o único que simula concorrência de verdade) em Chrome headless com `--virtual-time-budget`/`--dump-dom`, lendo `document.body.dataset.result`.
 
 ## Navigation Guide
 
@@ -361,9 +365,9 @@ sequenceDiagram
 
 **Para investigar por que o Dashboard de Seguidores não atualiza**: verificar se `migrate-followers.html` foi executado após a última atualização de `data/social-followers*.json` pelo GitHub Actions; conferir se o secret `FIREBASE_SERVICE_ACCOUNT_KEY` está configurado (senão os workflows só avisam, não falham).
 
-**Para alterar regras de acesso por perfil**: `admin-users.html`/`.js` (UI) grava em `portalStore/page-permissions-v1`; `auth-guard.js` é quem de fato aplica isso escondendo itens do menu — lembrar que as `firestore.rules` **não** reforçam essa granularidade (qualquer usuário ativo pode escrever em `portalStore` diretamente).
+**Para alterar regras de acesso por perfil**: `admin-users.html`/`.js` (UI) grava em `portalStore/page-permissions-v1`; `auth-guard.js` é quem de fato aplica isso escondendo itens do menu. `firestore.rules` já exige `admin()` para escrever em `page-permissions-v1` (evita autopromoção via console), mas a granularidade fina de "qual página cada perfil vê" continua só client-side em `auth-guard.js` — as regras não sabem distinguir uma página da outra.
 
-**Para adicionar/trocar o proxy de imagem de produto**: replicar a mudança nos três locais (`cloudflare-worker.js`, `product-image.php`, `product-image-proxy.ps1`) — não há código compartilhado entre eles.
+**Para adicionar/trocar o proxy de imagem de produto**: replicar a mudança nos três locais (`cloudflare-worker.js`, `product-image.php`, `scripts/product-image-proxy.ps1`) — não há código compartilhado entre eles.
 
 **Para investigar segredos/integrações**: consultar `docs/ARQUITETURA-E-INTEGRACOES.md` (fonte de verdade mantida manualmente) — toda mudança de integração externa deve atualizar esse arquivo na mesma alteração (reforçado por `validar-documentacao-arquitetura.yml`).
 

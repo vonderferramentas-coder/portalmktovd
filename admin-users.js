@@ -207,17 +207,20 @@ function buildPermModal() {
   });
   return backdrop;
 }
-function openProfilePermissionsModal(profile) {
-  if (!permModalEl) permModalEl = buildPermModal();
-  permModalEl.dataset.role = profile.id;
-  $('profilePermTitle').textContent = 'Permissões — ' + profile.name;
-  const selected = new Set(allowedForRole(profile.id));
-  const locked = new Set(lockedPagesForRole(profile.id));
-  $('profilePermPages').innerHTML = pagesForRole().map(item => {
+// Reaproveitado tanto pelo modal de Permissões (perfil já existente) quanto pelo checklist que
+// já vem aberto na criação de um novo perfil — mesma marcação, mesmas regras de travamento.
+function permPagesHtml(selected, locked) {
+  return pagesForRole().map(item => {
     const isLocked = locked.has(item.href);
     const checked = isLocked || selected.has(item.href);
     return `<label class="chip"><input type="checkbox" data-perm-page="${item.href}" ${checked ? 'checked' : ''} ${isLocked ? 'disabled' : ''}> ${escape(item.label)}</label>`;
   }).join('');
+}
+function openProfilePermissionsModal(profile) {
+  if (!permModalEl) permModalEl = buildPermModal();
+  permModalEl.dataset.role = profile.id;
+  $('profilePermTitle').textContent = 'Permissões — ' + profile.name;
+  $('profilePermPages').innerHTML = permPagesHtml(new Set(allowedForRole(profile.id)), new Set(lockedPagesForRole(profile.id)));
   permModalEl.style.display = 'flex';
 }
 
@@ -302,10 +305,11 @@ function openDeleteProfileModal(profile) {
 }
 
 // ============================================================
-// MODAL "NOVO PERFIL" — aberto pelo "+" no cabeçalho de Perfis. Só pede o nome; o id é gerado
-// a partir dele (slug sem acento) e o perfil nasce sem página nenhuma travada e sem
-// permissões salvas ainda, caindo no padrão de visibilidade (defaultAllowedForRole) até
-// alguém editar via lápis.
+// MODAL "NOVO PERFIL" — aberto pelo "+" no cabeçalho de Perfis. Pede o nome (o id é gerado a
+// partir dele, slug sem acento) e já traz o mesmo checklist de páginas do modal de Permissões,
+// pré-marcado com o padrão de visibilidade (defaultAllowedForRole: tudo, exceto páginas
+// defaultHidden como Usuários e acessos — essa fica desmarcada mas liberada pra marcar). O
+// checklist é salvo junto com o perfil, sem precisar abrir o lápis depois pra isso.
 // ============================================================
 const PROFILE_ID_ACCENTS = { 'á': 'a', 'à': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a', 'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e', 'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i', 'ó': 'o', 'ò': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o', 'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u', 'ç': 'c', 'ñ': 'n' };
 function slugifyProfileId(name) {
@@ -332,6 +336,8 @@ function buildCreateProfileModal() {
       <div class="auth-form">
         <div class="auth-field"><label for="newProfileName">Nome do perfil</label><input id="newProfileName" type="text" required></div>
       </div>
+      <p class="muted" style="margin:14px 0 14px">Marque as páginas que este perfil pode visualizar no menu.</p>
+      <div id="newProfilePermPages" class="admin-perm-pages"></div>
     </div>
     <div class="modal-footer">
       <button type="button" id="cancelCreateProfile" class="btn ghost">Cancelar</button>
@@ -349,7 +355,8 @@ function buildCreateProfileModal() {
     const btn = backdrop.querySelector('#submitCreateProfile');
     btn.disabled = true;
     try {
-      const nextProfiles = profiles.concat([{ id: slugifyProfileId(name), name }]);
+      const id = slugifyProfileId(name);
+      const nextProfiles = profiles.concat([{ id, name }]);
       const result = await writePortalStore(PROFILES_KEY, nextProfiles, profilesVersion);
       if (result.conflict) {
         show('Alguém alterou os perfis antes. Recarregando…');
@@ -359,6 +366,17 @@ function buildCreateProfileModal() {
       }
       profilesVersion = result.updated_at;
       profiles = nextProfiles;
+      // grava já o checklist marcado no próprio modal de criação, em vez de deixar o perfil
+      // sem permissões salvas até alguém abrir o lápis depois — best-effort: se falhar, o
+      // perfil ainda existe e cai no padrão de visibilidade (defaultAllowedForRole) até alguém
+      // salvar as permissões manualmente.
+      try {
+        const checked = $$('#newProfilePermPages input[data-perm-page]:checked').map(i => i.dataset.permPage);
+        const payload = Array.from(new Set(checked.concat(lockedPagesForRole(id))));
+        const nextMap = Object.assign({}, permissionsMap, { [id]: payload });
+        const permResult = await writePortalStore(PERMISSIONS_KEY, nextMap, permissionsVersion);
+        if (!permResult.conflict) { permissionsVersion = permResult.updated_at; permissionsMap = nextMap; }
+      } catch (_) { /* perfil já foi criado; permissões caem no padrão até serem salvas depois */ }
       close();
       renderProfileList();
       renderUserRows();
@@ -374,6 +392,7 @@ function buildCreateProfileModal() {
 function openCreateProfileModal() {
   if (!createProfileModalEl) createProfileModalEl = buildCreateProfileModal();
   $('newProfileName').value = '';
+  $('newProfilePermPages').innerHTML = permPagesHtml(new Set(defaultAllowedForRole('')), new Set(lockedPagesForRole('')));
   createProfileModalEl.style.display = 'flex';
   $('newProfileName').focus();
 }

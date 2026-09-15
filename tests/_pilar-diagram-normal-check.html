@@ -5,8 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Gerador de Cartão de Visitas</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="business-card-generator.css">
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../business-card-generator.css">
 </head>
 
 <body>
@@ -48,7 +48,7 @@
                         </button><label class="bc-upload" for="spreadsheetFile"><input id="spreadsheetFile" type="file"
                                 accept=".xlsx,.xls,.csv"><span>↑</span>
                             <div><strong>Selecionar planilha</strong><small>.xlsx, .xls ou .csv</small></div>
-                        </label><a class="bc-template-link" href="business-card-assets/planilha-base.xlsx" download>↓
+                        </label><a class="bc-template-link" href="../business-card-assets/planilha-base.xlsx" download>↓
                             Baixar planilha-base</a></div><button class="bc-back-link" id="backToWorkspace"
                         type="button" hidden>← Voltar aos cartões cadastrados</button>
                 </div>
@@ -186,15 +186,15 @@
             </div>
         </main>
     </div>
-    <script src="sync-backend.js"></script>
+    <script src="../sync-backend.js"></script>
     <script>localStorage.setItem("portal_active_brand_v1", "pilar-tecnologia"); localStorage.removeItem("business_card_generator_v1__pilar-tecnologia");</script>
-    <script src="portal-shell.js"></script>
-    <script src="vendor/xlsx.full.min.js"></script>
-    <script src="vendor/qrcode-generator.js"></script>
-    <script src="business-card-assets.js"></script>
-    <script src="business-card-print-profile.js"></script>
-    <script src="post-editor-assets/brands-js/Pilar_Tecnologia_Horizontal.js"></script>
-    <script src="business-card-generator.js"></script>
+    <script src="../portal-shell.js"></script>
+    <script src="../vendor/xlsx.full.min.js"></script>
+    <script src="../vendor/qrcode-generator.js"></script>
+    <script src="../business-card-assets.js"></script>
+    <script src="../business-card-print-profile.js"></script>
+    <script src="../post-editor-assets/brands-js/Pilar_Tecnologia_Horizontal.js"></script>
+    <script src="../business-card-generator.js"></script>
     <style>
         *,
         *::before,
