@@ -77,6 +77,35 @@
                         <div id="profileList" class="admin-profile-list"></div>
                     </section>
                 </div>
+                <section class="card admin-list-card admin-audit-card">
+                    <div class="admin-list-head">
+                        <div>
+                            <h2>Log de segurança</h2>
+                            <p class="muted">Últimos eventos registrados (login/logout, mudanças de acesso, migrações). Só leitura.</p>
+                        </div>
+                        <div class="admin-list-head-actions">
+                            <button class="btn-icon" id="refreshAudit" type="button" title="Atualizar"
+                                aria-label="Atualizar"></button>
+                        </div>
+                    </div>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Quando</th>
+                                    <th>Evento</th>
+                                    <th>Quem</th>
+                                    <th>Detalhes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditRows">
+                                <tr>
+                                    <td colspan="4" class="muted">Carregando log…</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </main>
     </div>

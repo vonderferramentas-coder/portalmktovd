@@ -1,7 +1,7 @@
 import { app, auth, db, audit, readPortalStore, writePortalStore } from './firebase-client.js';
 import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js';
-import { collection, getDocs, doc, setDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
+import { collection, getDocs, doc, setDoc, updateDoc, serverTimestamp, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
 
 const $ = id => document.getElementById(id);
 const $$ = selector => Array.prototype.slice.call(document.querySelectorAll(selector));
@@ -430,6 +430,40 @@ async function load() {
 }
 
 // ============================================================
+// LOG DE SEGURANÇA — só leitura (allow read: if admin() em firestore.rules), sem paginação:
+// mostra os 50 eventos mais recentes de securityAudit (login/logout, mudanças de acesso,
+// migração de seguidores — ver audit() em firebase-client.js para a lista completa de
+// eventos gravados). Sem UI pra isso até agora, só dava pra ver abrindo o Console do Firebase.
+// ============================================================
+const AUDIT_EVENT_LABELS = {
+  login: 'Login', logout: 'Logout',
+  user_created: 'Usuário criado', user_updated: 'Usuário editado', user_status_changed: 'Status alterado',
+  password_reset_requested: 'Reset de senha solicitado', followers_migrated: 'Seguidores migrados'
+};
+function actorLabel(uid) {
+  const user = latestUsers.find(item => item.id === uid);
+  return user ? (user.name || user.email) : (uid || '—');
+}
+function auditDetailsLabel(details) {
+  if (!details || typeof details !== 'object' || !Object.keys(details).length) return '—';
+  return Object.entries(details).map(([key, value]) => `${key}: ${value}`).join(', ');
+}
+function renderAuditRows(events) {
+  const rows = $('auditRows');
+  if (!rows) return;
+  rows.innerHTML = events.map(item => `<tr>
+    <td>${formatDate(item.createdAt)}</td>
+    <td>${escape(AUDIT_EVENT_LABELS[item.event] || item.event)}</td>
+    <td>${escape(actorLabel(item.actorUid))}</td>
+    <td class="muted">${escape(auditDetailsLabel(item.details))}</td>
+  </tr>`).join('') || '<tr><td colspan="4" class="muted">Nenhum evento registrado ainda.</td></tr>';
+}
+async function loadAudit() {
+  const snapshot = await getDocs(query(collection(db, 'securityAudit'), orderBy('createdAt', 'desc'), limit(50)));
+  renderAuditRows(snapshot.docs.map(item => ({ id: item.id, ...item.data() })));
+}
+
+// ============================================================
 // MODAL "EDITAR USUÁRIO" — único, centralizado, mesmo padrão .modal-backdrop/.modal do
 // resto do portal (ver portal-shell.js). Reúne nome/e-mail/perfil num só lugar.
 // ============================================================
@@ -665,7 +699,10 @@ $('openCreateUser').innerHTML = PLUS_ICON;
 $('openCreateUser').addEventListener('click', openCreateModal);
 $('refreshUsers').innerHTML = REFRESH_ICON;
 $('refreshUsers').addEventListener('click', () => load().catch(() => show('Não foi possível carregar usuários.')));
+$('refreshAudit').innerHTML = REFRESH_ICON;
+$('refreshAudit').addEventListener('click', () => loadAudit().catch(() => show('Não foi possível carregar o log de segurança.')));
 
 load().catch(() => show('Não foi possível carregar usuários. Verifique seu perfil administrativo.'));
 loadProfiles().catch(() => show('Não foi possível carregar os perfis.'));
 loadPagePermissions().catch(() => show('Não foi possível carregar as permissões.'));
+loadAudit().catch(() => show('Não foi possível carregar o log de segurança.'));
