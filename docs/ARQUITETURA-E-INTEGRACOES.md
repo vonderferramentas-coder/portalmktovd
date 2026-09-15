@@ -2,8 +2,8 @@
 
 > **Documento vivo.** Atualize este arquivo na mesma alteração que criar, trocar ou remover uma integração, fonte de dados, automação, serviço hospedado ou recurso que possa gerar dúvida para a TI. A validação automatizada do repositório ajuda a cobrar essa atualização para os principais arquivos de integração.
 
-**Última revisão:** 11/09/2026
-**Escopo desta revisão:** estado identificado no código da branch `main`, incluindo o início da conexão do TikTok (conta Vonder), o workflow de status e notificações do calendário, e a troca de conceito da Central de Inteligência para painel de tendências do Google Trends (seção 16).
+**Última revisão:** 15/09/2026
+**Escopo desta revisão:** criação dos ambientes separados HML e PRD (Cloudflare Pages + projeto Firebase `mkt-ovd-hml` isolado, seção 17).
 
 ## 1. O que é este projeto
 
@@ -454,9 +454,36 @@ Mesmo padrão já usado para Meta/YouTube: o workflow grava `data/google-trends.
 |---|---|---|
 | 11/09/2026 | Central de Inteligência trocou de conceito: de treinamento de DNA por editoria para painel de consulta de tendências do Google Trends (categoria/período/região). Criado `sync-google-trends.yml` (coleta diária via `pytrends`, sem credencial nova) publicando em `data/google-trends.json` e `portalStore/trends-v1`. Só consulta/visualização nesta primeira versão — sem geração de conteúdo, sugestão de posts, análise de produto ou cruzamento com catálogo. | Equipe de Marketing / manutenção do portal |
 
---- docs/ARQUITETURA-E-INTEGRACOES.md
-+++ docs/ARQUITETURA-E-INTEGRACOES.md
-@@ tabela Componentes do portal
-+| Protótipo de tradução de PSD | `_spanish-post-prototype.html` | Testar substituição de camadas de texto e exportação PNG, sem entrada no menu | Somente memória do navegador; biblioteca local `vendor/ag-psd/bundle.js` |
-@@ tabela Integrações e conexões
-+| `ag-psd` 14.3.2 (vendorizado) | Lê PSD e suas camadas no protótipo de tradução | PSD, textos e fontes processados apenas na memória do navegador | Nenhuma credencial | Biblioteca local; o compositor experimental não reproduz todos os recursos avançados do Photoshop |
+## 17. Ambientes HML e PRD (15/09/2026)
+
+Até aqui o portal tinha um único ambiente: a branch `main`, publicada no GitHub Pages, sobre o único projeto Firebase de produção (`mkt-ovd`). Qualquer teste da equipe mexia direto no dado real (calendário, seguidores, posts). Foi criado um ambiente de homologação (HML) isolado, para testes internos sem risco de afetar produção (PRD).
+
+### Hospedagem: Cloudflare Pages
+
+Criado o projeto **Cloudflare Pages** `portalmktovd`, conectado ao mesmo repositório GitHub, sem build command (site estático, sem bundler). Branch de produção: `main`, publicada em `https://portalmktovd.pages.dev`. Qualquer outra branch gera automaticamente um deploy de preview em `https://<branch>.portalmktovd.pages.dev` — a branch `hml` publica em `https://hml.portalmktovd.pages.dev`. Essa URL de preview não é divulgada nem indexada; o controle de acesso continua sendo o login Firebase já existente.
+
+O **GitHub Pages não foi alterado** e continua publicando `main` normalmente — a partir de agora há dois links de produção equivalentes (GitHub Pages e Cloudflare Pages), ambos servindo o mesmo código/dados; nenhuma migração ou desativação foi feita.
+
+### Isolamento de dados: segundo projeto Firebase
+
+Criado o projeto Firebase **`mkt-ovd-hml`** (plano Spark, gratuito), com Authentication (e-mail/senha — Google não foi ativado, por decisão da equipe, que quis restringir a acesso com e-mail corporativo), Firestore e Realtime Database próprios, regras replicadas de `firestore.rules` e das regras do Realtime Database de produção.
+
+`firebase-config.js` passou a escolher a configuração do Firebase em runtime, por `location.hostname`, em vez de um único objeto fixo: uma lista de domínios de produção conhecidos (`vonderferramentas-coder.github.io`, `portalmktovd.pages.dev`) usa o Firebase real (`mkt-ovd`); **qualquer outro host — incluindo o preview do HML e `localhost` de desenvolvimento local — cai por padrão no Firebase de testes (`mkt-ovd-hml`)**. Isso também corrige, de brinde, o fato de que abrir o portal localmente sempre gravou no Firebase de produção até aqui.
+
+`cloudflare-worker.js` (Worker `ecommerce-fg`, ver seção 7) ganhou `https://portalmktovd.pages.dev` e `https://hml.portalmktovd.pages.dev` em `ALLOWED_ORIGINS`, para o editor de artes continuar buscando imagem/oferta sem erro de CORS nos dois novos hosts.
+
+### Fluxo de trabalho
+
+Desenvolvimento local publica na branch `hml`; o merge `hml → main` (o que efetivamente vira produção) só acontece sob pedido explícito de quem está conduzindo o trabalho — não é automático.
+
+**Achado durante esta mudança:** foi localizado um script `​.autosync/auto-sync.ps1` (gitignorado, nunca versionado), rodando havia semanas como processo contínuo em uma máquina não identificada da rede, comitando e publicando (`git push origin main`) qualquer alteração pendente na pasta do repositório às 12h/17h em dias úteis — autor dos commits "Auto-sync: \<data/hora\>". O script está hardcoded para a branch `main` (nunca tocaria `hml`), mas foi localizado e encerrado (processo morto via `Stop-Process`) por segurança, já que ninguém da equipe lembrava de tê-lo deixado rodando. **Para a TI:** se alguém precisar desse tipo de automação de novo, prefira um mecanismo supervisionado (GitHub Actions, por exemplo) a um script solto rodando indefinidamente numa máquina qualquer.
+
+### Pendências conhecidas
+
+- Regras do Realtime Database do projeto `mkt-ovd-hml` precisam ser replicadas manualmente a partir do console do projeto de produção (não são versionadas neste repositório).
+- Primeiro administrador do `mkt-ovd-hml` ainda precisa ser criado manualmente no Firestore (mesmo processo do bootstrap original de produção, seção 14).
+- GitHub Pages e Cloudflare Pages agora coexistem como dois links de produção equivalentes; não há decisão tomada de consolidar em um só.
+
+| Data | Alteração | Responsável |
+|---|---|---|
+| 15/09/2026 | Criado ambiente HML separado de PRD: projeto Cloudflare Pages `portalmktovd` (branch `main` → produção, qualquer outra branch → preview automático) ao lado do GitHub Pages existente; projeto Firebase `mkt-ovd-hml` isolado (Spark, e-mail/senha apenas); `firebase-config.js` passou a escolher a configuração por `location.hostname`; `cloudflare-worker.js` liberou os novos domínios `.pages.dev` no CORS. Localizado e encerrado um script de auto-sync (`​.autosync/auto-sync.ps1`) rodando havia semanas numa máquina não identificada da rede, publicando direto em `main`. | Equipe de Marketing / manutenção do portal |
