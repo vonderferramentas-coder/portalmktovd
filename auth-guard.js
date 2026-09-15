@@ -5,7 +5,7 @@ const target = location.pathname.split('/').pop() || 'index.html';
 if (target !== 'index.html' || location.search) loginUrl.searchParams.set('next', target + location.search);
 async function deny(message) {
   await logout().catch(() => {});
-  loginUrl.searchParams.set('reason', message || 'access');
+  if (message) loginUrl.searchParams.set('reason', message);
   location.replace(loginUrl.href);
 }
 // Falta de permissão (perfil autenticado, só não é o exigido nesta página) não é falha de
@@ -68,4 +68,9 @@ try {
       if (profileEmailEl && context.profile.name) profileEmailEl.textContent = context.user.email;
     }
   }
-} catch (error) { await deny(error && error.code === 'auth/access-pending' ? 'pending' : 'access'); }
+} catch (error) {
+  // "Nunca logou nesta aba" (auth/not-signed-in) é o estado normal de quem ainda não entrou —
+  // não é uma sessão que expirou, então não mostra o aviso de expiração (nem qualquer reason).
+  const code = error && error.code;
+  await deny(code === 'auth/access-pending' ? 'pending' : code === 'auth/not-signed-in' ? null : 'access');
+}
