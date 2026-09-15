@@ -221,7 +221,7 @@
 
     function flush(){
       clearTimeout(retryTimer);
-      reconcile();
+      return reconcile();
     }
 
     global.addEventListener('online',()=>schedule(0));

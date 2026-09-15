@@ -1234,10 +1234,16 @@
       const params=new URLSearchParams({ eventDay:String(d).padStart(2,'0'), eventMonth:month, eventPrefix:parts.prefix, eventTitle });
       location.href='post-editor.html?'+params.toString();
     }
-    function openCommemorativeEditorDirect(){
+    // ensureCommemorativeCard só agenda a gravação no servidor (setTimeout 0); navegar pro Editor de
+    // Posts logo em seguida corria contra essa gravação e quase sempre vencia, perdendo o card criado
+    // pelo atalho (nunca chegava a existir no Firestore). Espera o postSync.flush() confirmar antes de
+    // sair da página — mesma garantia que o salvamento normal (sem sair da tela) já tinha.
+    async function openCommemorativeEditorDirect(){
       if(!pendingCommemorativeDate) return;
       const { dateStr,holidayName }=pendingCommemorativeDate;
+      closeCommemorativeEditorChoice();
       ensureCommemorativeCard(dateStr,holidayName);
+      if(postSync) await postSync.flush();
       openInstitutionalCommemorativeEditor(dateStr,holidayName);
     }
     function openCommemorativeDateConfirm(dateStr, holidayName){
