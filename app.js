@@ -836,6 +836,12 @@
       if(!isCommemorative) select.value='custom';
       box.hidden=!isInstitutional;
       ['mInstitutionalCommemorativeProductsGroup','mContentSuggestionsGroup','mInstitutionalCommemorativeContentFields','mBriefingPreviewGroup','mInstitutionalCommemorativeContentHeading'].forEach(id=>{ const el=$(id); if(el) el.classList.toggle('institutional-hidden',isInstitutional); });
+      const openEditorBtn=$('mOpenInstitutionalCommemorativeEditorBtn');
+      if(openEditorBtn){
+        const hasTemplate=brandHasCommemorativeEditorShortcut();
+        openEditorBtn.disabled=!hasTemplate;
+        openEditorBtn.title=hasTemplate ? '' : 'Esta marca ainda não possui um template institucional de Datas comemorativas configurado no Editor de Posts.';
+      }
     }
 
     function refreshModalDynamic(){
@@ -1179,10 +1185,11 @@
     }
     // Marcas cuja editoria "Datas comemorativas" tem preset próprio no Editor de Posts (ver
     // post-editor-osten-datas-comemorativas.js / post-editor-dismatal-datas-comemorativas.js —
-    // arquivos e presets totalmente independentes entre si, sem nenhuma referência cruzada) e
-    // por isso ganham o atalho de "Abrir editor de posts" direto a partir da data comemorativa.
-    // Esse gate e o fluxo abaixo (modal, criação do card mínimo) são infraestrutura genérica,
-    // compartilhada por qualquer marca aqui listada — não fazem parte do layout de nenhuma delas.
+    // arquivos e presets totalmente independentes entre si, sem nenhuma referência cruzada). O
+    // modal de escolha (openCommemorativeEditorChoice) aparece pra qualquer marca ao clicar numa
+    // data comemorativa, mas só essas marcas conseguem de fato "Abrir editor de posts" — as
+    // demais têm essa opção desabilitada, com aviso, porque não há template pra levá-las lá; só
+    // resta seguir com o briefing manual.
     function brandHasCommemorativeEditorShortcut(){ return BRAND_SUFFIX==='__osten-ferragens' || BRAND_SUFFIX==='__dismatal' || BRAND_SUFFIX==='__dwt'; }
     function splitCommemorativeTitle(holidayName){
       const match=String(holidayName||'').trim().match(/^(Dia(?:s)?\s+(?:(?:Internacional|Nacional|Mundial)\s+)?(?:do|da|de|dos|das)\s+)(.+)$/i);
@@ -1191,7 +1198,24 @@
     function openCommemorativeEditorChoice(dateStr, holidayName){
       pendingCommemorativeDate={ dateStr, holidayName };
       const [y,m,d]=dateStr.split('-').map(Number),dateLabel=new Date(y,m-1,d).toLocaleDateString('pt-BR',{ day:'2-digit', month:'long' });
-      $('ostenCommemorativeChoiceMessage').textContent=`Escolha como trabalhar “${holidayName}” (${dateLabel}).`;
+      const hasTemplate=brandHasCommemorativeEditorShortcut();
+      const titleEl=$('ostenCommemorativeChoiceTitle'), messageEl=$('ostenCommemorativeChoiceMessage'),
+        noteEl=$('ostenCommemorativeChoiceNote'), openEditorBtn=$('ostenCommemorativeOpenEditor'),
+        briefingBtn=$('ostenCommemorativeCreateBriefing');
+      openEditorBtn.hidden=!hasTemplate;
+      briefingBtn.classList.toggle('ghost',hasTemplate);
+      if(hasTemplate){
+        titleEl.textContent='Como deseja continuar?';
+        messageEl.textContent=`Escolha como trabalhar “${holidayName}” (${dateLabel}).`;
+        noteEl.hidden=true;
+        briefingBtn.textContent='Criar card para briefing';
+      } else {
+        titleEl.textContent='Criar postagem para esta data?';
+        messageEl.textContent=`“${holidayName}” (${dateLabel})`;
+        noteEl.textContent='Esta marca ainda não tem um template institucional pré-definido para Datas comemorativas — o card é criado para você seguir com o briefing personalizado.';
+        noteEl.hidden=false;
+        briefingBtn.textContent='Criar postagem';
+      }
       $('ostenCommemorativeChoiceBackdrop').style.display='flex';
     }
     function closeCommemorativeEditorChoice(){
@@ -1239,23 +1263,12 @@
     // pelo atalho (nunca chegava a existir no Firestore). Espera o postSync.flush() confirmar antes de
     // sair da página — mesma garantia que o salvamento normal (sem sair da tela) já tinha.
     async function openCommemorativeEditorDirect(){
-      if(!pendingCommemorativeDate) return;
+      if(!pendingCommemorativeDate || !brandHasCommemorativeEditorShortcut()) return;
       const { dateStr,holidayName }=pendingCommemorativeDate;
       closeCommemorativeEditorChoice();
       ensureCommemorativeCard(dateStr,holidayName);
       if(postSync) await postSync.flush();
       openInstitutionalCommemorativeEditor(dateStr,holidayName);
-    }
-    function openCommemorativeDateConfirm(dateStr, holidayName){
-      pendingCommemorativeDate = { dateStr, holidayName };
-      const [y,m,d] = dateStr.split('-').map(Number);
-      const dateLabel = new Date(y, m-1, d).toLocaleDateString('pt-BR', { day:'2-digit', month:'long' });
-      $('commemorativeConfirmMessage').textContent = `Deseja criar uma publicação específica para "${holidayName}" (${dateLabel})?`;
-      $('commemorativeConfirmBackdrop').style.display = 'flex';
-    }
-    function closeCommemorativeDateConfirm(){
-      $('commemorativeConfirmBackdrop').style.display = 'none';
-      pendingCommemorativeDate = null;
     }
     function confirmCommemorativeDatePost(){
       if(!pendingCommemorativeDate) return;
@@ -1291,7 +1304,7 @@
       // pára a propagação pro mesmo motivo que .date/.day-count acima (senão também abriria
       // "Postagens do dia")
       const holidayEl = cell.querySelector('.holiday-name');
-      if(holidayEl) holidayEl.addEventListener('click', (ev)=>{ ev.stopPropagation(); const holidayName=commemorativeDateName(dateStr); if(brandHasCommemorativeEditorShortcut()) openCommemorativeEditorChoice(dateStr,holidayName); else openCommemorativeDateConfirm(dateStr,holidayName); });
+      if(holidayEl) holidayEl.addEventListener('click', (ev)=>{ ev.stopPropagation(); const holidayName=commemorativeDateName(dateStr); openCommemorativeEditorChoice(dateStr,holidayName); });
       // clicar em qualquer área do card do dia (fora de um post específico, que já abre a edição
       // dele) também abre "Postagens do dia" — mesmo destino do clique na data/contador acima.
       // Cards de postagem, o badge "+N" e o "+ Adicionar postagem" já param a propagação nos
@@ -2170,7 +2183,7 @@
       }
     }
 
-    function saveModal(options){
+    async function saveModal(options){
       const title = $('mTitle').value.trim() || 'Untitled';
       const openInstitutionalEditor=!!(options && options.openInstitutionalEditor);
       const date = $('mDate').value;
@@ -2223,7 +2236,10 @@
         pushUndo({ type:'edit', id: pid, before });
         redoStack = [];
         closeEditState();
-        if(openInstitutionalEditor) openInstitutionalCommemorativeEditor(date,title);
+        if(openInstitutionalEditor){
+          if(postSync) await postSync.flush();
+          openInstitutionalCommemorativeEditor(date,title);
+        }
         return;
       }
 
@@ -2244,7 +2260,11 @@
       pushUndo({ type:'create', posts: [p.id] });
       // uma nova ação invalida o histórico de refazer
       redoStack = [];
-      if(openInstitutionalEditor) { openInstitutionalCommemorativeEditor(date,title); return; }
+      if(openInstitutionalEditor){
+        if(postSync) await postSync.flush();
+        openInstitutionalCommemorativeEditor(date,title);
+        return;
+      }
       // limpa o modal para a próxima criação
       $('mTitle').value=''; $('mNotes').value=''; $('mBriefingLink').value=''; $('mReferencesLink').value=''; $('mArtsLink').value='';
       $('mImageLink').value=''; $('mImageNotes').value='';
@@ -4661,9 +4681,6 @@
     wireModalDismiss('ostenCommemorativeChoiceBackdrop', closeCommemorativeEditorChoice, '#ostenCommemorativeChoiceCloseBtn');
 if($('ostenCommemorativeCreateBriefing')) $('ostenCommemorativeCreateBriefing').addEventListener('click', createCommemorativeBriefingFromChoice);
 if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEventListener('click', openCommemorativeEditorDirect);
-    wireModalDismiss('commemorativeConfirmBackdrop', closeCommemorativeDateConfirm, '#commemorativeConfirmCloseBtn');
-    if($('commemorativeConfirmCancel')) $('commemorativeConfirmCancel').addEventListener('click', closeCommemorativeDateConfirm);
-    if($('commemorativeConfirmOk')) $('commemorativeConfirmOk').addEventListener('click', confirmCommemorativeDatePost);
     // "‹ Voltar" do modal de postagem: só aparece quando ele foi aberto a partir de uma linha do
     // modal "Aplicar editoria" (ver renderApplyEditoriaModal) — fechar aqui também revela essa
     // lista de volta, igual ao "X", mas com o rótulo certo pra esse contexto

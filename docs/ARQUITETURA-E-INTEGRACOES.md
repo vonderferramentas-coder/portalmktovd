@@ -3,7 +3,7 @@
 > **Documento vivo.** Atualize este arquivo na mesma alteração que criar, trocar ou remover uma integração, fonte de dados, automação, serviço hospedado ou recurso que possa gerar dúvida para a TI. A validação automatizada do repositório ajuda a cobrar essa atualização para os principais arquivos de integração.
 
 **Última revisão:** 15/09/2026
-**Escopo desta revisão:** criação dos ambientes separados HML e PRD (Cloudflare Pages + projeto Firebase `mkt-ovd-hml` isolado, seção 17).
+**Escopo desta revisão:** backup diário do Firestore de produção para repositório GitHub privado dedicado (seção 18); esclarecida a razão de GitHub Pages e Cloudflare Pages coexistirem (seção 17, pendências conhecidas); e corrigida divergência real entre os três proxies redundantes de imagem/oferta (seção 7).
 
 ## 1. O que é este projeto
 
@@ -69,6 +69,7 @@ GitHub Actions (pytrends, sem credencial) ------------> Google Trends / Central 
 | `app.ovd.com.br` | Fonte de fotos oficiais de produto | imagem pública por código | sem credencial no código | Imagem passa pelo Worker/PHP para viabilizar CORS no editor |
 | `fg.com.br` | Fonte de ofertas no editor FG | título, marca, SKU, preço e disponibilidade públicos | sem credencial no código | Worker aceita apenas domínio FG e subdomínios |
 | Google Fonts | Carrega tipografias da interface | requisição técnica do navegador/IP | não aplicável | Dependência de terceiro: avaliar política corporativa de privacidade |
+| GitHub (repo privado `portalmktovd-backups`) | Backup diário de `portalStore`/`users` do Firestore de produção | cópia comprimida de todo `portalStore` (calendário, config, permissões, dados coletados) e `users` | `FIREBASE_SERVICE_ACCOUNT_KEY` (leitura do Firestore, já existente) + `BACKUP_REPO_TOKEN` (fine-grained PAT, escrita restrita só nesse repositório) | Repositório privado dedicado, nunca o repo público do site. Ver seção 18 |
 
 ## 6. Firebase: o que é e por que está conectado
 
@@ -111,7 +112,7 @@ O Worker é uma ponte controlada: recebe o pedido, valida parâmetros e domínio
 | `/product-image?code=...` | `app.ovd.com.br/fotos/produto` | imagem pública | aceita código numérico de 5 a 20 dígitos; CORS público por ser imagem pública |
 | `/product-offer?url=...` | página em `fg.com.br` | título, marca, SKUs, preço, disponibilidade e desconto | aceita apenas `http/https` no domínio `fg.com.br` ou subdomínio |
 
-`post-editor.js` consome o Worker publicado em `https://ecommerce-fg.vonderferramentas.workers.dev`. Para uso local existem `product-image.php`, `product-image-proxy.ps1` e `fg-offer-proxy.ps1`.
+`post-editor.js` consome o Worker publicado em `https://ecommerce-fg.vonderferramentas.workers.dev`. Para uso local existem `product-image.php`, `scripts/product-image-proxy.ps1` e `scripts/fg-offer-proxy.ps1`.
 
 ### O que a TI deve validar no Cloudflare
 
@@ -121,6 +122,16 @@ O Worker é uma ponte controlada: recebe o pedido, valida parâmetros e domínio
 - limites de uso/custo e comportamento quando o Worker falhar;
 - manutenção da validação de host para evitar que o Worker vire proxy aberto;
 - termos de uso das fontes, especialmente se a coleta de ofertas crescer.
+
+### Divergência real encontrada entre as três implementações redundantes (15/09/2026)
+
+`cloudflare-worker.js`, `product-image.php` e os dois proxies locais (`scripts/product-image-proxy.ps1`, `scripts/fg-offer-proxy.ps1`) implementam o mesmo contrato em três linguagens/runtimes sem nenhum código compartilhado — risco já registrado como Gotcha em `docs/CODEBASE_MAP.md`. Uma revisão pontual confirmou que o risco já tinha se concretizado:
+
+1. **Desconto calculado diferente:** `scripts/fg-offer-proxy.ps1` usava `Math.Floor` para `discountPercent`, enquanto `cloudflare-worker.js` usa `Math.Round` — a mesma oferta real podia aparecer com uma porcentagem de desconto diferente dependendo de qual proxy respondesse. Corrigido para `Math.Round` nos dois.
+2. **Campo `offerCta` ausente no proxy local:** `cloudflare-worker.js` sempre devolve `offerCta` (texto do botão de oferta); `scripts/fg-offer-proxy.ps1` nunca devolvia esse campo. Mascarado na prática por um recálculo de fallback em `post-editor.js` (`offerCta()`), mas o contrato dos dois ficava inconsistente. Corrigido para calcular e devolver o mesmo campo.
+3. **`product-image.php` podia enviar `Content-Type: image/webp` com bytes JPEG dentro:** ao redimensionar (`w=`) uma foto de origem WEBP num servidor PHP cujo GD não tem `imagewebp()`, o código caía para gerar JPEG mas nunca atualizava a variável usada no cabeçalho — o navegador recebia um cabeçalho que não correspondia aos bytes reais. Corrigido para atualizar o `mime` junto com a troca de codificador.
+
+Nenhuma das três teve teste automatizado cobrindo esse comportamento antes — os três arquivos ganharam um comentário `ponytail:` apontando os gêmeos e o histórico de divergência, para quem for alterar uma regra de parsing/cálculo lembrar de replicar nos outros. Não foi criada nenhuma abstração nova para compartilhar código entre os três runtimes (JS de Worker, PHP, PowerShell) — inviável sem introduzir um build step, que este projeto deliberadamente não tem.
 
 ## 8. Meta e GitHub Actions: painel de seguidores
 
@@ -502,7 +513,7 @@ Revisão dos horários de todos os workflows que fazem `git push` (grupo `portal
 
 ### Pendências conhecidas
 
-- GitHub Pages e Cloudflare Pages agora coexistem como dois links de produção equivalentes; não há decisão tomada de consolidar em um só.
+- **GitHub Pages e Cloudflare Pages coexistem por motivo, não por falta de decisão** (revisado em 15/09/2026): consolidar em um só hoje traria mais risco do que benefício, porque cada link sustenta algo diferente. Cloudflare Pages deixou de ser redundante — é a base do preview automático por branch que sustenta todo o ambiente HML (seção 17); GitHub Pages segue sendo a URL de verificação de domínio cadastrada na TikTok for Developers (seção 15), com o App Review **ainda em análise, sem previsão** ("This version of Portal MKT OVD is in review", confirmado em 15/09/2026). Desativar o Cloudflare Pages agora quebraria o HML; desativar o GitHub Pages agora arriscaria complicar uma aprovação em andamento que depende dessa URL exata. **Gatilho para reavaliar:** quando a TikTok aprovar o app, checar se a URL de verificação pode ser re-emitida contra o domínio do Cloudflare Pages sem precisar reabrir o processo de revisão; só então vale reconsiderar consolidar em um único link.
 
 | Data | Alteração | Responsável |
 |---|---|---|
@@ -511,3 +522,33 @@ Revisão dos horários de todos os workflows que fazem `git push` (grupo `portal
 | 15/09/2026 | Criado `copiar-dados-prd-para-hml.yml` (`workflow_dispatch`, cópia pontual, não agendada) para preencher o painel de Redes Sociais/Central de Inteligência no HML com uma amostra dos dados de produção — allowlist explícita de documentos agregados, nunca a coleção `portalStore` inteira. Novo secret `FIREBASE_SERVICE_ACCOUNT_KEY_HML`. | Equipe de Marketing / manutenção do portal |
 | 15/09/2026 | `sync-youtube-videos.yml` deslocado de `20 */6 * * *` para `25 */6 * * *` — disparava no mesmo minuto que `sync-meta-facebook-posts.yml` por coincidência, sem propósito (diferente dos pares de 15 em 15 min, já deslocados de propósito). Sem risco real (grupo de concorrência já evitava colisão), só reduz fila. | Equipe de Marketing / manutenção do portal |
 | 15/09/2026 | `firestore.rules`: `portalStore` deixou de liberar escrita irrestrita a qualquer usuário ativo — documentos de controle (`user-profiles-v1`, `page-permissions-v1`, `social-media-notification-routes-v1`) e de dados coletados (`followers-*`, `posts-*`, `youtube-videos-*`, `facebook-posts-*`, `trends-*`) agora exigem `admin()`; fechava um caminho de autopromoção a admin via console do navegador. Calendário e o resto de `portalStore` continuam abertos a qualquer usuário ativo. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | Revisada a pendência "dois links de produção sem decisão de consolidar": confirmado que a coexistência é proposital, não esquecida — Cloudflare Pages sustenta o preview automático do HML, GitHub Pages sustenta a URL de verificação de domínio da TikTok, cujo App Review continua em análise sem previsão. Sem mudança técnica; só o texto da pendência ficou explícito sobre o porquê e o gatilho pra reavaliar. | Equipe de Marketing / manutenção do portal |
+
+## 18. Backup diário do Firestore de produção
+
+Até aqui não havia nenhum backup do Firestore de produção (`mkt-ovd`) além do `localStorage` de cada navegador — explicitamente documentado como cache/fallback, nunca backup corporativo (seção 6). Um bug de regra, exclusão manual errada ou incidente na conta administrativa não tinha caminho de recuperação.
+
+**Por que não o export nativo do Firestore, nem o Cloud Storage do Firebase:** o mecanismo oficial do Google (`gcloud firestore export` para um bucket, agendável via Cloud Scheduler) exige o plano **Blaze** (pago) — o projeto permanece deliberadamente no Spark (seção 14). A primeira tentativa desta funcionalidade tentou usar o Firebase Cloud Storage do mesmo projeto como destino, mas o Google também passou a exigir upgrade para Blaze só para **ativar** o produto Storage (mudança de política; não é mais gratuito nem para começar a usar), então essa rota foi descartada antes de ir para produção.
+
+**Solução adotada — repositório GitHub privado dedicado:** um repositório separado e **privado**, `vonderferramentas-coder/portalmktovd-backups` (criado manualmente por quem administra a organização — o backup contém dado interno/pessoal, então nunca pode ser o repositório público do site). Repositórios privados e GitHub Actions são gratuitos sem exigir conta de faturamento, diferente das duas alternativas descartadas acima.
+
+**Como funciona:** `backup-portalstore.yml` (agendado diariamente às 04:00 de São Paulo, mais `workflow_dispatch` manual):
+
+1. Clona `portalmktovd-backups` usando o secret `BACKUP_REPO_TOKEN` — um **fine-grained Personal Access Token** com acesso restrito só a esse repositório (permissão `Contents: Read and write`, mais `Metadata: Read-only` obrigatório), gerado manualmente por quem administra a organização, configurado **sem expiração**. Sem data de vencimento, nada força a renovação automaticamente — diferente de um PAT com prazo, aqui não há um "workflow parou de funcionar" pra avisar que ele precisa ser trocado. **Ponto de atenção da TI:** revisar periodicamente (ex. auditoria anual) se esse token ainda é necessário e se o dono da conta que o gerou continua ativo na equipe; revogar e regerar se a pessoa saísse ou se o token for exposto.
+2. Roda `scripts/backup_portalstore.py`, que lê toda a coleção `portalStore` (calendário, configurações, permissões e os documentos de dados coletados) e a coleção `users` via **Admin SDK** com o secret `FIREBASE_SERVICE_ACCOUNT_KEY` já existente (nenhum secret novo desse lado), comprime tudo num único JSON (`gzip`) e grava em `portalStore/<AAAA-MM-DD>.json.gz` dentro do repositório clonado.
+3. Apaga, na mesma execução, qualquer backup com mais de 30 dias (`RETENTION_DAYS` em `scripts/backup_portalstore.py`) — retenção fixa por contagem de dias, mantendo o repositório de backup pequeno.
+4. Comita e envia (`git push`) o repositório de backup — nunca o repositório principal do site.
+
+`securityAudit` fica fora do escopo do backup de propósito: é log append-only, não estado a restaurar.
+
+**Controle de acesso:** o repositório de backup é privado por padrão do GitHub — só quem tem acesso explícito a ele (mais o dono do PAT) consegue ler. Diferente do repositório do site, nunca é público.
+
+**Plano de falha/rollback:** este workflow **falha** (`exit 1`) se `BACKUP_REPO_TOKEN` ou `FIREBASE_SERVICE_ACCOUNT_KEY` não estiverem configurados — diferente dos workflows de sync (que só avisam com `::warning::` para não travar a coleta pública), o único propósito deste é o backup, então uma falha silenciosa não tem valor. Para restaurar um documento a partir de um backup: baixar o `.json.gz` do repositório de backup, descomprimir, localizar o documento em `portalStore`/`users` no JSON e regravá-lo manualmente no Firestore (Console ou um script pontual com Admin SDK) — não há automação de restauração, é procedimento manual deliberadamente simples para um caminho usado raramente.
+
+**Classificação/LGPD:** o backup replica os mesmos dados já classificados como "Interno" (calendário, config) e "Confidencial/restrito" só na medida em que `users` guarda nome/e-mail de quem acessa o portal (seção 11) — por isso fica só no repositório privado, nunca no repositório público do site.
+
+**Arquivos/workflows:** `.github/workflows/backup-portalstore.yml` (novo), `scripts/backup_portalstore.py` (novo), repositório novo `vonderferramentas-coder/portalmktovd-backups` (privado).
+
+| Data | Alteração | Responsável |
+|---|---|---|
+| 15/09/2026 | Criado backup diário de `portalStore`/`users` do Firestore de produção para um repositório GitHub privado dedicado (`portalmktovd-backups`), via `backup-portalstore.yml` + `scripts/backup_portalstore.py`, com retenção de 30 dias. Duas alternativas foram descartadas antes desta por exigirem o plano Blaze (pago): export nativo do Firestore e Cloud Storage do Firebase (este último mudou de política e passou a exigir Blaze até para ativar). Novo secret `BACKUP_REPO_TOKEN` (fine-grained PAT restrito ao repositório de backup, configurado sem expiração — revisar periodicamente se ainda é necessário e se o dono da conta continua ativo na equipe). | Equipe de Marketing / manutenção do portal |

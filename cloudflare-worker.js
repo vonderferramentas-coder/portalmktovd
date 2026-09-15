@@ -1,4 +1,9 @@
 // Cloudflare Worker — coletor público de ofertas da Ferramentas Gerais.
+// ponytail: /product-image e /product-offer têm gêmeos sem código compartilhado em
+// product-image.php e scripts/{product-image-proxy,fg-offer-proxy}.ps1 (3 runtimes distintos,
+// sem build step neste projeto pra unificar). Já divergiram de verdade uma vez (arredondamento
+// de desconto e campo offerCta ausente no PowerShell, corrigido em 15/09/2026) — ao mudar regra
+// de parsing/cálculo aqui, replicar nos outros arquivos.
 const ALLOWED_ORIGINS=new Set(['https://vonderferramentas-coder.github.io','https://portalmktovd.pages.dev','https://hml.portalmktovd.pages.dev','http://localhost:5500','http://127.0.0.1:5500']);
 const FG_HOST=/(^|\.)fg\.com\.br$/i;
 function cors(request){const origin=request.headers.get('Origin')||'';const allowed=ALLOWED_ORIGINS.has(origin)?origin:'https://vonderferramentas-coder.github.io';return {'Access-Control-Allow-Origin':allowed,'Access-Control-Allow-Methods':'GET, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Vary':'Origin'};}

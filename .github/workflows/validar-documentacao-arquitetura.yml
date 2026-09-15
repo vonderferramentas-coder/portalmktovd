@@ -33,7 +33,7 @@ jobs:
           fi
           changed="$(git diff --name-only "$base" "$HEAD_SHA")"
           printf '%s\n' "$changed"
-          if ! printf '%s\n' "$changed" | grep -Eq '^(sync-backend\.js|cloudflare-worker\.js|api\.php|product-image\.php|product-image-proxy\.ps1|fg-offer-proxy\.ps1|\.github/workflows/.*\.ya?ml)$'; then
+          if ! printf '%s\n' "$changed" | grep -Eq '^(sync-backend\.js|cloudflare-worker\.js|api\.php|product-image\.php|scripts/product-image-proxy\.ps1|scripts/fg-offer-proxy\.ps1|\.github/workflows/.*\.ya?ml)$'; then
             echo 'Nenhum arquivo principal de integração foi alterado.'
             exit 0
           fi

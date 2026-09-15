@@ -1,0 +1,58 @@
+name: Backup diário do portalStore
+
+# Único propósito deste workflow é o backup — por isso ele falha (não só avisa) se algum
+# secret faltar, diferente dos workflows de sync que degradam a coleta pública com só um aviso.
+# Grava num repositório PRIVADO separado (vonderferramentas-coder/portalmktovd-backups), nunca
+# neste repositório público — o backup contém dado interno (calendário, permissões, e-mails).
+on:
+  schedule:
+    - cron: '0 7 * * *'  # 04:00 em São Paulo (UTC-3)
+  workflow_dispatch:
+
+concurrency:
+  group: backup-portalstore
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site (só pelo script)
+        uses: actions/checkout@v4
+
+      - name: Clonar o repositório privado de backup
+        env:
+          BACKUP_REPO_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
+        run: |
+          if [ -z "$BACKUP_REPO_TOKEN" ]; then
+            echo '::error::Falta o secret BACKUP_REPO_TOKEN — backup não executado.'
+            exit 1
+          fi
+          git clone --depth 1 "https://x-access-token:${BACKUP_REPO_TOKEN}@github.com/vonderferramentas-coder/portalmktovd-backups.git" backup-repo
+
+      - name: Gravar snapshot de portalStore/users
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::error::Falta o secret FIREBASE_SERVICE_ACCOUNT_KEY — backup não executado.'
+            exit 1
+          fi
+          pip install --quiet firebase-admin
+          python3 scripts/backup_portalstore.py backup-repo/portalStore
+
+      - name: Comitar e enviar o backup
+        run: |
+          cd backup-repo
+          git config user.name 'portal-mkt-ovd-backup'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'Nada novo para gravar (backup do dia já existia).'
+            exit 0
+          fi
+          git commit -m "Backup: $(date -u +%Y-%m-%d)"
+          git push

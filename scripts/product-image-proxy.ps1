@@ -1,3 +1,7 @@
+# ponytail: mesmo contrato (?code=&w=) reimplementado sem código compartilhado em
+# cloudflare-worker.js e product-image.php — três runtimes diferentes, sem build step neste
+# projeto pra unificar. Ver product-image.php pro histórico de divergência real já encontrada
+# num proxy irmão (scripts/fg-offer-proxy.ps1); ao mudar regra aqui, replicar nos outros dois.
 param([int]$Port = 8765)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Net.Http
