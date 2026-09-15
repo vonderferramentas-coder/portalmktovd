@@ -3,7 +3,7 @@
 > **Documento vivo.** Atualize este arquivo na mesma alteração que criar, trocar ou remover uma integração, fonte de dados, automação, serviço hospedado ou recurso que possa gerar dúvida para a TI. A validação automatizada do repositório ajuda a cobrar essa atualização para os principais arquivos de integração.
 
 **Última revisão:** 15/09/2026
-**Escopo desta revisão:** backup diário do Firestore de produção para repositório GitHub privado dedicado (seção 18); esclarecida a razão de GitHub Pages e Cloudflare Pages coexistirem (seção 17, pendências conhecidas); e corrigida divergência real entre os três proxies redundantes de imagem/oferta (seção 7).
+**Escopo desta revisão:** backup diário do Firestore de produção para repositório GitHub privado dedicado (seção 18); esclarecida a razão de GitHub Pages e Cloudflare Pages coexistirem (seção 17); corrigida divergência real entre os três proxies redundantes de imagem/oferta (seção 7); confirmadas como decisões conscientes (não pendências esquecidas) a ausência de lockout/auditoria robusta no plano Spark (seção 14) e a ausência de sincronização/backup no gerador de cartões de visita (seção 4); implementado o cruzamento de termos do Trends com o catálogo de produtos (seção 16); avaliada com dado real de execução a confiabilidade do `pytrends` (seção 16), sem mudança; conectados ao CI os três testes que já existiam, antes só manuais — incluindo `concurrent-post-sync.html` em Chrome headless (seção 12); e avaliada com dado real do Console a folga de cota do Firestore Spark à medida que mais marcas entram na coleta automática, sem ação necessária por ora (seção 19).
 
 ## 1. O que é este projeto
 
@@ -53,6 +53,8 @@ GitHub Actions (pytrends, sem credencial) ------------> Google Trends / Central 
 | Editor de posts | `post-editor.html`, `post-editor.js` | Montar artes e usar catálogos de produtos | Catálogos versionados; preferências locais; Firebase para configurações |
 | Painel de seguidores | `followers-dashboard.*` | Visualizar histórico, metas e ranking dos melhores posts | JSON atualizado pelo GitHub Actions; lançamentos manuais locais |
 | Cartões de visita | `business-card-generator.*` | Gerar cartões e exportações | Principalmente armazenamento local |
+
+**Decisão consciente (revisada em 15/09/2026):** diferente do calendário/config (Firestore) e do painel de seguidores, o gerador de cartões continua **100% `localStorage` por marca** — sem sincronização entre navegadores/máquinas e sem backup. Trocar de máquina ou limpar o navegador perde os cartões em edição. Avaliado e aceito por ora: é um processo de ciclo curto (importar planilha → editar → exportar PDF em uma sessão), sem o mesmo valor de continuidade de longo prazo que o calendário editorial tem — não é uma lacuna esquecida, é a mesma lógica de custo/benefício já aplicada ao HML (seção 17) e ao lockout de auditoria (seção 14). **Gatilho para reavaliar:** se o fluxo de trabalho real passar a depender de retomar uma edição de cartão em outra máquina/dia, ou perdas de trabalho em andamento começarem a acontecer na prática.
 
 ## 5. Integrações e conexões
 
@@ -235,6 +237,10 @@ Há duas barreiras de processo:
 
 O workflow não substitui revisão humana: qualquer nova dependência remota, mesmo fora da lista monitorada, exige atualização. Para bloquear o merge, a proteção da branch `main` deve exigir o check **Validar documentação de arquitetura**.
 
+### Testes automatizados no CI (15/09/2026)
+
+Até aqui, nenhum teste deste projeto rodava sozinho — os 3 arquivos em `tests/` eram todos manuais, incluindo `concurrent-post-sync.html`, que já era um teste de comportamento completo (mocka `window.PortalFirebase`, simula duas sessões, criação simultânea, conflito isolado no mesmo card, usa `throw`/grava o resultado em `document.body.dataset.result`) mas exigia uma pessoa abrir no navegador e julgar visualmente. Criado `.github/workflows/testes.yml` (roda em todo `push`/`pull_request`, sem custo — GitHub Actions é ilimitado em repositório público): executa `tests/concurrent-post-storage.test.ps1` (checagem estática de nomes de função, não comportamento), `tests/match_trends_catalog.test.py` (assert de verdade) e `tests/concurrent-post-sync.html` em Chrome headless (`--virtual-time-budget` adianta os `setTimeout()` do teste sem esperar tempo real; `--dump-dom` captura o DOM final; o passo falha se `data-result` não vier `"pass"`). Nenhum teste novo foi escrito nesta mudança, só os que já existiam passaram a rodar automaticamente — validado manualmente nos dois sentidos (injetei uma falha forçada numa cópia temporária e confirmei que `data-result="fail"` é detectado corretamente antes de descartar a cópia).
+
 ## 13. Histórico deste documento
 
 | Data | Alteração | Responsável |
@@ -273,9 +279,12 @@ A proteção por login (`auth-guard.js`) já está ativa em todas as páginas do
 
 O projeto permanece no plano Spark. Não há Cloud Functions nem outro backend privado pago. Portanto, o Firebase aplica seus mecanismos nativos contra abuso, mas o portal não implementa bloqueio temporário customizado por número de tentativas. Os registros em `securityAudit` são básicos e append-only pelas regras, porém não têm o mesmo nível de confiança de uma auditoria produzida exclusivamente por backend. Para requisitos de auditoria inviolável, desativação de conta no Firebase Auth e lockout customizado, será necessária uma camada administrativa de backend no futuro.
 
+**Revisado em 15/09/2026, decisão consciente de não implementar agora:** Cloud Functions (o caminho nativo do Firebase para lockout customizado e desativação de conta via Admin SDK) exige o plano **Blaze** — mesma trava encontrada ao desenhar o backup do Firestore (seção 18) e ao tentar habilitar o Cloud Storage. Como o projeto se mantém deliberadamente 100% gratuito, esta limitação **fica aceita por ora**, não é uma pendência esquecida. **Gatilho para reavaliar:** se algum requisito de compliance/LGPD ou um incidente real de abuso de tentativas de login exigir lockout/auditoria à prova de adulteração, essa é a hora de reconsiderar o upgrade para Blaze (ou uma alternativa fora do Firebase).
+
 | Data | Alteração | Responsável |
 |---|---|---|
 | 03/09/2026 | Firebase Authentication (e-mail/senha e Google), Firestore e regras de acesso criados; iniciada integração visual de login sem custo. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | Revisada a lacuna de lockout/auditoria robusta (exige Cloud Functions, plano Blaze): confirmado como decisão consciente de manter o projeto gratuito, não pendência esquecida. Sem mudança técnica. | Equipe de Marketing / manutenção do portal |
 
 A sincronização das telas do portal foi redirecionada de `sync-backend.js` para `portalStore` no Firestore. O acesso exige perfil ativo e é avaliado pelas regras do Firestore. O painel administrativo (`admin-users.html`) permite, no modo sem custo, criar perfis, enviar redefinição de senha, alterar status e registrar eventos básicos. A desativação bloqueia o acesso aos dados pelas regras, embora não desabilite a conta diretamente no Firebase Authentication — essa ação requer backend administrativo.
 
@@ -427,7 +436,19 @@ Quando um card passa para **Pronto para ser postado**, a mesma transação que g
 
 A **Central de Inteligência** (`intelligence-center.html`) trocou de conceito por inteiro em 11/09/2026: deixou de ser a tela de treinamento de DNA por editoria (referências, briefings, legendas aprovadas) e passou a ser um **painel de consulta de tendências de pesquisa do Google Trends**, filtrável por categoria, período e região. A funcionalidade anterior de DNA/validação de posts não foi removida do projeto — ela continua ativa dentro do calendário (`visual-editor.html`/`app.js`, via `intelligence-data.js`, ver seção 4) — só deixou de ter uma tela dedicada própria; se uma nova tela de administração desse DNA for necessária no futuro, ela precisa ser reconstruída.
 
-**Nesta primeira versão o painel é só de consulta/visualização.** Não há geração automática de conteúdo, sugestão de posts, análise de produto nem cruzamento com catálogo — o cruzamento com o catálogo de produtos (JSON) é um passo explicitamente adiado para uma etapa futura.
+**O painel é de consulta/visualização.** Não há geração automática de conteúdo nem sugestão de posts. Desde 15/09/2026 há cruzamento com o catálogo de produtos (abaixo) — o resto (análise de produto, sugestão automática de pauta) continua fora de escopo.
+
+### Cruzamento com o catálogo de produtos (15/09/2026)
+
+Cada termo do Trends ganhou um campo `matchedProducts`: até 5 produtos de `data/catalog-vonder.json` cujo nome tem palavras em comum com o termo, ranqueados por quantas palavras bateram. Calculado uma vez por dia por `scripts/match_trends_catalog.py`, chamado dentro de `sync-google-trends.yml` logo após a coleta e antes de publicar — o resultado já sai anotado no mesmo `data/google-trends.json`/`portalStore/trends-v1` de sempre, sem documento novo nem secret novo.
+
+**Por que não roda no navegador:** `data/catalog-vonder.json` tem **10.001 produtos e 12 MB** — a Central de Inteligência hoje não carrega o catálogo, e baixar 12 MB só pra essa checagem tornaria a página pesada. Calcular uma vez por dia no workflow e entregar só o resultado (nome + código, não o produto inteiro) mantém a página do jeito que era.
+
+**Algoritmo (ponytail, deliberadamente simples):** casamento por palavra normalizada (minúsculo, sem acento, sem stopword em pt-BR, ≥4 letras) contra o **nome** do produto — não a descrição, pra conter ruído. Um produto entra na lista de um termo se tiver **pelo menos uma** palavra significativa em comum; o ranking (não o filtro) usa quantas palavras bateram. Escolha deliberada de favorecer mais candidatos a menos: melhor a pessoa da equipe descartar um produto pouco relevante do que o painel nunca mostrar um produto relevante de verdade. Sem sinônimos (“furadeira” não bate com “parafusadeira”) e sem categoria própria do catálogo — o catálogo não tem esse campo hoje. **Caminho de evolução se o ruído incomodar na prática:** lista de sinônimos curada manualmente por produto, não IA/LLM (evita custo/dependência nova).
+
+**UI:** cada linha da tabela ganhou uma coluna "Produtos" com um `<details>/<summary>` nativo do HTML (zero JavaScript novo pra abrir/fechar) — mostra "—" quando não há match, ou "N produtos" expansível com os nomes.
+
+**Teste mínimo:** `tests/match_trends_catalog.test.py` (mesmo padrão informal de `tests/concurrent-post-storage.test.ps1` — sem framework, script com `assert`).
 
 ### Como os dados chegam
 
@@ -453,17 +474,20 @@ Mesmo padrão já usado para Meta/YouTube: o workflow grava `data/google-trends.
 
 ### Limitações conhecidas (ponytail)
 
-- **Sem lista de termos por categoria.** O ranking reflete o que o próprio Google já agrupa dentro de cada categoria (`related_queries` por categoria, sem termo semente) — não é filtrado pelo catálogo de produtos da OVD. Um termo genérico e sem relação direta com o portfólio pode aparecer no ranking; o cruzamento com o catálogo (JSON) fica para uma etapa futura já combinada com a diretoria de marketing.
+- **Sem lista de termos por categoria.** O ranking reflete o que o próprio Google já agrupa dentro de cada categoria (`related_queries` por categoria, sem termo semente) — um termo genérico e sem relação direta com o portfólio pode aparecer no ranking mesmo assim (o cruzamento com o catálogo, acima, ajuda a ver isso na hora — termo sem produto nenhum listado é sinal de baixa relevância pro portfólio).
 - **API não-oficial, sem SLA.** Testado manualmente durante o desenvolvimento: chamadas consecutivas ao `pytrends` retornaram HTTP 429 (limite de taxa) depois de poucas requisições seguidas. O workflow tenta cada combinação categoria/período até 3 vezes com espera crescente e, se todas falharem, preserva o último dado bom daquela combinação em vez de apagá-lo — uma categoria pode ficar um dia sem atualizar sem que o painel fique vazio. Caminho de evolução se a taxa de falha for alta na prática: migrar para uma API paga estruturada (ex. SerpApi) — decisão consciente de não usar nesta primeira versão para não exigir cadastro/custo de terceiro antes de validar o conceito.
+
+  **Avaliação com dado real (15/09/2026):** histórico das 5 execuções desde que o workflow existe (`gh run view --log`) — taxa de falha por combinação categoria/período: 11/09 2/28 (7%), 12/09 2/28 (7%), 13/09 cancelada antes de rodar (sem relação com o Google), 14/09 9/28 (32%, pior dia até agora), 15/09 0/28 (0%). Em nenhum dos dias o painel ficou vazio, e nenhuma categoria ficou presa em dado velho por mais de 1 dia — o dia ruim (14/09) se recuperou sozinho no dia seguinte. A coluna "Última atualização" já mostra a data de coleta por linha (não só um indicador global), então uma categoria que ficasse dias sem atualizar de verdade já seria visível sem mudança nenhuma. **Decisão: manter como está, sem migrar pra SerpApi agora** — a amostra é pequena (5 dias), mas nada nela justifica gastar dinheiro/cadastro novo pra um problema que os dados não mostram que exista. Reavaliar se o padrão mudar (uma categoria ficando dias seguidos sem atualizar de verdade).
 - **"Rising" pode trazer ruído.** Para categorias de nicho B2B (ex. "Industrial Materials"), a lista de termos em alta do Google às vezes inclui termos sem relação nenhuma com a categoria (ex. criptomoedas) — é o próprio algoritmo de tendência do Google reagindo a um volume de busca baixo na categoria, não um bug da coleta. Nenhuma filtragem adicional foi aplicada nesta primeira versão.
 
 ### Arquivos alterados
 
-`intelligence-center.html`, `intelligence-center.js` (reescritos por inteiro), `.github/workflows/sync-google-trends.yml` (novo), `data/google-trends.json` (novo, criado pela primeira execução do workflow). `intelligence-data.js` não foi alterado nem removido — só deixou de ser carregado por `intelligence-center.html`; continua em uso por `visual-editor.html`/`app.js`.
+`intelligence-center.html`, `intelligence-center.js` (reescritos por inteiro), `.github/workflows/sync-google-trends.yml` (novo), `data/google-trends.json` (novo, criado pela primeira execução do workflow). `intelligence-data.js` não foi alterado nem removido — só deixou de ser carregado por `intelligence-center.html`; continua em uso por `visual-editor.html`/`app.js`. Cruzamento com catálogo (15/09/2026): `scripts/match_trends_catalog.py` (novo), `tests/match_trends_catalog.test.py` (novo), `.github/workflows/sync-google-trends.yml`, `intelligence-center.html`/`.js`.
 
 | Data | Alteração | Responsável |
 |---|---|---|
 | 11/09/2026 | Central de Inteligência trocou de conceito: de treinamento de DNA por editoria para painel de consulta de tendências do Google Trends (categoria/período/região). Criado `sync-google-trends.yml` (coleta diária via `pytrends`, sem credencial nova) publicando em `data/google-trends.json` e `portalStore/trends-v1`. Só consulta/visualização nesta primeira versão — sem geração de conteúdo, sugestão de posts, análise de produto ou cruzamento com catálogo. | Equipe de Marketing / manutenção do portal |
+| 15/09/2026 | Implementado o cruzamento de termos do Trends com o catálogo de produtos (`scripts/match_trends_catalog.py`), rodando uma vez por dia dentro de `sync-google-trends.yml` — nunca no navegador, porque o catálogo tem 10.001 produtos/12 MB. Casamento por palavra normalizada no nome do produto, até 5 produtos por termo, ranqueados por sobreposição de palavras. Painel ganhou coluna "Produtos" com `<details>` nativo. | Equipe de Marketing / manutenção do portal |
 
 ## 17. Ambientes HML e PRD (15/09/2026)
 
@@ -552,3 +576,22 @@ Até aqui não havia nenhum backup do Firestore de produção (`mkt-ovd`) além 
 | Data | Alteração | Responsável |
 |---|---|---|
 | 15/09/2026 | Criado backup diário de `portalStore`/`users` do Firestore de produção para um repositório GitHub privado dedicado (`portalmktovd-backups`), via `backup-portalstore.yml` + `scripts/backup_portalstore.py`, com retenção de 30 dias. Duas alternativas foram descartadas antes desta por exigirem o plano Blaze (pago): export nativo do Firestore e Cloud Storage do Firebase (este último mudou de política e passou a exigir Blaze até para ativar). Novo secret `BACKUP_REPO_TOKEN` (fine-grained PAT restrito ao repositório de backup, configurado sem expiração — revisar periodicamente se ainda é necessário e se o dono da conta continua ativo na equipe). | Equipe de Marketing / manutenção do portal |
+
+## 19. Capacidade e cotas à medida que mais marcas entram na coleta automática
+
+Cada marca nova conectada à coleta automática (seguidores/posts do Instagram/Facebook, hoje VONDER e Ferramentas Gerais) soma no mesmo projeto Firebase (`mkt-ovd`, plano Spark) e na mesma fila de publicação do GitHub Actions. Revisado com dado real em 15/09/2026, para não escalar decisões nesta área por suposição.
+
+**GitHub Actions não é o gargalo.** O repositório é público — minutos de CI são ilimitados e gratuitos, independentemente de quantas marcas/execuções existirem. "Volume de GitHub Actions" não é, por si só, uma restrição de custo.
+
+**O que de fato tem um teto:**
+
+1. **Cota diária do Firestore (plano Spark)** — compartilhada por todas as marcas no mesmo projeto. Uso real conferido no Console (`mkt-ovd` → Uso e faturamento), já com VONDER e Ferramentas Gerais ativas e uso normal da equipe somado: **escritas 207/20.000 (1%), leituras 4.500/50.000 (9%), exclusões 12/20.000 (0,1%)**. Sobra espaço de sobra — mesmo dobrando esse consumo várias vezes (novas marcas), a cota mais apertada (leituras, 9%) ainda estaria longe do limite.
+2. **Fila compartilhada de publicação** (`concurrency: portal-dados-git-push`, ver seção 8) — todo workflow que faz `git push` espera a vez nela. Mais marcas somam mais execuções na mesma fila; hoje o atraso é de "alguns minutos", aceitável pelos workflows de coleta/reconstrução. Sem número de teto formal (não é uma cota, é fila), mas é o ponto que mais cedo sentiria o crescimento na prática — via atraso perceptível, não erro.
+3. **Cota da YouTube Data API** (10 mil unidades/dia, projeto `mkt-ovd`) — hoje só a VONDER usa YouTube; não escala por marca ainda, mas escalaria se outra marca conectasse canal próprio.
+4. **Meta Graph API** — já isolada por marca (App Meta próprio por marca, ver seção 8); uma marca não consome o limite da outra, não é uma preocupação de escala aqui.
+
+**Decisão: nenhuma ação necessária agora.** O uso real do Firestore está em single digits percentuais mesmo com duas marcas ativas — o receio original ("volume crescendo") não se confirma nos números. **Gatilho para reavaliar:** checar novamente o painel de Uso do Firebase quando uma terceira marca for conectada à coleta automática, ou se leituras/escritas diárias se aproximarem de 50-70% da cota — o que vier primeiro. Se a fila de publicação começar a gerar atrasos de dezenas de minutos (não só alguns), também vale revisar ali antes da cota do Firestore virar problema.
+
+| Data | Alteração | Responsável |
+|---|---|---|
+| 15/09/2026 | Avaliado com dado real do Console Firebase (Uso e faturamento) se o crescimento de marcas na coleta automática está perto de esgotar a cota diária do Firestore (Spark). Uso atual: 1% escritas, 9% leituras, 0,1% exclusões — longe do limite. Nenhuma ação tomada; gatilho de reavaliação definido para a próxima marca conectada ou 50-70% de uso da cota. | Equipe de Marketing / manutenção do portal |

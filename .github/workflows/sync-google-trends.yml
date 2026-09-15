@@ -6,8 +6,9 @@ name: Sincronizar tendências do Google
 # informar um termo de busca (kw_list=['']), só a categoria — é o mesmo request que o site faz
 # quando a pessoa explora só por categoria, sem digitar nada na busca — e usa o retorno de
 # related_queries() como ranking de termos da categoria (top = interesse; rising = variação).
-# ponytail: sem lista de termos pré-definida por categoria nesta primeira versão — o cruzamento
-# com o catálogo de produtos (JSON) fica para uma etapa futura.
+# Depois de coletar, scripts/match_trends_catalog.py cruza cada termo com data/catalog-vonder.json
+# (ver docs/ARQUITETURA-E-INTEGRACOES.md, seção 16) e anota matchedProducts em cada termo, antes
+# de publicar — o cruzamento roda uma vez por dia aqui, nunca no navegador (catálogo tem 12 MB).
 
 on:
   schedule:
@@ -138,6 +139,9 @@ jobs:
           path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           print('Nenhuma categoria coletada com sucesso nesta execução.' if not any_success else 'Coleta concluída.')
           PY
+
+      - name: Cruzar termos com o catálogo de produtos
+        run: python3 scripts/match_trends_catalog.py
 
       - name: Publicar dados atualizados
         run: |

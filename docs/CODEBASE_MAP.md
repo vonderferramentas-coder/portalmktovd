@@ -235,6 +235,7 @@ Todos usam o secret `META_PAGE_ACCESS_TOKEN` contra a Meta Graph API v26.0 para 
 | `diagnostico-meta.yml` / `diagnostico-meta-posts.yml` | manual | Sondagem de escopos/métricas disponíveis na API (não grava nada) |
 | `validar-documentacao-arquitetura.yml` | PR/push | Falha o check se arquivo de integração mudou sem `docs/ARQUITETURA-E-INTEGRACOES.md` mudar junto |
 | `backup-portalstore.yml` | cron diário 04:00 SP + manual | Despeja `portalStore`+`users` comprimido no repositório privado `portalmktovd-backups` (retenção 30 dias); **falha** (não só avisa) sem `BACKUP_REPO_TOKEN`/`FIREBASE_SERVICE_ACCOUNT_KEY` — ver `docs/ARQUITETURA-E-INTEGRACOES.md` seção 18 |
+| `testes.yml` | push + pull_request | Roda os 3 testes de `tests/` — checagem estática (`.ps1`), assert (`match_trends_catalog.test.py`) e `concurrent-post-sync.html` em Chrome headless — desde 15/09/2026; antes nenhum teste deste projeto rodava sozinho, só manual |
 
 **Gotcha**: sem `FIREBASE_SERVICE_ACCOUNT_KEY`, os workflows de *sync* emitem só `::warning::` e não falham — o painel fica "desatualizado" silenciosamente. `backup-portalstore.yml` é a exceção deliberada: como o único propósito dele é o backup, ele falha de verdade se algum dos dois secrets faltar.
 
@@ -353,8 +354,10 @@ sequenceDiagram
 - **Sem `FIREBASE_SERVICE_ACCOUNT_KEY`**, os workflows de sync Meta só avisam (`::warning::`) e não falham — falha silenciosa de atualização.
 - **`business-card-generator.js` é 100% local** (`localStorage` por marca) — trocar de máquina/navegador perde os cartões em edição; não há backup automático.
 - **Central de Inteligência não usa IA/LLM real** — o "DNA de editoria" é heurística de texto/imagem local (frequência de palavras, regex de CTA, cor média), documentado explicitamente no código para não criar expectativa errada.
+- **Cruzamento Trends x catálogo (15/09/2026) também é heurística simples, não IA/LLM** — `scripts/match_trends_catalog.py` casa por palavra normalizada no nome do produto (sem sinônimo, sem categoria própria do catálogo), calculado uma vez por dia dentro de `sync-google-trends.yml`, nunca no navegador (catálogo tem 10.001 produtos/12 MB). Ver `docs/ARQUITETURA-E-INTEGRACOES.md` seção 16.
 - **Três implementações redundantes e não compartilhadas** do proxy de imagem/oferta (Worker, PHP, PowerShell local) — corrigir um bug de parsing (`skuJson_0`) exige repetir a correção nos três. Já aconteceu de verdade (15/09/2026): `scripts/fg-offer-proxy.ps1` arredondava o desconto diferente do Worker (`Floor` vs `Round`) e não devolvia `offerCta`; `product-image.php` podia mandar `Content-Type: image/webp` com bytes JPEG dentro. Corrigido; os quatro arquivos ganharam comentário `ponytail:` apontando os gêmeos, ver `docs/ARQUITETURA-E-INTEGRACOES.md` seção 7.
 - **Arquivos de backup/snapshot na raiz** (`calendar-recovery-*.json`, `data/catalog-vonder.backup-*.json`, `data/social-posts.json`) não são dados ativos — nenhum tem referência em código; não confundir com os arquivos "vivos" de mesmo prefixo.
+- **Cobertura de teste era praticamente nula pra uma área que já teve bug real de concorrência** (calendário multi-marca, revisão transacional por card). Até 15/09/2026, nenhum dos 3 arquivos em `tests/` rodava sozinho. `testes.yml` passou a rodar os três a cada push/PR: `concurrent-post-storage.test.ps1` (checagem estática de nomes de função, não comportamento real), `match_trends_catalog.test.py` (assert de verdade) e `concurrent-post-sync.html` (o único que simula concorrência de verdade) em Chrome headless com `--virtual-time-budget`/`--dump-dom`, lendo `document.body.dataset.result`.
 
 ## Navigation Guide
 
