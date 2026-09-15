@@ -2,8 +2,8 @@
 
 > **Documento vivo.** Atualize este arquivo na mesma alteração que criar, trocar ou remover uma integração, fonte de dados, automação, serviço hospedado ou recurso que possa gerar dúvida para a TI. A validação automatizada do repositório ajuda a cobrar essa atualização para os principais arquivos de integração.
 
-**Última revisão:** 11/09/2026
-**Escopo desta revisão:** estado identificado no código da branch `main`, incluindo o início da conexão do TikTok (conta Vonder), o workflow de status e notificações do calendário, e a troca de conceito da Central de Inteligência para painel de tendências do Google Trends (seção 16).
+**Última revisão:** 15/09/2026
+**Escopo desta revisão:** correção das regras públicas do Realtime Database de produção (seção 6).
 
 ## 1. O que é este projeto
 
@@ -90,8 +90,8 @@ As chaves principais são `posts`, `settings`, `intel` e `brands`. Cada marca po
 
 ### O que a TI deve validar no Firebase
 
-- **Regras de acesso:** a URL do banco não é segredo; a proteção real está nas regras do Realtime Database, ausentes deste repositório. Confirmar quem pode ler/escrever e se acesso anônimo é aceitável.
-- **Autenticação:** o código usa REST direto, sem login Firebase no navegador. Se os dados não puderem ser públicos, adotar Firebase Authentication e regras por usuário/grupo ou uma API corporativa autenticada.
+- **Regras de acesso:** **desatualizado** — esta descrição do Realtime Database é anterior à migração da sincronização para o Firestore (seção 14). `sync-backend.js` hoje só fala com `PortalFirebase.readPortalStore`/`writePortalStore` (Firestore); nenhum arquivo do projeto usa mais o SDK do Realtime Database. Em 15/09/2026 foi descoberto que as regras do Realtime Database de produção estavam **públicas** (`.read`/`.write` liberados para qualquer pessoa com a URL do banco — URL essa que não é segredo, está em `firebase-config.js`, visível a quem abrir o site). Corrigido publicando `{"rules": {".read": false, ".write": false}}`; validado sem impacto (login e carregamento do portal testados nas duas URLs de produção após a mudança). O node `store/` remanescente é dado órfão da era pré-Firestore.
+- **Autenticação:** desatualizado pelo mesmo motivo — a sincronização real hoje passa por Firebase Authentication + regras do Firestore (`firestore.rules`, seção 14), não por REST anônimo no Realtime Database.
 - **Dados pessoais:** não armazenar documentos, senhas, tokens, imagens pessoais em base64 ou dados desnecessários.
 - **Concorrência:** há leitura seguida de escrita, não transação atômica. É proteção prática para o volume atual, mas alterações simultâneas no mesmo instante ainda são um risco residual.
 - **Continuidade:** `localStorage` é cache/fallback, não backup corporativo.
