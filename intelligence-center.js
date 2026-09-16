@@ -189,6 +189,18 @@
   if (pagerPrevBtn) pagerPrevBtn.addEventListener('click', () => { if (page > 0) { page--; render(); } });
   if (pagerNextBtn) pagerNextBtn.addEventListener('click', () => { page++; render(); });
 
+  // ---- dropdown do ranking (fechado por padrão; mesmo mecanismo de followers-dashboard.js) ----
+  const trendsToggle = el('trendsToggle'), trendsSectionBody = el('trendsSectionBody');
+  if (trendsToggle && trendsSectionBody) {
+    trendsToggle.addEventListener('click', () => {
+      const expanded = trendsToggle.getAttribute('aria-expanded') === 'true';
+      trendsToggle.setAttribute('aria-expanded', String(!expanded));
+      trendsSectionBody.classList.toggle('is-collapsed', expanded);
+      trendsSectionBody.setAttribute('aria-hidden', String(expanded));
+      trendsSectionBody.inert = expanded;
+    });
+  }
+
   // ---- carregamento ----
   async function load() {
     if (!window.PortalFirebase) return;
