@@ -160,6 +160,9 @@
     };
     reader.readAsDataURL(file);
   }
+  // Exposto para admin-users.js (script clássico, roda antes dele) reaproveitar o mesmo
+  // recorte quadrado + compressão ao editar a foto de outro usuário pela tela de admin.
+  window.PortalShell = { readBrandPhoto };
 
   function loadBrands(){
     try{
@@ -762,18 +765,14 @@
         </div>
       </div>
       <div class="modal-body">
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <div>
-            <label>Nome</label>
+        <div class="portal-profile-form">
+          <label class="portal-profile-photo-upload" id="profilePhotoLabel" title="Alterar foto">
+            <span class="portal-profile-photo-preview" id="profilePhotoPreview">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 30)}</span>
+            <span class="portal-profile-photo-edit">${svgIcon('<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/>', 13)}</span>
+            <input id="profilePhotoInput" type="file" accept="image/*" style="display:none" />
+          </label>
+          <div class="portal-profile-name-field">
             <input id="profileNameInput" type="text" placeholder="Seu nome" />
-          </div>
-          <div>
-            <label>Foto</label>
-            <label class="portal-brand-photo-upload" id="profilePhotoLabel">
-              <span class="portal-brand-photo-preview" id="profilePhotoPreview">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 15)}</span>
-              <span id="profilePhotoLabelText">Escolher foto</span>
-              <input id="profilePhotoInput" type="file" accept="image/*" style="display:none" />
-            </label>
           </div>
         </div>
       </div>
@@ -792,7 +791,6 @@
       readBrandPhoto(file, dataUrl=>{
         profilePhotoDataUrl = dataUrl;
         $('profilePhotoPreview').innerHTML = `<img src="${dataUrl}" alt="" />`;
-        $('profilePhotoLabelText').textContent = 'Trocar foto';
       });
     });
     backdrop.querySelector('#saveProfile').addEventListener('click', async ()=>{
@@ -835,11 +833,9 @@
     if(!profileModalEl) profileModalEl = buildProfileModal();
     const nameInput = profileModalEl.querySelector('#profileNameInput');
     const preview = profileModalEl.querySelector('#profilePhotoPreview');
-    const labelText = profileModalEl.querySelector('#profilePhotoLabelText');
     profilePhotoDataUrl = null;
     nameInput.value = '';
-    preview.innerHTML = svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 15);
-    labelText.textContent = 'Escolher foto';
+    preview.innerHTML = svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 30);
     profileModalEl.style.display = 'flex';
     if(!window.PortalFirebase) return;
     try{
@@ -848,7 +844,6 @@
       if(context.profile.photo){
         profilePhotoDataUrl = context.profile.photo;
         preview.innerHTML = `<img src="${context.profile.photo}" alt="" />`;
-        labelText.textContent = 'Trocar foto';
       }
     }catch(e){ /* mantém os campos em branco — usuário ainda consegue preencher do zero */ }
     nameInput.focus();

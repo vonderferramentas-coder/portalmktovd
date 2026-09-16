@@ -17,6 +17,7 @@ const RESET_ICON = svgIcon('<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9
 const REFRESH_ICON = svgIcon('<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>');
 const PLUS_ICON = svgIcon('<path d="M12 5v14M5 12h14"/>');
 const TRASH_ICON = svgIcon('<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>');
+const PERSON_ICON = svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 14);
 
 const message = $('adminMessage');
 function show(text, success = false) {
@@ -410,7 +411,8 @@ function renderUserRows() {
   const rows = $('userRows');
   if (!rows) return;
   rows.innerHTML = latestUsers.map(user => `<tr>
-    <td>${escape(user.name)}</td>
+    <td><span class="admin-table-avatar">${user.photo ? `<img src="${escape(user.photo)}" alt="" />` : PERSON_ICON}</span></td>
+    <td class="admin-table-name">${escape(user.name)}</td>
     <td>${escape(user.email)}</td>
     <td>${escape(profileName(user.role))}</td>
     <td><span class="admin-badge ${user.status === 'active' ? 'active' : 'blocked'}">${user.status === 'active' ? 'Ativo' : 'Bloqueado'}</span></td>
@@ -420,7 +422,7 @@ function renderUserRows() {
       <button class="btn-icon" type="button" data-edit="${user.id}" title="Editar usuário" aria-label="Editar usuário">${PENCIL_ICON}</button>
       <button class="btn-icon" type="button" data-menu="${user.id}" title="Mais ações" aria-label="Mais ações">${MENU_ICON}</button>
     </div></td>
-  </tr>`).join('') || '<tr><td colspan="7" class="muted">Nenhum usuário aprovado.</td></tr>';
+  </tr>`).join('') || '<tr><td colspan="8" class="muted">Nenhum usuário aprovado.</td></tr>';
 }
 async function load() {
   const snapshot = await getDocs(collection(db, 'users'));
@@ -468,6 +470,7 @@ async function loadAudit() {
 // resto do portal (ver portal-shell.js). Reúne nome/e-mail/perfil num só lugar.
 // ============================================================
 let editModalEl = null;
+let editUserPhotoDataUrl = null;
 function buildEditModal() {
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
@@ -480,6 +483,13 @@ function buildEditModal() {
       </div>
     </div>
     <div class="modal-body">
+      <div class="portal-profile-form">
+        <label class="portal-profile-photo-upload" id="editUserPhotoLabel" title="Alterar foto">
+          <span class="portal-profile-photo-preview" id="editUserPhotoPreview">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 30)}</span>
+          <span class="portal-profile-photo-edit">${svgIcon('<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/>', 13)}</span>
+          <input id="editUserPhotoInput" type="file" accept="image/*" style="display:none" />
+        </label>
+      </div>
       <div class="auth-form">
         <div class="auth-field"><label for="editUserName">Nome</label><input id="editUserName" type="text" required></div>
         <div class="auth-field"><label for="editUserEmail">E-mail</label><input id="editUserEmail" type="email" required></div>
@@ -496,6 +506,13 @@ function buildEditModal() {
   backdrop.addEventListener('click', ev => { if (ev.target === backdrop) close(); });
   backdrop.querySelector('.modal-close').addEventListener('click', close);
   backdrop.querySelector('#cancelEditUser').addEventListener('click', close);
+  backdrop.querySelector('#editUserPhotoInput').addEventListener('change', ev => {
+    const file = ev.target.files && ev.target.files[0]; if (!file) return;
+    window.PortalShell.readBrandPhoto(file, dataUrl => {
+      editUserPhotoDataUrl = dataUrl;
+      $('editUserPhotoPreview').innerHTML = `<img src="${dataUrl}" alt="" />`;
+    });
+  });
   backdrop.querySelector('#saveEditUser').addEventListener('click', async () => {
     const id = backdrop.dataset.userId;
     const name = $('editUserName').value.trim();
@@ -504,11 +521,13 @@ function buildEditModal() {
     const notificationBrands = selectedNotificationBrands();
     if (!name) { $('editUserName').focus(); return; }
     if (!email) { $('editUserEmail').focus(); return; }
+    const patch = { name, email, role, notificationBrands };
+    if (editUserPhotoDataUrl != null) patch.photo = editUserPhotoDataUrl;
     const btn = backdrop.querySelector('#saveEditUser');
     btn.disabled = true;
     try {
-      const nextUsers = latestUsers.map(user => user.id === id ? Object.assign({}, user, { name, email, role, notificationBrands }) : user);
-      await updateDoc(doc(db, 'users', id), { name, email, role, notificationBrands });
+      const nextUsers = latestUsers.map(user => user.id === id ? Object.assign({}, user, patch) : user);
+      await updateDoc(doc(db, 'users', id), patch);
       latestUsers = nextUsers;
       renderUserRows();
       await syncNotificationRoutes(nextUsers);
@@ -526,6 +545,8 @@ function buildEditModal() {
 function openEditModal(user) {
   if (!editModalEl) editModalEl = buildEditModal();
   editModalEl.dataset.userId = user.id;
+  editUserPhotoDataUrl = null;
+  $('editUserPhotoPreview').innerHTML = user.photo ? `<img src="${escape(user.photo)}" alt="" />` : svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 30);
   $('editUserName').value = user.name || '';
   $('editUserEmail').value = user.email || '';
   $('editUserRole').innerHTML = roleOptionsHtml(user.role);

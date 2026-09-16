@@ -162,6 +162,15 @@
     .portal-brand-photo-preview{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:var(--surface-muted);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--text-faint)}
     .portal-brand-photo-preview img{width:100%;height:100%;object-fit:cover;display:block}
 
+    /* Modal "Perfil": avatar circular grande e clicável, centralizado, nome logo abaixo */
+    .portal-profile-form{display:flex;flex-direction:column;align-items:center;gap:14px;padding:4px 0 8px}
+    .portal-profile-photo-upload{position:relative;width:96px;height:96px;cursor:pointer;display:block}
+    .portal-profile-photo-preview{width:96px;height:96px;border-radius:50%;background:var(--surface-muted);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--text-faint);border:2px solid var(--border-strong)}
+    .portal-profile-photo-preview img{width:100%;height:100%;object-fit:cover;display:block}
+    .portal-profile-photo-edit{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--accent-ink);color:var(--card);display:flex;align-items:center;justify-content:center;border:2px solid var(--card);pointer-events:none}
+    .portal-profile-name-field{width:100%}
+    .portal-profile-name-field input{text-align:center}
+
     /* Sidebar recolhida: tanto via botão manual (.collapsed, alternado por portal-shell.js e
        persistido) quanto automaticamente em telas estreitas (media query abaixo). O topbar
        (logo + botão de recolher) empilha na vertical pra caber nos 72px de largura. */
