@@ -1911,7 +1911,7 @@
   ].map(function (recipe) {
     var vector = [255 - recipe.rgb[0], 255 - recipe.rgb[1], 255 - recipe.rgb[2]];
     var norm = vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2];
-    return { cmyk: recipe.cmyk, vector: vector, norm: norm, styles: recipe.styles };
+    return { cmyk: recipe.cmyk, vector: vector, norm: norm, normSqrt: Math.sqrt(norm), styles: recipe.styles };
   });
 
   function canvasToCmyk(canvasElement) {
@@ -1922,15 +1922,21 @@
     });
     for (var source = 0, target = 0; source < rgba.length; source += 4, target += 4) {
       var r = rgba[source], g = rgba[source + 1], b = rgba[source + 2];
+      var pr = 255 - r, pg = 255 - g, pb = 255 - b;
+      var pixelNormSqrt = Math.sqrt(pr * pr + pg * pg + pb * pb);
       var matched = false;
       for (var i = 0; i < activeRecipes.length; i++) {
         var recipe = activeRecipes[i];
-        var coverage = ((255 - r) * recipe.vector[0] + (255 - g) * recipe.vector[1] + (255 - b) * recipe.vector[2]) / recipe.norm;
+        var coverage = (pr * recipe.vector[0] + pg * recipe.vector[1] + pb * recipe.vector[2]) / recipe.norm;
         if (coverage <= .015 || coverage > 1.03) continue;
-        var predictedR = 255 - coverage * recipe.vector[0];
-        var predictedG = 255 - coverage * recipe.vector[1];
-        var predictedB = 255 - coverage * recipe.vector[2];
-        if (Math.abs(r - predictedR) + Math.abs(g - predictedG) + Math.abs(b - predictedB) >= 18) continue;
+        // Cosseno entre o vetor do pixel e o vetor da cor aprovada: um pixel realmente
+        // suavizado (antialiasing) contra branco cai exatamente na mesma direção do vetor da
+        // receita (cos ~1), então isso distingue isso de uma cor incidental (ex.: o cinza claro
+        // do diagrama de QR do PILAR TECNOLOGIA "parecia" o azul institucional o bastante pra
+        // bater no teste de distância absoluta antigo, e saía impresso com um véu azulado em vez
+        // do cinza neutro puro K que deveria ter).
+        var cos = pixelNormSqrt ? (pr * recipe.vector[0] + pg * recipe.vector[1] + pb * recipe.vector[2]) / (pixelNormSqrt * recipe.normSqrt) : 0;
+        if (cos < .999) continue;
         // Coberturas até 1.03 são toleradas para pegar tons de marca ligeiramente diferentes
         // (ex.: #FABC09 vs #FFC20D) como o mesmo amarelo aprovado, mas sem o clamp abaixo o
         // valor final passava de 255 e o Uint8Array "dava a volta" (ex.: 260 virava 4),
