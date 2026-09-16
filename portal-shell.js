@@ -454,33 +454,51 @@
   // ============================================================
   const NAV_ITEMS = [
     { href:'index.html', label:'Início', icon:'<path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>' },
-    { href:'visual-editor.html', label:'Calendário de Postagens', icon:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>' },
-    { href:'post-editor.html', label:'Editor de Posts', icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/><path d="m14 18 3-3"/>' },
-    { href:'photoshop-actions.html', label:'Ações do Photoshop', icon:'<path d="M4 4h16v16H4z"/><path d="M8 8h3.5a2.5 2.5 0 1 1 0 5H8z"/><path d="M14.5 15.5h2.7"/>' },
-    { href:'business-card-generator.html', label:'Gerador de Cartões', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h5M7 14h3M15.5 10.5h2M15.5 14h2"/>' },
-    { href:'followers-dashboard.html', label:'Redes sociais', icon:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>' },
-    { href:'intelligence-center.html', label:'Central de Inteligência', icon:'<path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/><path d="M9 18h6"/><path d="M10 22h4"/>' },
-    { href:'templates.html', label:'Templates', icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' },
+    // Seções de navegação: só um rótulo estático acima dos itens (sem ícone, sem recolher —
+    // referência: rótulo "Projects" da sidebar do animate-ui.com/docs/components/radix/sidebar).
+    { group:'Criação', items:[
+      { href:'post-editor.html', label:'Editor de Posts', icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/><path d="m14 18 3-3"/>' },
+      { href:'photoshop-actions.html', label:'Ações do Photoshop', icon:'<path d="M4 4h16v16H4z"/><path d="M8 8h3.5a2.5 2.5 0 1 1 0 5H8z"/><path d="M14.5 15.5h2.7"/>' },
+      { href:'business-card-generator.html', label:'Gerador de Cartões', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h5M7 14h3M15.5 10.5h2M15.5 14h2"/>' },
+      { href:'templates.html', label:'Templates', icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' }
+    ] },
+    { group:'Mídias Sociais', items:[
+      { href:'visual-editor.html', label:'Calendário de Postagens', icon:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>' },
+      { href:'followers-dashboard.html', label:'Redes sociais', icon:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>' },
+      { href:'intelligence-center.html', label:'Central de Inteligência', icon:'<path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/><path d="M9 18h6"/><path d="M10 22h4"/>' }
+    ] },
 
-    // página sensível: fica de fora por padrão pro perfil Usuário (ver defaultHidden em
-    // auth-guard.js/admin-users.js) até um administrador marcá-la em Usuários e acessos >
-    // Permissões por perfil — deixou de ser um bloqueio fixo de código (ver histórico) porque
-    // agora é o próprio admin quem decide, por perfil, se ela fica visível ou não
-    { href:'admin-users.html', label:'Usuários e acessos', icon:'<path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6Z"/>', defaultHidden:true }
+    { group:'Administração', items:[
+      // página sensível: fica de fora por padrão pro perfil Usuário (ver defaultHidden em
+      // auth-guard.js/admin-users.js) até um administrador marcá-la em Usuários e acessos >
+      // Permissões por perfil — deixou de ser um bloqueio fixo de código (ver histórico) porque
+      // agora é o próprio admin quem decide, por perfil, se ela fica visível ou não
+      { href:'admin-users.html', label:'Usuários e acessos', icon:'<path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6Z"/>', defaultHidden:true }
+    ] }
   ];
-  // fonte única da lista de páginas do menu, pra Usuários e acessos montar o checklist de
-  // "quais páginas cada perfil pode ver" sem duplicar href/label — ver admin-users.js
-  // (renderPermPages) e auth-guard.js (aplica o resultado escondendo item/card + a própria página)
-  window.PortalNavItems = NAV_ITEMS.map(item => ({ href: item.href, label: item.label, defaultHidden: !!item.defaultHidden }));
+  // fonte única da lista de páginas do menu (achatando os grupos acima), pra Usuários e acessos
+  // montar o checklist de "quais páginas cada perfil pode ver" sem duplicar href/label — ver
+  // admin-users.js (renderPermPages) e auth-guard.js (aplica o resultado escondendo item/card +
+  // a própria página); permissão continua por página, nunca por grupo.
+  const NAV_LEAF_ITEMS = NAV_ITEMS.flatMap(entry => entry.items || [entry]);
+  window.PortalNavItems = NAV_LEAF_ITEMS.map(item => ({ href: item.href, label: item.label, defaultHidden: !!item.defaultHidden }));
   function currentPageFile(){
     return (location.pathname.split('/').pop() || 'index.html');
   }
+  function renderNavItemHtml(item, cur){
+    const active = cur === item.href;
+    return `<a href="${item.href}" class="portal-nav-item${active?' active':''}">${svgIcon(item.icon)}<span>${escapeHtml(item.label)}</span></a>`;
+  }
   function renderNavHtml(){
     const cur = currentPageFile();
-    return `<nav class="portal-nav">${NAV_ITEMS.map(item=>{
-      const active = cur === item.href;
-      return `<a href="${item.href}" class="portal-nav-item${active?' active':''}">${svgIcon(item.icon)}<span>${escapeHtml(item.label)}</span></a>`;
-    }).join('')}</nav>`;
+    const html = NAV_ITEMS.map(entry=>{
+      if(!entry.items) return renderNavItemHtml(entry, cur);
+      return `<div class="portal-nav-section">
+        <div class="portal-nav-section-label">${escapeHtml(entry.group)}</div>
+        ${entry.items.map(sub=>renderNavItemHtml(sub, cur)).join('')}
+      </div>`;
+    }).join('');
+    return `<nav class="portal-nav">${html}</nav>`;
   }
 
   // ============================================================
@@ -553,10 +571,14 @@
         });
       });
     } else {
+      // Editar/duplicar/excluir marca fica só pra Admin — mesma checagem de
+      // document.body.dataset.userRole (setado por auth-guard.js) usada em checkAdminRole
+      // (templates.js) e no botão de recolher/etc. deste arquivo.
+      const isAdmin = document.body.dataset.userRole === 'admin';
       row.className = 'portal-brand-row' + (b.id===ACTIVE_ID ? ' active' : '');
-      row.innerHTML = `${brandAvatarHtml(b)}<span class="portal-brand-row-name">${escapeHtml(b.name)}</span><button type="button" class="portal-brand-row-edit" title="Editar marca" aria-label="Editar marca">${svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', 13)}</button>`;
+      row.innerHTML = `${brandAvatarHtml(b)}<span class="portal-brand-row-name">${escapeHtml(b.name)}</span>${isAdmin ? `<button type="button" class="portal-brand-row-edit" title="Editar marca" aria-label="Editar marca">${svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', 13)}</button>` : ''}`;
       row.addEventListener('click', ()=>{ if(b.id!==ACTIVE_ID) switchToBrand(b.id); });
-      row.querySelector('.portal-brand-row-edit').addEventListener('click', ev=>{ ev.stopPropagation(); editingBrandId = b.id; renderBrandPopoverList(); });
+      if(isAdmin) row.querySelector('.portal-brand-row-edit').addEventListener('click', ev=>{ ev.stopPropagation(); editingBrandId = b.id; renderBrandPopoverList(); });
     }
     return row;
   }
@@ -576,13 +598,15 @@
 
   function openBrandPopover(){
     const trigger = $('portalBrandTrigger'); if(!trigger) return;
+    // Criar marca nova também é só pra Admin — mesma checagem de buildBrandRow acima.
+    const isAdmin = document.body.dataset.userRole === 'admin';
     brandPopoverEl = document.createElement('div');
     brandPopoverEl.className = 'portal-brand-popover';
-    brandPopoverEl.innerHTML = `<div class="portal-brand-list"></div><div class="portal-brand-divider"></div><button type="button" class="portal-brand-add">${svgIcon('<path d="M12 5v14M5 12h14"/>', 14)}<span>Nova marca</span></button>`;
+    brandPopoverEl.innerHTML = `<div class="portal-brand-list"></div>${isAdmin ? `<div class="portal-brand-divider"></div><button type="button" class="portal-brand-add">${svgIcon('<path d="M12 5v14M5 12h14"/>', 14)}<span>Nova marca</span></button>` : ''}`;
     document.body.appendChild(brandPopoverEl);
     renderBrandPopoverList();
     positionPopover(brandPopoverEl, trigger);
-    brandPopoverEl.querySelector('.portal-brand-add').addEventListener('click', ()=>{ closeBrandPopover(); openNewBrandModal(); });
+    if(isAdmin) brandPopoverEl.querySelector('.portal-brand-add').addEventListener('click', ()=>{ closeBrandPopover(); openNewBrandModal(); });
     trigger.classList.add('open');
     brandPopoverOpen = true;
     document.addEventListener('mousedown', onDocClickClosePopover);
@@ -635,9 +659,10 @@
     const bar = $('portalAccountBar'); if(!bar) return;
     accountMenuEl = document.createElement('div');
     accountMenuEl.className = 'portal-brand-popover portal-account-menu';
-    accountMenuEl.innerHTML = `<button type="button" class="portal-account-menu-item" id="portalResetPasswordRow">${svgIcon('<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>', 15)}<span>Redefinir senha</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item danger" id="portalMenuLogoutBtn">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}<span>Sair</span></button>`;
+    accountMenuEl.innerHTML = `<a href="notifications.html" class="portal-account-menu-item">${svgIcon('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>', 15)}<span>Notificações</span><span class="portal-account-menu-dot"${unreadNotifications?'':' hidden'}></span></a><button type="button" class="portal-account-menu-item" id="portalMenuSettingsBtn">${svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>', 15)}<span>Configurações</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item" id="portalResetPasswordRow">${svgIcon('<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>', 15)}<span>Redefinir senha</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item danger" id="portalMenuLogoutBtn">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}<span>Sair</span></button>`;
     document.body.appendChild(accountMenuEl);
     positionPopoverAbove(accountMenuEl, bar);
+    accountMenuEl.querySelector('#portalMenuSettingsBtn').addEventListener('click', ()=>{ closeAccountMenu(); openPortalSettingsModal(); });
     accountMenuEl.querySelector('#portalResetPasswordRow').addEventListener('click', ()=>{ closeAccountMenu(); openResetPasswordModal(); });
     accountMenuEl.querySelector('#portalMenuLogoutBtn').addEventListener('click', ()=>{ closeAccountMenu(); doLogout(); });
     bar.setAttribute('aria-expanded', 'true');
@@ -952,51 +977,54 @@
         ${renderNavHtml()}
       </div>
       <div style="margin-top:auto">
-        <a href="notifications.html" class="portal-notifications-link" aria-label="Abrir notificações"><span class="portal-notifications-icon">${svgIcon('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>', 16)}</span><span class="portal-notifications-label">Notificações</span><span class="portal-notifications-count" id="portalNotificationsCount" aria-live="polite" hidden></span></a>
         <div class="portal-account-bar" id="portalAccountBar" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
-          <span class="portal-account-avatar">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 14)}</span>
+          <span class="portal-account-avatar">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 14)}<span class="portal-account-avatar-dot" id="portalAccountAvatarDot" hidden></span></span>
           <span class="portal-account-info"><span class="portal-account-name" id="portalProfileName">Conta</span><span class="portal-account-email" id="portalProfileEmail"></span></span>
           <button type="button" class="portal-account-btn" id="portalLogoutBtn" title="Sair" aria-label="Sair">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}</button>
         </div>
-        <button type="button" class="portal-nav-item" id="portalSettingsBtn" style="margin-top:6px">${svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>')}<span>Configurações</span></button>
       </div>
     `;
     renderBrandTrigger();
     renderCollapseBtn();
     applyCollapsedClass();
+    applyNotificationDot();
     $('portalBrandTrigger').addEventListener('click', ()=>{ brandPopoverOpen ? closeBrandPopover() : openBrandPopover(); });
     $('portalCollapseBtn').addEventListener('click', toggleSidebarCollapsed);
-    $('portalSettingsBtn').addEventListener('click', openPortalSettingsModal);
     wireAccountBar();
   }
-  let notificationCountStarted = false;
-  function renderPortalNotificationCount(items){
-    const badge = $('portalNotificationsCount');
-    const link = badge && badge.closest('.portal-notifications-link');
-    if(!badge || !link) return;
-    const unread = (Array.isArray(items) ? items : []).filter(item=>item.kind==='postReadyNotification' && !item.readAt).length;
-    const label = unread===1 ? '1 notificação não lida' : `${unread} notificações não lidas`;
-    badge.textContent = unread>99 ? '99+' : String(unread);
-    badge.hidden = unread===0;
-    badge.title = label;
-    link.setAttribute('aria-label', unread ? `Abrir notificações: ${label}` : 'Abrir notificações');
+
+  // ============================================================
+  // INDICADOR DE NOTIFICAÇÃO NÃO LIDA — um ponto simples (sem contagem) no avatar da barra
+  // "Conta" e, quando o dropdown abre, o mesmo ponto ao lado de "Notificações" (é de lá que o
+  // alerta vem). Só pro perfil social-media, mesma restrição que o badge antigo tinha.
+  // ============================================================
+  let unreadNotifications = false;
+  function applyNotificationDot(){
+    const avatarDot = $('portalAccountAvatarDot');
+    if(avatarDot) avatarDot.hidden = !unreadNotifications;
+    if(accountMenuEl){
+      const menuDot = accountMenuEl.querySelector('.portal-account-menu-dot');
+      if(menuDot) menuDot.hidden = !unreadNotifications;
+    }
   }
-  function startPortalNotificationCount(attempt){
-    const badge = $('portalNotificationsCount');
-    if(!badge || notificationCountStarted) return;
+  let notificationWatchStarted = false;
+  function startPortalNotificationWatch(attempt){
+    if(notificationWatchStarted) return;
     if(!window.PortalFirebase || document.body.dataset.authenticated!=='true'){
-      if((attempt||0)<50) setTimeout(()=>startPortalNotificationCount((attempt||0)+1),200);
+      if((attempt||0)<50) setTimeout(()=>startPortalNotificationWatch((attempt||0)+1),200);
       return;
     }
-    if(document.body.dataset.userRole!=='social-media'){ badge.hidden=true; return; }
-    notificationCountStarted = true;
-    const retry = ()=>{ notificationCountStarted=false; if((attempt||0)<50) setTimeout(()=>startPortalNotificationCount((attempt||0)+1),500); };
-    window.PortalFirebase.subscribeNotifications(renderPortalNotificationCount,retry).catch(retry);
+    if(document.body.dataset.userRole!=='social-media') return;
+    notificationWatchStarted = true;
+    const retry = ()=>{ notificationWatchStarted=false; if((attempt||0)<50) setTimeout(()=>startPortalNotificationWatch((attempt||0)+1),500); };
+    window.PortalFirebase.subscribeNotifications(items=>{
+      unreadNotifications = (Array.isArray(items) ? items : []).some(item=>item.kind==='postReadyNotification' && !item.readAt);
+      applyNotificationDot();
+    }, retry).catch(retry);
   }
 
-
   renderSidebar();
-  startPortalNotificationCount();
+  startPortalNotificationWatch();
 
   if(SYNC_ENABLED){
     syncPullBrands();
