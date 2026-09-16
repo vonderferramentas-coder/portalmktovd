@@ -670,7 +670,7 @@
     const bar = $('portalAccountBar'); if(!bar) return;
     accountMenuEl = document.createElement('div');
     accountMenuEl.className = 'portal-brand-popover portal-account-menu';
-    accountMenuEl.innerHTML = `<button type="button" class="portal-account-menu-item" id="portalMenuProfileBtn">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 15)}<span>Perfil</span></button><a href="notifications.html" class="portal-account-menu-item">${svgIcon('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>', 15)}<span>Notificações</span><span class="portal-account-menu-dot"${unreadNotifications?'':' hidden'}></span></a><button type="button" class="portal-account-menu-item" id="portalMenuSettingsBtn">${svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>', 15)}<span>Configurações</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item" id="portalResetPasswordRow">${svgIcon('<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>', 15)}<span>Redefinir senha</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item danger" id="portalMenuLogoutBtn">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}<span>Sair</span></button>`;
+    accountMenuEl.innerHTML = `<button type="button" class="portal-account-menu-item" id="portalMenuProfileBtn">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 15)}<span>Perfil</span></button><a href="notifications.html" class="portal-account-menu-item">${svgIcon('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>', 15)}<span>Notificações</span><span class="portal-account-menu-dot"${unreadNotifications?'':' hidden'}>${notificationBadgeLabel()}</span></a><button type="button" class="portal-account-menu-item" id="portalMenuSettingsBtn">${svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>', 15)}<span>Configurações</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item" id="portalResetPasswordRow">${svgIcon('<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>', 15)}<span>Redefinir senha</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item danger" id="portalMenuLogoutBtn">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}<span>Sair</span></button>`;
     document.body.appendChild(accountMenuEl);
     positionPopoverAbove(accountMenuEl, bar);
     accountMenuEl.querySelector('#portalMenuProfileBtn').addEventListener('click', ()=>{ closeAccountMenu(); openProfileModal(); });
@@ -1396,17 +1396,18 @@
   }
 
   // ============================================================
-  // INDICADOR DE NOTIFICAÇÃO NÃO LIDA — um ponto simples (sem contagem) no avatar da barra
-  // "Conta" e, quando o dropdown abre, o mesmo ponto ao lado de "Notificações" (é de lá que o
-  // alerta vem). Só pro perfil social-media, mesma restrição que o badge antigo tinha.
+  // INDICADOR DE NOTIFICAÇÃO NÃO LIDA — badge com a quantidade (não só um ponto) no avatar da
+  // barra "Conta" e, quando o dropdown abre, o mesmo badge ao lado de "Notificações" (é de lá
+  // que o alerta vem). Só pro perfil social-media, mesma restrição que o badge antigo tinha.
   // ============================================================
-  let unreadNotifications = false;
+  let unreadNotifications = 0;
+  function notificationBadgeLabel(){ return unreadNotifications>9 ? '9+' : String(unreadNotifications); }
   function applyNotificationDot(){
     const avatarDot = $('portalAccountAvatarDot');
-    if(avatarDot) avatarDot.hidden = !unreadNotifications;
+    if(avatarDot){ avatarDot.hidden = !unreadNotifications; avatarDot.textContent = notificationBadgeLabel(); }
     if(accountMenuEl){
       const menuDot = accountMenuEl.querySelector('.portal-account-menu-dot');
-      if(menuDot) menuDot.hidden = !unreadNotifications;
+      if(menuDot){ menuDot.hidden = !unreadNotifications; menuDot.textContent = notificationBadgeLabel(); }
     }
   }
   let notificationWatchStarted = false;
@@ -1420,7 +1421,7 @@
     notificationWatchStarted = true;
     const retry = ()=>{ notificationWatchStarted=false; if((attempt||0)<50) setTimeout(()=>startPortalNotificationWatch((attempt||0)+1),500); };
     window.PortalFirebase.subscribeNotifications(items=>{
-      unreadNotifications = (Array.isArray(items) ? items : []).some(item=>item.kind==='postReadyNotification' && !item.readAt);
+      unreadNotifications = (Array.isArray(items) ? items : []).filter(item=>item.kind==='postReadyNotification' && !item.readAt).length;
       applyNotificationDot();
     }, retry).catch(retry);
   }

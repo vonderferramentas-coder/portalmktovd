@@ -108,13 +108,13 @@
     .portal-account-bar:hover{background:var(--surface-muted)}
     .portal-account-bar.open{border-color:var(--accent-ink);box-shadow:0 0 0 2px var(--accent-weak)}
     .portal-account-avatar{position:relative;flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--surface-muted);color:var(--muted);display:flex;align-items:center;justify-content:center}
-    /* Indicador de notificação não lida: só um ponto (sem contagem), no avatar da barra "Conta"
-       e, quando o dropdown abre, ao lado de "Notificações" — ver applyNotificationDot em
-       portal-shell.js. Substituiu o badge numérico que ficava num link solto na sidebar. */
+    /* Indicador de notificação não lida: badge com a quantidade (até "9+"), no avatar da barra
+       "Conta" e, quando o dropdown abre, ao lado de "Notificações" — ver applyNotificationDot em
+       portal-shell.js. */
     .portal-account-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
-    .portal-account-avatar-dot{position:absolute;top:-1px;right:-1px;width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--card)}
+    .portal-account-avatar-dot{position:absolute;top:-4px;right:-4px;min-width:14px;height:14px;padding:0 3px;border-radius:999px;background:var(--accent);color:var(--on-accent);box-shadow:0 0 0 2px var(--card);display:flex;align-items:center;justify-content:center;font-size:9px;line-height:1;font-weight:800}
     .portal-account-avatar-dot[hidden]{display:none}
-    .portal-account-menu-dot{width:8px;height:8px;flex-shrink:0;border-radius:50%;background:var(--accent);margin-left:auto}
+    .portal-account-menu-dot{min-width:16px;height:16px;padding:0 4px;flex-shrink:0;border-radius:999px;background:var(--accent);color:var(--on-accent);margin-left:auto;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;font-weight:800}
     .portal-account-menu-dot[hidden]{display:none}
     .portal-account-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
     .portal-account-name{font-size:11.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

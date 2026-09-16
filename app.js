@@ -1273,7 +1273,7 @@
     function confirmCommemorativeDatePost(){
       if(!pendingCommemorativeDate) return;
       const { dateStr, holidayName } = pendingCommemorativeDate;
-      closeCommemorativeDateConfirm();
+      closeCommemorativeEditorChoice();
       closeEditState();
       openModal(dateStr);
       $('mTitle').value = holidayName;

@@ -62,6 +62,14 @@ try {
         const href = link.getAttribute('href');
         if (navItems.some(item => item.href === href) && !allowedPages.has(href)) link.hidden = true;
       });
+      // some também o rótulo da seção (ex: "Administração") quando nenhum item dela sobrou
+      // visível — senão fica um título solto sem nada embaixo. display:none via estilo inline,
+      // não hidden — .portal-nav-section já tem display:flex no CSS, mesma especificidade de
+      // [hidden] só que de origem "autor" (vence a stylesheet do navegador).
+      document.querySelectorAll('.portal-nav-section').forEach(section => {
+        const anyVisible = Array.from(section.querySelectorAll('.portal-nav-item')).some(a => !a.hidden);
+        if (!anyVisible) section.style.display = 'none';
+      });
       const profileNameEl = document.getElementById('portalProfileName');
       if (profileNameEl) profileNameEl.textContent = context.profile.name || context.user.email;
       const profileEmailEl = document.getElementById('portalProfileEmail');
