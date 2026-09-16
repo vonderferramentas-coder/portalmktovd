@@ -126,11 +126,32 @@
       ]
     };
   }
+  const MAINSLIDER_DESKTOP_NOTE = 'A imagem deve ficar dentro da margem de segurança de 1200x340px e o texto dentro de 1150x280px, ambas centralizadas, para o conteúdo não ser cortado em nenhum dispositivo. Um degradê é aplicado automaticamente abaixo do conteúdo pelo próprio Main Slider, correspondendo a 30% da altura do criativo (150px) — não precisa ser desenhado na arte.';
+  const MAINSLIDER_MOBILE_NOTE = 'O texto deve ficar dentro da margem de segurança de 1248x384px, centralizada, para não ser cortado em nenhum dispositivo.';
+  function adsMainSliderDefault() {
+    return {
+      id: 'mainslider', name: 'Mainslider',
+      formats: [
+        { id: 'desktop', label: 'Desktop', min: '1920x500 px', peso: '1 MB', formatos: JPG_PNG, boasPraticas: MAINSLIDER_DESKTOP_NOTE,
+          safeAreas: [
+            { label: 'Margem de segurança — Imagem', w: 1200, h: 340, top: true },
+            { label: 'Margem de segurança — Texto', w: 1150, h: 280 }
+          ],
+          // degradê automático do Main Slider na base do criativo (30% da altura = 150px) — só
+          // informativo no preview, igual às safeAreas acima (ver shapeBoxSvg)
+          gradientHeight: 150 },
+        { id: 'mobile', label: 'Mobile', min: '1312x448 px', peso: '1 MB', formatos: JPG_PNG, boasPraticas: MAINSLIDER_MOBILE_NOTE,
+          safeAreas: [
+            { label: 'Margem de segurança — Texto', w: 1248, h: 384 }
+          ] }
+      ]
+    };
+  }
   // Conjunto-base por área (Loja Oficial x Ads são peças diferentes de verdade — medidas próprias
   // cada uma), igual pra todo marketplace por ora, editável (lápis) em vez de vir vazio.
   // Ordem = ordem de exibição na lista.
   function defaultFormatsFor(categoryId) {
-    if (categoryId === 'ads') return [adsLogoPrincipalDefault(), adsDisplayDefault()];
+    if (categoryId === 'ads') return [adsLogoPrincipalDefault(), adsDisplayDefault(), adsMainSliderDefault()];
     return [logotipoDefault(), capaDesktopDefault(), bannerPrincipalDefault(), bannerSecundarioDefault()];
   }
   function defaultCategoriesFor() {
@@ -606,10 +627,33 @@
     const m = /(\d+)\s*[x×]\s*(\d+)/i.exec(minStr || '');
     return m ? { w: Number(m[1]), h: Number(m[2]) } : { w: 1, h: 1 };
   }
-  function shapeBoxSvg(minStr, groupMaxWidth) {
+  // safeAreas (opcional) = [{ label, w, h, top? }] — margens de segurança da versão (ex.: onde a
+  // imagem/o texto precisam ficar contidos), sempre centralizadas na horizontal. Cada margem é
+  // aninhada dentro da anterior (a 1ª dentro do criativo inteiro): por padrão centralizada
+  // também na vertical dentro desse container; com `top: true` fica encostada no topo do
+  // container em vez de centralizada (ex.: a margem da imagem do Main Slider, que some por
+  // baixo do degradê — ver MAINSLIDER_DESKTOP_NOTE). Assim a margem de texto do Main Slider
+  // Desktop fica centralizada dentro da margem de imagem, enquanto a margem de texto do Mobile
+  // (única, sem `top`) fica centralizada no criativo inteiro. gradientHeight (opcional, em px do
+  // próprio criativo) marca a faixa inferior onde um degradê é aplicado automaticamente (ex.:
+  // Main Slider do Mercado Livre — ver MAINSLIDER_DESKTOP_NOTE), desenhada como uma faixa
+  // sombreada rente à borda de baixo, atrás das safeAreas. Nenhum dos dois é editável pelo
+  // formulário de edição (ver editFormHtml) — sobrevivem a uma edição normal porque o merge de
+  // overrides em moduleData() é aditivo, não substitui o formato base inteiro.
+  function shapeBoxSvg(minStr, groupMaxWidth, safeAreas, gradientHeight) {
     const { w, h } = parseMin(minStr);
     const widthPct = groupMaxWidth ? Math.max(10, Math.round((w / groupMaxWidth) * 100)) : 100;
-    return `<svg class="tpl-shape-box" style="width:${widthPct}%" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect x="0" y="0" width="${w}" height="${h}" rx="${Math.max(2, Math.min(w, h) * .03)}" /></svg>`;
+    const gradientRect = gradientHeight
+      ? `<rect class="tpl-gradient-zone" x="0" y="${h - gradientHeight}" width="${w}" height="${gradientHeight}"><title>Degradê automático: ${gradientHeight}px</title></rect>`
+      : '';
+    let container = { x: 0, y: 0, w, h };
+    const safeAreaRects = (safeAreas || []).map(area => {
+      const x = container.x + (container.w - area.w) / 2;
+      const y = area.top ? container.y : container.y + (container.h - area.h) / 2;
+      container = { x, y, w: area.w, h: area.h };
+      return `<rect class="tpl-safe-area-rect" x="${x}" y="${y}" width="${area.w}" height="${area.h}"><title>${escapeHtml(area.label)}: ${area.w}x${area.h}px</title></rect>`;
+    }).join('');
+    return `<svg class="tpl-shape-box" style="width:${widthPct}%" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect x="0" y="0" width="${w}" height="${h}" rx="${Math.max(2, Math.min(w, h) * .03)}" />${gradientRect}${safeAreaRects}</svg>`;
   }
 
   // ---------------------------------------------------------------- estado do modal
@@ -667,7 +711,7 @@
           <button type="button" class="btn-icon tpl-copy-btn" data-copy-format="${f.id}" title="Copiar informações" aria-label="Copiar informações de ${escapeHtml(f.label)}">${svgIcon(COPY_PATH, ACTION_ICON_SIZE)}</button>
         </div>
         <div class="tpl-format-grid">
-          <div class="tpl-format-preview">${shapeBoxSvg(f.min, groupMaxWidth)}</div>
+          <div class="tpl-format-preview">${shapeBoxSvg(f.min, groupMaxWidth, f.safeAreas, f.gradientHeight)}</div>
           <div class="tpl-format-info">
             <ul class="tpl-spec-list">
               <li>Tamanho mínimo: <b>${escapeHtml(f.min)}</b></li>
@@ -930,7 +974,7 @@
   function openCategory(categoryId) {
     currentCategoryId = categoryId;
     reloadCurrentModules();
-    selectedModuleId = currentModules.length ? currentModules[0].id : null;
+    selectedModuleId = null; // todo módulo começa fechado — usuário abre o que quiser ver
     showFormatsView();
     renderModuleList();
   }
