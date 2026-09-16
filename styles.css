@@ -111,6 +111,7 @@
     /* Indicador de notificação não lida: só um ponto (sem contagem), no avatar da barra "Conta"
        e, quando o dropdown abre, ao lado de "Notificações" — ver applyNotificationDot em
        portal-shell.js. Substituiu o badge numérico que ficava num link solto na sidebar. */
+    .portal-account-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
     .portal-account-avatar-dot{position:absolute;top:-1px;right:-1px;width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--card)}
     .portal-account-avatar-dot[hidden]{display:none}
     .portal-account-menu-dot{width:8px;height:8px;flex-shrink:0;border-radius:50%;background:var(--accent);margin-left:auto}

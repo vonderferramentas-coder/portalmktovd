@@ -705,4 +705,5 @@ $('refreshAudit').addEventListener('click', () => loadAudit().catch(() => show('
 load().catch(() => show('Não foi possível carregar usuários. Verifique seu perfil administrativo.'));
 loadProfiles().catch(() => show('Não foi possível carregar os perfis.'));
 loadPagePermissions().catch(() => show('Não foi possível carregar as permissões.'));
-loadAudit().catch(() => show('Não foi possível carregar o log de segurança.'));
+// Card do log de segurança está oculto (admin-users.html, section.admin-audit-card[hidden]) —
+// sem carregar aqui, senão faz uma leitura de securityAudit à toa a cada visita à tela.

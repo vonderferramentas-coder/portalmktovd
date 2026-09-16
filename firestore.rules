@@ -36,8 +36,11 @@ service cloud.firestore {
       allow get: if authenticated() && (request.auth.uid == userId || admin());
       allow list: if admin();
       allow create, delete: if admin();
+      // lastAccessAt (auth-guard.js, todo login) e name/photo (menu "Perfil", autoatendimento) são
+      // os únicos campos que o próprio dono da conta pode alterar sem ser admin — role/status/email
+      // continuam travados, então ninguém se autopromove escrevendo direto pelo console.
       allow update: if admin() || (request.auth.uid == userId &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastAccessAt']));
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastAccessAt', 'name', 'photo']));
     }
 
     match /securityAudit/{eventId} {

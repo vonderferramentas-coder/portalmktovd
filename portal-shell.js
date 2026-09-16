@@ -659,9 +659,10 @@
     const bar = $('portalAccountBar'); if(!bar) return;
     accountMenuEl = document.createElement('div');
     accountMenuEl.className = 'portal-brand-popover portal-account-menu';
-    accountMenuEl.innerHTML = `<a href="notifications.html" class="portal-account-menu-item">${svgIcon('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>', 15)}<span>Notificações</span><span class="portal-account-menu-dot"${unreadNotifications?'':' hidden'}></span></a><button type="button" class="portal-account-menu-item" id="portalMenuSettingsBtn">${svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>', 15)}<span>Configurações</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item" id="portalResetPasswordRow">${svgIcon('<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>', 15)}<span>Redefinir senha</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item danger" id="portalMenuLogoutBtn">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}<span>Sair</span></button>`;
+    accountMenuEl.innerHTML = `<button type="button" class="portal-account-menu-item" id="portalMenuProfileBtn">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 15)}<span>Perfil</span></button><a href="notifications.html" class="portal-account-menu-item">${svgIcon('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>', 15)}<span>Notificações</span><span class="portal-account-menu-dot"${unreadNotifications?'':' hidden'}></span></a><button type="button" class="portal-account-menu-item" id="portalMenuSettingsBtn">${svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>', 15)}<span>Configurações</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item" id="portalResetPasswordRow">${svgIcon('<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>', 15)}<span>Redefinir senha</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item danger" id="portalMenuLogoutBtn">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}<span>Sair</span></button>`;
     document.body.appendChild(accountMenuEl);
     positionPopoverAbove(accountMenuEl, bar);
+    accountMenuEl.querySelector('#portalMenuProfileBtn').addEventListener('click', ()=>{ closeAccountMenu(); openProfileModal(); });
     accountMenuEl.querySelector('#portalMenuSettingsBtn').addEventListener('click', ()=>{ closeAccountMenu(); openPortalSettingsModal(); });
     accountMenuEl.querySelector('#portalResetPasswordRow').addEventListener('click', ()=>{ closeAccountMenu(); openResetPasswordModal(); });
     accountMenuEl.querySelector('#portalMenuLogoutBtn').addEventListener('click', ()=>{ closeAccountMenu(); doLogout(); });
@@ -738,6 +739,119 @@
     if(!resetPasswordModalEl) resetPasswordModalEl = buildResetPasswordModal();
     resetPasswordModalEl.querySelector('#resetPasswordEmail').textContent = document.body.dataset.userEmail || '';
     resetPasswordModalEl.style.display = 'flex';
+  }
+
+  // ============================================================
+  // MODAL "PERFIL" — autoatendimento: nome e foto do próprio usuário, gravados em users/{uid}
+  // (window.PortalFirebase.updateOwnProfile) em vez de localStorage, pra continuarem valendo em
+  // qualquer navegador/dispositivo e sobreviverem a um F5. Mesmo padrão de foto (recorte
+  // quadrado + compressão) e mesmo componente visual (.portal-brand-photo-upload/-preview) já
+  // usados no formulário de "Nova marca" logo abaixo.
+  // ============================================================
+  let profileModalEl = null;
+  let profilePhotoDataUrl = null;
+  function buildProfileModal(){
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.id = 'profileBackdrop';
+    backdrop.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2>Perfil</h2>
+        <div class="modal-header-actions">
+          <button type="button" class="modal-close" aria-label="Fechar">${svgIcon('<path d="M18 6 6 18"/><path d="M6 6l12 12"/>', 15)}</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <label>Nome</label>
+            <input id="profileNameInput" type="text" placeholder="Seu nome" />
+          </div>
+          <div>
+            <label>Foto</label>
+            <label class="portal-brand-photo-upload" id="profilePhotoLabel">
+              <span class="portal-brand-photo-preview" id="profilePhotoPreview">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 15)}</span>
+              <span id="profilePhotoLabelText">Escolher foto</span>
+              <input id="profilePhotoInput" type="file" accept="image/*" style="display:none" />
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="cancelProfile" class="btn ghost">Cancelar</button>
+        <button type="button" id="saveProfile" class="btn">Salvar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(backdrop);
+    const close = ()=>{ backdrop.style.display = 'none'; };
+    backdrop.addEventListener('click', ev=>{ if(ev.target===backdrop) close(); });
+    backdrop.querySelector('.modal-close').addEventListener('click', close);
+    backdrop.querySelector('#cancelProfile').addEventListener('click', close);
+    backdrop.querySelector('#profilePhotoInput').addEventListener('change', ev=>{
+      const file = ev.target.files && ev.target.files[0]; if(!file) return;
+      readBrandPhoto(file, dataUrl=>{
+        profilePhotoDataUrl = dataUrl;
+        $('profilePhotoPreview').innerHTML = `<img src="${dataUrl}" alt="" />`;
+        $('profilePhotoLabelText').textContent = 'Trocar foto';
+      });
+    });
+    backdrop.querySelector('#saveProfile').addEventListener('click', async ()=>{
+      const nameInput = $('profileNameInput');
+      const name = nameInput.value.trim();
+      if(!name){ nameInput.focus(); return; }
+      if(!window.PortalFirebase){ close(); return; }
+      const btn = backdrop.querySelector('#saveProfile');
+      btn.disabled = true;
+      try{
+        const patch = { name };
+        if(profilePhotoDataUrl != null) patch.photo = profilePhotoDataUrl;
+        await window.PortalFirebase.updateOwnProfile(patch);
+        applyOwnProfileToUI(patch);
+        close();
+      }catch(e){
+        alert('Não foi possível salvar. Tente novamente.');
+      }finally{
+        btn.disabled = false;
+      }
+    });
+    return backdrop;
+  }
+  // Aplica nome/foto salvos direto na sidebar, sem esperar um reload — mesma dupla de elementos
+  // (#portalProfileName + avatar da barra "Conta") que auth-guard.js já preenche no primeiro
+  // carregamento com o que veio do Firestore.
+  function applyOwnProfileToUI(patch){
+    const nameEl = $('portalProfileName');
+    if(nameEl && patch.name) nameEl.textContent = patch.name;
+    if(patch.photo){
+      const avatar = document.querySelector('#portalAccountBar .portal-account-avatar');
+      if(avatar){
+        let img = avatar.querySelector('img');
+        if(!img){ img = document.createElement('img'); img.alt = ''; avatar.insertBefore(img, avatar.firstChild); }
+        img.src = patch.photo;
+      }
+    }
+  }
+  async function openProfileModal(){
+    if(!profileModalEl) profileModalEl = buildProfileModal();
+    const nameInput = profileModalEl.querySelector('#profileNameInput');
+    const preview = profileModalEl.querySelector('#profilePhotoPreview');
+    const labelText = profileModalEl.querySelector('#profilePhotoLabelText');
+    profilePhotoDataUrl = null;
+    nameInput.value = '';
+    preview.innerHTML = svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 15);
+    labelText.textContent = 'Escolher foto';
+    profileModalEl.style.display = 'flex';
+    if(!window.PortalFirebase) return;
+    try{
+      const context = await window.PortalFirebase.currentContext();
+      nameInput.value = context.profile.name || '';
+      if(context.profile.photo){
+        profilePhotoDataUrl = context.profile.photo;
+        preview.innerHTML = `<img src="${context.profile.photo}" alt="" />`;
+        labelText.textContent = 'Trocar foto';
+      }
+    }catch(e){ /* mantém os campos em branco — usuário ainda consegue preencher do zero */ }
+    nameInput.focus();
   }
 
   // ============================================================

@@ -66,6 +66,17 @@ try {
       if (profileNameEl) profileNameEl.textContent = context.profile.name || context.user.email;
       const profileEmailEl = document.getElementById('portalProfileEmail');
       if (profileEmailEl && context.profile.name) profileEmailEl.textContent = context.user.email;
+      // Foto de perfil (menu "Perfil" > portal-shell.js): some por trás do ícone genérico se
+      // ninguém tiver enviado uma ainda.
+      if (context.profile.photo) {
+        const avatarEl = document.querySelector('#portalAccountBar .portal-account-avatar');
+        if (avatarEl && !avatarEl.querySelector('img')) {
+          const img = document.createElement('img');
+          img.alt = '';
+          img.src = context.profile.photo;
+          avatarEl.insertBefore(img, avatarEl.firstChild);
+        }
+      }
     }
   }
 } catch (error) {
