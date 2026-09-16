@@ -981,5 +981,14 @@
   // ---------------------------------------------------------------- init
   renderGalleries();
   checkAdminRole();
-  loadOverrides().then(renderGalleries);
+  // templates.js é script clássico (sem defer) e sempre executa antes de auth-guard.js (type=module,
+  // só roda após o parsing do HTML terminar) importar firebase-client.js — chamar loadOverrides()
+  // direto aqui sempre encontrava window.PortalFirebase indefinido, e a função desistia sem erro
+  // (ver guarda no início dela), deixando overrides/fullStore vazios a sessão inteira: toda foto de
+  // capa salva no editar do card sumia no próximo carregamento, e cada salvamento passava a reescrever
+  // o documento inteiro (todas as marcas) a partir de {} em vez de por cima do que já existia. Mesmo
+  // padrão de espera por 'portal-firebase-ready' já usado em intelligence-center.js.
+  const startLoadingOverrides = () => loadOverrides().then(renderGalleries);
+  if (window.PortalFirebase) startLoadingOverrides();
+  else window.addEventListener('portal-firebase-ready', startLoadingOverrides, { once: true });
 })();
