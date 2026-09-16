@@ -162,9 +162,51 @@
     .portal-brand-photo-preview{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:var(--surface-muted);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--text-faint)}
     .portal-brand-photo-preview img{width:100%;height:100%;object-fit:cover;display:block}
 
-    /* Modal "Perfil": avatar circular grande e clicável, centralizado, nome logo abaixo */
+    /* Modal "Perfil": o modal inteiro é sempre a foto do usuário — cabeçalho, nome, Perfil
+       (role) e as ações (botão "Editar", ou "Cancelar"/"Salvar" durante a edição) ficam
+       sobrepostos a ela tanto na leitura quanto na edição (só o conteúdo do rodapé/topo troca —
+       ver setProfileEditing em portal-shell.js). O Perfil (role) nunca é editável aqui: só muda
+       pelo admin, em Usuários e acessos > Perfis. As classes .portal-profile-form/-photo-upload/
+       -preview/-edit/-name-field abaixo são compartilhadas com o modal "Editar usuário" de
+       admin-users.js (fundo claro, avatar circular) — não mexer nelas por causa deste modal.
+       Foto capturada em maior resolução (480px, ver readBrandPhoto) porque aqui ela cobre o
+       modal inteiro em vez de um avatar pequeno. */
+    #profileBackdrop .modal-header{position:absolute;inset:0 0 auto 0;z-index:2;padding:24px;border-bottom:0;background:linear-gradient(to bottom,rgba(0,0,0,.55),rgba(0,0,0,0) 100%)}
+    #profileBackdrop .modal-header h2{color:#fff}
+    #profileBackdrop .modal-close{color:#fff}
+    #profileBackdrop .modal-close:hover{background:rgba(255,255,255,.18);color:#fff}
+    #profileBackdrop .modal-body{position:relative;padding:0;overflow:hidden}
+    .portal-profile-photo{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text-faint)}
+    .portal-profile-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .portal-profile-photo-edit-badge{position:absolute;z-index:2;top:88px;right:16px;width:36px;height:36px;padding:0;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px)}
+    .portal-profile-photo-edit-badge:hover{background:rgba(0,0,0,.72)}
+    /* badge de reposicionar/zoom, ao lado (à esquerda) do de trocar foto */
+    .portal-profile-photo-crop-badge{right:60px}
+
+    /* Modal "Ajustar foto": janela circular do tamanho real do avatar final, pra escolher
+       exatamente qual parte da imagem cai dentro do círculo (.portal-account-avatar/
+       .admin-table-avatar) — arrastar reposiciona, a régua ou a roda do mouse dão zoom. Ver
+       openCropModal/buildCropModal em portal-shell.js. */
+    #profilePhotoCropBackdrop .modal{width:360px;max-width:360px}
+    .portal-photo-crop-stage{width:280px;height:280px;margin:0 auto;border-radius:50%;overflow:hidden;background:var(--surface-muted);cursor:grab;touch-action:none}
+    .portal-photo-crop-stage:active{cursor:grabbing}
+    .portal-photo-crop-stage canvas{display:block;width:100%;height:100%}
+    .portal-photo-crop-zoom-row{display:flex;align-items:center;gap:10px;margin-top:18px;color:var(--muted)}
+    .portal-photo-crop-zoom-row input[type=range]{flex:1;accent-color:var(--accent-ink)}
+    .portal-photo-crop-hint{margin:12px 0 0;font-size:11.5px;color:var(--text-faint);text-align:center}
+    .portal-profile-overlay{position:absolute;left:0;right:0;bottom:0;z-index:1;display:flex;flex-direction:column;gap:10px;padding-left:24px;padding-right:24px;padding-bottom:24px;padding-top:72px;background:linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,.6) 55%,rgba(0,0,0,0) 100%)}
+    .portal-profile-card-name{font-size:24px;font-weight:800;color:#fff;line-height:1.2}
+    .portal-profile-card-role{font-size:14px;font-weight:500;color:rgba(255,255,255,.85);margin-top:-4px}
+    /* especificidade #id + .classe pra vencer .btn.ghost (2 classes) e não voltar pro fundo
+       opaco de var(--card) — os botões ficam sobre o degradê escuro, então precisam do efeito
+       "vidro" claro independente do tema */
+    #profileBackdrop .portal-profile-edit-toggle{width:100%;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.4);backdrop-filter:blur(6px)}
+    #profileBackdrop .portal-profile-edit-toggle:hover{background:rgba(255,255,255,.26)}
+    .portal-profile-edit-actions{display:flex;gap:8px}
+    .portal-profile-edit-actions .btn{flex:1}
+    #profileBackdrop .portal-profile-overlay .portal-profile-name-field input{background:rgba(255,255,255,.95);color:#111}
     .portal-profile-form{display:flex;flex-direction:column;align-items:center;gap:14px;padding:4px 0 8px}
-    .portal-profile-photo-upload{position:relative;width:96px;height:96px;cursor:pointer;display:block}
+    .portal-profile-photo-upload{position:relative;width:96px;height:96px;cursor:pointer;display:block;align-self:center}
     .portal-profile-photo-preview{width:96px;height:96px;border-radius:50%;background:var(--surface-muted);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--text-faint);border:2px solid var(--border-strong)}
     .portal-profile-photo-preview img{width:100%;height:100%;object-fit:cover;display:block}
     .portal-profile-photo-edit{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--accent-ink);color:var(--card);display:flex;align-items:center;justify-content:center;border:2px solid var(--card);pointer-events:none}

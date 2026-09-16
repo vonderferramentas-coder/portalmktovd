@@ -508,10 +508,12 @@ function buildEditModal() {
   backdrop.querySelector('#cancelEditUser').addEventListener('click', close);
   backdrop.querySelector('#editUserPhotoInput').addEventListener('change', ev => {
     const file = ev.target.files && ev.target.files[0]; if (!file) return;
+    // 640px (não os 160px padrão de avatar pequeno) — essa foto também aparece em tela cheia no
+    // modal "Perfil" (menu Conta) do próprio usuário, ver portal-shell.js
     window.PortalShell.readBrandPhoto(file, dataUrl => {
       editUserPhotoDataUrl = dataUrl;
       $('editUserPhotoPreview').innerHTML = `<img src="${dataUrl}" alt="" />`;
-    });
+    }, 640);
   });
   backdrop.querySelector('#saveEditUser').addEventListener('click', async () => {
     const id = backdrop.dataset.userId;
