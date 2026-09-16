@@ -287,10 +287,20 @@ export async function markNotificationRead(id) {
   if (!snapshot.data().readAt) await updateDoc(reference, { readAt: serverTimestamp() });
 }
 
+// Autoatendimento do menu "Perfil" (portal-shell.js): qualquer usuário ativo pode alterar seu
+// próprio nome/foto — nunca role/status/email, travado nas regras do Firestore
+// (match /users/{userId}, affectedKeys().hasOnly(['lastAccessAt','name','photo'])), então mesmo
+// uma chamada forjada pelo console do navegador não consegue se autopromover por aqui.
+export async function updateOwnProfile(patch) {
+  const context = await currentContext();
+  await updateDoc(doc(db, 'users', context.user.uid), patch);
+}
+
 export { app, auth, db, profileFor, audit };
 
 window.PortalFirebase = {
   readPortalStore, writePortalStore, ensurePostsStore, writePost, deletePost, subscribeToPosts,
-  subscribeNotifications, markNotificationRead, currentContext, logout, requestPasswordReset
+  subscribeNotifications, markNotificationRead, currentContext, logout, requestPasswordReset,
+  updateOwnProfile
 };
 window.dispatchEvent(new Event('portal-firebase-ready'));

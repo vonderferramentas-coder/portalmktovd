@@ -183,6 +183,12 @@
        coluna, algo que não acontece com os formatos cadastrados hoje (todos paisagem/quadrados) */
     .tpl-format-preview .tpl-shape-box { display: block; height: auto; max-height: 100%; overflow: visible }
     .tpl-format-preview .tpl-shape-box rect { fill: var(--surface-muted); stroke: var(--border-strong); stroke-width: 3 }
+    /* Faixa de degradê automático (gradientHeight em shapeBoxSvg/templates.js) — sombreada e
+       rente à borda de baixo, desenhada ANTES das margens de segurança (fica atrás delas) */
+    .tpl-format-preview .tpl-shape-box .tpl-gradient-zone { fill: var(--text-faint); opacity: .25; stroke: var(--border-strong); stroke-width: 2; stroke-dasharray: 6 5 }
+    /* Margens de segurança (safeAreas em shapeBoxSvg/templates.js) — retângulo tracejado sem
+       preenchimento por cima do retângulo externo, pra não competir com ele visualmente */
+    .tpl-format-preview .tpl-shape-box .tpl-safe-area-rect { fill: none; stroke: var(--accent-ink); stroke-width: 2.5; stroke-dasharray: 10 8; opacity: .65 }
     .tpl-format-info { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px }
     .tpl-format-info .tpl-practices { margin-top: 0 }
     @media (max-width: 560px) { .tpl-format-grid { grid-template-columns: 1fr } .tpl-format-preview { min-height: 160px } }

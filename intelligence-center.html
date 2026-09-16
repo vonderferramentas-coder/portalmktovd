@@ -128,6 +128,26 @@
     .chevron-btn:hover, .chevron-btn:focus-visible { background: var(--accent-weak); border-color: var(--accent); outline: none }
     .chevron-btn:disabled { opacity: .4; cursor: default }
     .intel-page-label { font-size: 10px; font-weight: 800; color: var(--muted); background: var(--surface-muted); border-radius: 7px; padding: 5px 8px }
+
+    /* Dropdown do ranking — mesmo padrão de .section-divider/.section-divider-body usado em
+       followers-dashboard.html (grid-template-rows 0fr<->1fr anima até a altura real do
+       conteúdo sem medir pixels em JS), com margens ajustadas por não atuar como um divisor
+       entre duas seções e sim como o cabeçalho clicável de uma única seção. */
+    /* Recuo lateral em relação ao card de filtros acima, que ocupa a largura cheia. */
+    .intel-trends-wrap { padding: 0 20px }
+    .section-divider { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; width: 100%; margin: 0; padding: 0; border: 0; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer }
+    .section-divider:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px }
+    .intel-trends-header { display: flex; align-items: center; gap: 20px; text-align: left }
+    .intel-trends-icon { flex: none; color: var(--accent-ink) }
+    .section-divider h2 { font-size: 17px; margin: 0 0 4px; color: var(--text) }
+    .section-divider p { margin: 0 }
+    .section-divider-chevron { flex: none; color: var(--muted); margin-top: 4px; transition: transform .15s }
+    .section-divider[aria-expanded="true"] .section-divider-chevron { transform: rotate(180deg) }
+    /* Risco entre o subtítulo e a tabela — mesmo espaçamento (20px) dos dois lados. */
+    .intel-trends-rule { border: 0; border-top: 1px solid var(--border); margin: 20px 0 }
+    .section-divider-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .28s ease, opacity .22s ease; opacity: 1 }
+    .section-divider-body.is-collapsed { grid-template-rows: 0fr; opacity: 0 }
+    .section-divider-body-inner { overflow: hidden; min-height: 0 }
   </style>
 </head>
 
@@ -150,7 +170,7 @@
 
         <!-- Bloco 1 — Filtros: Categoria e Período são dropdowns; Região tem só "Brasil" nesta
              primeira versão, então vira uma pill estática em vez de um dropdown de uma opção só. -->
-        <div class="card" style="margin-bottom:16px">
+        <div class="card" style="margin-bottom:36px">
           <div class="intel-filters">
             <div class="actions-control" id="trendsCategoryControl">
               <button type="button" class="period-trigger" id="trendsCategoryTrigger" aria-expanded="false"
@@ -197,34 +217,59 @@
           </div>
         </div>
 
-        <!-- Bloco 2 — Ranking de tendências -->
-        <div class="card">
-          <div class="intel-trends-head">
-            <h3 class="fg-label" style="margin:0">Ranking de tendências</h3>
-            <div class="bg-section-desc" id="trendsSummary" style="margin:0"></div>
-          </div>
-          <div id="trendsEmpty" class="bg-empty" style="display:none"></div>
-          <div class="table-wrap" id="trendsTableWrap">
-            <table>
-              <thead>
-                <tr>
-                  <th class="intel-col-rank">Ranking</th>
-                  <th>Termo</th>
-                  <th>Categoria</th>
-                  <th class="intel-col-interest">Interesse</th>
-                  <th class="intel-col-variation">Variação</th>
-                  <th>Período analisado</th>
-                  <th>Última atualização</th>
-                  <th>Produtos</th>
-                </tr>
-              </thead>
-              <tbody id="trendsTableBody"></tbody>
-            </table>
-          </div>
-          <div class="intel-pager" id="trendsPager" hidden>
-            <button type="button" class="chevron-btn" id="trendsPagerPrev" aria-label="Página anterior">‹</button>
-            <span class="intel-page-label" id="trendsPagerLabel">Página 1 de 1</span>
-            <button type="button" class="chevron-btn" id="trendsPagerNext" aria-label="Próxima página">›</button>
+        <div class="intel-trends-wrap">
+          <button type="button" class="section-divider" id="trendsToggle" aria-expanded="false"
+            aria-controls="trendsSectionBody">
+            <div class="intel-trends-header">
+              <svg class="intel-trends-icon" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                <polyline points="17 6 23 6 23 12" />
+              </svg>
+              <div>
+                <h2>Termos mais pesquisados no Google</h2>
+                <p class="page-subtitle" style="font-size:12px">Os dados abaixo são coletados do Google Trends e mostram os termos mais pesquisados no Google dentro do período e da categoria selecionados nos filtros acima.</p>
+              </div>
+            </div>
+            <svg class="section-divider-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2.4">
+              <path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <hr class="intel-trends-rule">
+          <div class="section-divider-body is-collapsed" id="trendsSectionBody" aria-hidden="true" inert>
+            <div class="section-divider-body-inner">
+              <!-- Bloco 2 — Ranking de tendências -->
+              <div class="card" style="padding:36px">
+                <div class="intel-trends-head">
+                  <h3 class="fg-label" style="margin:0">Ranking de tendências</h3>
+                  <div class="bg-section-desc" id="trendsSummary" style="margin:0"></div>
+                </div>
+                <div id="trendsEmpty" class="bg-empty" style="display:none"></div>
+                <div class="table-wrap" id="trendsTableWrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th class="intel-col-rank">Ranking</th>
+                        <th>Termo</th>
+                        <th>Categoria</th>
+                        <th class="intel-col-interest">Interesse</th>
+                        <th class="intel-col-variation">Variação</th>
+                        <th>Período analisado</th>
+                        <th>Última atualização</th>
+                        <th>Produtos</th>
+                      </tr>
+                    </thead>
+                    <tbody id="trendsTableBody"></tbody>
+                  </table>
+                </div>
+                <div class="intel-pager" id="trendsPager" hidden>
+                  <button type="button" class="chevron-btn" id="trendsPagerPrev" aria-label="Página anterior">‹</button>
+                  <span class="intel-page-label" id="trendsPagerLabel">Página 1 de 1</span>
+                  <button type="button" class="chevron-btn" id="trendsPagerNext" aria-label="Próxima página">›</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

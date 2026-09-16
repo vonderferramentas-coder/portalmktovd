@@ -138,28 +138,39 @@
     if(b.photo) return `<span class="${cls}"><img src="${b.photo}" alt="" /></span>`;
     return `<span class="${cls}" style="background:${colorForBrand(b.id||b.name||'?')}">${initials}</span>`;
   }
-  // lê um arquivo de imagem, recorta um quadrado central e reduz pra um avatar leve (evita
-  // guardar fotos grandes no localStorage/SQLite, que aqui é só uma coluna de texto)
-  function readBrandPhoto(file, cb){
+  // valida e decodifica um arquivo de imagem, devolvendo o <img> na resolução original (usado
+  // tanto pelo recorte automático de readBrandPhoto quanto pelo ajuste manual de zoom/posição
+  // do modal "Perfil", que precisa da imagem cheia pra deixar o usuário escolher o enquadramento)
+  function loadImageFile(file, cb){
     if(!/^image\//.test(file.type)){ alert('Envie um arquivo de imagem.'); return; }
     if(file.size > 5*1024*1024){ alert('Imagem muito grande (máx. 5MB).'); return; }
     const reader = new FileReader();
     reader.onload = ()=>{
       const img = new Image();
-      img.onload = ()=>{
-        const size = 160;
-        const canvas = document.createElement('canvas');
-        canvas.width = size; canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        const side = Math.min(img.width, img.height);
-        const sx = (img.width - side)/2, sy = (img.height - side)/2;
-        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
-        cb(canvas.toDataURL('image/jpeg', 0.85));
-      };
+      img.onload = ()=>cb(img);
       img.src = String(reader.result || '');
     };
     reader.readAsDataURL(file);
   }
+  // lê um arquivo de imagem, recorta um quadrado central e reduz pra um avatar leve (evita
+  // guardar fotos grandes no localStorage/SQLite, que aqui é só uma coluna de texto). size é
+  // opcional (padrão 160, suficiente pros avatares pequenos de marca/tabela) — o modal "Perfil"
+  // passa um valor maior porque exibe a mesma foto cobrindo o modal inteiro, não só um avatar.
+  function readBrandPhoto(file, cb, size){
+    loadImageFile(file, img=>{
+      const dim = size || 160;
+      const canvas = document.createElement('canvas');
+      canvas.width = dim; canvas.height = dim;
+      const ctx = canvas.getContext('2d');
+      const side = Math.min(img.width, img.height);
+      const sx = (img.width - side)/2, sy = (img.height - side)/2;
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, dim, dim);
+      cb(canvas.toDataURL('image/jpeg', 0.85));
+    });
+  }
+  // Exposto para admin-users.js (script clássico, roda antes dele) reaproveitar o mesmo
+  // recorte quadrado + compressão ao editar a foto de outro usuário pela tela de admin.
+  window.PortalShell = { readBrandPhoto };
 
   function loadBrands(){
     try{
@@ -454,33 +465,51 @@
   // ============================================================
   const NAV_ITEMS = [
     { href:'index.html', label:'Início', icon:'<path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>' },
-    { href:'visual-editor.html', label:'Calendário de Postagens', icon:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>' },
-    { href:'post-editor.html', label:'Editor de Posts', icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/><path d="m14 18 3-3"/>' },
-    { href:'photoshop-actions.html', label:'Ações do Photoshop', icon:'<path d="M4 4h16v16H4z"/><path d="M8 8h3.5a2.5 2.5 0 1 1 0 5H8z"/><path d="M14.5 15.5h2.7"/>' },
-    { href:'business-card-generator.html', label:'Gerador de Cartões', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h5M7 14h3M15.5 10.5h2M15.5 14h2"/>' },
-    { href:'followers-dashboard.html', label:'Redes sociais', icon:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>' },
-    { href:'intelligence-center.html', label:'Central de Inteligência', icon:'<path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/><path d="M9 18h6"/><path d="M10 22h4"/>' },
-    { href:'templates.html', label:'Templates', icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' },
+    // Seções de navegação: só um rótulo estático acima dos itens (sem ícone, sem recolher —
+    // referência: rótulo "Projects" da sidebar do animate-ui.com/docs/components/radix/sidebar).
+    { group:'Criação', items:[
+      { href:'photoshop-actions.html', label:'Ações do Photoshop', icon:'<path d="M4 4h16v16H4z"/><path d="M8 8h3.5a2.5 2.5 0 1 1 0 5H8z"/><path d="M14.5 15.5h2.7"/>' },
+      { href:'post-editor.html', label:'Editor de Posts', icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/><path d="m14 18 3-3"/>' },
+      { href:'business-card-generator.html', label:'Gerador de Cartões', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h5M7 14h3M15.5 10.5h2M15.5 14h2"/>' },
+      { href:'templates.html', label:'Templates', icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' }
+    ] },
+    { group:'Mídias Sociais', items:[
+      { href:'visual-editor.html', label:'Calendário de Postagens', icon:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>' },
+      { href:'intelligence-center.html', label:'Central de Inteligência', icon:'<path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/><path d="M9 18h6"/><path d="M10 22h4"/>' },
+      { href:'followers-dashboard.html', label:'Redes sociais', icon:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>' }
+    ] },
 
-    // página sensível: fica de fora por padrão pro perfil Usuário (ver defaultHidden em
-    // auth-guard.js/admin-users.js) até um administrador marcá-la em Usuários e acessos >
-    // Permissões por perfil — deixou de ser um bloqueio fixo de código (ver histórico) porque
-    // agora é o próprio admin quem decide, por perfil, se ela fica visível ou não
-    { href:'admin-users.html', label:'Usuários e acessos', icon:'<path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6Z"/>', defaultHidden:true }
+    { group:'Administração', items:[
+      // página sensível: fica de fora por padrão pro perfil Usuário (ver defaultHidden em
+      // auth-guard.js/admin-users.js) até um administrador marcá-la em Usuários e acessos >
+      // Permissões por perfil — deixou de ser um bloqueio fixo de código (ver histórico) porque
+      // agora é o próprio admin quem decide, por perfil, se ela fica visível ou não
+      { href:'admin-users.html', label:'Usuários e acessos', icon:'<path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6Z"/>', defaultHidden:true }
+    ] }
   ];
-  // fonte única da lista de páginas do menu, pra Usuários e acessos montar o checklist de
-  // "quais páginas cada perfil pode ver" sem duplicar href/label — ver admin-users.js
-  // (renderPermPages) e auth-guard.js (aplica o resultado escondendo item/card + a própria página)
-  window.PortalNavItems = NAV_ITEMS.map(item => ({ href: item.href, label: item.label, defaultHidden: !!item.defaultHidden }));
+  // fonte única da lista de páginas do menu (achatando os grupos acima), pra Usuários e acessos
+  // montar o checklist de "quais páginas cada perfil pode ver" sem duplicar href/label — ver
+  // admin-users.js (renderPermPages) e auth-guard.js (aplica o resultado escondendo item/card +
+  // a própria página); permissão continua por página, nunca por grupo.
+  const NAV_LEAF_ITEMS = NAV_ITEMS.flatMap(entry => entry.items || [entry]);
+  window.PortalNavItems = NAV_LEAF_ITEMS.map(item => ({ href: item.href, label: item.label, defaultHidden: !!item.defaultHidden }));
   function currentPageFile(){
     return (location.pathname.split('/').pop() || 'index.html');
   }
+  function renderNavItemHtml(item, cur){
+    const active = cur === item.href;
+    return `<a href="${item.href}" class="portal-nav-item${active?' active':''}">${svgIcon(item.icon)}<span>${escapeHtml(item.label)}</span></a>`;
+  }
   function renderNavHtml(){
     const cur = currentPageFile();
-    return `<nav class="portal-nav">${NAV_ITEMS.map(item=>{
-      const active = cur === item.href;
-      return `<a href="${item.href}" class="portal-nav-item${active?' active':''}">${svgIcon(item.icon)}<span>${escapeHtml(item.label)}</span></a>`;
-    }).join('')}</nav>`;
+    const html = NAV_ITEMS.map(entry=>{
+      if(!entry.items) return renderNavItemHtml(entry, cur);
+      return `<div class="portal-nav-section">
+        <div class="portal-nav-section-label">${escapeHtml(entry.group)}</div>
+        ${entry.items.map(sub=>renderNavItemHtml(sub, cur)).join('')}
+      </div>`;
+    }).join('');
+    return `<nav class="portal-nav">${html}</nav>`;
   }
 
   // ============================================================
@@ -553,10 +582,14 @@
         });
       });
     } else {
+      // Editar/duplicar/excluir marca fica só pra Admin — mesma checagem de
+      // document.body.dataset.userRole (setado por auth-guard.js) usada em checkAdminRole
+      // (templates.js) e no botão de recolher/etc. deste arquivo.
+      const isAdmin = document.body.dataset.userRole === 'admin';
       row.className = 'portal-brand-row' + (b.id===ACTIVE_ID ? ' active' : '');
-      row.innerHTML = `${brandAvatarHtml(b)}<span class="portal-brand-row-name">${escapeHtml(b.name)}</span><button type="button" class="portal-brand-row-edit" title="Editar marca" aria-label="Editar marca">${svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', 13)}</button>`;
+      row.innerHTML = `${brandAvatarHtml(b)}<span class="portal-brand-row-name">${escapeHtml(b.name)}</span>${isAdmin ? `<button type="button" class="portal-brand-row-edit" title="Editar marca" aria-label="Editar marca">${svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', 13)}</button>` : ''}`;
       row.addEventListener('click', ()=>{ if(b.id!==ACTIVE_ID) switchToBrand(b.id); });
-      row.querySelector('.portal-brand-row-edit').addEventListener('click', ev=>{ ev.stopPropagation(); editingBrandId = b.id; renderBrandPopoverList(); });
+      if(isAdmin) row.querySelector('.portal-brand-row-edit').addEventListener('click', ev=>{ ev.stopPropagation(); editingBrandId = b.id; renderBrandPopoverList(); });
     }
     return row;
   }
@@ -576,13 +609,15 @@
 
   function openBrandPopover(){
     const trigger = $('portalBrandTrigger'); if(!trigger) return;
+    // Criar marca nova também é só pra Admin — mesma checagem de buildBrandRow acima.
+    const isAdmin = document.body.dataset.userRole === 'admin';
     brandPopoverEl = document.createElement('div');
     brandPopoverEl.className = 'portal-brand-popover';
-    brandPopoverEl.innerHTML = `<div class="portal-brand-list"></div><div class="portal-brand-divider"></div><button type="button" class="portal-brand-add">${svgIcon('<path d="M12 5v14M5 12h14"/>', 14)}<span>Nova marca</span></button>`;
+    brandPopoverEl.innerHTML = `<div class="portal-brand-list"></div>${isAdmin ? `<div class="portal-brand-divider"></div><button type="button" class="portal-brand-add">${svgIcon('<path d="M12 5v14M5 12h14"/>', 14)}<span>Nova marca</span></button>` : ''}`;
     document.body.appendChild(brandPopoverEl);
     renderBrandPopoverList();
     positionPopover(brandPopoverEl, trigger);
-    brandPopoverEl.querySelector('.portal-brand-add').addEventListener('click', ()=>{ closeBrandPopover(); openNewBrandModal(); });
+    if(isAdmin) brandPopoverEl.querySelector('.portal-brand-add').addEventListener('click', ()=>{ closeBrandPopover(); openNewBrandModal(); });
     trigger.classList.add('open');
     brandPopoverOpen = true;
     document.addEventListener('mousedown', onDocClickClosePopover);
@@ -635,9 +670,11 @@
     const bar = $('portalAccountBar'); if(!bar) return;
     accountMenuEl = document.createElement('div');
     accountMenuEl.className = 'portal-brand-popover portal-account-menu';
-    accountMenuEl.innerHTML = `<button type="button" class="portal-account-menu-item" id="portalResetPasswordRow">${svgIcon('<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>', 15)}<span>Redefinir senha</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item danger" id="portalMenuLogoutBtn">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}<span>Sair</span></button>`;
+    accountMenuEl.innerHTML = `<button type="button" class="portal-account-menu-item" id="portalMenuProfileBtn">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 15)}<span>Perfil</span></button><a href="notifications.html" class="portal-account-menu-item">${svgIcon('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>', 15)}<span>Notificações</span><span class="portal-account-menu-dot"${unreadNotifications?'':' hidden'}>${notificationBadgeLabel()}</span></a><button type="button" class="portal-account-menu-item" id="portalMenuSettingsBtn">${svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>', 15)}<span>Configurações</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item" id="portalResetPasswordRow">${svgIcon('<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>', 15)}<span>Redefinir senha</span></button><div class="portal-account-menu-divider"></div><button type="button" class="portal-account-menu-item danger" id="portalMenuLogoutBtn">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}<span>Sair</span></button>`;
     document.body.appendChild(accountMenuEl);
     positionPopoverAbove(accountMenuEl, bar);
+    accountMenuEl.querySelector('#portalMenuProfileBtn').addEventListener('click', ()=>{ closeAccountMenu(); openProfileModal(); });
+    accountMenuEl.querySelector('#portalMenuSettingsBtn').addEventListener('click', ()=>{ closeAccountMenu(); openPortalSettingsModal(); });
     accountMenuEl.querySelector('#portalResetPasswordRow').addEventListener('click', ()=>{ closeAccountMenu(); openResetPasswordModal(); });
     accountMenuEl.querySelector('#portalMenuLogoutBtn').addEventListener('click', ()=>{ closeAccountMenu(); doLogout(); });
     bar.setAttribute('aria-expanded', 'true');
@@ -713,6 +750,396 @@
     if(!resetPasswordModalEl) resetPasswordModalEl = buildResetPasswordModal();
     resetPasswordModalEl.querySelector('#resetPasswordEmail').textContent = document.body.dataset.userEmail || '';
     resetPasswordModalEl.style.display = 'flex';
+  }
+
+  // ============================================================
+  // MODAL "PERFIL" — autoatendimento: nome e foto do próprio usuário, gravados em users/{uid}
+  // (window.PortalFirebase.updateOwnProfile) em vez de localStorage, pra continuarem valendo em
+  // qualquer navegador/dispositivo e sobreviverem a um F5.
+  //
+  // O modal inteiro é sempre a foto do usuário (leitura E edição) — cabeçalho, nome, Perfil
+  // (role) e as ações ficam sobrepostos a ela; só o conteúdo do rodapé/nome troca entre os dois
+  // modos (ver setProfileEditing). Na edição, um badge de câmera sobre a própria foto abre o
+  // seletor de arquivo, e o nome vira um campo editável no lugar do texto. O Perfil (role) nunca
+  // é editável aqui de propósito: só muda pelo admin, em Usuários e acessos > Perfis, então esta
+  // tela só exibe o nome dele (resolveProfileRoleName).
+  // ============================================================
+  let profileModalEl = null;
+  let profilePhotoDataUrl = null;
+  let profileSavedName = '';
+  let profileSavedPhoto = null;
+  let profileCurrentUid = null;
+  // Foto original (não recortada) + enquadramento (zoom/posição) por trás da foto atualmente
+  // exibida em profilePhotoDataUrl — permite reabrir o ajuste de zoom/posição já no ponto onde
+  // o usuário parou, em vez de reiniciar sempre do zero sobre o quadrado já recortado (sem
+  // "memória" disso, reduzir o zoom nunca revelaria de volta o que já tinha sido cortado).
+  //
+  // ponytail: fica só em localStorage (não em Firestore) pra não precisar alargar a regra de
+  // segurança users/{uid} (hoje trava affectedKeys a ['lastAccessAt','name','photo']) nem correr
+  // risco de estourar o limite de 1MB por documento do Firestore guardando a foto original
+  // dentro do doc do usuário. Limitação real: essa "memória" de enquadramento é por navegador,
+  // não sincroniza entre dispositivos — troque de navegador/computador e o próximo ajuste parte
+  // do quadrado já salvo (zoom=1, sem prejuízo à foto em si, só à conveniência de desfazer um
+  // recorte antigo). Evolução natural seria mover a foto original pro Firebase Storage e guardar
+  // só a URL no Firestore, o que já resolveria os dois limites de uma vez.
+  const PROFILE_PHOTO_SRC_KEY = 'portal_profile_photo_src_v1';
+  let profilePhotoOriginalUrl = null;
+  let profilePhotoCrop = null;
+  function loadCachedPhotoSrc(uid, forPhoto){
+    if(!uid || !forPhoto) return null;
+    try{
+      const all = JSON.parse(localStorage.getItem(PROFILE_PHOTO_SRC_KEY) || '{}');
+      const entry = all[uid];
+      return (entry && entry.forPhoto === forPhoto) ? entry : null;
+    }catch(e){ return null; }
+  }
+  function saveCachedPhotoSrc(uid, forPhoto, original, crop){
+    if(!uid) return;
+    try{
+      const all = JSON.parse(localStorage.getItem(PROFILE_PHOTO_SRC_KEY) || '{}');
+      all[uid] = { forPhoto, original, crop };
+      localStorage.setItem(PROFILE_PHOTO_SRC_KEY, JSON.stringify(all));
+    }catch(e){ /* localStorage indisponível (privado/bloqueado/cheio) — só perde a conveniência */ }
+  }
+  // Sincroniza profilePhotoOriginalUrl/profilePhotoCrop com o cache pra uma foto específica —
+  // se o cache não bate com a foto atual (outro navegador, ou o rascunho que estava em edição
+  // foi descartado), volta ao estado seguro de "sem original conhecido" em vez de mostrar um
+  // enquadramento que não corresponde à foto de verdade.
+  function syncProfilePhotoSrc(uid, forPhoto){
+    const cached = loadCachedPhotoSrc(uid, forPhoto);
+    profilePhotoOriginalUrl = cached ? cached.original : null;
+    profilePhotoCrop = cached ? cached.crop : null;
+  }
+  // reduz a foto recém-enviada pra um teto razoável antes de guardá-la como "original" — evita
+  // carregar/guardar arquivos de câmera de vários MB só pra permitir reabrir o ajuste depois
+  function resizeImageForStorage(img, cb){
+    const maxDim = 1280;
+    const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+    const w = Math.round(img.width*scale), h = Math.round(img.height*scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+    const resized = new Image();
+    resized.onload = ()=>cb(resized, dataUrl);
+    resized.src = dataUrl;
+  }
+  // Mesmos perfis padrão de admin-users.js (DEFAULT_PROFILES) — cópia mínima só pro rótulo,
+  // porque este arquivo é script clássico e não importa módulos. Perfis customizados batem
+  // certo assim mesmo: resolveProfileRoleName busca a lista real em portalStore antes de cair
+  // aqui.
+  const DEFAULT_PROFILE_NAMES = { admin:'Administrador', user:'Usuário', gestao:'Gestão', criacao:'Criação', 'social-media':'Social Media' };
+  let profileRoleNamesCache = null;
+  async function resolveProfileRoleName(role){
+    if(!role) return '';
+    if(!profileRoleNamesCache && window.PortalFirebase){
+      try{
+        const record = await window.PortalFirebase.readPortalStore('user-profiles-v1');
+        if(Array.isArray(record.v) && record.v.length) profileRoleNamesCache = record.v;
+      }catch(e){ /* offline — usa só os nomes padrão abaixo */ }
+    }
+    const found = profileRoleNamesCache && profileRoleNamesCache.find(p=>p.id===role);
+    return found ? found.name : (DEFAULT_PROFILE_NAMES[role] || role);
+  }
+  function setProfileCardPhoto(url){
+    profileModalEl.querySelector('#profileCardPhoto').innerHTML = url ? `<img src="${url}" alt="" />` : svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 40);
+  }
+  let profileIsEditing = false;
+  // O badge de reposicionar só faz sentido havendo uma foto pra reposicionar — some/aparece
+  // conforme profilePhotoDataUrl muda (upload novo, ajuste aplicado, ou saída do modo edição).
+  function updateProfileCropBadge(){
+    profileModalEl.querySelector('#profilePhotoCropBadge').style.display = (profileIsEditing && profilePhotoDataUrl) ? '' : 'none';
+  }
+  function setProfileEditing(editing){
+    // display:none via estilo inline, não hidden — .portal-profile-edit-toggle/-actions já têm
+    // display definido no CSS, mesma especificidade de [hidden] só que de origem "autor" (vence
+    // a stylesheet do navegador), então o atributo hidden sozinho não escondia esses elementos.
+    profileIsEditing = editing;
+    profileModalEl.querySelector('#profileCardName').style.display = editing ? 'none' : '';
+    profileModalEl.querySelector('#profileNameField').style.display = editing ? '' : 'none';
+    profileModalEl.querySelector('#profileEditToggle').style.display = editing ? 'none' : '';
+    profileModalEl.querySelector('#profileEditActions').style.display = editing ? 'flex' : 'none';
+    profileModalEl.querySelector('#profilePhotoEditBadge').style.display = editing ? '' : 'none';
+    if(!editing){
+      profilePhotoDataUrl = profileSavedPhoto;
+      syncProfilePhotoSrc(profileCurrentUid, profileSavedPhoto);
+      profileModalEl.querySelector('#profileNameInput').value = profileSavedName;
+      setProfileCardPhoto(profileSavedPhoto);
+    }
+    updateProfileCropBadge();
+  }
+
+  // ============================================================
+  // AJUSTE DE FOTO (reposicionar + zoom) — janela circular igual ao avatar final
+  // (.portal-account-avatar/.admin-table-avatar são círculos via CSS), pra escolher exatamente
+  // qual parte da foto aparece dentro dele em vez de confiar só no recorte central automático
+  // de readBrandPhoto. Funciona tanto sobre uma foto recém-selecionada (upload ainda não
+  // processado, imagem original em resolução cheia) quanto sobre a foto já salva (reabre a
+  // imagem atual como fonte, pra "reajuste de posicionamento" sem precisar reenviar o arquivo).
+  // Arrastar (pointer) e a roda do mouse pra zoom seguem o mesmo padrão de post-editor.js
+  // (drag do fundo + wheel-zoom no canvas).
+  // ============================================================
+  const CROP_STAGE = 280, CROP_OUT = 640;
+  let cropModalEl = null, cropImage = null, cropZoom = 1, cropOffsetX = 0, cropOffsetY = 0, cropOnConfirm = null, cropDrag = null;
+  function cropCoverScale(){
+    return Math.max(CROP_STAGE/cropImage.width, CROP_STAGE/cropImage.height);
+  }
+  function cropClamp(){
+    const scale = cropCoverScale() * cropZoom;
+    const w = cropImage.width*scale, h = cropImage.height*scale;
+    cropOffsetX = Math.min(0, Math.max(CROP_STAGE - w, cropOffsetX));
+    cropOffsetY = Math.min(0, Math.max(CROP_STAGE - h, cropOffsetY));
+    return scale;
+  }
+  function renderCropPreview(){
+    if(!cropImage || !cropModalEl) return;
+    const scale = cropClamp();
+    const canvas = cropModalEl.querySelector('#cropCanvas');
+    canvas.getContext('2d').clearRect(0,0,CROP_STAGE,CROP_STAGE);
+    canvas.getContext('2d').drawImage(cropImage, cropOffsetX, cropOffsetY, cropImage.width*scale, cropImage.height*scale);
+  }
+  function setCropZoomPct(pct){
+    // mantém o centro do enquadramento ao trocar o zoom — sem isso a imagem "pula" a cada ajuste
+    const oldScale = cropClamp();
+    const centerImgX = (CROP_STAGE/2 - cropOffsetX) / oldScale;
+    const centerImgY = (CROP_STAGE/2 - cropOffsetY) / oldScale;
+    cropZoom = pct/100;
+    const newScale = cropCoverScale() * cropZoom;
+    cropOffsetX = CROP_STAGE/2 - centerImgX*newScale;
+    cropOffsetY = CROP_STAGE/2 - centerImgY*newScale;
+    renderCropPreview();
+  }
+  function buildCropModal(){
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.id = 'profilePhotoCropBackdrop';
+    backdrop.innerHTML = `<div class="modal profile-photo-crop-modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2>Ajustar foto</h2>
+        <div class="modal-header-actions">
+          <button type="button" class="modal-close" aria-label="Fechar">${svgIcon('<path d="M18 6 6 18"/><path d="M6 6l12 12"/>', 15)}</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="portal-photo-crop-stage" id="cropStage">
+          <canvas id="cropCanvas" width="${CROP_STAGE}" height="${CROP_STAGE}"></canvas>
+        </div>
+        <div class="portal-photo-crop-zoom-row">
+          ${svgIcon('<circle cx="10" cy="10" r="6"/><path d="M7 10h6"/><path d="m21 21-4.3-4.3"/>', 15)}
+          <input type="range" id="cropZoomSlider" min="100" max="300" value="100" />
+          ${svgIcon('<circle cx="10" cy="10" r="6"/><path d="M7 10h6M10 7v6"/><path d="m21 21-4.3-4.3"/>', 15)}
+        </div>
+        <p class="portal-photo-crop-hint">Arraste a foto pra posicionar e use o controle pra dar zoom — é assim que ela vai aparecer no avatar.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="cropCancel" class="btn ghost">Cancelar</button>
+        <button type="button" id="cropConfirm" class="btn">Aplicar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(backdrop);
+    const stage = backdrop.querySelector('#cropStage');
+    const close = ()=>{ backdrop.style.display = 'none'; cropImage = null; cropOnConfirm = null; };
+    backdrop.addEventListener('click', ev=>{ if(ev.target===backdrop) close(); });
+    backdrop.querySelector('.modal-close').addEventListener('click', close);
+    backdrop.querySelector('#cropCancel').addEventListener('click', close);
+    stage.addEventListener('pointerdown', ev=>{
+      cropDrag = { x:ev.clientX, y:ev.clientY, ox:cropOffsetX, oy:cropOffsetY };
+      stage.setPointerCapture(ev.pointerId);
+    });
+    stage.addEventListener('pointermove', ev=>{
+      if(!cropDrag) return;
+      cropOffsetX = cropDrag.ox + (ev.clientX - cropDrag.x);
+      cropOffsetY = cropDrag.oy + (ev.clientY - cropDrag.y);
+      renderCropPreview();
+    });
+    ['pointerup','pointercancel'].forEach(evt=>stage.addEventListener(evt, ()=>{ cropDrag = null; }));
+    stage.addEventListener('wheel', ev=>{
+      ev.preventDefault();
+      const slider = backdrop.querySelector('#cropZoomSlider');
+      const pct = Math.max(100, Math.min(300, Number(slider.value) + (ev.deltaY < 0 ? 10 : -10)));
+      slider.value = pct;
+      setCropZoomPct(pct);
+    }, { passive:false });
+    backdrop.querySelector('#cropZoomSlider').addEventListener('input', ev=>setCropZoomPct(Number(ev.target.value)));
+    backdrop.querySelector('#cropConfirm').addEventListener('click', ()=>{
+      const ratio = CROP_OUT/CROP_STAGE;
+      const stageScale = cropClamp();
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = CROP_OUT; outCanvas.height = CROP_OUT;
+      outCanvas.getContext('2d').drawImage(cropImage, cropOffsetX*ratio, cropOffsetY*ratio, cropImage.width*stageScale*ratio, cropImage.height*stageScale*ratio);
+      const dataUrl = outCanvas.toDataURL('image/jpeg', 0.85);
+      // guarda o enquadramento como fração do tamanho da imagem original (não em px do stage),
+      // pra continuar válido mesmo que a imagem "original" seja recarregada com outras dimensões
+      const centerImgX = (CROP_STAGE/2 - cropOffsetX) / stageScale;
+      const centerImgY = (CROP_STAGE/2 - cropOffsetY) / stageScale;
+      const cropMeta = { zoom: cropZoom, cx: centerImgX/cropImage.width, cy: centerImgY/cropImage.height };
+      const cb = cropOnConfirm;
+      close();
+      if(cb) cb(dataUrl, cropMeta);
+    });
+    return backdrop;
+  }
+  // savedCrop (opcional) = { zoom, cx, cy } de um ajuste anterior sobre esta mesma imagem —
+  // reabre exatamente de onde o usuário parou em vez de sempre recomeçar centralizado em 100%
+  function openCropModal(img, onConfirm, savedCrop){
+    if(!cropModalEl) cropModalEl = buildCropModal();
+    cropImage = img;
+    const cover = cropCoverScale();
+    if(savedCrop){
+      cropZoom = Math.max(1, Math.min(3, savedCrop.zoom || 1));
+      const scale = cover * cropZoom;
+      cropOffsetX = CROP_STAGE/2 - (savedCrop.cx||0.5)*img.width*scale;
+      cropOffsetY = CROP_STAGE/2 - (savedCrop.cy||0.5)*img.height*scale;
+    }else{
+      cropZoom = 1;
+      cropOffsetX = (CROP_STAGE - img.width*cover)/2;
+      cropOffsetY = (CROP_STAGE - img.height*cover)/2;
+    }
+    cropModalEl.querySelector('#cropZoomSlider').value = Math.round(cropZoom*100);
+    cropOnConfirm = onConfirm;
+    cropModalEl.style.display = 'flex';
+    renderCropPreview();
+  }
+  function buildProfileModal(){
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.id = 'profileBackdrop';
+    backdrop.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h2>Perfil</h2>
+        <div class="modal-header-actions">
+          <button type="button" class="modal-close" aria-label="Fechar">${svgIcon('<path d="M18 6 6 18"/><path d="M6 6l12 12"/>', 15)}</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="portal-profile-photo" id="profileCardPhoto"></div>
+        <button type="button" class="portal-profile-photo-edit-badge portal-profile-photo-crop-badge" id="profilePhotoCropBadge" style="display:none" title="Reposicionar e dar zoom" aria-label="Reposicionar e dar zoom">${svgIcon('<path d="M9 3H5a2 2 0 0 0-2 2v4M15 3h4a2 2 0 0 1 2 2v4M9 21H5a2 2 0 0 1-2-2v-4M15 21h4a2 2 0 0 0 2-2v-4"/>', 16)}</button>
+        <button type="button" class="portal-profile-photo-edit-badge" id="profilePhotoEditBadge" style="display:none" title="Alterar foto" aria-label="Alterar foto">${svgIcon('<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/>', 16)}</button>
+        <input id="profilePhotoInput" type="file" accept="image/*" style="display:none" />
+        <div class="portal-profile-overlay">
+          <div class="portal-profile-card-name" id="profileCardName"></div>
+          <div class="portal-profile-name-field" id="profileNameField" style="display:none">
+            <input id="profileNameInput" type="text" placeholder="Seu nome" />
+          </div>
+          <div class="portal-profile-card-role" id="profileCardRole"></div>
+          <button type="button" class="btn ghost portal-profile-edit-toggle" id="profileEditToggle">${svgIcon('<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/>', 14)}<span>Editar</span></button>
+          <div class="portal-profile-edit-actions" id="profileEditActions" style="display:none">
+            <button type="button" id="cancelProfile" class="btn ghost">Cancelar</button>
+            <button type="button" id="saveProfile" class="btn">Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(backdrop);
+    const close = ()=>{ backdrop.style.display = 'none'; setProfileEditing(false); };
+    backdrop.addEventListener('click', ev=>{ if(ev.target===backdrop) close(); });
+    backdrop.querySelector('.modal-close').addEventListener('click', close);
+    backdrop.querySelector('#profileEditToggle').addEventListener('click', ()=>setProfileEditing(true));
+    backdrop.querySelector('#cancelProfile').addEventListener('click', ()=>setProfileEditing(false));
+    backdrop.querySelector('#profilePhotoEditBadge').addEventListener('click', ()=>backdrop.querySelector('#profilePhotoInput').click());
+    backdrop.querySelector('#profilePhotoInput').addEventListener('change', ev=>{
+      const file = ev.target.files && ev.target.files[0];
+      ev.target.value = ''; // permite escolher o mesmo arquivo de novo depois de cancelar o ajuste
+      if(!file) return;
+      // abre no ajuste de zoom/posição em vez de recortar o centro automaticamente — a imagem
+      // aqui ainda é a original (reduzida a um teto razoável, ver resizeImageForStorage), não o
+      // quadrado final — é ela que fica guardada pra permitir reabrir o ajuste depois
+      loadImageFile(file, rawImg=>{
+        resizeImageForStorage(rawImg, (img, originalDataUrl)=>{
+          openCropModal(img, (dataUrl, cropMeta)=>{
+            profilePhotoDataUrl = dataUrl;
+            profilePhotoOriginalUrl = originalDataUrl;
+            profilePhotoCrop = cropMeta;
+            saveCachedPhotoSrc(profileCurrentUid, dataUrl, originalDataUrl, cropMeta);
+            setProfileCardPhoto(dataUrl);
+            updateProfileCropBadge();
+          });
+        });
+      });
+    });
+    // reaproveita a original conhecida (se ainda corresponder à foto atual) como fonte pro
+    // ajuste, com o mesmo zoom/posição de antes — sem original conhecido, cai no quadrado atual
+    // como se fosse a imagem inteira (mesmo comportamento de antes desta funcionalidade)
+    backdrop.querySelector('#profilePhotoCropBadge').addEventListener('click', ()=>{
+      if(!profilePhotoDataUrl) return;
+      const sourceUrl = profilePhotoOriginalUrl || profilePhotoDataUrl;
+      const savedCrop = profilePhotoOriginalUrl ? profilePhotoCrop : null;
+      const img = new Image();
+      img.onload = ()=>openCropModal(img, (dataUrl, cropMeta)=>{
+        profilePhotoDataUrl = dataUrl;
+        profilePhotoOriginalUrl = sourceUrl;
+        profilePhotoCrop = cropMeta;
+        saveCachedPhotoSrc(profileCurrentUid, dataUrl, sourceUrl, cropMeta);
+        setProfileCardPhoto(dataUrl);
+      }, savedCrop);
+      img.src = sourceUrl;
+    });
+    backdrop.querySelector('#saveProfile').addEventListener('click', async ()=>{
+      const nameInput = $('profileNameInput');
+      const name = nameInput.value.trim();
+      if(!name){ nameInput.focus(); return; }
+      if(!window.PortalFirebase){ close(); return; }
+      const btn = backdrop.querySelector('#saveProfile');
+      btn.disabled = true;
+      try{
+        const patch = { name };
+        if(profilePhotoDataUrl != null) patch.photo = profilePhotoDataUrl;
+        await window.PortalFirebase.updateOwnProfile(patch);
+        applyOwnProfileToUI(patch);
+        profileSavedName = name;
+        profileSavedPhoto = profilePhotoDataUrl;
+        backdrop.querySelector('#profileCardName').textContent = name;
+        close();
+      }catch(e){
+        alert('Não foi possível salvar. Tente novamente.');
+      }finally{
+        btn.disabled = false;
+      }
+    });
+    return backdrop;
+  }
+  // Aplica nome/foto salvos direto na sidebar, sem esperar um reload — mesma dupla de elementos
+  // (#portalProfileName + avatar da barra "Conta") que auth-guard.js já preenche no primeiro
+  // carregamento com o que veio do Firestore.
+  function applyOwnProfileToUI(patch){
+    const nameEl = $('portalProfileName');
+    if(nameEl && patch.name) nameEl.textContent = patch.name;
+    if(patch.photo){
+      const avatar = document.querySelector('#portalAccountBar .portal-account-avatar');
+      if(avatar){
+        let img = avatar.querySelector('img');
+        if(!img){ img = document.createElement('img'); img.alt = ''; avatar.insertBefore(img, avatar.firstChild); }
+        img.src = patch.photo;
+      }
+    }
+  }
+  async function openProfileModal(){
+    if(!profileModalEl) profileModalEl = buildProfileModal();
+    setProfileEditing(false);
+    profileSavedName = '';
+    profileSavedPhoto = null;
+    profileCurrentUid = null;
+    profilePhotoOriginalUrl = null;
+    profilePhotoCrop = null;
+    profileModalEl.querySelector('#profileCardName').textContent = '';
+    profileModalEl.querySelector('#profileCardRole').textContent = '';
+    setProfileCardPhoto(null);
+    profileModalEl.style.display = 'flex';
+    if(!window.PortalFirebase) return;
+    try{
+      const context = await window.PortalFirebase.currentContext();
+      profileCurrentUid = context.user.uid;
+      profileSavedName = context.profile.name || '';
+      profileSavedPhoto = context.profile.photo || null;
+      syncProfilePhotoSrc(profileCurrentUid, profileSavedPhoto);
+      profileModalEl.querySelector('#profileNameInput').value = profileSavedName;
+      profilePhotoDataUrl = profileSavedPhoto;
+      profileModalEl.querySelector('#profileCardName').textContent = profileSavedName;
+      setProfileCardPhoto(profileSavedPhoto);
+      resolveProfileRoleName(context.profile.role).then(roleName=>{
+        profileModalEl.querySelector('#profileCardRole').textContent = roleName;
+      });
+    }catch(e){ /* mantém o cartão vazio — usuário ainda consegue preencher pelo Editar */ }
   }
 
   // ============================================================
@@ -952,51 +1379,55 @@
         ${renderNavHtml()}
       </div>
       <div style="margin-top:auto">
-        <a href="notifications.html" class="portal-notifications-link" aria-label="Abrir notificações"><span class="portal-notifications-icon">${svgIcon('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>', 16)}</span><span class="portal-notifications-label">Notificações</span><span class="portal-notifications-count" id="portalNotificationsCount" aria-live="polite" hidden></span></a>
         <div class="portal-account-bar" id="portalAccountBar" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
-          <span class="portal-account-avatar">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 14)}</span>
+          <span class="portal-account-avatar">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 14)}<span class="portal-account-avatar-dot" id="portalAccountAvatarDot" hidden></span></span>
           <span class="portal-account-info"><span class="portal-account-name" id="portalProfileName">Conta</span><span class="portal-account-email" id="portalProfileEmail"></span></span>
           <button type="button" class="portal-account-btn" id="portalLogoutBtn" title="Sair" aria-label="Sair">${svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 15)}</button>
         </div>
-        <button type="button" class="portal-nav-item" id="portalSettingsBtn" style="margin-top:6px">${svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>')}<span>Configurações</span></button>
       </div>
     `;
     renderBrandTrigger();
     renderCollapseBtn();
     applyCollapsedClass();
+    applyNotificationDot();
     $('portalBrandTrigger').addEventListener('click', ()=>{ brandPopoverOpen ? closeBrandPopover() : openBrandPopover(); });
     $('portalCollapseBtn').addEventListener('click', toggleSidebarCollapsed);
-    $('portalSettingsBtn').addEventListener('click', openPortalSettingsModal);
     wireAccountBar();
   }
-  let notificationCountStarted = false;
-  function renderPortalNotificationCount(items){
-    const badge = $('portalNotificationsCount');
-    const link = badge && badge.closest('.portal-notifications-link');
-    if(!badge || !link) return;
-    const unread = (Array.isArray(items) ? items : []).filter(item=>item.kind==='postReadyNotification' && !item.readAt).length;
-    const label = unread===1 ? '1 notificação não lida' : `${unread} notificações não lidas`;
-    badge.textContent = unread>99 ? '99+' : String(unread);
-    badge.hidden = unread===0;
-    badge.title = label;
-    link.setAttribute('aria-label', unread ? `Abrir notificações: ${label}` : 'Abrir notificações');
+
+  // ============================================================
+  // INDICADOR DE NOTIFICAÇÃO NÃO LIDA — badge com a quantidade (não só um ponto) no avatar da
+  // barra "Conta" e, quando o dropdown abre, o mesmo badge ao lado de "Notificações" (é de lá
+  // que o alerta vem). Só pro perfil social-media, mesma restrição que o badge antigo tinha.
+  // ============================================================
+  let unreadNotifications = 0;
+  function notificationBadgeLabel(){ return unreadNotifications>9 ? '9+' : String(unreadNotifications); }
+  function applyNotificationDot(){
+    const avatarDot = $('portalAccountAvatarDot');
+    if(avatarDot){ avatarDot.hidden = !unreadNotifications; avatarDot.textContent = notificationBadgeLabel(); }
+    if(accountMenuEl){
+      const menuDot = accountMenuEl.querySelector('.portal-account-menu-dot');
+      if(menuDot){ menuDot.hidden = !unreadNotifications; menuDot.textContent = notificationBadgeLabel(); }
+    }
   }
-  function startPortalNotificationCount(attempt){
-    const badge = $('portalNotificationsCount');
-    if(!badge || notificationCountStarted) return;
+  let notificationWatchStarted = false;
+  function startPortalNotificationWatch(attempt){
+    if(notificationWatchStarted) return;
     if(!window.PortalFirebase || document.body.dataset.authenticated!=='true'){
-      if((attempt||0)<50) setTimeout(()=>startPortalNotificationCount((attempt||0)+1),200);
+      if((attempt||0)<50) setTimeout(()=>startPortalNotificationWatch((attempt||0)+1),200);
       return;
     }
-    if(document.body.dataset.userRole!=='social-media'){ badge.hidden=true; return; }
-    notificationCountStarted = true;
-    const retry = ()=>{ notificationCountStarted=false; if((attempt||0)<50) setTimeout(()=>startPortalNotificationCount((attempt||0)+1),500); };
-    window.PortalFirebase.subscribeNotifications(renderPortalNotificationCount,retry).catch(retry);
+    if(document.body.dataset.userRole!=='social-media') return;
+    notificationWatchStarted = true;
+    const retry = ()=>{ notificationWatchStarted=false; if((attempt||0)<50) setTimeout(()=>startPortalNotificationWatch((attempt||0)+1),500); };
+    window.PortalFirebase.subscribeNotifications(items=>{
+      unreadNotifications = (Array.isArray(items) ? items : []).filter(item=>item.kind==='postReadyNotification' && !item.readAt).length;
+      applyNotificationDot();
+    }, retry).catch(retry);
   }
 
-
   renderSidebar();
-  startPortalNotificationCount();
+  startPortalNotificationWatch();
 
   if(SYNC_ENABLED){
     syncPullBrands();
