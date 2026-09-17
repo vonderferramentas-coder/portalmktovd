@@ -15,7 +15,7 @@
   // e quais redes de fato têm coleta. Marcas fora deste mapa (ainda sem integração) nunca
   // buscam dados publicados nem herdam número/meta de outra marca — mostram "não conectado".
   const BRAND_INTEGRATIONS = {
-    'default': { storeSuffix: 'vonder', instagram: true, facebook: true, youtube: true, tiktok: true },
+    'default': { storeSuffix: 'vonder', instagram: true, facebook: true, youtube: true },
     'ferramentas-gerais': { storeSuffix: 'ferramentas-gerais', instagram: true, facebook: true, youtube: false },
   };
   const integration = BRAND_INTEGRATIONS[brandKey] || null;
@@ -65,7 +65,7 @@
     { name:'Instagram', color:'#E94683', icon:'icons/instagram.svg', connected: !!(integration && integration.instagram) },
     { name:'Facebook',  color:'#287BE0', icon:'icons/facebook.svg',  connected: !!(integration && integration.facebook) },
     { name:'YouTube',   color:'#F04444', icon:'icons/youtube.svg',   connected: !!(integration && integration.youtube) },
-    { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected: !!(integration && integration.tiktok) }
+    { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected:false }
   ];
   const POST_SORT_OPTIONS = [
     { key: 'timestamp', label: 'Data', icon: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>' },
@@ -373,7 +373,10 @@
     // manual (ver TOTAL_APPROX_INFO) — some sozinho quando `connected` virar true, depois
     // que a coleta automática entrar no ar.
     const isYouTube = active && active.name === 'YouTube';
-    const isManualTikTok = active && active.name === 'TikTok' && !active.connected;
+    // Só a VONDER tem planilha do TikTok importada (ver tiktok-import.html) — nas demais marcas
+    // não há dado nenhum de TikTok, então o aviso de "número manual" não se aplica a elas (o
+    // texto fala especificamente da planilha do TikTok Studio da VONDER).
+    const isManualTikTok = isVonder && active && active.name === 'TikTok' && !active.connected;
     setText('total', isYouTube ? formatApproxYouTube(current) : format(current));
     const approxBadge = el('totalApprox');
     if (approxBadge) approxBadge.hidden = !(isYouTube || isManualTikTok);
@@ -1519,11 +1522,11 @@
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && workflowInfo && workflowInfo.style.display === 'flex') closeWorkflowInfo(); });
 
   // Mesmo padrão do modal acima, mas para o ícone de aviso ao lado do total (ver render()) —
-  // reaproveitado tanto para o número aproximado do YouTube quanto para o lançamento manual
-  // do TikTok em marcas sem coleta automática dessa rede (ver BRAND_INTEGRATIONS acima e
-  // docs/ARQUITETURA-E-INTEGRACOES.md seção 15 — o App Review do Login Kit foi rejeitado em
-  // 17/09/2026, não é mais "em análise"): o conteúdo do modal é montado na hora, conforme a
-  // rede selecionada no momento do clique.
+  // reaproveitado tanto para o número aproximado do YouTube quanto para o histórico importado
+  // manualmente do TikTok (só VONDER, ver isManualTikTok e docs/ARQUITETURA-E-INTEGRACOES.md
+  // seção 15 — o TikTok não tem API oficial viável pra esse uso, o App Review do Login Kit foi
+  // rejeitado em 17/09/2026): o conteúdo do modal é montado na hora, conforme a rede
+  // selecionada no momento do clique.
   const youtubeApprox = el('youtubeApproxBackdrop');
   let youtubeApproxLastFocus = null;
   const TOTAL_APPROX_INFO = {
@@ -1538,10 +1541,14 @@
     },
     TikTok: {
       icon: 'icons/tiktok.svg',
-      title: 'Número lançado manualmente',
-      body: `<p>Esta marca ainda não tem coleta automática de seguidores do TikTok. Este número foi lançado
-        manualmente pela equipe e só muda quando alguém repetir esse lançamento — não atualiza sozinho como
-        Instagram, Facebook e YouTube.</p>`
+      title: 'Dado importado manualmente',
+      body: `<p>O TikTok não tem API liberada para esse uso (o TikTok recusa qualquer app que exiba, no próprio
+        site, dados da conta que a própria equipe administra) — por isso não há coleta automática como
+        Instagram, Facebook e YouTube.</p>
+        <p>Este histórico vem de uma planilha baixada manualmente no <b>TikTok Studio</b> (Análise → Seguidores
+        → Baixar dados → CSV) e importada em <b>Usuários e acessos → Importar histórico do TikTok</b>. Ele só
+        muda quando alguém repetir essa importação — <b>precisa ser atualizado regularmente</b> para as métricas
+        (crescimento, média por dia etc.) continuarem refletindo a realidade.</p>`
     }
   };
   const closeYoutubeApprox = () => {
