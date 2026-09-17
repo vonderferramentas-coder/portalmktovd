@@ -205,9 +205,36 @@ jobs:
           published = json.loads(Path('data/social-followers.json').read_text(encoding='utf-8'))
           live = json.loads(Path('data/social-followers-live.json').read_text(encoding='utf-8'))
 
+          # O TikTok é importado manualmente pelo navegador (ver followers-dashboard.js,
+          # mergeTikTokHistory) e só existe no Firestore — nunca passa pelos JSON deste
+          # repositório. Um .set() do zero aqui, a cada 15 min, apagaria esse histórico a
+          # cada execução. Por isso lê o documento atual primeiro e mescla, preservando
+          # qualquer rede que este workflow não gerencia (hoje o TikTok) em vez de
+          # substituir o documento inteiro.
+          reference = db.collection('portalStore').document('followers-vonder-v1')
+          current_snapshot = reference.get()
+          current_v = (current_snapshot.to_dict() or {}).get('v') or {} if current_snapshot.exists else {}
+          current_published = current_v.get('published') or {}
+          current_live = current_v.get('live') or {}
+
+          history_by_date = {item['date']: item for item in published.get('history', []) if item.get('date')}
+          for date, existing_entry in {item['date']: item for item in current_published.get('history', []) if item.get('date')}.items():
+              entry = history_by_date.get(date)
+              if entry is None:
+                  history_by_date[date] = existing_entry
+                  continue
+              merged_followers = dict(existing_entry.get('followers') or {})
+              merged_followers.update(entry.get('followers') or {})
+              entry['followers'] = merged_followers
+          published['history'] = [history_by_date[date] for date in sorted(history_by_date)]
+
+          live_platforms = dict(current_live.get('platforms') or {})
+          live_platforms.update(live.get('platforms') or {})
+          live['platforms'] = live_platforms
+
           # Mesmo formato gravado por migrate-followers.js (v/updated_at/updatedAt), para que
           # a leitura em followers-dashboard.js e a migração manual continuem compatíveis.
-          db.collection('portalStore').document('followers-vonder-v1').set({
+          reference.set({
               'v': {'published': published, 'live': live},
               'updated_at': int(time.time() * 1000),
               'updatedAt': firestore.SERVER_TIMESTAMP,
@@ -395,7 +422,31 @@ jobs:
           live = json.loads(live_path.read_text(encoding='utf-8')) if live_path.exists() else {'version': 2, 'platforms': {}}
           published = json.loads(published_path.read_text(encoding='utf-8')) if published_path.exists() else {'version': 2, 'history': []}
 
-          db.collection('portalStore').document('followers-ferramentas-gerais-v1').set({
+          # Ver o comentário equivalente no job sync-instagram acima: o TikTok desta marca
+          # também só existe no Firestore (importado manualmente), então mescla em vez de
+          # substituir o documento inteiro.
+          reference = db.collection('portalStore').document('followers-ferramentas-gerais-v1')
+          current_snapshot = reference.get()
+          current_v = (current_snapshot.to_dict() or {}).get('v') or {} if current_snapshot.exists else {}
+          current_published = current_v.get('published') or {}
+          current_live = current_v.get('live') or {}
+
+          history_by_date = {item['date']: item for item in published.get('history', []) if item.get('date')}
+          for date, existing_entry in {item['date']: item for item in current_published.get('history', []) if item.get('date')}.items():
+              entry = history_by_date.get(date)
+              if entry is None:
+                  history_by_date[date] = existing_entry
+                  continue
+              merged_followers = dict(existing_entry.get('followers') or {})
+              merged_followers.update(entry.get('followers') or {})
+              entry['followers'] = merged_followers
+          published['history'] = [history_by_date[date] for date in sorted(history_by_date)]
+
+          live_platforms = dict(current_live.get('platforms') or {})
+          live_platforms.update(live.get('platforms') or {})
+          live['platforms'] = live_platforms
+
+          reference.set({
               'v': {'published': published, 'live': live},
               'updated_at': int(time.time() * 1000),
               'updatedAt': firestore.SERVER_TIMESTAMP,
