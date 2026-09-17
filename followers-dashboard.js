@@ -384,10 +384,6 @@
     if (periodDeltas.length) el('growth').className = `growth-line ${net > 0 ? 'positive' : net < 0 ? 'negative' : ''}`.trim();
 
     setText('growthPeriod', `${shortDate(first.date)} a ${shortDate(last.date)}`);
-    setText('newFollowers', periodDeltas.length ? signed(net) : '—');
-    setTone('newFollowers', periodDeltas.length ? net : 0);
-    setText('avg', perDay === null ? '—' : signed(perDay));
-    setTone('avg', perDay || 0);
 
     // Bruto (follows/unfollows) só existe via Insights da Meta, exclusivo do Instagram — mesma
     // fonte e mesma janela de ~29 dias do painel "Insights detalhados" mais abaixo (ver
@@ -399,6 +395,24 @@
       : [];
     const grossFollows = periodInsights.reduce((sum, insight) => sum + Number(insight.follows), 0);
     const grossUnfollows = periodInsights.reduce((sum, insight) => sum + Number(insight.unfollows), 0);
+
+    // "Crescimento líquido"/"Média por dia" deste card usam o saldo real (bruto − unfollows)
+    // quando ele está disponível — mesmo motivo do tooltip do gráfico (ver aggregate/
+    // showTooltip): o delta bruto de followers_count entre duas medições diverge do saldo
+    // real por ruído que não é "seguidor novo" (cache da Meta, limpeza de contas spam), e os
+    // 4 números deste card precisam fechar a conta entre si (bruto − unfollows = líquido).
+    // ponytail: com "Todas as redes" selecionado, isso restringe o líquido mostrado AQUI ao
+    // saldo do Instagram (única rede com Insights), sem somar a fração de Facebook/YouTube/
+    // TikTok no período — o card "Comunidade total" acima continua com o total real das 4
+    // redes. Evolução: se outra rede ganhar o mesmo tipo de Insights, somar aqui também.
+    const netForCard = periodInsights.length ? grossFollows - grossUnfollows : net;
+    const perDayForCard = periodInsights.length ? netForCard / span : perDay;
+    const hasNetForCard = periodDeltas.length || periodInsights.length;
+
+    setText('newFollowers', hasNetForCard ? signed(netForCard) : '—');
+    setTone('newFollowers', hasNetForCard ? netForCard : 0);
+    setText('avg', perDayForCard === null ? '—' : signed(perDayForCard));
+    setTone('avg', perDayForCard || 0);
     setText('grossFollowsPeriod', periodInsights.length ? signed(grossFollows) : '—');
     setTone('grossFollowsPeriod', periodInsights.length ? grossFollows : 0);
     setText('unfollowsPeriod', periodInsights.length ? signed(-grossUnfollows) : '—');
