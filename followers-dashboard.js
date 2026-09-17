@@ -389,11 +389,20 @@
     setText('avg', perDay === null ? '—' : signed(perDay));
     setTone('avg', perDay || 0);
 
-    const ranked = nets
-      .filter(network => Number.isFinite(last.values[network.name]))
-      .map(network => ({ network, gain: (last.values[network.name] || 0) - (first.values[network.name] || 0) }))
-      .sort((a,b) => b.gain - a.gain);
-    setText('bestChannel', ranked.length ? ranked[0].network.name : '—');
+    // Bruto (follows/unfollows) só existe via Insights da Meta, exclusivo do Instagram — mesma
+    // fonte e mesma janela de ~29 dias do painel "Insights detalhados" mais abaixo (ver
+    // renderInsights). Fora do Instagram/"Todas" o dado não se aplica à seleção, então some
+    // como "—" em vez de mostrar um número de outra rede.
+    const periodInsights = isInstagramOrAllSelected()
+      ? points.map(point => point.insights && point.insights.Instagram)
+          .filter(insight => insight && Number.isFinite(Number(insight.follows)) && Number.isFinite(Number(insight.unfollows)))
+      : [];
+    const grossFollows = periodInsights.reduce((sum, insight) => sum + Number(insight.follows), 0);
+    const grossUnfollows = periodInsights.reduce((sum, insight) => sum + Number(insight.unfollows), 0);
+    setText('grossFollowsPeriod', periodInsights.length ? signed(grossFollows) : '—');
+    setTone('grossFollowsPeriod', periodInsights.length ? grossFollows : 0);
+    setText('unfollowsPeriod', periodInsights.length ? signed(-grossUnfollows) : '—');
+    setTone('unfollowsPeriod', periodInsights.length ? -grossUnfollows : 0);
 
     renderGoalRing(currentPoint, nets);
     el('channelContext').innerHTML = active ? `<img src="${active.icon}" alt=""> ${active.name}` : 'Todas';
@@ -1257,7 +1266,7 @@
     if (totalWatermarkMask) totalWatermarkMask.hidden = true;
     el('growth').className = 'growth-line';
     setText('growth', message);
-    ['newFollowers','avg','bestChannel'].forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = 'neutral'; });
+    ['newFollowers','avg','grossFollowsPeriod','unfollowsPeriod'].forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = 'neutral'; });
     setText('growthPeriod', '—');
     renderGoalRing({ values:{} }, activeNetworks());
     el('channelContext').textContent = 'Todas';

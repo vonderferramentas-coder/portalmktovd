@@ -418,6 +418,10 @@
       margin-top: 29px
     }
 
+    .metrics-2x2 {
+      grid-template-columns: repeat(2, 1fr)
+    }
+
     .metric {
       padding: 12px 14px;
       border: 1px solid var(--border);
@@ -2167,10 +2171,11 @@
             <div class="head">
               <h2>Crescimento no período</h2><span class="period-pill" id="growthPeriod"></span>
             </div>
-            <div class="metrics">
+            <div class="metrics metrics-2x2">
               <div class="metric"><span>Crescimento líquido</span><strong id="newFollowers"></strong></div>
-              <div class="metric"><span>Melhor canal</span><strong id="bestChannel">Instagram</strong></div>
               <div class="metric"><span>Média por dia</span><strong id="avg"></strong></div>
+              <div class="metric"><span>Novos seguidores (bruto)</span><strong id="grossFollowsPeriod"></strong></div>
+              <div class="metric"><span>Deixaram de seguir</span><strong id="unfollowsPeriod"></strong></div>
             </div>
           </article>
           <article class="card score-card">
