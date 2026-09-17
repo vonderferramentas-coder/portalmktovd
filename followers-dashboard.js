@@ -373,10 +373,9 @@
     // manual (ver TOTAL_APPROX_INFO) — some sozinho quando `connected` virar true, depois
     // que a coleta automática entrar no ar.
     const isYouTube = active && active.name === 'YouTube';
-    // Só a VONDER tem planilha do TikTok importada (ver tiktok-import.html) — nas demais marcas
-    // não há dado nenhum de TikTok, então o aviso de "número manual" não se aplica a elas (o
-    // texto fala especificamente da planilha do TikTok Studio da VONDER).
-    const isManualTikTok = isVonder && active && active.name === 'TikTok' && !active.connected;
+    // O TikTok é manual pra qualquer marca (ver card "Importar histórico do TikTok" — cada
+    // marca sobe a própria planilha), então o aviso aparece pra todas, não só a VONDER.
+    const isManualTikTok = active && active.name === 'TikTok' && !active.connected;
     setText('total', isYouTube ? formatApproxYouTube(current) : format(current));
     const approxBadge = el('totalApprox');
     if (approxBadge) approxBadge.hidden = !(isYouTube || isManualTikTok);
@@ -439,10 +438,10 @@
     const insightsPanel = el('insightsPanel');
     if (insightsPanel) insightsPanel.hidden = !showInstagramOnly;
     if (showInstagramOnly) renderInsights(points);
-    // Só a VONDER tem planilha do TikTok pra importar (ver tiktok-import mais abaixo) — nas
-    // demais marcas não haveria nada pra fazer com o botão, então nem aparece.
+    // Qualquer marca com painel ativo pode subir a própria planilha do TikTok — cada marca
+    // grava no próprio documento (FOLLOWERS_STORE_KEY já é por marca).
     const tiktokImportPanel = el('tiktokImportPanel');
-    if (tiktokImportPanel) tiktokImportPanel.hidden = !(isVonder && active && active.name === 'TikTok');
+    if (tiktokImportPanel) tiktokImportPanel.hidden = !(active && active.name === 'TikTok');
     renderComparatives(points, nets, periodDeltas);
     renderGoal(currentPoint, current, nets, periodDeltas, perDay);
 
@@ -1527,10 +1526,10 @@
 
   // Mesmo padrão do modal acima, mas para o ícone de aviso ao lado do total (ver render()) —
   // reaproveitado tanto para o número aproximado do YouTube quanto para o histórico importado
-  // manualmente do TikTok (só VONDER, ver isManualTikTok e docs/ARQUITETURA-E-INTEGRACOES.md
-  // seção 15 — o TikTok não tem API oficial viável pra esse uso, o App Review do Login Kit foi
-  // rejeitado em 17/09/2026): o conteúdo do modal é montado na hora, conforme a rede
-  // selecionada no momento do clique.
+  // manualmente do TikTok, em qualquer marca (ver isManualTikTok e docs/ARQUITETURA-E-
+  // INTEGRACOES.md seção 15 — o TikTok não tem API oficial viável pra esse uso, o App Review do
+  // Login Kit foi rejeitado em 17/09/2026): o conteúdo do modal é montado na hora, conforme a
+  // rede selecionada no momento do clique.
   const youtubeApprox = el('youtubeApproxBackdrop');
   let youtubeApproxLastFocus = null;
   const TOTAL_APPROX_INFO = {
@@ -1878,8 +1877,9 @@
 
   // Sem API oficial viável (App Review do Login Kit rejeitado, ver docs/ARQUITETURA-E-
   // INTEGRACOES.md seção 15): o operador baixa o histórico em TikTok Studio > Análise >
-  // Seguidores > Baixar dados > CSV e importa aqui. Só a VONDER usa isso — o painel
-  // (render(), tiktokImportPanel) só mostra o botão quando isVonder && rede === 'TikTok'.
+  // Seguidores > Baixar dados > CSV e importa aqui. Qualquer marca pode usar — cada uma grava
+  // no próprio documento (FOLLOWERS_STORE_KEY), o painel só mostra o botão com TikTok
+  // selecionado (ver render(), tiktokImportPanel).
   const TIKTOK_MONTHS_PT = {
     janeiro: 1, fevereiro: 2, março: 3, abril: 4, maio: 5, junho: 6,
     julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12
@@ -1960,7 +1960,7 @@
 
     value.live = value.live || { version: 2, platforms: {} };
     value.live.platforms = Object.assign({}, value.live.platforms, {
-      TikTok: { username: 'vonderferramentas', followers: dated[dated.length - 1].followers, source: 'tiktok_studio_export' }
+      TikTok: { username: brand.name || brandKey, followers: dated[dated.length - 1].followers, source: 'tiktok_studio_export' }
     });
     value.live.version = 2;
     value.live.updatedAt = new Date().toISOString();
@@ -1969,6 +1969,7 @@
 
   (function initTikTokImport() {
     const fileInput = el('tiktokCsvFile');
+    const fileName = el('tiktokCsvFileName');
     const button = el('tiktokImportButton');
     const summary = el('tiktokImportSummary');
     if (!fileInput || !button || !summary) return;
@@ -1983,6 +1984,7 @@
       const file = fileInput.files[0];
       button.disabled = true;
       parsedFile = null;
+      if (fileName) fileName.textContent = file ? file.name : 'Nenhum arquivo escolhido';
       if (!file) { setSummary('Selecione o arquivo FollowerHistory.csv para começar.'); return; }
       try {
         const text = await file.text();

@@ -2168,6 +2168,28 @@
           <div class="platform-hint">Clique em uma plataforma para filtrar todas as métricas abaixo. Por padrão, o Instagram fica selecionado.</div>
           <div class="platform-list" id="platforms"></div>
         </section>
+        <section class="card" id="tiktokImportPanel" style="margin-bottom:16px" hidden>
+          <div class="head">
+            <div>
+              <h2>Importar histórico do TikTok</h2>
+              <p class="muted">O TikTok não libera API para uso interno — ao contrário de Instagram, Facebook e
+                YouTube, aqui a atualização é manual, planilha por planilha.</p>
+            </div><span class="period-pill">Manual</span>
+          </div>
+          <p class="muted" style="margin-top:16px">Baixe o histórico em <b>TikTok Studio → Análise → Seguidores →
+            Baixar dados → CSV</b>, extraia <code>FollowerHistory.csv</code> do zip baixado e selecione-o abaixo.
+            A importação mescla só os seguidores do TikTok por dia — nunca apaga Instagram, Facebook ou YouTube
+            dos mesmos dias, nem remove dias fora do arquivo. <b>Repita esta importação regularmente</b> (a cada
+            nova planilha baixada): sem isso, o gráfico e as métricas do TikTok param de refletir a realidade.</p>
+          <div class="tiktok-import-row">
+            <label class="btn ghost" for="tiktokCsvFile">Escolher arquivo</label>
+            <input type="file" id="tiktokCsvFile" accept=".csv,text/csv" style="display:none">
+            <span class="muted" id="tiktokCsvFileName">Nenhum arquivo escolhido</span>
+            <button type="button" class="btn" id="tiktokImportButton" disabled>Importar</button>
+          </div>
+          <p class="muted" id="tiktokImportSummary" style="margin-top:8px">Selecione o arquivo FollowerHistory.csv
+            para começar.</p>
+        </section>
         <section class="hero">
           <article class="card total" id="totalCard">
             <div><span class="total-label" id="totalLabel">Comunidade total</span><button type="button" class="approx-badge" id="totalApprox" hidden aria-label="Por que este número é aproximado"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01" stroke-linecap="round"/></svg></button><strong id="total"></strong></div>
@@ -2201,26 +2223,6 @@
             </div>
             <p class="goal-ring-caption" id="goalRingCaption">Nenhuma meta cadastrada</p>
           </article>
-        </section>
-        <section class="card" id="tiktokImportPanel" style="margin-top:24px" hidden>
-          <div class="head">
-            <div>
-              <h2>Importar histórico do TikTok</h2>
-              <p class="muted">O TikTok não libera API para uso interno — ao contrário de Instagram, Facebook e
-                YouTube, aqui a atualização é manual.</p>
-            </div><span class="period-pill">Manual · só VONDER</span>
-          </div>
-          <p class="muted" style="margin-top:16px">Baixe o histórico em <b>TikTok Studio → Análise → Seguidores →
-            Baixar dados → CSV</b>, extraia <code>FollowerHistory.csv</code> do zip baixado e selecione-o abaixo.
-            A importação mescla só os seguidores do TikTok por dia — nunca apaga Instagram, Facebook ou YouTube
-            dos mesmos dias, nem remove dias fora do arquivo. <b>Repita esta importação regularmente</b> (a cada
-            nova planilha baixada): sem isso, o gráfico e as métricas do TikTok param de refletir a realidade.</p>
-          <div class="tiktok-import-row">
-            <input type="file" id="tiktokCsvFile" accept=".csv,text/csv">
-            <button type="button" class="btn" id="tiktokImportButton" disabled>Importar</button>
-          </div>
-          <p class="muted" id="tiktokImportSummary" style="margin-top:8px">Selecione o arquivo FollowerHistory.csv
-            para começar.</p>
         </section>
         <button type="button" class="section-divider" id="performanceToggle" aria-expanded="true"
           aria-controls="performanceBody">
