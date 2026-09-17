@@ -442,6 +442,14 @@
       line-height: 1.1
     }
 
+    .tiktok-import-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 16px;
+      flex-wrap: wrap
+    }
+
 
     .metric-spark {
       display: flex;
@@ -2193,6 +2201,26 @@
             </div>
             <p class="goal-ring-caption" id="goalRingCaption">Nenhuma meta cadastrada</p>
           </article>
+        </section>
+        <section class="card" id="tiktokImportPanel" style="margin-top:24px" hidden>
+          <div class="head">
+            <div>
+              <h2>Importar histórico do TikTok</h2>
+              <p class="muted">O TikTok não libera API para uso interno — ao contrário de Instagram, Facebook e
+                YouTube, aqui a atualização é manual.</p>
+            </div><span class="period-pill">Manual · só VONDER</span>
+          </div>
+          <p class="muted" style="margin-top:16px">Baixe o histórico em <b>TikTok Studio → Análise → Seguidores →
+            Baixar dados → CSV</b>, extraia <code>FollowerHistory.csv</code> do zip baixado e selecione-o abaixo.
+            A importação mescla só os seguidores do TikTok por dia — nunca apaga Instagram, Facebook ou YouTube
+            dos mesmos dias, nem remove dias fora do arquivo. <b>Repita esta importação regularmente</b> (a cada
+            nova planilha baixada): sem isso, o gráfico e as métricas do TikTok param de refletir a realidade.</p>
+          <div class="tiktok-import-row">
+            <input type="file" id="tiktokCsvFile" accept=".csv,text/csv">
+            <button type="button" class="btn" id="tiktokImportButton" disabled>Importar</button>
+          </div>
+          <p class="muted" id="tiktokImportSummary" style="margin-top:8px">Selecione o arquivo FollowerHistory.csv
+            para começar.</p>
         </section>
         <button type="button" class="section-divider" id="performanceToggle" aria-expanded="true"
           aria-controls="performanceBody">

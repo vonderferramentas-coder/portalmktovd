@@ -301,6 +301,6 @@ export { app, auth, db, profileFor, audit };
 window.PortalFirebase = {
   readPortalStore, writePortalStore, ensurePostsStore, writePost, deletePost, subscribeToPosts,
   subscribeNotifications, markNotificationRead, currentContext, logout, requestPasswordReset,
-  updateOwnProfile
+  updateOwnProfile, audit
 };
 window.dispatchEvent(new Event('portal-firebase-ready'));
