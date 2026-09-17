@@ -101,8 +101,29 @@ jobs:
           path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
+      - name: Verificar se é hora do fechamento diário
+        id: closeWindow
+        run: |
+          minutos=$(( 10#$(date -u +%H) * 60 + 10#$(date -u +%M) ))
+          # Não usa `github.event.schedule == '55 2 * * *'` para decidir: quando esse
+          # cron cai perto do cron de rotina (*/15 * * * *) e o GitHub atrasa a entrega
+          # de agendamentos (visto na prática, atrasos de 10-19 min entre execuções),
+          # ele pode entregar só UM evento pra essa janela — com a identidade do cron de
+          # rotina, não a do fechamento. Foi o que apagou o fechamento de 14/09/2026
+          # inteiro (Instagram e Facebook ficaram sem entrada naquele dia). Uma janela
+          # de horário real (02:20–03:35 UTC = 23:20–00:35 em SP) é imune a isso: fecha
+          # se a execução cair em qualquer tick dessa janela, mesmo que seja o tick
+          # "errado" que ganhou o disparo — fechar mais de uma vez no mesmo dia não tem
+          # efeito colateral, pois cada fechamento sobrescreve o mesmo dia com o dado
+          # mais recente.
+          if [ "$minutos" -ge 140 ] && [ "$minutos" -le 215 ]; then
+            echo "fechar=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fechar=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Fechar histórico diário
-        if: github.event.schedule == '55 2 * * *' || github.event_name == 'workflow_dispatch'
+        if: steps.closeWindow.outputs.fechar == 'true' || github.event_name == 'workflow_dispatch'
         env:
           FOLLOWERS: ${{ steps.meta.outputs.followers }}
           FB_FOLLOWERS: ${{ steps.metaFacebook.outputs.followers }}
@@ -280,8 +301,21 @@ jobs:
           path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
+      - name: Verificar se é hora do fechamento diário (Ferramentas Gerais)
+        id: closeWindowFg
+        run: |
+          minutos=$(( 10#$(date -u +%H) * 60 + 10#$(date -u +%M) ))
+          # Ver o comentário equivalente no job sync-instagram acima: horário real em
+          # vez de github.event.schedule, pra não depender do cron "certo" ganhar a
+          # entrega quando ele cai perto do cron de rotina.
+          if [ "$minutos" -ge 140 ] && [ "$minutos" -le 215 ]; then
+            echo "fechar=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fechar=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Fechar histórico diário (Ferramentas Gerais)
-        if: steps.metaFg.outcome == 'success' && (github.event.schedule == '55 2 * * *' || github.event_name == 'workflow_dispatch')
+        if: steps.metaFg.outcome == 'success' && (steps.closeWindowFg.outputs.fechar == 'true' || github.event_name == 'workflow_dispatch')
         env:
           FOLLOWERS: ${{ steps.metaFg.outputs.followers }}
           FB_OUTCOME: ${{ steps.metaFacebookFg.outcome }}
