@@ -2010,8 +2010,41 @@
     const button = el('tiktokImportButton');
     const summary = el('tiktokImportSummary');
     const dropzone = el('tiktokDropzone');
+    const dropzoneEmpty = el('tiktokDropzoneEmpty');
+    const fileCard = el('tiktokFileCard');
+    const removeButton = el('tiktokFileRemove');
     if (!fileInput || !button || !summary) return;
     let parsedFile = null;
+
+    const setSummary = (message, tone) => {
+      summary.textContent = message;
+      summary.className = tone ? `muted ${tone}` : 'muted';
+    };
+
+    const showFile = name => {
+      if (fileName) fileName.textContent = name;
+      if (fileCard) fileCard.hidden = false;
+      if (dropzoneEmpty) dropzoneEmpty.hidden = true;
+      if (dropzone) dropzone.classList.add('has-file');
+    };
+    const resetDropzone = () => {
+      fileInput.value = '';
+      parsedFile = null;
+      button.disabled = true;
+      if (fileCard) fileCard.hidden = true;
+      if (dropzoneEmpty) dropzoneEmpty.hidden = false;
+      if (dropzone) dropzone.classList.remove('has-file');
+    };
+    // Reseta a visualização E a mensagem — usado ao remover o arquivo (X) ou quando o
+    // input não traz nenhum arquivo. Depois de importar com sucesso, o botão Importar usa
+    // só resetDropzone(): a visualização volta ao estado vazio, mas a mensagem de sucesso
+    // permanece visível em vez de ser substituída por "Selecione o arquivo...".
+    const resetFile = () => {
+      resetDropzone();
+      setSummary('Selecione o arquivo FollowerHistory.csv para começar.');
+    };
+
+    if (removeButton) removeButton.addEventListener('click', resetFile);
 
     if (dropzone) {
       ['dragenter', 'dragover'].forEach(type => dropzone.addEventListener(type, event => {
@@ -2023,9 +2056,12 @@
         dropzone.classList.remove('is-dragover');
       }));
       dropzone.addEventListener('drop', event => {
-        const file = event.dataTransfer && event.dataTransfer.files[0];
-        if (!file) return;
-        fileInput.files = event.dataTransfer.files;
+        const files = event.dataTransfer && event.dataTransfer.files;
+        if (!files || !files.length) return;
+        // Só um arquivo por vez: o CSV do TikTok Studio já traz o histórico inteiro (até 365
+        // dias) num arquivo só, então mais de um aqui é erro do usuário, não um caso a somar.
+        if (files.length > 1) { setSummary('Selecione só um arquivo por vez.', 'negative'); return; }
+        fileInput.files = files;
         fileInput.dispatchEvent(new Event('change'));
       });
     }
@@ -2052,17 +2088,16 @@
       });
     }
 
-    const setSummary = (message, tone) => {
-      summary.textContent = message;
-      summary.className = tone ? `muted ${tone}` : 'muted';
-    };
-
     fileInput.addEventListener('change', async () => {
+      // Sem o atributo `multiple` no input, isto só dispara pra seleção via clique — a
+      // proteção contra mais de um arquivo por vez do drag-and-drop está no handler de 'drop'
+      // acima, que é quem de fato pode receber vários arquivos soltos de uma vez.
+      if (fileInput.files.length > 1) { setSummary('Selecione só um arquivo por vez.', 'negative'); return; }
       const file = fileInput.files[0];
       button.disabled = true;
       parsedFile = null;
-      if (fileName) fileName.textContent = file ? file.name : 'Nenhum arquivo escolhido';
-      if (!file) { setSummary('Selecione o arquivo FollowerHistory.csv para começar.'); return; }
+      if (!file) { resetFile(); return; }
+      showFile(file.name);
       try {
         const text = await file.text();
         const dated = parseTikTokFollowerHistory(text, new Date());
@@ -2087,6 +2122,7 @@
         if (result.conflict) throw new Error('Os dados foram alterados por outra sessão. Atualize a página e tente de novo.');
         await gateway.audit('tiktok_history_imported', { days: parsedFile.length, from: parsedFile[0].date, to: parsedFile[parsedFile.length - 1].date });
         setSummary(`Importado: ${parsedFile.length} dias de seguidores do TikTok (${parsedFile[0].date} a ${parsedFile[parsedFile.length - 1].date}).`, 'positive');
+        resetDropzone();
         load();
       } catch (error) {
         setSummary(error.message || 'Não foi possível concluir a importação.', 'negative');
