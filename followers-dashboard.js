@@ -65,8 +65,14 @@
     { name:'Instagram', color:'#E94683', icon:'icons/instagram.svg', connected: !!(integration && integration.instagram) },
     { name:'Facebook',  color:'#287BE0', icon:'icons/facebook.svg',  connected: !!(integration && integration.facebook) },
     { name:'YouTube',   color:'#F04444', icon:'icons/youtube.svg',   connected: !!(integration && integration.youtube) },
-    { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected:false }
+    // TikTok usa preto (#111827) como cor de marca no card "Comunidade total" (fundo, sempre
+    // legível) — mas essa mesma cor em linha/ponto/legenda do gráfico fica preto sobre preto no
+    // tema escuro (fundo do card também é bem escuro). colorChart é só para esses três usos
+    // (ver chartColor abaixo) e cai no ciano do próprio logo do TikTok no tema escuro.
+    { name:'TikTok',    color:'#111827', colorChartDark:'#69C9D0', icon:'icons/tiktok.svg', connected:false }
   ];
+  const isDarkTheme = () => document.documentElement.getAttribute('data-theme') === 'dark';
+  const chartColor = network => (isDarkTheme() && network.colorChartDark) || network.color;
   const POST_SORT_OPTIONS = [
     { key: 'timestamp', label: 'Data', icon: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>' },
     { key: 'likeCount', label: 'Curtidas', icon: '<path d="M12 20s-6.5-4-9-8.5C1.2 7.8 3 4.5 6.5 4.5c2 0 3.5 1.2 5.5 3.5 2-2.3 3.5-3.5 5.5-3.5 3.5 0 5.3 3.3 3.5 7C18.5 16 12 20 12 20Z"/>' },
@@ -200,6 +206,10 @@
   let liveSnapshot = null;
   let initialized = false;
   let milestoneMonth = null;  // { year, month } navegado pelo usuário no card "Marcos do mês"
+  // Uma vez que o usuário abre/fecha manualmente o "Passo a passo" do card do TikTok (ver
+  // render() e initTikTokImport), o render() para de decidir esse estado sozinho a cada
+  // atualização automática — senão reabriria o card na cara do usuário a cada 60s.
+  let tiktokStepsUserToggled = false;
   let postsData = [];        // snapshot mais recente de posts (sem histórico por dia)
   let postsSort = 'timestamp';
   let postsView = 'grid';
@@ -441,7 +451,31 @@
     // Qualquer marca com painel ativo pode subir a própria planilha do TikTok — cada marca
     // grava no próprio documento (FOLLOWERS_STORE_KEY já é por marca).
     const tiktokImportPanel = el('tiktokImportPanel');
-    if (tiktokImportPanel) tiktokImportPanel.hidden = !(active && active.name === 'TikTok');
+    const isTikTokActive = !!(active && active.name === 'TikTok');
+    if (tiktokImportPanel) tiktokImportPanel.hidden = !isTikTokActive;
+    if (isTikTokActive) {
+      const tiktokPlatform = (liveSnapshot && liveSnapshot.platforms && liveSnapshot.platforms.TikTok) || null;
+      const importedAt = tiktokPlatform && tiktokPlatform.importedAt ? new Date(tiktokPlatform.importedAt) : null;
+      const hasImportedData = !!(importedAt && !isNaN(importedAt));
+      const lastImportedEl = el('tiktokLastImported');
+      if (lastImportedEl) {
+        lastImportedEl.hidden = !hasImportedData;
+        if (hasImportedData) lastImportedEl.textContent = `Últimos dados importados em ${importedAt.toLocaleDateString('pt-BR')}`;
+      }
+      const reimportLink = el('tiktokReimportLink');
+      if (reimportLink) reimportLink.hidden = !hasImportedData;
+      // Assim que já existe planilha importada, o passo a passo nasce fechado (quem já sabe o
+      // fluxo não precisa rolar por ele de novo) — mas só decide isso enquanto o usuário não
+      // tiver mexido no toggle com a própria mão (ver tiktokStepsUserToggled).
+      const stepsToggle = el('tiktokStepsToggle'), stepsBody = el('tiktokStepsBody');
+      if (stepsToggle && stepsBody && !tiktokStepsUserToggled) {
+        const expanded = !hasImportedData;
+        stepsToggle.setAttribute('aria-expanded', String(expanded));
+        stepsBody.classList.toggle('is-collapsed', !expanded);
+        stepsBody.setAttribute('aria-hidden', String(!expanded));
+        stepsBody.inert = !expanded;
+      }
+    }
     renderComparatives(points, nets, periodDeltas);
     renderGoal(currentPoint, current, nets, periodDeltas, perDay);
 
@@ -462,7 +496,7 @@
   function renderChart(points, nets, grain) {
     const buckets = aggregate(points, grain);
     const plotted = nets.filter(network => buckets.some(item => Number.isFinite(item.point.values[network.name])));
-    el('legend').innerHTML = plotted.map(network => `<span><i style="background:${network.color}"></i>${network.name}</span>`).join('');
+    el('legend').innerHTML = plotted.map(network => `<span><i style="background:${chartColor(network)}"></i>${network.name}</span>`).join('');
     const values = buckets.flatMap(item => plotted.map(network => item.point.values[network.name]).filter(Number.isFinite));
     const minimum = Math.min(...values), maximum = Math.max(...values);
     const spread = Math.max(1, maximum - minimum);
@@ -477,12 +511,12 @@
         const value = item.point.values[network.name];
         return Number.isFinite(value) ? `${scaleX(index).toFixed(1)},${scaleY(value).toFixed(1)}` : null;
       }).filter(Boolean).join(' ');
-      return `<polyline class="line-series" points="${coordinates}" stroke="${network.color}"/>`;
+      return `<polyline class="line-series" points="${coordinates}" stroke="${chartColor(network)}"/>`;
     }).join('');
     const dots = plotted.flatMap(network => buckets.map((item, index) => {
       const value = item.point.values[network.name];
       if (!Number.isFinite(value)) return '';
-      return `<button type="button" class="line-point" style="left:${scaleX(index) / 10}%;top:${scaleY(value).toFixed(1)}px;background:${network.color}" data-index="${index}" data-network="${network.name}" aria-label="Ver dados de ${network.name} em ${shortDate(item.point.date)}"></button>`;
+      return `<button type="button" class="line-point" style="left:${scaleX(index) / 10}%;top:${scaleY(value).toFixed(1)}px;background:${chartColor(network)}" data-index="${index}" data-network="${network.name}" aria-label="Ver dados de ${network.name} em ${shortDate(item.point.date)}"></button>`;
     })).join('');
     const labels = buckets.map((item, index) => {
       const show = buckets.length <= 12 || index % every === 0 || index === buckets.length - 1;
@@ -1549,7 +1583,7 @@
         site, dados da conta que a própria equipe administra) — por isso não há coleta automática como
         Instagram, Facebook e YouTube.</p>
         <p>Este histórico vem de uma planilha baixada manualmente no <b>TikTok Studio</b> (Análise → Seguidores
-        → Baixar dados → CSV) e importada pelo card "Importar histórico do TikTok" logo abaixo. Ele só muda
+        → Baixar dados → CSV) e importada pelo card "Importar histórico do TikTok" logo acima. Ele só muda
         quando alguém repetir essa importação — <b>precisa ser atualizado regularmente</b> para as métricas
         (crescimento, média por dia etc.) continuarem refletindo a realidade.</p>`
     }
@@ -1958,9 +1992,12 @@
     value.published.version = 2;
     value.published.updatedAt = new Date().toISOString();
 
+    // importedAt (distinto de live.updatedAt, que qualquer rede pode tocar) é o que o card
+    // "Importar histórico do TikTok" mostra como "Últimos dados importados em" (ver render()).
+    const importedAt = new Date().toISOString();
     value.live = value.live || { version: 2, platforms: {} };
     value.live.platforms = Object.assign({}, value.live.platforms, {
-      TikTok: { username: brand.name || brandKey, followers: dated[dated.length - 1].followers, source: 'tiktok_studio_export' }
+      TikTok: { username: brand.name || brandKey, followers: dated[dated.length - 1].followers, source: 'tiktok_studio_export', importedAt }
     });
     value.live.version = 2;
     value.live.updatedAt = new Date().toISOString();
@@ -1972,8 +2009,48 @@
     const fileName = el('tiktokCsvFileName');
     const button = el('tiktokImportButton');
     const summary = el('tiktokImportSummary');
+    const dropzone = el('tiktokDropzone');
     if (!fileInput || !button || !summary) return;
     let parsedFile = null;
+
+    if (dropzone) {
+      ['dragenter', 'dragover'].forEach(type => dropzone.addEventListener(type, event => {
+        event.preventDefault();
+        dropzone.classList.add('is-dragover');
+      }));
+      ['dragleave', 'dragend', 'drop'].forEach(type => dropzone.addEventListener(type, event => {
+        event.preventDefault();
+        dropzone.classList.remove('is-dragover');
+      }));
+      dropzone.addEventListener('drop', event => {
+        const file = event.dataTransfer && event.dataTransfer.files[0];
+        if (!file) return;
+        fileInput.files = event.dataTransfer.files;
+        fileInput.dispatchEvent(new Event('change'));
+      });
+    }
+
+    const stepsToggle = el('tiktokStepsToggle'), stepsBody = el('tiktokStepsBody');
+    const setStepsExpanded = expanded => {
+      if (!stepsToggle || !stepsBody) return;
+      tiktokStepsUserToggled = true;
+      stepsToggle.setAttribute('aria-expanded', String(expanded));
+      stepsBody.classList.toggle('is-collapsed', !expanded);
+      stepsBody.setAttribute('aria-hidden', String(!expanded));
+      stepsBody.inert = !expanded;
+    };
+    if (stepsToggle && stepsBody) {
+      stepsToggle.addEventListener('click', () => {
+        setStepsExpanded(stepsToggle.getAttribute('aria-expanded') !== 'true');
+      });
+    }
+    const reimportLink = el('tiktokReimportLink');
+    if (reimportLink) {
+      reimportLink.addEventListener('click', () => {
+        setStepsExpanded(true);
+        if (dropzone) dropzone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
 
     const setSummary = (message, tone) => {
       summary.textContent = message;

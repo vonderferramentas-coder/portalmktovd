@@ -442,12 +442,248 @@
       line-height: 1.1
     }
 
-    .tiktok-import-row {
+    .tiktok-import-head {
+      display: flex;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 14px
+    }
+
+    .tiktok-import-badge {
+      flex: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--surface-muted);
+      border: 1px solid var(--border);
       display: flex;
       align-items: center;
+      justify-content: center
+    }
+
+    .tiktok-import-badge img {
+      width: 24px;
+      height: 24px
+    }
+
+    .tiktok-import-head-copy {
+      flex: 1 1 auto;
+      min-width: 200px
+    }
+
+    .tiktok-import-head-copy h2 {
+      font-size: 18px;
+      color: var(--text);
+      margin: 0 0 4px
+    }
+
+    .tiktok-import-status {
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      max-width: 320px
+    }
+
+    .tiktok-import-pill {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px
+    }
+
+    .tiktok-import-status p {
+      margin: 0;
+      font-size: 11px;
+      text-align: right
+    }
+
+    .tiktok-import-relink {
+      border: 0;
+      background: transparent;
+      padding: 0;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-ink);
+      cursor: pointer;
+      text-align: right
+    }
+
+    .tiktok-import-relink u {
+      text-decoration: underline
+    }
+
+    .tiktok-import-relink:hover,
+    .tiktok-import-relink:focus-visible {
+      color: var(--accent-hover)
+    }
+
+    .tiktok-import-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      margin-top: 24px;
+      padding-top: 16px;
+      border: 0;
+      border-top: 1px solid var(--border);
+      background: transparent;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer
+    }
+
+    .tiktok-import-toggle:hover,
+    .tiktok-import-toggle:focus-visible {
+      color: var(--accent-ink)
+    }
+
+    .tiktok-import-toggle .section-divider-chevron {
+      flex: none;
+      color: var(--muted);
+      transition: transform .15s
+    }
+
+    .tiktok-import-toggle[aria-expanded="true"] .section-divider-chevron {
+      transform: rotate(180deg)
+    }
+
+    .tiktok-import-section {
+      margin-top: 24px
+    }
+
+    .tiktok-import-section h3 {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text);
+      margin: 0 0 4px
+    }
+
+    .tiktok-steps {
+      display: flex;
+      gap: 4px;
+      margin-top: 20px
+    }
+
+    .tiktok-step {
+      flex: 1 1 0;
+      position: relative;
+      padding: 0 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center
+    }
+
+    .tiktok-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 19px;
+      left: 50%;
+      width: 100%;
+      height: 1px;
+      background: var(--border-strong)
+    }
+
+    .tiktok-step-num {
+      position: relative;
+      z-index: 1;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--surface-muted);
+      border: 1px solid var(--border-strong);
+      color: var(--text);
+      font-weight: 800;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .tiktok-step-icon {
+      color: var(--muted);
+      margin-top: 12px
+    }
+
+    .tiktok-step-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text);
+      margin-top: 8px
+    }
+
+    .tiktok-step-desc {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      line-height: 1.35
+    }
+
+    .tiktok-dropzone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      margin-top: 12px;
+      padding: 28px 16px;
+      border: 1.5px dashed var(--border-strong);
+      border-radius: 12px;
+      background: var(--surface-muted);
+      cursor: pointer;
+      text-align: center;
+      transition: border-color .15s, background .15s
+    }
+
+    .tiktok-dropzone:hover,
+    .tiktok-dropzone.is-dragover {
+      border-color: var(--accent);
+      background: var(--accent-weak)
+    }
+
+    .tiktok-dropzone svg {
+      color: var(--muted);
+      margin-bottom: 4px
+    }
+
+    .tiktok-dropzone strong {
+      font-size: 13px;
+      color: var(--text)
+    }
+
+    .tiktok-dropzone .btn.ghost {
+      margin-top: 8px
+    }
+
+    .tiktok-import-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 16px;
       margin-top: 16px;
       flex-wrap: wrap
+    }
+
+    @media (max-width: 720px) {
+      .tiktok-steps {
+        flex-wrap: wrap;
+        row-gap: 20px
+      }
+
+      .tiktok-step {
+        flex: 1 1 33%
+      }
+
+      .tiktok-step:nth-child(3n)::after {
+        display: none
+      }
     }
 
 
@@ -2169,26 +2405,150 @@
           <div class="platform-list" id="platforms"></div>
         </section>
         <section class="card" id="tiktokImportPanel" style="margin-bottom:16px" hidden>
-          <div class="head">
-            <div>
+          <div class="tiktok-import-head">
+            <div class="tiktok-import-badge"><img src="icons/tiktok.svg" alt="" width="24" height="24"></div>
+            <div class="tiktok-import-head-copy">
               <h2>Importar histórico do TikTok</h2>
-              <p class="muted">O TikTok não libera API para uso interno — ao contrário de Instagram, Facebook e
-                YouTube, aqui a atualização é manual, planilha por planilha.</p>
-            </div><span class="period-pill">Manual</span>
+              <p class="muted">O TikTok não libera API para uso interno — a atualização dos seguidores aqui é
+                manual, via arquivo CSV baixado direto no TikTok Studio da marca.</p>
+            </div>
+            <div class="tiktok-import-status">
+              <span class="period-pill tiktok-import-pill">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 19.5A2.5 2.5 0 016.5 17H20"></path>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"></path>
+                </svg>Manual
+              </span>
+              <p class="muted" id="tiktokLastImported" hidden></p>
+              <button type="button" class="tiktok-import-relink" id="tiktokReimportLink" hidden>Deseja atualizar
+                dados? <u>Importar nova planilha</u></button>
+            </div>
           </div>
-          <p class="muted" style="margin-top:16px">Baixe o histórico em <b>TikTok Studio → Análise → Seguidores →
-            Baixar dados → CSV</b>, extraia <code>FollowerHistory.csv</code> do zip baixado e selecione-o abaixo.
-            A importação mescla só os seguidores do TikTok por dia — nunca apaga Instagram, Facebook ou YouTube
-            dos mesmos dias, nem remove dias fora do arquivo. <b>Repita esta importação regularmente</b> (a cada
-            nova planilha baixada): sem isso, o gráfico e as métricas do TikTok param de refletir a realidade.</p>
-          <div class="tiktok-import-row">
-            <label class="btn ghost" for="tiktokCsvFile">Escolher arquivo</label>
+
+          <button type="button" class="tiktok-import-toggle" id="tiktokStepsToggle" aria-expanded="true"
+            aria-controls="tiktokStepsBody">
+            <span>Passo a passo da importação</span>
+            <svg class="section-divider-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2.4">
+              <path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="section-divider-body" id="tiktokStepsBody">
+          <div class="section-divider-body-inner">
+
+          <div class="tiktok-import-section">
+            <p class="muted">Siga os passos abaixo para baixar e importar o histórico de seguidores do TikTok.</p>
+            <div class="tiktok-steps">
+              <div class="tiktok-step">
+                <span class="tiktok-step-num">1</span>
+                <svg class="tiktok-step-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                <span class="tiktok-step-title">Acesse o TikTok Studio</span>
+                <span class="tiktok-step-desc">Entre na sua conta.</span>
+              </div>
+              <div class="tiktok-step">
+                <span class="tiktok-step-num">2</span>
+                <svg class="tiktok-step-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="6" y1="20" x2="6" y2="16"></line>
+                  <line x1="12" y1="20" x2="12" y2="10"></line>
+                  <line x1="18" y1="20" x2="18" y2="4"></line>
+                </svg>
+                <span class="tiktok-step-title">Análise</span>
+                <span class="tiktok-step-desc">No menu, clique em Análise.</span>
+              </div>
+              <div class="tiktok-step">
+                <span class="tiktok-step-num">3</span>
+                <svg class="tiktok-step-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span class="tiktok-step-title">Seguidores</span>
+                <span class="tiktok-step-desc">Acesse a seção Seguidores.</span>
+              </div>
+              <div class="tiktok-step">
+                <span class="tiktok-step-num">4</span>
+                <svg class="tiktok-step-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="17" rx="2"></rect>
+                  <path d="M8 2v4M16 2v4M3 10h18"></path>
+                </svg>
+                <span class="tiktok-step-title">Escolha o período</span>
+                <span class="tiktok-step-desc">No canto superior direito, selecione o período dos dados.</span>
+              </div>
+              <div class="tiktok-step">
+                <span class="tiktok-step-num">5</span>
+                <svg class="tiktok-step-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span class="tiktok-step-title">Baixar dados &gt; CSV</span>
+                <span class="tiktok-step-desc">Clique em Baixar dados e selecione CSV.</span>
+              </div>
+              <div class="tiktok-step">
+                <span class="tiktok-step-num">6</span>
+                <svg class="tiktok-step-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                <span class="tiktok-step-title">Extraia o arquivo</span>
+                <span class="tiktok-step-desc">Extraia o FollowerHistory.csv do zip.</span>
+              </div>
+              <div class="tiktok-step">
+                <span class="tiktok-step-num">7</span>
+                <svg class="tiktok-step-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span class="tiktok-step-title">Selecione o arquivo</span>
+                <span class="tiktok-step-desc">E importe abaixo.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="tiktok-import-section">
+            <div class="head">
+              <div>
+                <h3>Arquivo para importação</h3>
+                <p class="muted">Selecione o arquivo FollowerHistory.csv baixado do TikTok Studio.</p>
+              </div><span class="muted">Formato: CSV</span>
+            </div>
+            <label class="tiktok-dropzone" for="tiktokCsvFile" id="tiktokDropzone">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 16 12 12 8 16"></polyline>
+                <line x1="12" y1="12" x2="12" y2="21"></line>
+                <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"></path>
+              </svg>
+              <strong>Arraste o arquivo aqui</strong>
+              <span class="muted">ou clique para selecionar</span>
+              <span class="btn ghost">Escolher arquivo</span>
+              <span class="muted" id="tiktokCsvFileName">Nenhum arquivo escolhido</span>
+            </label>
             <input type="file" id="tiktokCsvFile" accept=".csv,text/csv" style="display:none">
-            <span class="muted" id="tiktokCsvFileName">Nenhum arquivo escolhido</span>
+          </div>
+
+          <div class="tiktok-import-footer">
+            <p class="muted" id="tiktokImportSummary" style="margin:0">Selecione o arquivo FollowerHistory.csv
+              para começar.</p>
             <button type="button" class="btn" id="tiktokImportButton" disabled>Importar</button>
           </div>
-          <p class="muted" id="tiktokImportSummary" style="margin-top:8px">Selecione o arquivo FollowerHistory.csv
-            para começar.</p>
+
+          </div>
+          </div>
         </section>
         <section class="hero">
           <article class="card total" id="totalCard">
