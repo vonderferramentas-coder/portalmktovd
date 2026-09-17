@@ -235,14 +235,21 @@ jobs:
               if dia in alcance:
                   insights['reach'] = int(alcance[dia])
               # Medição real mantém seu total; a ela são adicionados apenas os Insights.
-              if existente and existente.get('source') not in ('reconstruido', 'estimado'):
-                  entrada = dict(existente)
-              else:
-                  entrada = {
-                      'date': dia,
-                      'followers': {'Instagram': int(valor)},
-                      'source': 'estimado' if dia in set(estimados) else 'reconstruido'
-                  }
+              # A checagem é por rede, não só "o dia existe": um dia pode ter YouTube
+              # fechado (workflow próprio) sem ter Instagram medido nesse dia — olhar só
+              # a presença da entrada escondia esse buraco e nunca preenchia o Instagram
+              # (foi o que aconteceu em 14/09/2026, quando só a coleta do Instagram/
+              # Facebook falhou nesse dia específico). `dict(existente)` como base em
+              # ambos os ramos preserva Facebook/YouTube já presentes; só o Instagram é
+              # trocado pelo valor recém-calculado.
+              tem_instagram_medido = bool(existente) \
+                  and existente.get('followers', {}).get('Instagram') is not None \
+                  and existente.get('source') not in ('reconstruido', 'estimado')
+              entrada = dict(existente) if existente else {'date': dia}
+              if not tem_instagram_medido:
+                  entrada['followers'] = dict(entrada.get('followers') or {})
+                  entrada['followers']['Instagram'] = int(valor)
+                  entrada['source'] = 'estimado' if dia in set(estimados) else 'reconstruido'
                   novos += 1
               entrada['insights'] = dict(entrada.get('insights') or {})
               entrada['insights']['Instagram'] = insights
@@ -476,14 +483,17 @@ jobs:
               }
               if dia in alcance:
                   insights['reach'] = int(alcance[dia])
-              if existente and existente.get('source') not in ('reconstruido', 'estimado'):
-                  entrada = dict(existente)
-              else:
-                  entrada = {
-                      'date': dia,
-                      'followers': {'Instagram': int(valor)},
-                      'source': 'estimado' if dia in set(estimados) else 'reconstruido'
-                  }
+              # Ver o comentário equivalente no job da VONDER acima: checagem por rede
+              # (Instagram medido nesse dia?), não só "o dia existe" — preserva
+              # Facebook/YouTube já presentes na entrada.
+              tem_instagram_medido = bool(existente) \
+                  and existente.get('followers', {}).get('Instagram') is not None \
+                  and existente.get('source') not in ('reconstruido', 'estimado')
+              entrada = dict(existente) if existente else {'date': dia}
+              if not tem_instagram_medido:
+                  entrada['followers'] = dict(entrada.get('followers') or {})
+                  entrada['followers']['Instagram'] = int(valor)
+                  entrada['source'] = 'estimado' if dia in set(estimados) else 'reconstruido'
                   novos += 1
               entrada['insights'] = dict(entrada.get('insights') or {})
               entrada['insights']['Instagram'] = insights
