@@ -15,7 +15,7 @@
   // e quais redes de fato têm coleta. Marcas fora deste mapa (ainda sem integração) nunca
   // buscam dados publicados nem herdam número/meta de outra marca — mostram "não conectado".
   const BRAND_INTEGRATIONS = {
-    'default': { storeSuffix: 'vonder', instagram: true, facebook: true, youtube: true },
+    'default': { storeSuffix: 'vonder', instagram: true, facebook: true, youtube: true, tiktok: true },
     'ferramentas-gerais': { storeSuffix: 'ferramentas-gerais', instagram: true, facebook: true, youtube: false },
   };
   const integration = BRAND_INTEGRATIONS[brandKey] || null;
@@ -65,7 +65,7 @@
     { name:'Instagram', color:'#E94683', icon:'icons/instagram.svg', connected: !!(integration && integration.instagram) },
     { name:'Facebook',  color:'#287BE0', icon:'icons/facebook.svg',  connected: !!(integration && integration.facebook) },
     { name:'YouTube',   color:'#F04444', icon:'icons/youtube.svg',   connected: !!(integration && integration.youtube) },
-    { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected:false }
+    { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected: !!(integration && integration.tiktok) }
   ];
   const POST_SORT_OPTIONS = [
     { key: 'timestamp', label: 'Data', icon: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>' },
@@ -1520,9 +1520,10 @@
 
   // Mesmo padrão do modal acima, mas para o ícone de aviso ao lado do total (ver render()) —
   // reaproveitado tanto para o número aproximado do YouTube quanto para o lançamento manual
-  // do TikTok (enquanto o App Review na TikTok for Developers não é aprovado, ver
-  // docs/ARQUITETURA-E-INTEGRACOES.md seção 15): o conteúdo do modal é montado na hora,
-  // conforme a rede selecionada no momento do clique.
+  // do TikTok em marcas sem coleta automática dessa rede (ver BRAND_INTEGRATIONS acima e
+  // docs/ARQUITETURA-E-INTEGRACOES.md seção 15 — o App Review do Login Kit foi rejeitado em
+  // 17/09/2026, não é mais "em análise"): o conteúdo do modal é montado na hora, conforme a
+  // rede selecionada no momento do clique.
   const youtubeApprox = el('youtubeApproxBackdrop');
   let youtubeApproxLastFocus = null;
   const TOTAL_APPROX_INFO = {
@@ -1538,11 +1539,9 @@
     TikTok: {
       icon: 'icons/tiktok.svg',
       title: 'Número lançado manualmente',
-      body: `<p>A coleta automática do TikTok ainda não está ativa: o app do portal está em análise (App Review)
-        na TikTok for Developers. Este número foi lançado manualmente pela equipe, direto da conta oficial
-        <b>@vonderferramentas</b>, e só muda quando alguém repetir esse lançamento — não atualiza sozinho como
-        Instagram, Facebook e YouTube.</p>
-        <p>Assim que a TikTok aprovar o app, a coleta passa a ser automática e este aviso desaparece.</p>`
+      body: `<p>Esta marca ainda não tem coleta automática de seguidores do TikTok. Este número foi lançado
+        manualmente pela equipe e só muda quando alguém repetir esse lançamento — não atualiza sozinho como
+        Instagram, Facebook e YouTube.</p>`
     }
   };
   const closeYoutubeApprox = () => {
