@@ -627,39 +627,136 @@
     }
 
     .tiktok-dropzone {
+      position: relative;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 4px;
       margin-top: 12px;
       padding: 28px 16px;
       border: 1.5px dashed var(--border-strong);
       border-radius: 12px;
       background: var(--surface-muted);
-      cursor: pointer;
       text-align: center;
       transition: border-color .15s, background .15s
     }
 
-    .tiktok-dropzone:hover,
+    .tiktok-dropzone:not(.has-file):hover,
     .tiktok-dropzone.is-dragover {
       border-color: var(--accent);
       background: var(--accent-weak)
     }
 
-    .tiktok-dropzone svg {
+    .tiktok-dropzone.has-file {
+      border-style: solid
+    }
+
+    .tiktok-dropzone-empty[hidden],
+    .tiktok-file-card[hidden] {
+      display: none
+    }
+
+    .tiktok-dropzone-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      width: 100%;
+      cursor: pointer
+    }
+
+    .tiktok-dropzone-empty svg {
       color: var(--muted);
       margin-bottom: 4px
     }
 
-    .tiktok-dropzone strong {
+    .tiktok-dropzone-empty strong {
       font-size: 13px;
       color: var(--text)
     }
 
-    .tiktok-dropzone .btn.ghost {
+    .tiktok-dropzone-empty .btn.ghost {
       margin-top: 8px
+    }
+
+    .tiktok-file-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
+      text-align: center
+    }
+
+    .tiktok-file-icon-wrap {
+      position: relative;
+      display: inline-flex
+    }
+
+    .tiktok-file-icon {
+      width: 40px;
+      height: 48px;
+      border-radius: 4px 10px 4px 4px;
+      background: var(--success);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 6px;
+      overflow: hidden
+    }
+
+    .tiktok-file-icon::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 12px;
+      height: 12px;
+      background: var(--card);
+      clip-path: polygon(0 0, 100% 100%, 100% 0);
+      opacity: .3
+    }
+
+    .tiktok-file-ext {
+      font-size: 9px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: .03em
+    }
+
+    .tiktok-file-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .tiktok-file-remove {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid var(--border-strong);
+      background: var(--card);
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      cursor: pointer;
+      transition: background .12s, border-color .12s, color .12s
+    }
+
+    .tiktok-file-remove:hover,
+    .tiktok-file-remove:focus-visible {
+      background: var(--danger-bg);
+      border-color: var(--danger);
+      color: var(--danger)
     }
 
     .tiktok-import-footer {
@@ -2526,18 +2623,33 @@
                 <p class="muted">Selecione o arquivo FollowerHistory.csv baixado do TikTok Studio.</p>
               </div><span class="muted">Formato: CSV</span>
             </div>
-            <label class="tiktok-dropzone" for="tiktokCsvFile" id="tiktokDropzone">
-              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="16 16 12 12 8 16"></polyline>
-                <line x1="12" y1="12" x2="12" y2="21"></line>
-                <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"></path>
-              </svg>
-              <strong>Arraste o arquivo aqui</strong>
-              <span class="muted">ou clique para selecionar</span>
-              <span class="btn ghost">Escolher arquivo</span>
-              <span class="muted" id="tiktokCsvFileName">Nenhum arquivo escolhido</span>
-            </label>
+            <div class="tiktok-dropzone" id="tiktokDropzone">
+              <label class="tiktok-dropzone-empty" for="tiktokCsvFile" id="tiktokDropzoneEmpty">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="16 16 12 12 8 16"></polyline>
+                  <line x1="12" y1="12" x2="12" y2="21"></line>
+                  <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"></path>
+                </svg>
+                <strong>Arraste o arquivo aqui</strong>
+                <span class="muted">ou clique para selecionar</span>
+                <span class="btn ghost">Escolher arquivo</span>
+              </label>
+              <div class="tiktok-file-card" id="tiktokFileCard" hidden>
+                <div class="tiktok-file-icon-wrap">
+                  <div class="tiktok-file-icon"><span class="tiktok-file-ext">CSV</span></div>
+                  <button type="button" class="tiktok-file-remove" id="tiktokFileRemove" aria-label="Remover arquivo"
+                    title="Remover arquivo">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"
+                      stroke-linecap="round">
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+                <span class="tiktok-file-name" id="tiktokCsvFileName"></span>
+              </div>
+            </div>
             <input type="file" id="tiktokCsvFile" accept=".csv,text/csv" style="display:none">
           </div>
 
