@@ -385,16 +385,20 @@
 
     setText('growthPeriod', `${shortDate(first.date)} a ${shortDate(last.date)}`);
 
-    // Bruto (follows/unfollows) só existe via Insights da Meta, exclusivo do Instagram — mesma
-    // fonte e mesma janela de ~29 dias do painel "Insights detalhados" mais abaixo (ver
-    // renderInsights). Fora do Instagram/"Todas" o dado não se aplica à seleção, então some
+    // Saldo real do Instagram no período (follows/unfollows via Insights da Meta) — calculado
+    // sempre, independente da rede selecionada agora: o botão do Instagram na lista de
+    // plataformas usa isso pro delta dele mesmo com outra rede em foco (ver renderPlatforms).
+    const igPeriodInsights = points.map(point => point.insights && point.insights.Instagram)
+      .filter(insight => insight && Number.isFinite(Number(insight.follows)) && Number.isFinite(Number(insight.unfollows)));
+    const igGrossFollows = igPeriodInsights.reduce((sum, insight) => sum + Number(insight.follows), 0);
+    const igGrossUnfollows = igPeriodInsights.reduce((sum, insight) => sum + Number(insight.unfollows), 0);
+
+    // Bruto (follows/unfollows) exibido no card "Crescimento no período" só faz sentido com
+    // Instagram/"Todas" selecionado — fora disso o dado não corresponde à seleção, então some
     // como "—" em vez de mostrar um número de outra rede.
-    const periodInsights = isInstagramOrAllSelected()
-      ? points.map(point => point.insights && point.insights.Instagram)
-          .filter(insight => insight && Number.isFinite(Number(insight.follows)) && Number.isFinite(Number(insight.unfollows)))
-      : [];
-    const grossFollows = periodInsights.reduce((sum, insight) => sum + Number(insight.follows), 0);
-    const grossUnfollows = periodInsights.reduce((sum, insight) => sum + Number(insight.unfollows), 0);
+    const periodInsights = isInstagramOrAllSelected() ? igPeriodInsights : [];
+    const grossFollows = isInstagramOrAllSelected() ? igGrossFollows : 0;
+    const grossUnfollows = isInstagramOrAllSelected() ? igGrossUnfollows : 0;
 
     // "Crescimento líquido"/"Média por dia" deste card usam o saldo real (bruto − unfollows)
     // quando ele está disponível — mesmo motivo do tooltip do gráfico (ver aggregate/
@@ -422,7 +426,7 @@
     el('channelContext').innerHTML = active ? `<img src="${active.icon}" alt=""> ${active.name}` : 'Todas';
 
     renderChart(points, nets, grain);
-    renderPlatforms(points, nets, currentPoint);
+    renderPlatforms(points, nets, currentPoint, igPeriodInsights.length ? igGrossFollows - igGrossUnfollows : null);
     renderTable(points, nets, grain);
     renderIndicators(points, nets, periodDeltas, net, rate, perDay, span);
     // A Meta só nos dá follows/unfollows/alcance detalhados do Instagram — não existe
@@ -521,7 +525,7 @@
       note.textContent = `Passe o mouse sobre um ponto para ver os dados · por ${grainName}`;
     }
   }
-  function renderPlatforms(points, nets, currentPoint) {
+  function renderPlatforms(points, nets, currentPoint, igNetPeriod) {
     const last = currentPoint || points[points.length - 1];
     const first = points[0];
     const chip = (value, delta, comparable) => comparable
@@ -537,8 +541,13 @@
       // Mesmo aviso do total (ver openYoutubeApprox): o YouTube arredonda o que devolve por API.
       const shown = known ? (network.name === 'YouTube' ? formatApproxYouTube(value) : format(value)) : null;
       const detail = known ? `${shown} seguidores` : (network.connected ? 'Aguardando coleta' : 'Sem API conectada');
-      const comparable = known && Number.isFinite(before) && points.length > 1;
-      return `<button type="button" class="platform ${String(index) === selectedNetwork ? 'selected' : ''}" data-network="${index}"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${detail}</small></span><span class="platform-delta">${chip(value, known ? value - before : 0, comparable)}</span><span class="platform-chevron">›</span></button>`;
+      // Instagram usa o saldo real dos Insights da Meta (follows − unfollows), não o delta
+      // bruto de followers_count entre duas medições — mesmo motivo do card "Crescimento no
+      // período" (ver render()): o total bruto oscila por ruído que não é "seguidor novo".
+      const useIgNet = network.name === 'Instagram' && igNetPeriod !== null;
+      const delta = useIgNet ? igNetPeriod : (known ? value - before : 0);
+      const comparable = useIgNet || (known && Number.isFinite(before) && points.length > 1);
+      return `<button type="button" class="platform ${String(index) === selectedNetwork ? 'selected' : ''}" data-network="${index}"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${detail}</small></span><span class="platform-delta">${chip(value, delta, comparable)}</span><span class="platform-chevron">›</span></button>`;
     }).concat([`<button type="button" class="platform ${selectedNetwork === 'all' ? 'selected' : ''}" data-network="all"><span class="all-networks-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M10 19V5M16 19v-7M22 19V2"/></svg></span><span class="platform-copy"><strong>Todas as redes</strong><small>${format(allTotal)} seguidores</small></span><span class="platform-delta">${chip(allTotal, allDelta, comparableAll)}</span><span class="platform-chevron">›</span></button>`]).join('');
     el('platforms').innerHTML = buttons;
     el('platforms').querySelectorAll('[data-network]').forEach(button => button.addEventListener('click', () => {
