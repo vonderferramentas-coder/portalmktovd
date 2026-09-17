@@ -295,8 +295,19 @@
   }
   function aggregate(points, grain) {
     const buckets = new Map();
-    points.forEach(point => buckets.set(bucketOf(point.date, grain), point));
-    const list = Array.from(buckets.entries()).map(([key, point]) => ({ label: bucketLabel(key, grain), point }));
+    points.forEach(point => {
+      const key = bucketOf(point.date, grain);
+      const igInsight = point.insights && point.insights.Instagram;
+      const igNet = igInsight && Number.isFinite(Number(igInsight.net)) ? Number(igInsight.net) : null;
+      const existing = buckets.get(key);
+      if (existing) {
+        existing.point = point;
+        existing.igNetSum = existing.igNetSum === null || igNet === null ? null : existing.igNetSum + igNet;
+      } else {
+        buckets.set(key, { point, igNetSum: igNet });
+      }
+    });
+    const list = Array.from(buckets.entries()).map(([key, entry]) => ({ label: bucketLabel(key, grain), point: entry.point, igNetSum: entry.igNetSum }));
     return list.slice(-MAX_BUCKETS);
   }
 
@@ -457,7 +468,13 @@
       // Compara com o bucket anterior (mesmo grão), não com o dia bruto anterior: num
       // agrupamento por mês, "novos no mês" precisa somar o mês inteiro, não só o último dia dele.
       const previousValue = index > 0 ? buckets[index - 1].point.values[network.name] : undefined;
-      const change = Number.isFinite(previousValue) ? value - previousValue : null;
+      let change = Number.isFinite(previousValue) ? value - previousValue : null;
+      // O estoque de followers_count oscila entre dois fechamentos por motivos que não são
+      // "seguidor novo" (cache da Meta, contas removidas por spam etc.) — diverge do que a
+      // própria Meta contabiliza via Insights (follows_and_unfollows). Quando esse saldo real
+      // existe para o Instagram (reconstruir-historico.yml o publica em insights.Instagram.net,
+      // só os últimos ~29 dias), ele é mais confiável que a diferença bruta entre snapshots.
+      if (network.name === 'Instagram' && Number.isFinite(item.igNetSum)) change = item.igNetSum;
       tooltip.innerHTML = `<strong>${network.name} · ${shortDate(item.point.date)}</strong><span>Seguidores: <b>${format(value)}</b></span><span>Novos ${grainNounLabel}: <b class="${change === null ? 'neutral' : change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral'}">${change === null ? '—' : signed(change)}</b></span>`;
       tooltip.hidden = false;
       const rect = el('bars').getBoundingClientRect();
