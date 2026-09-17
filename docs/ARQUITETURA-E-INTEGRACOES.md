@@ -406,11 +406,15 @@ Os dois itens do menu usam classes próprias (`.portal-account-menu-item`, com u
 |---|---|---|
 | 03/09/2026 | Barra de conta da sidebar virou um menu dropdown (Redefinir senha / Sair) com itens em estilo submenu, mais modal de confirmação antes do envio do e-mail de redefinição — dá ao perfil `user` uma forma própria de trocar a senha. | Equipe de Marketing / manutenção do portal |
 
-## 15. TikTok: conexão em implantação (App Review pendente)
+## 15. TikTok: App Review rejeitado — Login Kit não é viável para uso interno
 
-Diferente da Meta e do YouTube, o TikTok não tem uma API pública simples (chave/API Key) para número de seguidores. A única forma oficial é a **TikTok for Developers — Login Kit**, que exige um app próprio, aprovação manual (**App Review**) da TikTok para os escopos usados, e OAuth 2.0 autorizado pela conta dona do perfil.
+Diferente da Meta e do YouTube, o TikTok não tem uma API pública simples (chave/API Key) para número de seguidores. A única forma testada foi a **TikTok for Developers — Login Kit**, que exige um app próprio, aprovação manual (**App Review**) da TikTok para os escopos usados, e OAuth 2.0 autorizado pela conta dona do perfil.
 
-**Estado em 10/09/2026: app criado, submetido para revisão, aguardando aprovação da TikTok. Ainda não há coleta automática nem workflow do GitHub Actions — `followers-dashboard.js` continua com `TikTok: connected:false` para todas as marcas, incluindo a VONDER.**
+**Estado em 17/09/2026: App Review rejeitado pela TikTok, com motivo estrutural, não um ajuste pontual no app.** Texto da recusa: *"App will not be approved for personal or company internal use. TikTok for Developers currently does not support personal or internal company use. Not acceptable: Display posts from the TikTok account(s) you or your team manage on your website."* Ou seja: o Login Kit é feito para apps de terceiros em que **usuários finais** autorizam o próprio login — não para uma empresa exibir dados **da própria conta que ela mesma administra** num painel interno. Esse é exatamente o caso de uso do portal, então a rota Login Kit está descartada para este objetivo (não é algo que se resolve reenviando o app com ajustes). Continua valendo tudo о que já foi construído nas seções abaixo como registro histórico, mas o caminho "esperar aprovação e criar `sync-tiktok-followers.yml`" não se aplica mais.
+
+`followers-dashboard.js` permanece com `TikTok: connected:false` para todas as marcas, incluindo a VONDER — o número mostrado continua sendo o lançamento manual pontual descrito abaixo, e passa a ser, por ora, o caminho definitivo (não mais "enquanto o App Review não é aprovado").
+
+**Alternativas ainda não avaliadas para reabrir a coleta automática do TikTok:** TikTok Business API / TikTok for Business (produto separado do Login Kit, voltado a marcas administrarem os próprios ativos, com processo de aprovação e requisitos próprios) ou um agregador terceirizado (ex.: Supermetrics) que já tenha acordo próprio com o TikTok para esse tipo de dado. Nenhuma das duas foi investigada a fundo; ambas exigiriam nova pesquisa antes de comprometer esforço de implementação.
 
 - **App:** "Portal MKT OVD" em developers.tiktok.com, propriedade da conta `vonderferramentas@gmail.com` (dona oficial do perfil `@vonderferramentas` no TikTok).
 - **Produto/escopos solicitados:** Login Kit com `user.info.basic` (identificar a conta conectada), `user.info.stats` (`follower_count`, para o mesmo painel de seguidores das outras redes) e `video.list` (lista de vídeos publicados com `view_count`/`like_count`/`comment_count`/`share_count`, para alimentar futuramente um painel de "melhores posts" do TikTok igual ao que já existe para Instagram).
@@ -424,16 +428,19 @@ Diferente da Meta e do YouTube, o TikTok não tem uma API pública simples (chav
 
 **Número fixo exibido no painel enquanto o App Review não é aprovado:** para não deixar o card do TikTok vazio no meio-tempo, `publicar-tiktok-manual.yml` (`workflow_dispatch` manual, nunca agendado) grava um lançamento pontual — recebe `followers` e `date` como entrada, mescla só a chave `TikTok` em `data/social-followers-live.json`/`data/social-followers.json` com `"source": "manual"`, e publica no mesmo documento protegido do Firestore (`portalStore/followers-vonder-v1`) via Admin SDK, igual ao passo final de `sync-meta-followers.yml`. `followers-dashboard.js` mostra um ícone de aviso ao lado do total (reaproveitando o mesmo modal do aviso de número aproximado do YouTube) explicando que é um número fixo, lançado manualmente, enquanto `TikTok.connected` for `false`. Confirmado com 4.217 seguidores/160 vídeos reais da conta `@vonderferramentas`, obtidos via teste no Sandbox do Login Kit.
 
-**Pendente após a aprovação do App Review:**
+**Pendente (obsoleto — mantido como registro do que dependia da aprovação que não veio):**
 
-1. Repetir a autorização OAuth uma única vez com as credenciais de **Production** (não as de Sandbox) pela conta `@vonderferramentas`, para obter o refresh token definitivo.
-2. Cadastrar `TIKTOK_CLIENT_KEY`/`TIKTOK_CLIENT_SECRET`/`TIKTOK_REFRESH_TOKEN` em GitHub Actions Secrets.
-3. Criar `sync-tiktok-followers.yml` (mesmo padrão de `sync-youtube-followers.yml`: mescla só a chave `TikTok` em `platforms`/`followers`, nunca reconstrói os arquivos inteiros) e, depois, um `sync-tiktok-posts.yml` para o ranking de vídeos.
-4. Atualizar `NETWORKS` em `followers-dashboard.js` para `TikTok: connected:isVonder`.
+1. ~~Repetir a autorização OAuth uma única vez com as credenciais de **Production** (não as de Sandbox) pela conta `@vonderferramentas`, para obter o refresh token definitivo.~~
+2. ~~Cadastrar `TIKTOK_CLIENT_KEY`/`TIKTOK_CLIENT_SECRET`/`TIKTOK_REFRESH_TOKEN` em GitHub Actions Secrets.~~
+3. ~~Criar `sync-tiktok-followers.yml` (mesmo padrão de `sync-youtube-followers.yml`) e, depois, um `sync-tiktok-posts.yml` para o ranking de vídeos.~~
+4. ~~Atualizar `NETWORKS` em `followers-dashboard.js` para `TikTok: connected:isVonder`.~~
+
+Esses quatro passos só fazem sentido se uma rota de API diferente do Login Kit for encontrada e aprovada (ver alternativas acima); não há ação pendente no Login Kit atual.
 
 | Data | Alteração | Responsável |
 |---|---|---|
 | 10/09/2026 | Criado o app "Portal MKT OVD" na TikTok for Developers (Login Kit, escopos `user.info.basic`/`user.info.stats`/`video.list`) e submetido para App Review. Adicionadas as páginas públicas `termos-de-uso.html`, `politica-de-privacidade.html`, `tiktok-connect.html` e `tiktok-oauth-callback.html`, e o arquivo de verificação de domínio da TikTok. Fluxo testado de ponta a ponta no ambiente Sandbox com a conta oficial `@vonderferramentas` (seguidores e lista de vídeos confirmados). Coleta automática e conexão no painel ainda pendentes da aprovação do App Review. | Equipe de Marketing / manutenção do portal |
+| 17/09/2026 | App Review da TikTok **rejeitado**: motivo estrutural (Login Kit não cobre exibir, num site, dados da própria conta que a empresa administra — só login de usuários finais terceiros). Rota abandonada nesse formato; lançamento manual do TikTok deixa de ser provisório e passa a ser o caminho vigente até (se) uma alternativa de API for avaliada. | Equipe de Marketing / manutenção do portal |
 
 ### Notificações de workflow do calendário (11/09/2026)
 O perfil **Social Media** pode ter marcas selecionadas somente para o roteamento de notificações; isso não muda permissões nem acesso às outras marcas. A lista mínima de destinos ativos fica em `portalStore/social-media-notification-routes-v1`. Ao editar um usuário, a rota é gravada com a lista projetada antes de qualquer recarga administrativa; além disso, `notifications.html` confere e autorrepara a rota do próprio usuário autenticado, cobrindo a troca do próprio Administrador para Social Media sem fazer consultas adicionais recorrentes.
@@ -546,7 +553,7 @@ Revisão dos horários de todos os workflows que fazem `git push` (grupo `portal
 
 ### Pendências conhecidas
 
-- **GitHub Pages e Cloudflare Pages coexistem por motivo, não por falta de decisão** (revisado em 15/09/2026): consolidar em um só hoje traria mais risco do que benefício, porque cada link sustenta algo diferente. Cloudflare Pages deixou de ser redundante — é a base do preview automático por branch que sustenta todo o ambiente HML (seção 17); GitHub Pages segue sendo a URL de verificação de domínio cadastrada na TikTok for Developers (seção 15), com o App Review **ainda em análise, sem previsão** ("This version of Portal MKT OVD is in review", confirmado em 15/09/2026). Desativar o Cloudflare Pages agora quebraria o HML; desativar o GitHub Pages agora arriscaria complicar uma aprovação em andamento que depende dessa URL exata. **Gatilho para reavaliar:** quando a TikTok aprovar o app, checar se a URL de verificação pode ser re-emitida contra o domínio do Cloudflare Pages sem precisar reabrir o processo de revisão; só então vale reconsiderar consolidar em um único link.
+- **GitHub Pages e Cloudflare Pages coexistem por motivo, não por falta de decisão** (revisado em 17/09/2026): consolidar em um só hoje traria mais risco do que benefício, porque cada link sustenta algo diferente. Cloudflare Pages deixou de ser redundante — é a base do preview automático por branch que sustenta todo o ambiente HML (seção 17); GitHub Pages segue sendo a URL de verificação de domínio cadastrada na TikTok for Developers (seção 15). O App Review foi **rejeitado em 17/09/2026** (motivo estrutural, Login Kit não serve pra esse caso de uso — ver seção 15), então o gatilho original ("quando a TikTok aprovar") não se aplica mais. A URL de verificação continua tecnicamente associada ao app cadastrado na TikTok; **novo gatilho para reavaliar:** decidir se vale descadastrar o app/verificação da TikTok (liberando o GitHub Pages) ou mantê-lo à espera de uma futura tentativa por outra rota de API (TikTok Business API, seção 15).
 
 | Data | Alteração | Responsável |
 |---|---|---|

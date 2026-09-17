@@ -15,7 +15,7 @@
   // e quais redes de fato têm coleta. Marcas fora deste mapa (ainda sem integração) nunca
   // buscam dados publicados nem herdam número/meta de outra marca — mostram "não conectado".
   const BRAND_INTEGRATIONS = {
-    'default': { storeSuffix: 'vonder', instagram: true, facebook: true, youtube: true },
+    'default': { storeSuffix: 'vonder', instagram: true, facebook: true, youtube: true, tiktok: true },
     'ferramentas-gerais': { storeSuffix: 'ferramentas-gerais', instagram: true, facebook: true, youtube: false },
   };
   const integration = BRAND_INTEGRATIONS[brandKey] || null;
@@ -65,7 +65,7 @@
     { name:'Instagram', color:'#E94683', icon:'icons/instagram.svg', connected: !!(integration && integration.instagram) },
     { name:'Facebook',  color:'#287BE0', icon:'icons/facebook.svg',  connected: !!(integration && integration.facebook) },
     { name:'YouTube',   color:'#F04444', icon:'icons/youtube.svg',   connected: !!(integration && integration.youtube) },
-    { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected:false }
+    { name:'TikTok',    color:'#111827', icon:'icons/tiktok.svg',    connected: !!(integration && integration.tiktok) }
   ];
   const POST_SORT_OPTIONS = [
     { key: 'timestamp', label: 'Data', icon: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>' },
@@ -384,22 +384,49 @@
     if (periodDeltas.length) el('growth').className = `growth-line ${net > 0 ? 'positive' : net < 0 ? 'negative' : ''}`.trim();
 
     setText('growthPeriod', `${shortDate(first.date)} a ${shortDate(last.date)}`);
-    setText('newFollowers', periodDeltas.length ? signed(net) : '—');
-    setTone('newFollowers', periodDeltas.length ? net : 0);
-    setText('avg', perDay === null ? '—' : signed(perDay));
-    setTone('avg', perDay || 0);
 
-    const ranked = nets
-      .filter(network => Number.isFinite(last.values[network.name]))
-      .map(network => ({ network, gain: (last.values[network.name] || 0) - (first.values[network.name] || 0) }))
-      .sort((a,b) => b.gain - a.gain);
-    setText('bestChannel', ranked.length ? ranked[0].network.name : '—');
+    // Saldo real do Instagram no período (follows/unfollows via Insights da Meta) — calculado
+    // sempre, independente da rede selecionada agora: o botão do Instagram na lista de
+    // plataformas usa isso pro delta dele mesmo com outra rede em foco (ver renderPlatforms).
+    const igPeriodInsights = points.map(point => point.insights && point.insights.Instagram)
+      .filter(insight => insight && Number.isFinite(Number(insight.follows)) && Number.isFinite(Number(insight.unfollows)));
+    const igGrossFollows = igPeriodInsights.reduce((sum, insight) => sum + Number(insight.follows), 0);
+    const igGrossUnfollows = igPeriodInsights.reduce((sum, insight) => sum + Number(insight.unfollows), 0);
+
+    // Bruto (follows/unfollows) exibido no card "Crescimento no período" só faz sentido com
+    // Instagram/"Todas" selecionado — fora disso o dado não corresponde à seleção, então some
+    // como "—" em vez de mostrar um número de outra rede.
+    const periodInsights = isInstagramOrAllSelected() ? igPeriodInsights : [];
+    const grossFollows = isInstagramOrAllSelected() ? igGrossFollows : 0;
+    const grossUnfollows = isInstagramOrAllSelected() ? igGrossUnfollows : 0;
+
+    // "Crescimento líquido"/"Média por dia" deste card usam o saldo real (bruto − unfollows)
+    // quando ele está disponível — mesmo motivo do tooltip do gráfico (ver aggregate/
+    // showTooltip): o delta bruto de followers_count entre duas medições diverge do saldo
+    // real por ruído que não é "seguidor novo" (cache da Meta, limpeza de contas spam), e os
+    // 4 números deste card precisam fechar a conta entre si (bruto − unfollows = líquido).
+    // ponytail: com "Todas as redes" selecionado, isso restringe o líquido mostrado AQUI ao
+    // saldo do Instagram (única rede com Insights), sem somar a fração de Facebook/YouTube/
+    // TikTok no período — o card "Comunidade total" acima continua com o total real das 4
+    // redes. Evolução: se outra rede ganhar o mesmo tipo de Insights, somar aqui também.
+    const netForCard = periodInsights.length ? grossFollows - grossUnfollows : net;
+    const perDayForCard = periodInsights.length ? netForCard / span : perDay;
+    const hasNetForCard = periodDeltas.length || periodInsights.length;
+
+    setText('newFollowers', hasNetForCard ? signed(netForCard) : '—');
+    setTone('newFollowers', hasNetForCard ? netForCard : 0);
+    setText('avg', perDayForCard === null ? '—' : signed(perDayForCard));
+    setTone('avg', perDayForCard || 0);
+    setText('grossFollowsPeriod', periodInsights.length ? signed(grossFollows) : '—');
+    setTone('grossFollowsPeriod', periodInsights.length ? grossFollows : 0);
+    setText('unfollowsPeriod', periodInsights.length ? signed(-grossUnfollows) : '—');
+    setTone('unfollowsPeriod', periodInsights.length ? -grossUnfollows : 0);
 
     renderGoalRing(currentPoint, nets);
     el('channelContext').innerHTML = active ? `<img src="${active.icon}" alt=""> ${active.name}` : 'Todas';
 
     renderChart(points, nets, grain);
-    renderPlatforms(points, nets, currentPoint);
+    renderPlatforms(points, nets, currentPoint, igPeriodInsights.length ? igGrossFollows - igGrossUnfollows : null);
     renderTable(points, nets, grain);
     renderIndicators(points, nets, periodDeltas, net, rate, perDay, span);
     // A Meta só nos dá follows/unfollows/alcance detalhados do Instagram — não existe
@@ -498,7 +525,7 @@
       note.textContent = `Passe o mouse sobre um ponto para ver os dados · por ${grainName}`;
     }
   }
-  function renderPlatforms(points, nets, currentPoint) {
+  function renderPlatforms(points, nets, currentPoint, igNetPeriod) {
     const last = currentPoint || points[points.length - 1];
     const first = points[0];
     const chip = (value, delta, comparable) => comparable
@@ -514,8 +541,13 @@
       // Mesmo aviso do total (ver openYoutubeApprox): o YouTube arredonda o que devolve por API.
       const shown = known ? (network.name === 'YouTube' ? formatApproxYouTube(value) : format(value)) : null;
       const detail = known ? `${shown} seguidores` : (network.connected ? 'Aguardando coleta' : 'Sem API conectada');
-      const comparable = known && Number.isFinite(before) && points.length > 1;
-      return `<button type="button" class="platform ${String(index) === selectedNetwork ? 'selected' : ''}" data-network="${index}"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${detail}</small></span><span class="platform-delta">${chip(value, known ? value - before : 0, comparable)}</span><span class="platform-chevron">›</span></button>`;
+      // Instagram usa o saldo real dos Insights da Meta (follows − unfollows), não o delta
+      // bruto de followers_count entre duas medições — mesmo motivo do card "Crescimento no
+      // período" (ver render()): o total bruto oscila por ruído que não é "seguidor novo".
+      const useIgNet = network.name === 'Instagram' && igNetPeriod !== null;
+      const delta = useIgNet ? igNetPeriod : (known ? value - before : 0);
+      const comparable = useIgNet || (known && Number.isFinite(before) && points.length > 1);
+      return `<button type="button" class="platform ${String(index) === selectedNetwork ? 'selected' : ''}" data-network="${index}"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${detail}</small></span><span class="platform-delta">${chip(value, delta, comparable)}</span><span class="platform-chevron">›</span></button>`;
     }).concat([`<button type="button" class="platform ${selectedNetwork === 'all' ? 'selected' : ''}" data-network="all"><span class="all-networks-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M10 19V5M16 19v-7M22 19V2"/></svg></span><span class="platform-copy"><strong>Todas as redes</strong><small>${format(allTotal)} seguidores</small></span><span class="platform-delta">${chip(allTotal, allDelta, comparableAll)}</span><span class="platform-chevron">›</span></button>`]).join('');
     el('platforms').innerHTML = buttons;
     el('platforms').querySelectorAll('[data-network]').forEach(button => button.addEventListener('click', () => {
@@ -1257,7 +1289,7 @@
     if (totalWatermarkMask) totalWatermarkMask.hidden = true;
     el('growth').className = 'growth-line';
     setText('growth', message);
-    ['newFollowers','avg','bestChannel'].forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = 'neutral'; });
+    ['newFollowers','avg','grossFollowsPeriod','unfollowsPeriod'].forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = 'neutral'; });
     setText('growthPeriod', '—');
     renderGoalRing({ values:{} }, activeNetworks());
     el('channelContext').textContent = 'Todas';
@@ -1488,9 +1520,10 @@
 
   // Mesmo padrão do modal acima, mas para o ícone de aviso ao lado do total (ver render()) —
   // reaproveitado tanto para o número aproximado do YouTube quanto para o lançamento manual
-  // do TikTok (enquanto o App Review na TikTok for Developers não é aprovado, ver
-  // docs/ARQUITETURA-E-INTEGRACOES.md seção 15): o conteúdo do modal é montado na hora,
-  // conforme a rede selecionada no momento do clique.
+  // do TikTok em marcas sem coleta automática dessa rede (ver BRAND_INTEGRATIONS acima e
+  // docs/ARQUITETURA-E-INTEGRACOES.md seção 15 — o App Review do Login Kit foi rejeitado em
+  // 17/09/2026, não é mais "em análise"): o conteúdo do modal é montado na hora, conforme a
+  // rede selecionada no momento do clique.
   const youtubeApprox = el('youtubeApproxBackdrop');
   let youtubeApproxLastFocus = null;
   const TOTAL_APPROX_INFO = {
@@ -1506,11 +1539,9 @@
     TikTok: {
       icon: 'icons/tiktok.svg',
       title: 'Número lançado manualmente',
-      body: `<p>A coleta automática do TikTok ainda não está ativa: o app do portal está em análise (App Review)
-        na TikTok for Developers. Este número foi lançado manualmente pela equipe, direto da conta oficial
-        <b>@vonderferramentas</b>, e só muda quando alguém repetir esse lançamento — não atualiza sozinho como
-        Instagram, Facebook e YouTube.</p>
-        <p>Assim que a TikTok aprovar o app, a coleta passa a ser automática e este aviso desaparece.</p>`
+      body: `<p>Esta marca ainda não tem coleta automática de seguidores do TikTok. Este número foi lançado
+        manualmente pela equipe e só muda quando alguém repetir esse lançamento — não atualiza sozinho como
+        Instagram, Facebook e YouTube.</p>`
     }
   };
   const closeYoutubeApprox = () => {
