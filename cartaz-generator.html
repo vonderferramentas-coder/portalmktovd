@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Gerador de Cartazes</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="auth.css">
+    <script>document.documentElement.classList.add('auth-pending')</script>
+    <script src="firebase-config.js"></script>
+    <script type="module" src="auth-guard.js"></script>
+    <style>
+        .cg {
+            max-width: 1440px;
+            margin: auto;
+            padding: 28px;
+            color: #18242d
+        }
+
+        .cg header {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px
+        }
+
+        .cg p:not(.page-subtitle) {
+            color: #5d6a73
+        }
+
+        .cg .k {
+            font-size: 12px;
+            color: #00766a;
+            font-weight: bold;
+            text-transform: uppercase
+        }
+
+        .import {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin: 24px 0
+        }
+
+        .box {
+            background: #fff;
+            border: 1px solid #d8e0e4;
+            border-radius: 10px;
+            padding: 18px
+        }
+
+        .box h2 {
+            font-size: 17px;
+            margin: 0 0 7px
+        }
+
+        .upload {
+            display: block;
+            border: 1px dashed #81939b;
+            padding: 12px;
+            border-radius: 7px;
+            color: #00766a;
+            font-weight: bold;
+            cursor: pointer
+        }
+
+        .upload input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0
+        }
+
+        button {
+            border: 0;
+            border-radius: 7px;
+            background: #00766a;
+            color: #fff;
+            padding: 12px 16px;
+            font-weight: bold;
+            cursor: pointer
+        }
+
+        button:disabled {
+            opacity: .5
+        }
+
+        .work[hidden] {
+            display: none
+        }
+
+        .work {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 18px
+        }
+
+        .pages button {
+            display: block;
+            width: 100%;
+            margin: 6px 0;
+            text-align: left;
+            background: #fff;
+            color: #24323a;
+            border: 1px solid #d8e0e4
+        }
+
+        .pages button.active {
+            background: #e4f5f1;
+            border-color: #00766a
+        }
+
+        .preview {
+            background: #e9edef;
+            padding: 24px;
+            overflow: auto
+        }
+
+        .sheet {
+            width: 794px;
+            min-height: 1123px;
+            background: #fff;
+            margin: auto;
+            padding: 25px;
+            box-sizing: border-box;
+            box-shadow: 0 5px 18px #0002;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            align-content: start
+        }
+
+        .sheet::before {
+            content: "FEIRA GRANDES MARCAS";
+            grid-column: 1/-1;
+            text-align: center;
+            font-size: 12px;
+            letter-spacing: .16em;
+            font-weight: 800;
+            color: #126d62;
+            margin-top: 4px
+        }
+
+        .head {
+            grid-column: 1/-1;
+            border-bottom: 2px solid #1c514b;
+            padding: 0 0 10px;
+            display: flex;
+            justify-content: space-between
+        }
+
+        .head strong {
+            font-size: 22px;
+            color: #00766a
+        }
+
+        .card {
+            border: 1.5px solid #82908d;
+            border-radius: 14px;
+            padding: 13px 12px 10px;
+            display: grid;
+            grid-template-columns: 112px 1fr;
+            gap: 10px;
+            min-height: 238px;
+            position: relative
+        }
+
+        .card::before {
+            content: "";
+            position: absolute;
+            left: 12px;
+            right: 12px;
+            top: 40px;
+            border-top: 1px solid #dbe1df
+        }
+
+        .photo {
+            height: 118px;
+            margin-top: 34px;
+            background: #f7f8f8;
+            display: grid;
+            place-items: center;
+            font-size: 11px;
+            text-align: center;
+            color: #687780;
+            overflow: hidden
+        }
+
+        .photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain
+        }
+
+        .card h3 {
+            font-size: 14px;
+            line-height: 1.15;
+            margin: 0 0 7px;
+            padding-top: 32px;
+            text-transform: uppercase
+        }
+
+        .card p {
+            font-size: 10px;
+            margin: 0
+        }
+
+        .card small {
+            display: block;
+            color: #0f766e;
+            font-size: 9px;
+            margin-top: 9px
+        }
+
+        .card small::after {
+            content: "";
+            display: block;
+            width: 86px;
+            height: 23px;
+            margin-top: 3px;
+            background: repeating-linear-gradient(90deg, #111 0 2px, transparent 2px 4px, #111 4px 5px, transparent 5px 8px, #111 8px 11px, transparent 11px 13px)
+        }
+
+        .card table {
+            grid-column: 1/-1;
+            width: 100%;
+            font-size: 9px;
+            border-collapse: collapse;
+            table-layout: fixed;
+            background: #fbfbfb
+        }
+
+        .card th,
+        .card td {
+            border-top: 1px solid #d4dcdf;
+            padding: 3px;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .card th:last-child,
+        .card td:last-child {
+            text-align: right
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #19242d;
+            color: #fff;
+            padding: 12px;
+            border-radius: 7px
+        }
+
+        @media(max-width:900px) {
+
+            .import,
+            .work {
+                grid-template-columns: 1fr
+            }
+
+            .preview {
+                padding: 8px
+            }
+        }
+
+        @media print {
+            body * {
+                visibility: hidden
+            }
+
+            .preview,
+            .preview * {
+                visibility: visible
+            }
+
+            .preview {
+                position: absolute;
+                left: 0;
+                top: 0;
+                padding: 0;
+                background: #fff
+            }
+
+            /* visibility:hidden acima nao tira esses elementos do fluxo (continuam ocupando altura, so ficam
+               invisiveis) - a pagina toda contava como "alta" o suficiente pra sobrar uma segunda folha com
+               so uma tira do fundo do cartaz, principalmente com "Margens: Nenhuma" no dialogo de impressao
+               (usa a folha inteira, sem a margem padrao do navegador que escondia essa sobra por acaso).
+               display:none tira mesmo do fluxo - sao os unicos elementos visiveis fora de .preview */
+            .portal-sidebar,
+            .cg>header,
+            .import,
+            .pages,
+            .box>.k,
+            .box>h2,
+            #toast {
+                display: none
+            }
+
+            .sheet {
+                box-shadow: none
+            }
+        }
+
+        <style>.sheet {
+            position: relative;
+            isolation: isolate;
+            width: 794px;
+            min-height: 1123px;
+            padding: 49px 27px 132px;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(4, 176px);
+            gap: 9px;
+            background: radial-gradient(circle at 15% 20%, #075a73 0, #003c53 43%, #002f44 100%);
+            box-shadow: none
+        }
+
+        .sheet::before {
+            display: none
+        }
+
+        .sheet::after {
+            content: "FEIRA\A GRANDES MARCAS\A OVD";
+            white-space: pre;
+            position: absolute;
+            z-index: 1;
+            left: 0;
+            right: 0;
+            bottom: 35px;
+            text-align: center;
+            font-family: Impact, Arial Black, sans-serif;
+            font-style: italic;
+            font-size: 28px;
+            line-height: .82;
+            letter-spacing: -1px;
+            color: #ffd52d;
+            text-shadow: 3px 3px 0 #27333c, 5px 5px 0 #0b1720
+        }
+
+        .head {
+            display: none
+        }
+
+        .card {
+            box-sizing: border-box;
+            min-height: 176px;
+            border: 0;
+            border-radius: 12px;
+            padding: 11px 8px 26px;
+            grid-template-columns: 1fr 88px;
+            gap: 6px;
+            background: transparent;
+            overflow: hidden
+        }
+
+        .card::before {
+            display: none
+        }
+
+        .photo {
+            width: 88px;
+            height: 82px;
+            margin: 15px 0 0;
+            background: transparent;
+            align-self: start
+        }
+
+        .card h3 {
+            padding: 0;
+            margin: 0 0 6px;
+            font-family: Arial, sans-serif;
+            font-size: 10px;
+            line-height: 1.04;
+            text-transform: none;
+            font-weight: 800
+        }
+
+        .card p {
+            font-size: 8px;
+            line-height: 1.15;
+            color: #111
+        }
+
+        .card small {
+            position: absolute;
+            right: 9px;
+            bottom: 7px;
+            margin: 0;
+            font-size: 0
+        }
+
+        .card small::after {
+            width: 51px;
+            height: 20px;
+            margin: 0;
+            background: repeating-linear-gradient(90deg, #111 0 1px, transparent 1px 2px, #111 2px 4px, transparent 4px 5px, #111 5px 7px, transparent 7px 9px)
+        }
+
+        .card table {
+            display: none
+        }
+
+        .card .lines {
+            grid-column: 1/-1;
+            font-size: 8px;
+            line-height: 1.3;
+            color: #111;
+            align-self: start
+        }
+
+        .card .lines div {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .card .lines b {
+            /* so a variacao fica em Swiss721 (a unica fonte que a familia carrega e o peso 700/bold, entao pedir
+               peso diferente nela nao muda o traco); o codigo (fora do <b>) fica na fonte de fallback normal
+               abaixo, pra ter contraste real de peso entre variacao e codigo */
+            font-family: Swiss721, "Arial Narrow", Arial, sans-serif;
+            font-weight: 800
+        }
+
+        .placeholder {
+            background: #fff;
+            border-radius: 12px
+        }
+
+        .cg-sheet-note {
+            position: absolute;
+            left: 30px;
+            right: 30px;
+            bottom: 96px;
+            color: #d9edf0;
+            text-align: center;
+            font-size: 8px;
+            letter-spacing: .03em
+        }
+    </style>
+    <style>
+        .sheet {
+            display: block;
+            padding: 0;
+            min-height: 0;
+            background: #fff
+        }
+
+        .sheet::after,
+        .sheet::before {
+            display: none
+        }
+
+        .ai-template {
+            display: block;
+            width: 100%;
+            height: auto
+        }
+
+        .template-note {
+            margin: 12px 0 0;
+            color: #52636c;
+            font-size: 13px
+        }
+    </style>
+    <style>
+        .sheet {
+            position: relative;
+            display: grid;
+            width: 794px;
+            min-height: 0;
+            aspect-ratio: 595/842;
+            box-sizing: border-box;
+            padding: 94.75px 62.68px 193.94px 38.23px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-rows: repeat(3, minmax(0, 1fr));
+            gap: 13.12px 13.78px
+                /* medidas do cartaz-template-clean.png (1786x2526) convertidas para a folha de 794px: % nao serve porque padding % resolve pela largura do pai */
+            ;
+            background: #003e55 url("cartaz-template-base.png") center/100% 100% no-repeat;
+            overflow: hidden
+        }
+
+        .sheet::before,
+        .sheet::after {
+            display: none
+        }
+
+        .ai-template,
+        .template-note {
+            display: none
+        }
+
+        .card {
+            position: relative;
+            box-sizing: border-box;
+            min-height: 0;
+            border: 0;
+            border-radius: 14px;
+            padding: 12px 11px 9px;
+            display: block;
+            background: transparent;
+            overflow: hidden
+        }
+
+        .card::before {
+            display: none
+        }
+
+        .card h3 {
+            position: relative;
+            z-index: 2;
+            width: 64%;
+            padding: 0;
+            margin: 0;
+            font: 700 12px/1.15 "Arial Narrow", Arial, sans-serif;
+            text-transform: none;
+            color: #080808
+        }
+
+        .card h3:focus,
+        .card .lines:focus {
+            outline: 2px solid #0c8794;
+            outline-offset: 2px
+        }
+
+        .card .photo {
+            position: absolute;
+            right: 10px;
+            top: 39px;
+            width: 43%;
+            height: 46%;
+            margin: 0;
+            background: transparent
+        }
+
+        .card .photo span {
+            font-size: 9px;
+            color: #9aa2a6
+        }
+
+        .card .lines {
+            position: absolute;
+            left: 11px;
+            right: 70px;
+            bottom: 11px;
+            font: 700 8px/1.22 "Arial Narrow", Arial, sans-serif;
+            color: #111
+        }
+
+        .card .lines::before {
+            content: "Códigos:";
+            display: block;
+            margin-bottom: 2px
+        }
+
+        .card .lines div {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .card small {
+            position: absolute;
+            right: 9px;
+            bottom: 7px;
+            margin: 0;
+            font-size: 0
+        }
+
+        .card small::after {
+            content: "";
+            display: block;
+            width: 58px;
+            height: 27px;
+            background: repeating-linear-gradient(90deg, #111 0 2px, transparent 2px 3px, #111 3px 4px, transparent 4px 6px, #111 6px 9px, transparent 9px 10px)
+        }
+
+        .placeholder {
+            background: transparent;
+            border-radius: 14px
+        }
+    </style>
+    <style>
+        @font-face {
+            font-family: Swiss721;
+            src: url("business-card-assets/fonts/Swis721 Cn BT Bold.ttf") format("truetype");
+            font-weight: 700;
+            font-display: swap
+        }
+
+        .card {
+            padding: 20px 28px 16px
+        }
+
+        .card h3 {
+            width: 70%;
+            padding: 0;
+            margin: 0;
+            font-family: Swiss721, "Arial Narrow", Arial, sans-serif;
+            font-size: 18.6667px;
+            line-height: 21.8667px;
+            letter-spacing: -.02em;
+            font-weight: 700;
+            /* trava em 3 linhas (corta com reticencias se um titulo excepcional passar disso) para nunca invadir a faixa da foto abaixo */
+            max-height: 66px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            -webkit-box-orient: vertical
+        }
+
+        .card .photo {
+            /* valores abaixo (top:94/bottom:58) sao so o fallback antes do JS calcular: assumem titulo de 3
+               linhas (pior caso, ver max-height do h3 acima) ate acima do codigo de barras (o .ean comeca a
+               58px do rodape). Com titulo mais curto (1-2 linhas) isso sobraria espaco vazio acima da foto -
+               por isso centerPhoto() (em draw(), so em .card:not(.big)) mede a altura REAL do titulo depois de
+               renderizado e sobrescreve top/bottom/margin por card, centralizando na faixa que sobra de verdade
+               entre o fim do titulo e o codigo de barras. altura em px fixo (nao so top+bottom, que o Chrome
+               resolveria como "encolhe pro conteudo" nesse .card que e item de grid - o mesmo problema
+               resolvido mais abaixo em .card.big .photo) */
+            right: 28px;
+            top: 94px;
+            bottom: 58px;
+            height: 103.5px;
+            width: 110px;
+            margin: auto 0;
+            display: grid;
+            place-items: center
+        }
+
+        /* a foto ocupa a caixa e o object-fit encaixa: max-height:% nao limita item de grid */
+        .card .photo img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: scale-down
+        }
+
+        .card .lines {
+            /* max-height 160px = ~10 linhas de 15.6px, cabe ate as 5 variacoes (JS corta em rows.slice(0,5))
+               quebrando em 2 linhas cada (rotulo + codigo) sem sobrar do titulo (que trava em 3 linhas, ate
+               86px). Fonte reduzida pra 13px (era 16) porque a fallback Arial Narrow, usada no codigo pra ter
+               contraste real de peso com a variacao em negrito, e menos condensada que a Swiss721 e sem isso
+               quebrava linha demais. Ancorada por bottom: com menos linhas a caixa encolhe e fica embaixo sozinha */
+            left: 28px;
+            right: 144px;
+            bottom: 16px;
+            max-height: 160px;
+            overflow: hidden;
+            font-family: "Arial Narrow", Arial, sans-serif;
+            font-size: 13px;
+            line-height: 15.6px;
+            letter-spacing: -.02em;
+            font-weight: 400
+        }
+
+        .card .lines div {
+            /* nada pode sair cortado com reticencias (codigo tem que aparecer inteiro): quebra linha em vez de
+               truncar. Isso substitui o white-space:nowrap+text-overflow:ellipsis herdados de uma regra
+               anterior (.card .lines div, mais acima no arquivo) */
+            white-space: normal
+        }
+
+        .card .lines .cd {
+            /* o codigo tem espacos entre os grupos de digitos (ex.: "28 73 102 121") - sem isso, quando a
+               linha nao cabe toda, o navegador quebra o CODIGO no meio (um pedaco em cada linha) em vez de
+               mandar o codigo inteiro pra linha de baixo. nowrap so nesse span: o resto da linha (a variacao
+               em negrito) continua podendo quebrar antes dele normalmente */
+            white-space: nowrap
+        }
+
+        .card .lines::before {
+            margin-bottom: 0;
+            font-size: 13px;
+            line-height: 15.6px;
+            font-style: italic
+        }
+
+        .card .lines:has(div:only-child)::before {
+            content: "Código: ";
+            display: inline
+        }
+
+        .card .lines div:only-child {
+            display: inline;
+            white-space: normal
+        }
+
+        .card.big {
+            /* produto com 10-18 codigos ocupa a coluna inteira (2 linhas do grid, ver "grid-row" no style
+               inline calculado em load()/card()) em vez de 1 quadrado - da o dobro de altura pra caber ate 18
+               codigos numa lista so (sem precisar de 2a coluna).
+               background/border-radius proprios porque a arte de fundo (cartaz-template-base.png) tem 2 caixas
+               brancas separadas por uma folga nessa posicao - sem isso, a folga do template aparece como uma
+               tarja escura cortando o cartao ao meio (era o bug do "quadrado branco que nao continuava").
+               display:flex em coluna: titulo (altura propria) > foto (cresce/encolhe pro espaco que sobrar,
+               ver .card.big .photo) > lista de codigos (altura propria, empurra a foto). Isso substitui os
+               top/right/height fixos da foto do cartao normal - aqui ninguem sabe de antemao quantas linhas a
+               lista vai ter (1 a 18 codigos), entao quem decide o tamanho da foto e o proprio flex, nao um
+               calculo de pixel fixo (ver ajuste anterior "topo 94px, altura 103.5px" - la funciona pq o
+               cartao normal tem no maximo 9 codigos numa faixa de altura fixa; aqui a faixa varia demais) */
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border-radius: 14px
+        }
+
+        .card.big h3 {
+            /* flex:0 0 66px (em vez do flex-basis:auto padrao) porque o truque de recorte em 3 linhas do h3
+               (display:-webkit-box;-webkit-line-clamp) nao informa a altura real do texto pro calculo do flex
+               externo - sem isso o flex reservava so ~1 linha, e a foto entrava desenhada por cima da 2a/3a
+               linha do titulo. 66px = o mesmo teto de 3 linhas usado no cartao normal (ver .card h3 acima) */
+            flex: 0 0 66px
+        }
+
+        .card.big .photo {
+            /* sai do position:absolute do cartao normal pra virar item do flex (fica relative so pra a <img>
+               dentro, que e absolute+inset:0, continuar se ancorando nela e nao no .card).
+               flex:1 continua crescendo pro espaco que sobrar (com titulo fixo em 66px e lista variavel, ver
+               .card.big h3/.lines), mas agora com teto (max-width/max-height) pra nao ficar enorme quando um
+               produto tem poucos codigos - so cresce ate o teto, e encolhe sozinho quando a lista de codigos
+               precisa de mais espaco (com 18 codigos ainda sobra folga: 18 linhas cabem em ~300px de um cartao
+               de ~550px). margin:auto centraliza o que sobrar (cheio ou encolhido) em volta dela */
+            position: relative;
+            flex: 1 1 0;
+            min-height: 0;
+            /* width explicito (nao so max-width) porque sem isso o width:110px do cartao normal (.card .photo,
+               bem acima) vencia por ser o unico que declara "width" - max-width:200 nunca chegava a valer, a
+               foto sempre ficava travada em 110px de largura mesmo tendo espaco de sobra. Nao ha risco de
+               invadir a lista de codigos: no cartao grande foto e .lines ficam empilhadas (uma embaixo da
+               outra, ver flex-direction:column acima), no lado a lado como no cartao normal - larguras
+               diferentes delas nunca se encostam */
+            width: 200px;
+            max-width: 200px;
+            max-height: 180px;
+            margin: auto 0;
+            /* reseta align-self:start de uma regra bem mais antiga (".photo", design abandonado) que ainda
+               alcanca esse elemento e, sem isso, vence e centraliza so na vertical, nao na horizontal */
+            align-self: center;
+            top: auto;
+            right: auto;
+            bottom: auto
+        }
+
+        .card.big .photo img {
+            /* contain (em vez do scale-down herdado de ".card .photo img" acima) porque scale-down nunca
+               amplia a imagem alem do tamanho natural dela - com a caixa agora maior (200x180, ver acima),
+               uma foto de resolucao/enquadramento mais modesto ficava sobrando pequena no meio da caixa em vez
+               de crescer pra preenche-la. contain aumenta ou diminui pra usar o maximo da caixa, sempre
+               preservando a proporcao original (nunca distorce) */
+            object-fit: contain
+        }
+
+        .card.big .lines {
+            /* sai do position:absolute (que usava bottom pra ancorar embaixo) - em flex-column ela so entra
+               depois da foto e fica do tamanho do proprio conteudo (flex:0 0 auto, o padrao). margin-right
+               repoe o "right:144px" do cartao normal (144 - os 28px de padding do .card, que aqui ja empurram
+               sozinhos) pra continuar sem invadir a coluna do codigo de barras */
+            position: static;
+            left: auto;
+            bottom: auto;
+            margin-right: 116px;
+            max-height: 390px;
+            flex: 0 0 auto
+        }
+
+        .card small {
+            right: 16px;
+            bottom: 16px
+        }
+
+        .card small::after {
+            width: 70px;
+            height: 33px
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 0
+            }
+
+            .sheet {
+                /* precisa vir depois da regra de tela (width:794px;aspect-ratio:595/842;min-height:0, mais
+                   acima) pra ganhar - mesma especificidade, quem vem por ultimo no arquivo vence. width/height
+                   exatos em mm (nao px+aspect-ratio) porque a conversao px->mm as vezes arredonda diferente
+                   entre a renderizacao de tela e a de impressao, sobrando uma fracao de mm que criava uma
+                   segunda folha soh com uma tira do fundo do cartaz - via de regra com "Margens: Nenhuma" no
+                   dialogo de impressao, que usa a folha inteira sem a margem padrao do navegador que escondia
+                   essa sobra por acaso */
+                width: 210mm;
+                height: 297mm;
+                aspect-ratio: auto;
+                overflow: hidden;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact
+            }
+
+            .cutwarn {
+                display: none
+            }
+        }
+
+        .cutwarn {
+            /* so aparece na pre-visualizacao (escondido em @media print acima) - avisa quem esta revisando que
+               a planilha trouxe mais variacoes do que cabem no limite do cartao (9 no normal, 18 no grande) e
+               elas nao vao pro cartaz. position:absolute (nao no fluxo normal) pra nao empurrar h3/photo pra
+               baixo - no cartao normal isso desalinharia o topo fixo em pixel da foto (ver .card .photo acima) */
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            z-index: 5;
+            padding: 2px 6px;
+            border-radius: 6px;
+            background: #fef3c7;
+            color: #92400e;
+            font: 700 9px/1.3 Arial, sans-serif;
+            letter-spacing: 0;
+            white-space: nowrap
+        }
+
+        /* logo da feira: no PNG do template ela era coberta pelas caixas, entao vem por cima como elemento */
+        .sheet::after {
+            content: "";
+            display: block;
+            position: absolute;
+            z-index: 1;
+            left: 50%;
+            right: auto;
+            top: auto;
+            bottom: 28px;
+            width: 332px;
+            height: 140px;
+            margin-left: -166px;
+            padding: 0;
+            font-size: 0;
+            text-shadow: none;
+            background: url("cartaz-logo-feira.png") center/contain no-repeat
+        }
+    </style>
+    <style>
+        .card .ean {
+            position: absolute;
+            right: 28px;
+            bottom: 14px;
+            width: 110px;
+            height: 42px
+        }
+
+        .card .ean-svg {
+            display: block;
+            width: 100%;
+            height: 100%
+        }
+
+        .ean-missing {
+            /* mesma caixa/posicao do .ean normal (herda de ".card .ean" acima) - so muda a aparencia pra virar
+               um botao clicavel */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2px;
+            font: 700 10px/1.2 Arial, sans-serif;
+            color: #0c8794;
+            border: 1px dashed #0c8794;
+            border-radius: 6px;
+            background: #fff;
+            cursor: pointer
+        }
+
+        @media print {
+
+            /* precisa vir DEPOIS da regra ".ean-missing{display:flex}" acima (mesma especificidade - quem vem
+               por ultimo no arquivo vence, ver o mesmo padrao em ".cutwarn"/".sheet" mais acima) - colocar esse
+               display:none junto do outro bloco @media print (que fica antes dessa regra) perdia a briga e o
+               botao "+ Código de barras" vazava pra impressao real */
+            .ean-missing {
+                display: none
+            }
+        }
+
+        .card small,
+        .card small::after {
+            display: none
+        }
+    </style>
+    </style>
+</head>
+
+<body>
+    <div class="portal-shell">
+        <aside class="portal-sidebar" id="portalSidebar"></aside>
+        <main class="portal-main cg">
+            <header>
+                <div><span class="page-kicker">Produção gráfica</span>
+                    <h1>Gerador de Cartazes</h1>
+                    <p class="page-subtitle">Importe a planilha tratada e confira as páginas antes de imprimir.</p>
+                </div><button id="print" disabled>Imprimir página</button>
+            </header>
+            <section class="import">
+                <div class="box">
+                    <h2>1. Grade de produtos</h2>
+                    <p>Planilha tratada com Código OVD, título, variações e Código Principal.</p><label
+                        class="upload">Selecionar planilha<input id="sheet" type="file" accept=".xlsx,.xls"></label>
+                </div>
+                <div class="box">
+                    <h2>2. Fotos automáticas</h2>
+                    <p>Carregadas do app.ovd.com.br pelo Código OVD.</p><small id="photoInfo">Disponíveis após importar
+                        a planilha</small>
+                </div>
+                <div class="box">
+                    <h2>3. Códigos OVD</h2>
+                    <p>Confere a pasta de barcodes, inclusive os WMF do ZIP.</p><label class="upload">Selecionar pasta
+                        de códigos<input id="codes" type="file" webkitdirectory multiple></label><small
+                        id="codeInfo">Opcional</small>
+                </div>
+            </section>
+            <section class="work" id="work" hidden>
+                <aside class="box pages"><span class="k">Páginas</span>
+                    <h2 id="count"></h2>
+                    <div id="list"></div>
+                </aside>
+                <section class="box"><span class="k">Prévia A4</span>
+                    <h2 id="title"></h2>
+                    <div class="preview">
+                        <div class="sheet" id="preview"></div>
+                    </div>
+                </section>
+            </section>
+            <div id="toast" class="toast" hidden></div>
+        </main>
+    </div>
+    <script src="portal-shell.js"></script>
+    <script src="vendor/xlsx.full.min.js"></script>
+    <script>
+            (() => {
+                const $ = x => document.getElementById(x), S = { pages: [], page: 0, codes: {} }; const n = x => String(x ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ''), t = x => String(x ?? '').trim(), e = x => t(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); function toast(x) { $('toast').textContent = x; $('toast').hidden = false; clearTimeout(S.timer); S.timer = setTimeout(() => $('toast').hidden = true, 3500) } function map(files, to, label) { [...files].forEach(f => to[f.name.replace(/\.[^.]+$/, '')] = f); $(label).textContent = Object.keys(to).length + ' arquivo(s) identificado(s)'; draw() } function load(file) { let reader = new FileReader; reader.onload = event => { try { let workbook = XLSX.read(event.target.result, { type: 'array' }), rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '' }), headers = Object.keys(rows[0] || {}), find = names => headers.find(header => names.some(name => n(header) === name)), ovd = find(['codigoovd']), fg = find(['codigofg']), titleColumn = find(['nomedotitulo', 'titulo']), variationColumn = find(['variacoesnomenagradedob2b', 'variacoes', 'variacao']), principal = find(['codigoprincipal', 'principal']), brand = find(['marca']), price = find(['preco', 'valor']); if (!ovd || !titleColumn || !variationColumn || !principal) throw Error('Use a planilha tratada. Cabeçalhos obrigatórios: CÓDIGO OVD, NOME DO TÍTULO, VARIAÇÕES e CÓDIGO PRINCIPAL.'); let groups = [], group; rows.forEach((row, index) => { let item = { ovd: t(row[ovd]).replace(/\.0$/, ''), fg: t(row[fg]).replace(/\.0$/, ''), title: t(row[titleColumn]), variation: t(row[variationColumn]), principal: t(row[principal]).replace(/\.0$/, ''), brand: t(row[brand]), price: t(row[price]) }; if (!item.ovd && !item.title && !item.variation) return; if (item.title) { group = { title: item.title, rows: [] }; groups.push(group) } if (!group) throw Error('Linha ' + (index + 2) + ' sem NOME DO TÍTULO antes das variações.'); if (!item.ovd) throw Error('Linha ' + (index + 2) + ' sem CÓDIGO OVD.'); group.rows.push(item) }); if (!groups.length) throw Error('Nenhum produto encontrado na planilha.'); S.pages = []; let colRow = [0, 0], pageItems = [], flush = () => { if (pageItems.length) S.pages.push({ name: 'pág ' + (S.pages.length + 1), items: pageItems }); pageItems = []; colRow = [0, 0] };
+                /* "furar a fila": um produto grande (2 quadrados) que nao cabe em NENHUMA coluna nao pode simplesmente
+                   fechar a pagina - isso deixava celulas vazias (mostrando o quadrado branco do template) quando um
+                   produto pequeno mais a frente na planilha caberia ali. Por isso o loop faz varias passadas pela
+                   fila: cada passada tenta encaixar cada produto restante na coluna com menos linhas ocupadas,
+                   pulando (sem tirar da fila) quem nao cabe em nenhuma das duas - assim um produto pequeno mais
+                   adiante "fura a fila" e ocupa o buraco antes de um grande que veio antes dele. So fecha a pagina
+                   quando uma passada inteira nao consegue encaixar mais nada (ou as 2 colunas ja lotaram) */
+                let queue = groups.slice();
+                while (queue.length) {
+                    let deferred = [], placed = false;
+                    for (const g of queue) {
+                        let size = fitRows(g.rows, 10).length < g.rows.length ? 2 : 1, c = colRow[0] <= colRow[1] ? 0 : 1;
+                        if (colRow[c] + size > 3) c = 1 - c;
+                        if (colRow[c] + size > 3) { deferred.push(g); continue }
+                        pageItems.push({ group: g, gridRow: colRow[c], col: c, size });
+                        colRow[c] += size;
+                        placed = true
+                    }
+                    queue = deferred;
+                    if (!placed || (colRow[0] >= 3 && colRow[1] >= 3)) flush()
+                }
+                flush(); S.page = 0; let photoCount = groups.filter(group => group.rows[0].ovd).length; $('photoInfo').textContent = photoCount + ' foto' + (photoCount === 1 ? '' : 's') + ' vinculada' + (photoCount === 1 ? '' : 's') + ' pelo Código OVD'; $('work').hidden = false; $('print').disabled = false; pages(); draw(); toast(groups.length + ' produto(s) distribuído(s) em ' + S.pages.length + ' página(s).') } catch (error) { toast(error.message) } }; reader.readAsArrayBuffer(file) } function title(group) { let brand = group.rows.map(r => r.brand).find(Boolean); return brand ? group.title + ", " + brand : group.title } function variation(row) { return row.variation } function code(x) { let d = t(x).replace(/\D/g, ""); return d.length === 10 ? d.replace(/(\d{2})(\d{2})(\d{3})(\d{3})/, "$1 $2 $3 $4") : t(x) }
+                /* ponytail: quantas linhas uma variacao ocupa na lista de codigos e estimado por contagem de caracteres
+                   (30 = o maior texto que ja confirmamos coubesse numa linha só, ver "GIR - 100 m: 31 71 100 000"),
+                   não por medida real da fonte renderizada - pode errar por um caractere ou outro perto do limite,
+                   mas evita ter que desenhar o cartão pra depois medir. Path de evolução: medir de verdade
+                   (scrollHeight) se algum caso real cair muito longe disso. */
+                function rowLines(r) { let value = variation(r); return ((value ? value + ': ' : '') + code(r.ovd)).length > 30 ? 2 : 1 } function fitRows(rows, budget) { let used = 1, out = []; for (const r of rows) { let need = rowLines(r); if (used + need > budget) break; used += need; out.push(r) } return out } function photoUrl(ovd) { let code = t(ovd).replace(/\D/g, ''); return code ? 'https://app.ovd.com.br/fotos/produto?codigo=' + code : '' } function ean13(code) { let d = t(code).replace(/\D/g, ''); if (d.length !== 13) return ''; const L = ['0001101', '0011001', '0010011', '0111101', '0100011', '0110001', '0101111', '0111011', '0110111', '0001011'], G = ['0100111', '0110011', '0011011', '0100001', '0011101', '0111001', '0000101', '0010001', '0001001', '0010111'], R = ['1110010', '1100110', '1101100', '1000010', '1011100', '1001110', '1010000', '1000100', '1001000', '1110100'], P = ['LLLLLL', 'LLGLGG', 'LLGGLG', 'LLGGGL', 'LGLLGG', 'LGGLLG', 'LGGGLL', 'LGLGLG', 'LGLGGL', 'LGGLGL']; let bits = '101', par = P[+d[0]]; for (let i = 1; i < 7; i++)bits += (par[i - 1] === 'L' ? L : G)[+d[i]]; bits += '01010'; for (let i = 7; i < 13; i++)bits += R[+d[i]]; bits += '101'; let bars = ''; for (let i = 0; i < bits.length; i++)if (bits[i] === '1') { let guard = i < 3 || (i >= 45 && i < 50) || i >= 92; bars += '<rect x="' + (9 + i) + '" y="1" width="1" height="' + (guard ? 35 : 31) + '"/>' } return '<svg class="ean-svg" viewBox="0 0 113 43" role="img" aria-label="EAN ' + d + '"><g fill="#000">' + bars + '</g><text x="56.5" y="42" text-anchor="middle" font-family="Arial" font-size="8" letter-spacing="1.1">' + d + '</text></svg>' }
+                function card(item, idx) { let group = item.group, row = group.rows[0], url = photoUrl(row.ovd), photo = url ? '<img src="' + e(url) + '" alt="' + e(group.title) + '" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>Foto indisponível<br>Cód. ' + e(row.ovd) + '</span>' : '<span>Sem código</span>', big = item.size === 2,
+                /* renderiza TODAS as variacoes (nao so uma estimativa por caractere de quantas cabem) - quem decide
+                   o corte real e trimOverflow(), chamado em draw() depois do card estar no DOM, medindo a altura
+                   verdadeira renderizada (ver comentario la). Isso substitui o corte antecipado via fitRows()/
+                   rowLines() que so servia pra ESTIMAR - o card real de 23 variacoes que motivou essa troca media
+                   1 variacao a menos do que cabia de verdade na caixa (23 linhas de 15.6px cabem em max-height:390px,
+                   a conta de fitRows(rows,24) so permitia 22) */
+                lines = group.rows.map(r => { let value = variation(r); return '<div>' + (value ? '<b>' + e(value) + ':</b> ' : '') + '<span class="cd">' + e(code(r.ovd)) + '</span>' + '</div>' }).join(''), style = 'grid-column:' + (item.col + 1) + ';grid-row:' + (item.gridRow + 1) + ' / span ' + item.size, eanSvg = ean13(row.principal); return '<article class="card' + (big ? ' big' : '') + '" data-codes="' + group.rows.length + '" data-idx="' + idx + '" style="' + style + '">' + '<div class="cutwarn" hidden title="Essas variações não aparecem no cartão - avise quem for revisar"></div>' + '<h3 contenteditable="true" spellcheck="true" oninput="centerPhoto(this.closest(\'.card\'))">' + e(title(group)) + '</h3><div class="photo">' + photo + '</div><div class="lines" contenteditable="true" spellcheck="false">' + lines + '</div>' + (eanSvg ? '<div class="ean">' + eanSvg + '</div>' : '<div class="ean ean-missing" onclick="addBarcode(this)" title="Adicionar código de barras manualmente - não aparece na impressão até ser preenchido">+ Código de barras</div>') + '<small>' + (S.codes[row.ovd] ? 'WMF ' + e(row.ovd) + ' encontrado' : 'WMF ' + e(row.ovd) + ' pendente') + '</small></article>' } function trimOverflow(card) { /* corte real: se .lines (todas as variacoes, ver card() acima) estourou o max-height
+                (overflow:hidden corta sem avisar), acha o primeiro item cuja borda de baixo passa da altura
+                visivel de verdade (lines.clientHeight, ja calculado pelo layout - reflete o espaco real
+                sobrando, incluindo o que a foto do card grande deixou ao encolher) e remove ele e os
+                seguintes, atualizando o aviso com a contagem REAL removida em vez de uma estimativa.
+                Math.max(cut,1): nunca remove o primeiro item mesmo se ele sozinho nao coubesse (cartao vazio
+                seria pior que um item meio apertado) */ let lines = card.querySelector('.lines'), warn = card.querySelector('.cutwarn'); if (!lines || lines.scrollHeight <= lines.clientHeight) return;
+                /* child.offsetTop mede a partir do .card (o ancestral mais proximo com position != static -
+                   .lines em si e position:static), nao a partir de .lines - por isso usa getBoundingClientRect
+                   (sempre relativo a viewport, sem essa pegadinha de offsetParent) pra comparar contra a altura
+                   real visivel de .lines */ let top = lines.getBoundingClientRect().top, cut = [...lines.children].findIndex(child => child.getBoundingClientRect().bottom - top > lines.clientHeight); if (cut < 0) return; cut = Math.max(cut, 1); let removed = lines.children.length - cut; while (lines.children.length > cut) lines.removeChild(lines.lastElementChild); if (warn && removed > 0) { warn.hidden = false; warn.textContent = '⚠ +' + removed + ' código' + (removed === 1 ? '' : 's') + ' fora do cartão' } } function addBarcode(el) { /* preenche na hora um EAN que faltou na planilha (coluna CODIGO PRINCIPAL vazia) - reusa
+                    ean13() e o proprio fluxo de render (S.pages[...].group.rows[0].principal + draw()) em vez de
+                    desenhar o svg na mao, pra ficar identico a um codigo que veio da planilha. So aparece na tela
+                    (.ean-missing tem @media print{display:none} - ver .card .ean abaixo), então quem esquecer de
+                    preencher continua imprimindo a área em branco de sempre, sem risco de imprimir o texto do botão */ let card = el.closest('.card'), input = prompt('Digite o código de barras (13 dígitos):'); if (input === null) return; let digits = t(input).replace(/\D/g, ''); if (digits.length !== 13) { toast('Código de barras precisa ter 13 dígitos numéricos.'); return } S.pages[S.page].items[+card.dataset.idx].group.rows[0].principal = digits; draw() } function pages() { let total = S.pages.length; $('count').textContent = total + ' página' + (total === 1 ? '' : 's'); $('list').innerHTML = S.pages.map((p, i) => '<button class="' + (i === S.page ? 'active' : '') + '" data-p="' + i + '"><strong>' + e(p.name) + '</strong><small>' + p.items.length + ' grupos</small></button>').join('');[...$('list').querySelectorAll('button')].forEach(b => b.onclick = () => { S.page = +b.dataset.p; pages(); draw() }) } function centerPhoto(card) { /* posiciona a foto pelo espaco vertical REAL entre o titulo (altura varia de 1 a 3 linhas) e o
+    codigo de barras - o CSS (.card .photo, top:94px) reserva sempre o pior caso (titulo de 3 linhas), entao com
+    titulo curto sobrava espaco em branco acima da foto e ela parecia "grudada" mais pra baixo em vez de centralizada
+    (medir via offsetHeight em vez de flex/CSS puro porque -webkit-line-clamp nao informa a altura real pro flex,
+    ver .card.big h3 acima - offsetHeight nao tem esse problema, é o layout ja calculado).
+    Alem disso, com 1 código só (data-codes, ver card()) a coluna direita estreita (110px) deixa um vao vazio enorme
+    a esquerda da foto (o .lines - "Código: X" numa linha só - fica bem mais baixo que o teto do titulo) - nesse
+    caso a foto usa a largura toda do cartao (left:28px, igual ao padding, em vez da coluna de 110px) pra ficar
+    centralizada de verdade. Só se aplica com 1 código: a partir de 2, o rotulo "Códigos:" (ver .lines::before)
+    entra como uma linha a mais e sozinho já estoura a folga disponível (confirmado medindo caso real: com 2
+    códigos curtos ainda faltam ~13px, com 3 faltam ~29px, independente do tamanho do cartão) - por isso a trava
+    de seguranca abaixo (que mede a posicao REAL de .lines depois de renderizado) nunca libera a largura toda
+    com 2+ códigos, so serve pra cobrir o caso raro de um código único tao comprido que quebra em 3 linhas */ let h3 = card.querySelector('h3'), lines = card.querySelector('.lines'), photo = card.querySelector('.photo'); if (!h3 || !photo) return; let top = h3.offsetTop + h3.offsetHeight + 8, bottomBound = card.clientHeight - 58; photo.style.top = (top + Math.max(0, bottomBound - top - photo.offsetHeight) / 2) + 'px'; photo.style.bottom = 'auto'; photo.style.margin = '0'; let wide = +card.dataset.codes === 1 && lines && lines.offsetTop >= bottomBound + 8; photo.style.left = wide ? '28px' : 'auto'; photo.style.width = wide ? 'auto' : '110px' } function draw() { let p = S.pages[S.page]; if (!p) return; $('title').textContent = 'Prévia editável · ' + p.name; let cells = p.items.map((it, idx) => card(it, idx)), filled = p.items.reduce((sum, it) => sum + it.size, 0); for (let i = filled; i < 6; i++)cells.push('<div class="placeholder" aria-hidden="true"></div>'); $('preview').innerHTML = cells.join(''); $('preview').querySelectorAll('.card').forEach(trimOverflow); $('preview').querySelectorAll('.card:not(.big)').forEach(centerPhoto) } $('sheet').onchange = x => x.target.files[0] && load(x.target.files[0]); $('codes').onchange = x => map(x.target.files, S.codes, 'codeInfo'); $('print').onclick = () => print();
+                /* addBarcode/centerPhoto sao chamadas de atributo inline (onclick/oninput) no HTML que card() gera -
+                   esses atributos só enxergam funcao GLOBAL, nao a closure deste IIFE, entao precisam ser expostas
+                   aqui (sem isso o clique/edicao falhava calado, sem erro visivel, com ReferenceError so no console) */
+                window.addBarcode = addBarcode; window.centerPhoto = centerPhoto
+            })();
+    </script>
+</body>
+
+</html>

@@ -12,8 +12,8 @@ async function deny(message) {
 // sessão: deslogar aqui derrubava a pessoa do portal inteiro por clicar num link que nem
 // deveria estar visível para ela, e sem nenhuma mensagem — parecia um loop travado. Aqui só
 // avisa e manda de volta ao início, mantendo a sessão.
-function denyPermission() {
-  alert('Você não tem permissão para acessar esta área.');
+function denyPermission(message = 'Você não tem permissão para acessar esta área.') {
+  alert(message);
   location.replace(new URL('index.html', location.href).href);
 }
 // Padrão usado enquanto nenhum admin tiver salvo Permissões por perfil ainda (documento
@@ -47,29 +47,46 @@ try {
   const requiredRole = body.dataset.authRole;
   if (requiredRole && context.profile.role !== requiredRole) denyPermission();
   else {
-    const allowedPages = await loadAllowedPages(context.profile.role);
+    const rolePages = await loadAllowedPages(context.profile.role);
     // window.PortalNavItems vem de portal-shell.js (script clássico, já executado antes deste
     // módulo adiado) — só páginas do menu principal são "gerenciadas" por este mecanismo;
     // páginas fora dele (ex: migrate-followers.html) continuam controladas só por data-auth-role.
     const navItems = window.PortalNavItems || [];
+    // Página exclusiva de certas marcas (item.brands em portal-shell.js): nas outras sai da lista
+    // liberada, seja qual for o perfil — some do menu/Início e a própria página é bloqueada.
+    // Como a permissão por página, é só interface (não protege o dado no Firestore). Calculado a
+    // cada chamada (não uma vez só) porque a Início troca a marca sem recarregar — ver
+    // window.PortalAccess.refresh abaixo.
+    const pagesForBrand = () => {
+      const brandId = window.PortalBrand.activeId;
+      const wrong = new Set(navItems.filter(item => item.brands && !item.brands.includes(brandId)).map(item => item.href));
+      return { allowed: new Set([...rolePages].filter(href => !wrong.has(href))), wrong };
+    };
+    const { allowed: allowedPages, wrong: wrongBrand } = pagesForBrand();
     const pageIsManaged = navItems.some(item => item.href === target);
-    if (pageIsManaged && !allowedPages.has(target)) denyPermission();
+    if (pageIsManaged && !allowedPages.has(target)) denyPermission(wrongBrand.has(target) ? 'Esta ferramenta não está disponível para a marca selecionada.' : undefined);
     else {
       body.dataset.authenticated = 'true'; body.dataset.userRole = context.profile.role; body.dataset.userEmail = context.user.email; document.documentElement.classList.remove('auth-pending');
       // esconde qualquer link (sidebar, card da Início etc.) que aponte pra uma página
       // gerenciada fora da lista liberada pro perfil — um único mecanismo pras duas entradas.
-      document.querySelectorAll('a[href]').forEach(link => {
-        const href = link.getAttribute('href');
-        if (navItems.some(item => item.href === href) && !allowedPages.has(href)) link.hidden = true;
-      });
-      // some também o rótulo da seção (ex: "Administração") quando nenhum item dela sobrou
-      // visível — senão fica um título solto sem nada embaixo. display:none via estilo inline,
-      // não hidden — .portal-nav-section já tem display:flex no CSS, mesma especificidade de
-      // [hidden] só que de origem "autor" (vence a stylesheet do navegador).
-      document.querySelectorAll('.portal-nav-section').forEach(section => {
-        const anyVisible = Array.from(section.querySelectorAll('.portal-nav-item')).some(a => !a.hidden);
-        if (!anyVisible) section.style.display = 'none';
-      });
+      // Também reexibe os liberados (hidden = false) pra poder rodar de novo ao trocar de marca.
+      const applyLinkVisibility = () => {
+        const { allowed } = pagesForBrand();
+        document.querySelectorAll('a[href]').forEach(link => {
+          const href = link.getAttribute('href');
+          if (navItems.some(item => item.href === href)) link.hidden = !allowed.has(href);
+        });
+        // some também o rótulo da seção (ex: "Administração") quando nenhum item dela sobrou
+        // visível — senão fica um título solto sem nada embaixo. display:none via estilo inline,
+        // não hidden — .portal-nav-section já tem display:flex no CSS, mesma especificidade de
+        // [hidden] só que de origem "autor" (vence a stylesheet do navegador).
+        document.querySelectorAll('.portal-nav-section').forEach(section => {
+          const anyVisible = Array.from(section.querySelectorAll('.portal-nav-item')).some(a => !a.hidden);
+          section.style.display = anyVisible ? '' : 'none';
+        });
+      };
+      applyLinkVisibility();
+      window.PortalAccess = { refresh: applyLinkVisibility };
       const profileNameEl = document.getElementById('portalProfileName');
       if (profileNameEl) profileNameEl.textContent = context.profile.name || context.user.email;
       const profileEmailEl = document.getElementById('portalProfileEmail');

@@ -1,0 +1,191 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste do Conecta FG</title>
+<body data-result="running">RUNNING</body>
+<script src="../conecta-fg.js"></script>
+<script>
+// Roda em Chrome headless (ver .github/workflows/testes.yml). Monta .docx de verdade em memória
+// (zip + deflate) com as estruturas dos textos do blog — cabeçalho, título, chamada em
+// itálico/caixa-alta, negrito por estilo "Forte", links, listas, títulos e as várias formas de
+// indicar produto — e confere a saída contra o que os posts publicados têm.
+(async function(){
+  const Cf = window.ConectaFg;
+  const eq = (actual, expected, label) => {
+    if(JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(label + '\n  esperado: ' + JSON.stringify(expected) + '\n  obtido:   ' + JSON.stringify(actual));
+  };
+
+  // slugs reais devolvidos pela API da loja FG (linkText) para os nomes dos documentos de exemplo
+  eq(Cf.slug('Pulverizador agrícola bateria 20L com carregador - JACTO'), 'pulverizador-agricola-bateria-20l-com-carregador---jacto', 'slug com " - "');
+  eq(Cf.slug('Pulverizador 2 litros compressão prévia VONDER'), 'pulverizador-2-litros-compressao-previa-vonder', 'slug com acentos');
+  eq(Cf.slug('Pulverizador a bateria 3,6 V recarregável 1 litro PBV 361 VONDER'), 'pulverizador-a-bateria-3-6-v-recarregavel-1-litro-pbv-361-vonder', 'slug com vírgula');
+  eq(Cf.slug('Colher Triangular para Pedreiro 9" - VONDER'), 'colher-triangular-para-pedreiro-9----vonder', 'slug com aspas');
+  eq(Cf.guessLink('Ancinho para jardim em aço inox com 5 dentes cabo em madeira VONDER PLUS'), 'https://www.fg.com.br/ancinho-para-jardim-em-aco-inox-com-5-dentes-cabo-em-madeira-vonder-plus/p', 'link deduzido');
+  eq([Cf.productRef(' 1193696 '), Cf.productRef('https://www.fg.com.br/pft020/p'), Cf.productRef('fg.com.br/pft020'), Cf.productRef('123')], [{ code: '1193696' }, { url: 'https://www.fg.com.br/pft020/p' }, null, null], 'productRef aceita só código ou link de produto');
+  const catalog = [{ name: 'PFT 020', code: '93.60.000.020', codeFG: '1211969', aplicacoes: 'Indicada para apertar parafusos.' }];
+  eq(Cf.catalogProduct(catalog, '1211969').aplicacoes, 'Indicada para apertar parafusos.', 'catálogo encontra pelo Código FG');
+  eq(Cf.catalogProduct(catalog, '93.60.000.020').name, 'PFT 020', 'catálogo encontra pelo Código OVD formatado');
+  eq(Cf.catalogProduct(catalog, '999999'), null, 'catálogo não mistura produto inexistente');
+
+  const storedModel = Cf.storageModel({ title: 'Post', meta: [['Redação', 'Ana']], blocks: ['Texto'] });
+  eq(storedModel.meta, { Redação: 'Ana' }, 'modelo salvo não contém matriz incompatível com o Firestore');
+  eq(Cf.restoreModel(storedModel).meta, [['Redação', 'Ana']], 'modelo salvo recupera os pares usados pelo editor');
+
+  // ---- helpers para montar .docx em memória ----------------------------------------------------
+  const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
+  const run = (text, props = '') => `<w:r>${props ? `<w:rPr>${props}</w:rPr>` : ''}<w:t xml:space="preserve">${text}</w:t></w:r>`;
+  const para = (inner, pPr = '') => `<w:p>${pPr ? `<w:pPr>${pPr}</w:pPr>` : ''}${inner}</w:p>`;
+  const forte = '<w:rStyle w:val="Forte"/>';
+  const cell = text => `<w:tc><w:p>${run(text)}</w:p></w:tc>`;
+  const image = '<w:p><w:r><w:drawing/></w:r></w:p>';
+  const doc = body => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${body}</w:body></w:document>`;
+  const rels = items => `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${items}</Relationships>`;
+  const link = (id, target) => `<Relationship Id="${id}" Type="x/hyperlink" Target="${target}" TargetMode="External"/>`;
+
+  // zip mínimo (deflate) — o leitor do Conecta FG ignora o CRC, então fica zerado
+  async function zip(files){
+    const enc = new TextEncoder(), parts = [], central = [];
+    let offset = 0;
+    for(const [name, text] of Object.entries(files)){
+      const raw = enc.encode(text), nameBytes = enc.encode(name);
+      const packed = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+      const local = new Uint8Array(30 + nameBytes.length), lv = new DataView(local.buffer);
+      lv.setUint32(0, 0x04034b50, true); lv.setUint16(8, 8, true); lv.setUint32(18, packed.length, true); lv.setUint32(22, raw.length, true); lv.setUint16(26, nameBytes.length, true);
+      local.set(nameBytes, 30);
+      const entry = new Uint8Array(46 + nameBytes.length), ev = new DataView(entry.buffer);
+      ev.setUint32(0, 0x02014b50, true); ev.setUint16(10, 8, true); ev.setUint32(20, packed.length, true); ev.setUint32(24, raw.length, true); ev.setUint16(28, nameBytes.length, true); ev.setUint32(42, offset, true);
+      entry.set(nameBytes, 46);
+      parts.push(local, packed); central.push(entry); offset += local.length + packed.length;
+    }
+    const end = new Uint8Array(22), dv = new DataView(end.buffer);
+    dv.setUint32(0, 0x06054b50, true); dv.setUint16(8, central.length, true); dv.setUint16(10, central.length, true);
+    dv.setUint32(12, central.reduce((n, c) => n + c.length, 0), true); dv.setUint32(16, offset, true);
+    return new Blob([...parts, ...central, end]).arrayBuffer();
+  }
+  const read = (body, relItems = '', numbering = '') => zip({
+    'word/document.xml': doc(body), 'word/_rels/document.xml.rels': rels(relItems), ...(numbering ? { 'word/numbering.xml': numbering } : {}), 'docProps/app.xml': '<x/>'
+  }).then(buf => Cf.readDocx(buf));
+
+  // ---- documento A: tabela de produtos no fim (o texto de exemplo dos pulverizadores) -----------
+  const a = await read(`
+    <w:tbl><w:tr>${cell('texto')}${cell('revisão técnica ')}${cell('DATA DE PUBLICAÇÃO ')}</w:tr><w:tr>${cell('DANIELE')}${cell('patricia')}${cell('17/09/2026')}</w:tr></w:tbl>
+    ${para(run('Pulverizadores e produtos para hortas em casa'))}
+    ${para(run('CON', forte + '<w:b w:val="0"/><w:i/><w:caps/>') + run('h', forte + '<w:b w:val="0"/><w:i/><w:caps/>') + run('eça alguns dos ', forte + '<w:b w:val="0"/><w:i/><w:caps/>') + run('produtos essenciais da horta ', '<w:i/><w:caps/>') + run('particular', '<w:i/><w:caps/>'))}
+    <w:p/>
+    ${para(run('Entre os equipamentos essenciais estão os ') + run('pulverizadores', forte) + run(', que facilitam.'))}
+    ${para(run('Na ') + run('Ferramentas Gerais', forte) + run(', você encontra tudo. ') + run('Acesse ', forte) + run('o segmento de ', forte) + `<w:hyperlink r:id="rId8">${run('Jardinagem no site FG', '<w:rStyle w:val="Hyperlink"/>')}</w:hyperlink>` + run(' ou visite uma de ', forte) + `<w:hyperlink r:id="rId9">${run('nossas lojas', '<w:rStyle w:val="Hyperlink"/>')}</w:hyperlink>` + run(' e conheça toda a linha.', forte))}
+    ${para(run('Com ') + '<w:ins>' + run('trecho inserido &amp; &lt;b&gt;') + '</w:ins><w:del><w:r><w:delText>apagado</w:delText></w:r></w:del>' + `<w:hyperlink r:id="rId7">${run('link perigoso')}</w:hyperlink><w:hyperlink r:id="rId6">${run(' e link com &amp; comercial')}</w:hyperlink>`)}
+    <w:tbl>
+      <w:tr>${cell('Pulverizador agrícola bateria 20L com carregador - JACTO')}${cell('1193696')}</w:tr>
+      <w:tr>${cell('Ancinho para jardim em aço inox com 3 dentes cabo em madeira VONDER PLUS')}${cell('1171733')}</w:tr>
+    </w:tbl>`,
+    link('rId8', 'https://www.fg.com.br/jardinagem?O=OrderByScoreDESC') + link('rId9', 'https://www.fg.com.br/institucional/lojas') + link('rId7', 'javascript:alert(1)') + link('rId6', 'https://exemplo.com/a?b=1&amp;c=2'));
+
+  eq(a.title, 'Pulverizadores e produtos para hortas em casa', 'título = 1º parágrafo com texto');
+  eq(a.category, '', 'sem rótulo de categoria');
+  eq(a.meta, [['texto', 'DANIELE'], ['revisão técnica', 'patricia'], ['DATA DE PUBLICAÇÃO', '17/09/2026']], 'tabela de cabeçalho');
+  eq(a.products, [
+    { code: '1193696', name: 'Pulverizador agrícola bateria 20L com carregador - JACTO', url: '', at: null },
+    { code: '1171733', name: 'Ancinho para jardim em aço inox com 3 dentes cabo em madeira VONDER PLUS', url: '', at: null }
+  ], 'tabela de produtos (nome + código), sem posição no texto');
+  eq(a.unsupported, [], 'nada sem tratamento');
+  eq(a.blocks.length, 4, 'parágrafo vazio ignorado');
+  eq(a.blocks[0], '<em>CONHEÇA ALGUNS DOS PRODUTOS ESSENCIAIS DA HORTA PARTICULAR</em>.', 'chamada: caixa-alta + itálico, "Forte" desligado não vira negrito, runs emendados, ponto final');
+  eq(a.blocks[1], 'Entre os equipamentos essenciais estão os <strong>pulverizadores</strong>, que facilitam.', 'negrito por estilo Forte');
+  eq(a.blocks[2], 'Na <strong>Ferramentas Gerais</strong>, você encontra tudo. <strong>Acesse o segmento de </strong><a href="https://www.fg.com.br/jardinagem?O=OrderByScoreDESC">Jardinagem no site FG</a><strong> ou visite uma de </strong><a href="https://www.fg.com.br/institucional/lojas">nossas lojas</a><strong> e conheça toda a linha.</strong>', 'parágrafo final igual ao do post publicado');
+  eq(a.blocks[3], 'Com trecho inserido &amp; &lt;b&gt;link perigoso<a href="https://exemplo.com/a?b=1&amp;c=2"> e link com &amp; comercial</a>', 'inserção mantida, remoção descartada, javascript: sem link, & e < escapados');
+
+  // ---- documento B: produtos no meio do texto, rótulo, listas, título, recado -----------------
+  const numbering = `<w:numbering ${NS}>
+    <w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/></w:lvl></w:abstractNum>
+    <w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:numFmt w:val="decimal"/></w:lvl></w:abstractNum>
+    <w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num><w:num w:numId="2"><w:abstractNumId w:val="1"/></w:num></w:numbering>`;
+  const item = (text, numId) => para(run(text), `<w:numPr><w:ilvl w:val="0"/><w:numId w:val="${numId}"/></w:numPr>`);
+  const colher = 'Colher Triangular para Pedreiro 9" - VONDER';
+  const b = await read(`
+    ${para(run('FG', '<w:b/>') + run(' News', '<w:b/>'))}
+    ${para(run('Título do post', '<w:b/>'))}
+    ${para(run('soluções ', '<w:i/>') + run('ESPECIALIZADAS ', '<w:i/><w:caps/>') + run('em limpeza', '<w:i/>'))}
+    ${para(run('Abertura.'))}
+    ${item('Item um;', 1)}${item('Item dois', 1)}
+    ${item('Passo um', 2)}${item('Passo dois', 2)}
+    ${para(run('Um subtítulo'), '<w:pStyle w:val="Ttulo2"/>')}
+    ${para(run('FAVOR INSERIR FOTO DO PRODUTO', '<w:b/>'))}
+    ${para(run(colher.replace('"', '&quot;'), '<w:b/>'))}
+    ${para(run('https://www.fg.com.br/colher-triangular-para-pedreiro-9----vonder/p'))}
+    ${image}
+    ${para(run('https://www.fg.com.br/pft020/p'))}
+    ${para(run('Texto solto.'))}
+    ${image}
+    ${para(run('Fim.'))}
+    <w:tbl><w:tr>${cell('Vantagens: facilidade de transporte')}</w:tr></w:tbl>
+    <w:tbl><w:tr>${cell(colher.replace('"', '&quot;'))}${cell('1091116')}</w:tr></w:tbl>`, '', numbering);
+
+  eq(b.category, 'FG News', 'rótulo "FG News" é categoria, não título');
+  eq(b.title, 'Título do post', 'título vem depois do rótulo');
+  eq(b.notes, ['FAVOR INSERIR FOTO DO PRODUTO'], 'recado do redator fica fora do texto');
+  eq(b.blocks, [
+    '<em>SOLUÇÕES ESPECIALIZADAS EM LIMPEZA</em>.',
+    'Abertura.',
+    '<ul>\n<li>Item um;</li>\n<li>Item dois</li>\n</ul>',
+    '<ol>\n<li>Passo um</li>\n<li>Passo dois</li>\n</ol>',
+    '<h2>Um subtítulo</h2>',
+    'Texto solto.',
+    'Fim.'
+  ], 'chamada toda em caixa-alta, lista com marcadores vira ul, numerada vira ol, "Título 2" vira h2; nome+link e link com foto colada saem do texto');
+  eq(b.products, [
+    { code: '1091116', name: colher, url: 'https://www.fg.com.br/colher-triangular-para-pedreiro-9----vonder/p', at: 5 },
+    { code: '', name: '', url: 'https://www.fg.com.br/pft020/p', at: 5 }
+  ], 'link + nome em negrito completa a linha da tabela (mesmo produto); link com foto colada vira produto sem código, ambos na posição do texto');
+  eq(b.unsupported, ['imagens', 'tabelas de texto'], 'imagem solta e tabela de texto avisadas em vez de sumir sem aviso');
+
+  // ---- onde cada produto entra ------------------------------------------------------------------
+  const nivel = [
+    '<em>MODELOS QUE GARANTEM MÁXIMA PRECISÃO NO NIVELAMENTO.</em>',
+    'Em uma obra, reforma ou instalação, pequenos desvios podem comprometer todo resultado final.',
+    'Entre as principais soluções disponíveis estão os <strong>níveis a laser</strong>, equipamentos que projetam linhas de referência.',
+    'O <strong>Nível a laser de 3 linhas 360° 80 m com precisão de ± 0,4 mm/m GLL 80-33G BOSCH</strong> é uma excelente opção.',
+    'Outra alternativa é o <strong>Nível a laser 30 m bateria de 18 V sem bateria e carregador INLV 1854 VONDER</strong>, que oferece mobilidade.',
+    'Acessórios como o <strong>Tripé telescópico para nível laser 1/4&quot; 1-77-201 STANLEY</strong> fazem toda a diferença.'
+  ];
+  eq(Cf.mentionAt(nivel, 'Nível a laser de 3 linhas 360° 80 m precisão ± 0,4 mm/m GLL 80-33G BOSCH'), 4, 'nome da tabela sem "com ... de" acha o parágrafo');
+  eq(Cf.mentionAt(nivel, 'Nível a laser 30m bateria de 18V sem bateria e carregador INLV 1854 VONDER'), 5, '"30m"/"18V" x "30 m"/"18 V"');
+  eq(Cf.mentionAt(nivel, 'Tripé telescópico para nível laser 1/4" 1-77-201 STANLEY'), 6, 'aspas e acento');
+  eq([Cf.mentionAt(nivel, 'Furadeira de impacto 13 mm 650 W'), Cf.mentionAt(nivel, '')], [-1, -1], 'produto não citado / sem nome');
+
+  // ---- código para o WordPress -----------------------------------------------------------------
+  const jacto = { on: true, at: 2, code: '1193696', name: a.products[0].name, url: 'https://www.fg.com.br/pulverizador-agricola-bateria-20l-com-carregador---jacto/p', usage: 'Ideal para pulverização <controlada> em hortas.', rating: '4.8', reviewCount: '23', w: 2787, h: 4589 };
+  const semLink = { on: true, at: 2, code: '1171733', name: a.products[1].name, url: '', w: 4457, h: 2850 };
+  const off = { ...jacto, on: false };
+  const out = Cf.assemble(['A', 'B', 'C'], [jacto, off, semLink], 260);
+  eq((out.wp.match(/class="fg-product-card"/g) || []).length, 2, 'um card por produto marcado; desmarcado fica fora');
+  eq(out.wp.includes('Produto em destaque') && out.wp.includes('Aplicações e dicas de uso') && out.wp.includes('Ideal para pulverização &lt;controlada&gt; em hortas.'), true, 'card editorial mostra chamada e dica escapada');
+  eq(!out.wp.includes('★★★★★') && !out.wp.includes('aria-label="Avaliação'), true, 'avaliações antigas são ignoradas');
+  eq(out.wp.includes('background:#004e32') && out.wp.includes('color:#004e32') && !out.wp.includes('#f6be00') && out.wp.includes('>Ver produto</a>'), true, 'card usa somente o verde oficial da FG nos destaques');
+  eq((out.wp.match(/width="260" height="260"/g) || []).length === 2 && out.wp.includes('aspect-ratio:1') && out.wp.includes('object-fit:contain') && out.wp.includes('box-sizing:border-box'), true, 'fotos horizontais e verticais usam a mesma área quadrada sem distorção e sem estourar o card');
+  const optional = Cf.assemble(['A'], [{ ...semLink, at: 1, usage: '' }], 260).wp;
+  eq(!optional.includes('Aplicações e dicas de uso') && !optional.includes('Ver produto'), true, 'dica e CTA somem quando não há dados reais');
+  eq(Cf.assemble(['A'], [{ ...jacto, at: 1 }], 260, false).wp.includes('Aplicações e dicas de uso'), false, 'controle global oculta as aplicações sem apagar os produtos');
+  eq(Cf.assemble(['A'], [{ ...jacto, at: 1, w: 0 }], 260).wp.includes('alt="Pulverizador agrícola bateria 20L com carregador - JACTO" width="260" height="260"'), true, 'área quadrada também é reservada antes de conhecer as dimensões da foto');
+
+  // cada produto na sua posição (0 = antes de tudo, blocks.length = no fim), na ordem da lista; lista e título não ganham <p>; sem código não entra
+  const p1 = { on: true, at: 1, code: '11111', name: 'P1', url: 'https://www.fg.com.br/p1/p', w: 100, h: 100 };
+  const p2 = { on: true, at: 3, code: '22222', name: 'P2', url: 'https://www.fg.com.br/p2/p', w: 100, h: 100 };
+  const semCodigo = { on: true, at: 0, code: '', name: 'P3', url: 'https://www.fg.com.br/p3/p', w: 0, h: 0 };
+  const spread = Cf.assemble(['A', '<ul>\n<li>x</li>\n</ul>', '<h2>H</h2>'], [p1, p2, semCodigo], 260);
+  eq(spread.wp.split('\n\n').map(s => s.startsWith('<div class="fg-product-card"') ? 'CARD:' + /codigo=(\d+)/.exec(s)[1] : s), ['A', 'CARD:11111', '<ul>\n<li>x</li>\n</ul>', '<h2>H</h2>', 'CARD:22222'], 'posições por produto; sem código fica de fora');
+  eq((spread.view.match(/class="fg-product-card"/g) || []).length === 2 && spread.view.includes('<ul>\n<li>x</li>\n</ul>') && spread.view.includes('<h2>H</h2>'), true, 'prévia: cards, lista e título sem <p> extra');
+
+  const formerSide = Cf.assemble(['Antes.', 'O trecho depois do produto.', 'Depois.'], [{ ...p1, at: 1, layout: 'side' }], 260);
+  eq(!formerSide.wp.includes('align-items:flex-start') && formerSide.wp.split('\n\n')[2] === 'O trecho depois do produto.', true, 'layout antigo é ignorado e todo card ocupa uma linha inteira');
+
+  const fourProducts = [1, 2, 3, 4].map(number => ({ ...p1, at: 1, code: '3333' + number, name: 'Produto ' + number, url: 'https://www.fg.com.br/p' + number + '/p' }));
+  const stacked = Cf.assemble(['Antes.', 'Depois.'], fourProducts, 260);
+  eq(!stacked.wp.includes('fg-product-carousel') && (stacked.wp.match(/class="fg-product-card"/g) || []).length === 4, true, 'quatro produtos consecutivos continuam como cards empilhados');
+  eq([...stacked.wp.matchAll(/codigo=(\d+)/g)].map(match => match[1]), ['33331', '33332', '33333', '33334'], 'cards empilhados preservam a ordem dos produtos');
+  document.body.dataset.result = 'pass';
+  document.body.textContent = 'PASS: slug igual ao da loja FG; .docx lido de ponta a ponta (zip/deflate → HTML) nos padrões de produto e de texto; posição dos produtos; código WordPress no formato dos posts publicados.';
+})().catch(error => {
+  document.body.dataset.result = 'fail';
+  document.body.textContent = 'FAIL: ' + error.message;
+});
+</script>

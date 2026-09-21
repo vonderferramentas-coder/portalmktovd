@@ -54,3 +54,21 @@ jobs:
             echo '::error::Simulação de sincronização concorrente falhou — ver o corpo da página acima (data-result != "pass").'
             exit 1
           fi
+
+      # Conecta FG (18/09/2026): monta um .docx real em memória (zip + deflate) e confere o código
+      # do WordPress contra o formato dos posts publicados — mesmo esquema do passo acima.
+      - name: Conecta FG — conversão do .docx (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          if [ -z "$CHROME" ]; then
+            echo '::error::Nenhum Chrome/Chromium encontrado no runner.'
+            exit 1
+          fi
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions \
+            --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 \
+            --dump-dom "file://$(pwd)/tests/conecta-fg.test.html" > /tmp/conecta-fg-dump.html
+          cat /tmp/conecta-fg-dump.html
+          if ! grep -q 'data-result="pass"' /tmp/conecta-fg-dump.html; then
+            echo '::error::Teste do Conecta FG falhou — ver o corpo da página acima (data-result != "pass").'
+            exit 1
+          fi
