@@ -11,11 +11,45 @@
     <script src="firebase-config.js"></script>
     <script type="module" src="auth-guard.js"></script>
     <style>
+        /* Cores da tela (não da arte do cartaz) ficam nestas variáveis: neutros no claro com os
+           valores originais e no escuro pelos tokens do portal; os destaques (kicker, botões, página
+           ativa) seguem a cor da marca ativa (--accent*, definidos por portal-shell.js). A folha
+           .sheet é a arte que vai pra impressão e nunca muda com o tema nem com a marca. */
         .cg {
+            --cg-ink: #18242d;
+            --cg-muted: #5d6a73;
+            --cg-card: #fff;
+            --cg-line: #d8e0e4;
+            --cg-dash: #81939b;
+            --cg-accent: var(--accent-text);
+            --cg-accent-weak: var(--accent-weak);
+            --cg-btn-bg: #fff;
+            --cg-canvas: #e9edef;
+            --cg-toast: #19242d;
             max-width: 1440px;
             margin: auto;
             padding: 28px;
+            color: var(--cg-ink)
+        }
+
+        :root[data-theme="dark"] .cg {
+            --cg-ink: var(--text);
+            --cg-muted: var(--muted);
+            --cg-card: var(--card);
+            --cg-line: var(--border);
+            --cg-dash: #7d8794;
+            --cg-btn-bg: var(--surface-muted);
+            --cg-canvas: #2a2c33;
+            --cg-toast: #2c2d33
+        }
+
+        /* a arte não herda a cor do tema: o texto dentro dela continua sendo o do tema claro */
+        .cg .sheet {
             color: #18242d
+        }
+
+        :root[data-theme="dark"] .preview .sheet {
+            outline: 1px solid rgba(255, 255, 255, .16)
         }
 
         .cg header {
@@ -25,12 +59,12 @@
         }
 
         .cg p:not(.page-subtitle) {
-            color: #5d6a73
+            color: var(--cg-muted)
         }
 
         .cg .k {
             font-size: 12px;
-            color: #00766a;
+            color: var(--cg-accent);
             font-weight: bold;
             text-transform: uppercase
         }
@@ -43,8 +77,8 @@
         }
 
         .box {
-            background: #fff;
-            border: 1px solid #d8e0e4;
+            background: var(--cg-card);
+            border: 1px solid var(--cg-line);
             border-radius: 10px;
             padding: 18px
         }
@@ -56,10 +90,10 @@
 
         .upload {
             display: block;
-            border: 1px dashed #81939b;
+            border: 1px dashed var(--cg-dash);
             padding: 12px;
             border-radius: 7px;
-            color: #00766a;
+            color: var(--cg-accent);
             font-weight: bold;
             cursor: pointer
         }
@@ -74,8 +108,8 @@
         button {
             border: 0;
             border-radius: 7px;
-            background: #00766a;
-            color: #fff;
+            background: var(--accent);
+            color: var(--on-accent);
             padding: 12px 16px;
             font-weight: bold;
             cursor: pointer
@@ -100,18 +134,18 @@
             width: 100%;
             margin: 6px 0;
             text-align: left;
-            background: #fff;
-            color: #24323a;
-            border: 1px solid #d8e0e4
+            background: var(--cg-btn-bg);
+            color: var(--cg-ink);
+            border: 1px solid var(--cg-line)
         }
 
         .pages button.active {
-            background: #e4f5f1;
-            border-color: #00766a
+            background: var(--cg-accent-weak);
+            border-color: var(--cg-accent)
         }
 
         .preview {
-            background: #e9edef;
+            background: var(--cg-canvas);
             padding: 24px;
             overflow: auto
         }
@@ -249,7 +283,7 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background: #19242d;
+            background: var(--cg-toast);
             color: #fff;
             padding: 12px;
             border-radius: 7px
@@ -969,7 +1003,7 @@
                    não por medida real da fonte renderizada - pode errar por um caractere ou outro perto do limite,
                    mas evita ter que desenhar o cartão pra depois medir. Path de evolução: medir de verdade
                    (scrollHeight) se algum caso real cair muito longe disso. */
-                function rowLines(r) { let value = variation(r); return ((value ? value + ': ' : '') + code(r.ovd)).length > 30 ? 2 : 1 } function fitRows(rows, budget) { let used = 1, out = []; for (const r of rows) { let need = rowLines(r); if (used + need > budget) break; used += need; out.push(r) } return out } function photoUrl(ovd) { let code = t(ovd).replace(/\D/g, ''); return code ? 'https://app.ovd.com.br/fotos/produto?codigo=' + code : '' } function ean13(code) { let d = t(code).replace(/\D/g, ''); if (d.length !== 13) return ''; const L = ['0001101', '0011001', '0010011', '0111101', '0100011', '0110001', '0101111', '0111011', '0110111', '0001011'], G = ['0100111', '0110011', '0011011', '0100001', '0011101', '0111001', '0000101', '0010001', '0001001', '0010111'], R = ['1110010', '1100110', '1101100', '1000010', '1011100', '1001110', '1010000', '1000100', '1001000', '1110100'], P = ['LLLLLL', 'LLGLGG', 'LLGGLG', 'LLGGGL', 'LGLLGG', 'LGGLLG', 'LGGGLL', 'LGLGLG', 'LGLGGL', 'LGGLGL']; let bits = '101', par = P[+d[0]]; for (let i = 1; i < 7; i++)bits += (par[i - 1] === 'L' ? L : G)[+d[i]]; bits += '01010'; for (let i = 7; i < 13; i++)bits += R[+d[i]]; bits += '101'; let bars = ''; for (let i = 0; i < bits.length; i++)if (bits[i] === '1') { let guard = i < 3 || (i >= 45 && i < 50) || i >= 92; bars += '<rect x="' + (9 + i) + '" y="1" width="1" height="' + (guard ? 35 : 31) + '"/>' } return '<svg class="ean-svg" viewBox="0 0 113 43" role="img" aria-label="EAN ' + d + '"><g fill="#000">' + bars + '</g><text x="56.5" y="42" text-anchor="middle" font-family="Arial" font-size="8" letter-spacing="1.1">' + d + '</text></svg>' }
+                function rowLines(r) { let value = variation(r); return ((value ? value + ': ' : '') + code(r.ovd)).length > 30 ? 2 : 1 } function fitRows(rows, budget) { let used = 1, out = []; for (const r of rows) { let need = rowLines(r); if (used + need > budget) break; used += need; out.push(r) } return out } function photoUrl(ovd) { let code = t(ovd).replace(/\D/g, ''); return code ? 'https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code=' + code : '' } function ean13(code) { let d = t(code).replace(/\D/g, ''); if (d.length !== 13) return ''; const L = ['0001101', '0011001', '0010011', '0111101', '0100011', '0110001', '0101111', '0111011', '0110111', '0001011'], G = ['0100111', '0110011', '0011011', '0100001', '0011101', '0111001', '0000101', '0010001', '0001001', '0010111'], R = ['1110010', '1100110', '1101100', '1000010', '1011100', '1001110', '1010000', '1000100', '1001000', '1110100'], P = ['LLLLLL', 'LLGLGG', 'LLGGLG', 'LLGGGL', 'LGLLGG', 'LGGLLG', 'LGGGLL', 'LGLGLG', 'LGLGGL', 'LGGLGL']; let bits = '101', par = P[+d[0]]; for (let i = 1; i < 7; i++)bits += (par[i - 1] === 'L' ? L : G)[+d[i]]; bits += '01010'; for (let i = 7; i < 13; i++)bits += R[+d[i]]; bits += '101'; let bars = ''; for (let i = 0; i < bits.length; i++)if (bits[i] === '1') { let guard = i < 3 || (i >= 45 && i < 50) || i >= 92; bars += '<rect x="' + (9 + i) + '" y="1" width="1" height="' + (guard ? 35 : 31) + '"/>' } return '<svg class="ean-svg" viewBox="0 0 113 43" role="img" aria-label="EAN ' + d + '"><g fill="#000">' + bars + '</g><text x="56.5" y="42" text-anchor="middle" font-family="Arial" font-size="8" letter-spacing="1.1">' + d + '</text></svg>' }
                 function card(item, idx) { let group = item.group, row = group.rows[0], url = photoUrl(row.ovd), photo = url ? '<img src="' + e(url) + '" alt="' + e(group.title) + '" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>Foto indisponível<br>Cód. ' + e(row.ovd) + '</span>' : '<span>Sem código</span>', big = item.size === 2,
                 /* renderiza TODAS as variacoes (nao so uma estimativa por caractere de quantas cabem) - quem decide
                    o corte real e trimOverflow(), chamado em draw() depois do card estar no DOM, medindo a altura

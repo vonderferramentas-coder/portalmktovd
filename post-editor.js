@@ -112,11 +112,11 @@ function localProductImageUrl(code,width){var digits=normalizeCode(code);if(!dig
 // depender do auxiliar local nem de PHP no host. Não reduz o tamanho da foto (sem 'w'), então só
 // entra pro recorte automático (CATALOG_PRODUCT_WIDTH), nunca pras miniaturas do catálogo.
 function workerProductImageUrl(code){var digits=normalizeCode(code);if(!digits)return'';return'https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code='+encodeURIComponent(digits)}
-// o helper local (rodado pelo "Abrir Calendario.cmd") continua sendo tentado como último
-// fallback, inclusive no site publicado (GitHub Pages) — útil quando o worker estiver fora do
-// ar. Só faz efeito em quem estiver com o auxiliar local rodando (loadExportSafeImage ignora o
-// resto quando a conexão é recusada); pra quem não tiver, o Chrome pode pedir a permissão de
-// "Acessar dispositivos na rede local" ao tentar — inofensivo, só afeta essa última tentativa.
+// o helper local (rodado pelo "Abrir Calendario.cmd") só é tentado quando o portal está aberto
+// pela pasta (file://) ou em localhost — NUNCA num site publicado (GitHub/Cloudflare Pages): ali
+// tentar 127.0.0.1 faria o Chrome pedir "Acessar outros dispositivos na sua rede local", e o
+// portal não deve tocar a máquina do usuário. (Até 21/09/2026 ele era o último fallback em
+// qualquer host, e o Chrome pedia essa permissão.)
 function itemImageUrls(item,width){
  var codes=catalogCodes(item),code=codes[0]&&codes[0].code,direct=(item&&(item.imageUrl||item.image||item.photo))||'',urls=[];
  // O worker (CORS público, funciona em qualquer origem) é a fonte principal do recorte
@@ -128,7 +128,7 @@ function itemImageUrls(item,width){
  if(CATALOG_PHOTO_SLUG==='vonder'&&code){
   if(width===CATALOG_PRODUCT_WIDTH)urls.push(workerProductImageUrl(code));
   if(location.protocol==='file:')urls.push(localProductImageUrl(code,width));else urls.push(productImageUrl(code,width));
-  urls.push(localProductImageUrl(code,width))
+  if(location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))urls.push(localProductImageUrl(code,width))
  }
  if(direct)urls.push(direct);
  return urls.filter(function(url,index){return url&&urls.indexOf(url)===index})

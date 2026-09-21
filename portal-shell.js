@@ -480,15 +480,16 @@
     { group:'Criação', items:[
       { href:'photoshop-actions.html', label:'Ações do Photoshop', icon:'<path d="M4 4h16v16H4z"/><path d="M8 8h3.5a2.5 2.5 0 1 1 0 5H8z"/><path d="M14.5 15.5h2.7"/>' },
       { href:'post-editor.html', label:'Editor de Posts', icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/><path d="m14 18 3-3"/>' },
-      { href:'business-card-generator.html', label:'Gerador de Cartões', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h5M7 14h3M15.5 10.5h2M15.5 14h2"/>' },
       // brands: página exclusiva dessas marcas (ids de DEFAULT_BRANDS) — nas demais some do menu
       // e da Início e a própria página é bloqueada; quem aplica é auth-guard.js
-      { href:'conecta-fg.html', label:'Conecta FG', brands:['ferramentas-gerais'], icon:'<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>' },
+      { href:'cartaz-generator.html', label:'Gerador de Cartazes', brands:['grupo-ovd'], icon:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="m8 17 3-4 2 2.5 1.5-2 1.5 3.5"/>' },
+      { href:'business-card-generator.html', label:'Gerador de Cartões', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h5M7 14h3M15.5 10.5h2M15.5 14h2"/>' },
       { href:'templates.html', label:'Templates', icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' }
     ] },
     { group:'Mídias Sociais', items:[
       { href:'visual-editor.html', label:'Calendário de Postagens', icon:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>' },
       { href:'intelligence-center.html', label:'Central de Inteligência', icon:'<path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2Z"/><path d="M9 18h6"/><path d="M10 22h4"/>' },
+      { href:'conecta-fg.html', label:'Conecta FG', brands:['ferramentas-gerais'], icon:'<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>' },
       { href:'followers-dashboard.html', label:'Redes sociais', icon:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>' }
     ] },
 
@@ -1382,7 +1383,7 @@
     const el = $('portalSidebar'); if(!el) return;
     el.innerHTML = `
       <div class="portal-topbar">
-        <div class="portal-logo"><span class="portal-logo-mark">${svgIcon('<path d="m12 2 8.5 5-8.5 5-8.5-5Z"/><path d="m3.5 12 8.5 5 8.5-5"/><path d="m3.5 17 8.5 5 8.5-5"/>', 15)}</span><span class="portal-logo-text">Portal de Mídias</span></div>
+        <div class="portal-logo"><span class="portal-logo-mark">${svgIcon('<path d="m12 2 8.5 5-8.5 5-8.5-5Z"/><path d="m3.5 12 8.5 5 8.5-5"/><path d="m3.5 17 8.5 5 8.5-5"/>', 15)}</span><span class="portal-logo-text">Marketing OVD</span></div>
         <button type="button" class="portal-collapse-btn" id="portalCollapseBtn"></button>
       </div>
       <div>

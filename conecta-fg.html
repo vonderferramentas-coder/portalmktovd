@@ -11,7 +11,15 @@
   <script src="firebase-config.js"></script>
   <script type="module" src="auth-guard.js"></script>
   <style>
-    .cf { max-width: 1240px; margin: 0 auto; --cf-ok: #15803d; --cf-caution: #b45309; }
+    .cf {
+      max-width: 1240px; margin: 0 auto; --cf-ok: #15803d; --cf-caution: #b45309;
+      --cf-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      --cf-i-tool: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'/%3E%3C/svg%3E");
+      --cf-i-ok: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E");
+      --cf-i-warn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E");
+      --cf-i-bad: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m15 9-6 6'/%3E%3Cpath d='m9 9 6 6'/%3E%3C/svg%3E");
+      --cf-i-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4'/%3E%3Cpath d='M12 8h.01'/%3E%3C/svg%3E");
+    }
     :root[data-theme="dark"] .cf { --cf-ok: #4ade80; --cf-caution: #fbbf24; }
     /* [hidden] precisa vencer os display:flex/grid abaixo (bug histórico do portal) */
     .cf [hidden] { display: none !important; }
@@ -21,12 +29,12 @@
     .cf-library-head h2 { margin:4px 0; font:800 24px var(--font-display); }
     .cf-post-list { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius-sm); }
     .cf-post-table-head, .cf-post-row { display:grid; grid-template-columns:minmax(280px,2fr) 170px 100px 110px 90px; gap:16px; align-items:center; min-width:820px; padding:12px 14px; }
-    .cf-post-table-head { background:var(--surface-muted); color:var(--muted); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+    .cf-post-table-head { background:var(--surface-muted); color:var(--muted); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
     .cf-post-row { border-top:1px solid var(--border); }
     .cf-post-row:hover { background:var(--surface-muted); }
     .cf-post-title { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:800; }
     .cf-post-cell { color:var(--muted); font-size:12px; }
-    .cf-post-state { justify-self:start; padding:4px 8px; border-radius:999px; background:var(--accent-weak); color:var(--accent); font-size:10px; font-weight:800; }
+    .cf-post-state { justify-self:start; padding:4px 8px; border-radius:999px; background:var(--accent-weak); color:var(--accent-text); font-size:12px; font-weight:800; }
     .cf-post-empty { padding:24px 14px; color:var(--muted); font-size:14px; text-align:center; }
     .cf-post-edit { height:34px; padding:0 12px; }
     .cf-editor-nav { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 14px; }
@@ -40,7 +48,7 @@
     .cf-upload { position: relative; display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1.5px dashed var(--border-strong); border-radius: var(--radius-md); background: var(--surface-muted); cursor: pointer; font-weight: 800; }
     .cf-upload:hover { border-color: var(--accent); background: var(--accent-weak); }
     .cf-upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-    .cf-upload small { display: block; font-weight: 500; color: var(--muted); }
+    .cf-upload small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); }
     .cf-upload-icon { font-size: 22px; }
 
     .cf-alert { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--accent); background: var(--accent-weak); font-size: 13px; line-height: 1.45; }
@@ -57,24 +65,53 @@
     .cf-btn:hover { background: var(--accent-weak); }
     .cf-btn.cf-primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
     .cf-btn.cf-primary:hover { background: var(--accent-hover); }
-    .cf input:focus-visible, .cf select:focus-visible, .cf textarea:focus-visible, .cf-btn:focus-visible, .cf-open:focus-visible, .cf-upload:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .cf input:focus-visible, .cf select:focus-visible, .cf textarea:focus-visible, .cf-btn:focus-visible, .cf-open:focus-visible, .cf-upload:focus-within { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 
-    .cf-prod { display: grid; grid-template-columns: auto 56px minmax(0, 1fr) minmax(0, 1.6fr); gap: 14px; align-items: center; padding: 12px 0; }
-    .cf-prod + .cf-prod { border-top: 1px solid var(--border); }
-    .cf-prod input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
-    .cf-thumb { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: var(--radius-sm); background: var(--surface-muted); }
-    .cf-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
-    .cf-prod-name { font-size: 14px; font-weight: 700; line-height: 1.35; }
-    .cf-prod small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.4; }
-    .cf-link-line { display: flex; gap: 8px; }
-    .cf-link-line input { flex: 1; min-width: 0; height: var(--control-h); padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font-size: 13px; }
+    /* item de produto: cartão em coluna única — topo (marcar, foto, nome/código), link, posição e dica de uso */
+    .cf-prod { display: flex; flex-direction: column; gap: 16px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-muted); }
+    .cf-prod + .cf-prod { margin-top: 16px; }
+    .cf-prod-top { display: flex; align-items: flex-start; gap: 14px; }
+    .cf-lab { display: block; margin: 0 0 6px; color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .cf-thumb-wrap { position: relative; flex: 0 0 76px; width: 76px; height: 76px; }
+    .cf-thumb { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+    /* ícone de ferramenta enquanto não há foto (pseudo-elemento: o JS troca só os filhos da miniatura) */
+    .cf-thumb::before { content: ""; position: absolute; width: 28px; height: 28px; background: var(--muted); opacity: .6; -webkit-mask: var(--cf-i-tool) center / contain no-repeat; mask: var(--cf-i-tool) center / contain no-repeat; }
+    .cf-thumb.has-photo::before { display: none; }
+    .cf-thumb img { position: relative; max-width: 100%; max-height: 100%; object-fit: contain; }
+    .cf-photo-edit { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 2px solid var(--surface-muted); border-radius: 50%; background: var(--card); color: var(--muted); cursor: pointer; }
+    .cf-photo-edit::after { content: ""; position: absolute; inset: -9px; } /* área de toque de 44px */
+    .cf-photo-edit:hover { background: var(--accent-weak); color: var(--text); }
+    .cf-photo-edit svg { width: 12px; height: 12px; }
+    .cf-prod-main { flex: 1; min-width: 0; }
+    .cf-prod-main .cf-name { width: 100%; height: auto; min-height: 34px; padding: 2px 0 6px; border: 0; border-bottom: 1px solid var(--border-strong); border-radius: 0; background: transparent; color: var(--text); font-size: 18px; font-weight: 800; line-height: 1.3; }
+    .cf-code-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 10px; }
+    .cf-code-line label { color: var(--muted); font-size: 13px; }
+    .cf-code-line .cf-code-in { width: 124px; height: 32px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--card); color: var(--text); font: 13px/1 var(--cf-mono); }
+    .cf-prod-link { padding-top: 16px; border-top: 1px solid var(--border); }
+    .cf-link-line { display: flex; gap: 10px; }
+    .cf-link-line input { flex: 1; min-width: 0; height: var(--control-h); padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font: 13px var(--font-body); }
     .cf-link-line input[aria-invalid="true"] { border-color: var(--danger); }
-    .cf-open { display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+    .cf-open { display: inline-flex; align-items: center; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font-size: 13px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+    .cf-open:hover { background: var(--accent-weak); }
     .cf-open:not([href]) { opacity: .4; pointer-events: none; }
+    /* status: ícone (decorativo, via máscara) + texto; a cor vem do tom (ok / caution / bad) */
+    .cf-status { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+    .cf-status::before { content: ""; flex: 0 0 16px; width: 16px; height: 16px; margin-top: 1px; background: currentColor; }
+    .cf-status:not(.ok):not(.caution):not(.bad)::before { display: none; }
+    .cf-status.ok::before { -webkit-mask: var(--cf-i-ok) center / contain no-repeat; mask: var(--cf-i-ok) center / contain no-repeat; }
+    .cf-status.caution::before { -webkit-mask: var(--cf-i-warn) center / contain no-repeat; mask: var(--cf-i-warn) center / contain no-repeat; }
+    .cf-status.bad::before { -webkit-mask: var(--cf-i-bad) center / contain no-repeat; mask: var(--cf-i-bad) center / contain no-repeat; }
     .cf-status.ok { color: var(--cf-ok); }
     .cf-status.caution { color: var(--cf-caution); }
     .cf-status.bad, .cf-photo.bad { color: var(--danger); }
+    .cf-photo { font-size: 12px; }
     .cf-photo.caution { color: var(--cf-caution); }
+    .cf-where select { width: 100%; height: var(--control-h); padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font-size: 14px; font-weight: 400; }
+    .cf-usage-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin-bottom: 6px; }
+    .cf-usage-head .cf-lab { margin: 0; }
+    .cf-src { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .cf-src::before { content: ""; width: 12px; height: 12px; background: currentColor; -webkit-mask: var(--cf-i-info) center / contain no-repeat; mask: var(--cf-i-info) center / contain no-repeat; }
+    .cf-editorial textarea { width: 100%; min-height: 88px; padding: 12px; resize: vertical; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font: 14px/1.5 var(--font-body); }
 
     .cf-tools { margin-top: 18px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-muted); }
     .cf-tools-head h3 { margin: 0; font: 800 16px var(--font-display); }
@@ -82,12 +119,14 @@
     .cf-tools-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
     .cf-tool { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 76px; padding: 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); text-align: left; cursor: pointer; }
     .cf-tool:hover { border-color: var(--accent); background: var(--accent-weak); }
-    .cf-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .cf-tool svg { width: 22px; height: 22px; flex: 0 0 22px; color: var(--accent); }
+    .cf-tool:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+    .cf-tool svg { width: 22px; height: 22px; flex: 0 0 22px; color: var(--accent-text); }
     .cf-tool span { min-width: 0; }
     .cf-tool strong, .cf-tool small { display: block; }
     .cf-tool strong { font-size: 13px; line-height: 1.3; }
-    .cf-tool small { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+    .cf-tool small { margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.35; }
+    /* sobre o fundo destacado do botão ativo o cinza de apoio cai abaixo de 4,5:1 */
+    .cf-tool[aria-pressed="true"] small { color: var(--text); }
     .cf-tool[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-weak); box-shadow: inset 0 0 0 1px var(--accent); }
     .cf-tool-field { cursor: default; }
     .cf-tool-field input { width: 86px; height: 34px; margin-top: 7px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--card); color: var(--text); }
@@ -103,31 +142,32 @@
     .cf-view .wp-caption img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
     .cf-view .wp-caption-text { margin: 6px 0 0; font-size: 13px; line-height: 1.4; }
 
-    .cf-prod-main { min-width: 0; }
-    .cf-name, .cf-code-in, .cf-where select { border: 1px solid var(--border-strong); background: var(--card); color: var(--text); }
-    /* seletores com 2 classes: o styles.css tem regra global para input sem type (width:100%, padding, altura) */
-    .cf-prod-main .cf-name { width: 100%; height: var(--control-h); padding: 0 10px; border-radius: var(--radius-sm); font-size: 13.5px; font-weight: 700; }
-    .cf-code-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; color: var(--muted); font-size: 12px; }
-    .cf-code-line .cf-code-in { width: 112px; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 12px; }
-    .cf-where { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--muted); font-size: 12px; font-weight: 800; }
-    .cf-where select { flex: 1; min-width: 0; height: 32px; padding: 0 8px; border-radius: 6px; font-size: 12.5px; }
-    .cf-editorial { grid-column: 3 / -1; }
-    .cf-editorial label { display: flex; flex-direction: column; gap: 5px; min-width: 0; color: var(--muted); font-size: 11px; font-weight: 800; }
-    .cf-editorial textarea { width: 100%; min-height: 66px; padding: 8px 10px; resize: vertical; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--card); color: var(--text); font: 12.5px/1.4 var(--font-body); }
 
     .cf-add { display: flex; gap: 10px; align-items: flex-end; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
     .cf-add-msg { margin: 6px 0 0; color: var(--danger); font-size: 12px; }
     @media (max-width: 860px) {
       .cf-out { grid-template-columns: 1fr; }
-      .cf-prod { grid-template-columns: auto 56px minmax(0, 1fr); }
-      .cf-prod-link { grid-column: 1 / -1; }
-      .cf-editorial { grid-column: 1 / -1; }
+      .cf-prod { padding: 16px; }
+      .cf-prod-main .cf-name { font-size: 16px; }
       .cf-title-row { flex-direction: column; align-items: stretch; }
       .cf-field.cf-narrow { flex: 1 1 100%; }
       .cf-tools-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
-    @media (max-width: 560px) { .cf-tools-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) {
+      .cf-tools-grid { grid-template-columns: 1fr; }
+      /* marcar + foto + código na primeira linha; o nome (que é cortado em coluna estreita) ocupa a largura toda */
+      .cf-prod-top { display: grid; grid-template-columns: 76px minmax(0, 1fr); column-gap: 14px; row-gap: 12px; }
+      .cf-prod-main { display: contents; }
+      .cf-prod-main > .cf-lab { grid-column: 1 / -1; grid-row: 2; margin: 0 0 -6px; }
+      .cf-prod-main > .cf-name { grid-column: 1 / -1; grid-row: 3; }
+      .cf-prod-main > .cf-code-line { grid-column: 2; grid-row: 1; align-self: center; margin-top: 0; }
+    }
+
+    /* telas de toque/estreitas: campos e botões com pelo menos 44px de altura */
+    @media (pointer: coarse), (max-width: 860px) {
+      .cf-btn, .cf-open, .cf-field input, .cf-link-line input, .cf-prod-main .cf-name, .cf-code-line .cf-code-in, .cf-where select, .cf-tool-field input { min-height: 44px; }
+    }
 
   </style>
 </head>
@@ -172,7 +212,7 @@
 
         <section class="cf-card">
           <h2>Produtos</h2>
-          <p class="cf-hint">Vêm do documento (tabela com código ou links do site FG). Marque quais entram, confira o
+          <p class="cf-hint">Vêm do documento (tabela com código ou links do site FG). Confira o
             link, escolha onde aparece e revise as informações do card.</p>
           <p class="cf-hint" id="noProducts" hidden>Nenhum produto encontrado no documento.</p>
           <div id="products"></div>
@@ -235,7 +275,7 @@
       const Cf = window.ConectaFg;
       const isHttp = url => /^https?:\/\//i.test(url);
       const cap = s => s.charAt(0).toLocaleUpperCase('pt-BR') + s.slice(1).toLocaleLowerCase('pt-BR');
-      let model = null, products = [], places = [], catalogItemsPromise = null;
+      let model = null, products = [], places = [], catalogItemsPromise = null, rowSeq = 0;
 
       function fillCatalogUsage(p) {
         if (p.usage || !p.code) return Promise.resolve();
@@ -244,21 +284,28 @@
           const product = Cf.catalogProduct(items, p.code);
           const usage = String(product && product.aplicacoes || '').trim();
           const cut = usage.slice(0, 499).replace(/\s+\S*$/, '').trim();
-          if (usage && !p.usage) p.usage = usage.length <= 500 ? usage : (cut || usage.slice(0, 499)) + '…';
+          if (usage && !p.usage) { p.usage = usage.length <= 500 ? usage : (cut || usage.slice(0, 499)) + '…'; p.usageFrom = 'catalog'; }
         });
       }
 
       const STATUS = {
         checking: ['', 'Consultando o site FG…'],
-        site: ['ok', '✓ Confirmado no site FG'],
-        guess: ['caution', '⚠ Link deduzido do nome do produto (não consegui consultar o site FG) — clique em Abrir e confira'],
-        doc: ['caution', '⚠ Link do documento (não consegui consultar o site FG para confirmar) — clique em Abrir e confira'],
-        notfound: ['bad', '✗ Não encontrei este produto no site FG — deixei de fora do código; corrija o código ou o link para incluir'],
+        site: ['ok', 'Confirmado no site FG'],
+        guess: ['caution', 'Link deduzido do nome do produto (não consegui consultar o site FG) — clique em Abrir e confira'],
+        doc: ['caution', 'Link do documento (não consegui consultar o site FG para confirmar) — clique em Abrir e confira'],
+        notfound: ['bad', 'Não encontrei este produto no site FG — deixei de fora do código; corrija o código ou o link para incluir'],
         manual: ['', 'Link editado por você']
       };
 
       // o que o documento não posiciona entra antes do último parágrafo (como no post publicado de exemplo)
       const lastAt = () => Math.max(model.blocks.length - 1, 0);
+
+      const USAGE_SOURCE = { catalog: 'Importado do catálogo FG', site: 'Importado do site FG', manual: 'Editado por você' };
+      function showUsageSource(p) {
+        const badge = p.row.querySelector('.cf-src'), text = p.usage && USAGE_SOURCE[p.usageFrom];
+        badge.hidden = !text;
+        badge.textContent = text || '';
+      }
 
       function showStatus(p) {
         const row = p.row, needsLink = !isHttp(p.url) && p.state !== 'checking' && p.state !== 'notfound';
@@ -277,6 +324,7 @@
           if (field.value !== value) field.value = value;
         }
         row.querySelector('.cf-name').title = p.name; // o campo corta nomes longos
+        showUsageSource(p);
         row.querySelector('.cf-url').setAttribute('aria-invalid', String(needsLink));
         const open = row.querySelector('.cf-open');
         if (isHttp(p.url)) open.href = p.url; else open.removeAttribute('href');
@@ -300,25 +348,26 @@
       function loadPhoto(p) {
         const thumb = p.row.querySelector('.cf-thumb'), msg = p.row.querySelector('.cf-photo');
         thumb.replaceChildren();
+        thumb.classList.remove('has-photo');
         msg.className = 'cf-photo';
         msg.textContent = '';
         p.w = p.h = 0;
         p.img = null;
         if (!p.code) {
           msg.className = 'cf-photo caution';
-          msg.textContent = '· informe o código para carregar a foto (sem ela o produto não entra no código)';
+          msg.textContent = 'Informe o código para carregar a foto (sem ela o produto não entra no código)';
           return;
         }
         const img = p.img = new Image();
         img.alt = '';
-        img.addEventListener('load', () => { if (p.img === img) { p.w = img.naturalWidth; p.h = img.naturalHeight; update(); } });
+        img.addEventListener('load', () => { if (p.img === img) { p.w = img.naturalWidth; p.h = img.naturalHeight; thumb.classList.add('has-photo'); update(); } });
         img.addEventListener('error', () => {
           if (p.img !== img) return;
           msg.className = 'cf-photo bad';
-          msg.textContent = '· ✗ foto não encontrada para este código';
+          msg.textContent = 'Foto não encontrada para este código';
           update();
         });
-        img.src = Cf.photoUrl(p.code);
+        img.src = Cf.previewPhotoUrl(p.code);
         thumb.append(img);
       }
 
@@ -343,7 +392,7 @@
           // produto que não existe no site não vai pro código com link morto até ser corrigido
           if (p.state === 'notfound') setOn(p, false);
         }).then(() => catalog).then(() => fillCatalogUsage(p)).then(() => {
-          if (!p.usage && siteUsage) p.usage = siteUsage;
+          if (!p.usage && siteUsage) { p.usage = siteUsage; p.usageFrom = 'site'; }
           showStatus(p);
           update();
         });
@@ -352,22 +401,23 @@
       function addRow(p) {
         const row = p.row = document.createElement('div');
         row.className = 'cf-prod';
+        const id = 'cfp' + (++rowSeq);
         row.innerHTML =
-          `<input type="checkbox" checked aria-label="Incluir este produto no texto">` +
-          `<div class="cf-thumb"></div>` +
-          `<div class="cf-prod-main"><input class="cf-name" spellcheck="false" placeholder="Nome do produto (vem do site FG)" aria-label="Nome do produto">` +
-          `<div class="cf-code-line">Código <input class="cf-code-in" inputmode="numeric" aria-label="Código do produto"><span class="cf-photo"></span></div></div>` +
-          `<div class="cf-prod-link"><div class="cf-link-line"><input class="cf-url" spellcheck="false" aria-label="Link do produto no site FG"><a class="cf-open" target="_blank" rel="noopener">Abrir ↗</a></div>` +
-          `<small class="cf-status" role="status"></small>` +
-          `<label class="cf-where">Depois de<select class="cf-at" aria-label="Onde o produto entra no texto"></select></label></div>` +
-          `<div class="cf-editorial"><label>Aplicações / dicas de uso<textarea class="cf-usage" maxlength="500" placeholder="Trazida do catálogo FG; você pode revisar antes de salvar"></textarea></label></div>`;
+          `<div class="cf-prod-top">` +
+          `<div class="cf-thumb-wrap"><div class="cf-thumb"></div><button type="button" class="cf-photo-edit" aria-label="Editar o código do produto (define a foto)" title="Editar o código do produto (define a foto)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button></div>` +
+          `<div class="cf-prod-main"><label class="cf-lab" for="${id}-name">Nome do produto</label><input id="${id}-name" class="cf-name" spellcheck="false" placeholder="Nome do produto (vem do site FG)">` +
+          `<div class="cf-code-line"><label for="${id}-code">Código</label><input id="${id}-code" class="cf-code-in" inputmode="numeric"><span class="cf-photo"></span></div></div>` +
+          `</div>` +
+          `<div class="cf-prod-link"><label class="cf-lab" for="${id}-url">Link do produto</label><div class="cf-link-line"><input id="${id}-url" class="cf-url" spellcheck="false"><a class="cf-open" target="_blank" rel="noopener">Abrir ↗</a></div>` +
+          `<small class="cf-status" role="status"></small></div>` +
+          `<div class="cf-where"><label class="cf-lab" for="${id}-at">Inserir produto</label><select id="${id}-at" class="cf-at"></select></div>` +
+          `<div class="cf-editorial"><div class="cf-usage-head"><label class="cf-lab" for="${id}-usage">Aplicações / dicas de uso</label><span class="cf-src" hidden></span></div><textarea id="${id}-usage" class="cf-usage" maxlength="500" placeholder="Trazida do catálogo FG; você pode revisar antes de salvar"></textarea></div>`;
         const at = row.querySelector('.cf-at');
         at.replaceChildren(...places.map(([label, value]) => new Option(label, value)));
         at.value = p.at;
-        row.querySelector('input[type="checkbox"]').checked = p.on !== false;
-        row.querySelector('input[type="checkbox"]').addEventListener('change', e => { p.on = e.target.checked; update(); });
         row.querySelector('.cf-name').addEventListener('input', e => { p.name = e.target.value; showStatus(p); update(); });
-        row.querySelector('.cf-usage').addEventListener('input', e => { p.usage = e.target.value; update(); });
+        row.querySelector('.cf-usage').addEventListener('input', e => { p.usage = e.target.value; p.usageFrom = 'manual'; showUsageSource(p); update(); });
+        row.querySelector('.cf-photo-edit').addEventListener('click', () => row.querySelector('.cf-code-in').select());
         // corrigir o link ou o código é pedir para o produto entrar de novo no código
         row.querySelector('.cf-url').addEventListener('input', e => { p.url = e.target.value.trim(); p.state = 'manual'; setOn(p, true); showStatus(p); update(); });
         row.querySelector('.cf-code-in').addEventListener('change', e => {
@@ -386,7 +436,7 @@
       }
 
       const setAt = (p, value) => { p.at = value; p.row.querySelector('.cf-at').value = value; };
-      const setOn = (p, value) => { p.on = value; p.row.querySelector('input[type="checkbox"]').checked = value; };
+      const setOn = (p, value) => { p.on = value; };
 
       const INDEX_KEY = 'conecta-fg-post-index-v2';
       const POST_KEY = 'conecta-fg-post-v2-';
@@ -395,6 +445,7 @@
       function renderPostList() {
         const list = $('postList');
         list.replaceChildren();
+        list.removeAttribute('role');
         if (!savedPosts.length) {
           const empty = document.createElement('p');
           empty.className = 'cf-post-empty';
@@ -404,11 +455,16 @@
         }
         const head = document.createElement('div');
         head.className = 'cf-post-table-head';
-        ['Título', 'Última alteração', 'Produtos', 'Status', 'Ações'].forEach(label => { const cell = document.createElement('span'); cell.textContent = label; head.append(cell); });
+        head.setAttribute('role', 'row');
+        ['Título', 'Última alteração', 'Produtos', 'Status', 'Ações'].forEach(label => { const cell = document.createElement('span'); cell.setAttribute('role', 'columnheader'); cell.textContent = label; head.append(cell); });
+        // a lista é feita de divs em grid: os papéis dão a leitores de tela a estrutura de tabela
+        list.setAttribute('role', 'table');
+        list.setAttribute('aria-label', 'Posts salvos');
         list.append(head);
         savedPosts.slice().sort((a, b) => b.updatedAt - a.updatedAt).forEach(post => {
           const row = document.createElement('div');
           row.className = 'cf-post-row';
+          row.setAttribute('role', 'row');
           const title = document.createElement('div');
           title.className = 'cf-post-title';
           title.textContent = post.title;
@@ -427,7 +483,10 @@
           edit.className = 'cf-btn cf-post-edit';
           edit.textContent = 'Editar';
           edit.addEventListener('click', () => openSavedPost(post));
-          row.append(title, updated, count, state, edit);
+          const actions = document.createElement('div');
+          actions.append(edit);
+          [title, updated, count, state, actions].forEach(cell => cell.setAttribute('role', 'cell'));
+          row.append(title, updated, count, state, actions);
           list.append(row);
         });
       }
@@ -448,7 +507,7 @@
       const productSnapshot = p => ({
         code: p.code || '', name: p.name || '', url: p.url || '', at: Number(p.at || 0),
         on: p.on !== false, state: p.state === 'checking' ? 'manual' : (p.state || 'manual'),
-        siteName: p.siteName || '', usage: p.usage || '',
+        siteName: p.siteName || '', usage: p.usage || '', usageFrom: p.usage ? (p.usageFrom || '') : '',
         w: Number(p.w || 0), h: Number(p.h || 0)
       });
 
@@ -459,7 +518,7 @@
         $('notes').textContent = 'Recados do redator (ficam de fora do código): ' + model.notes.map(n => `«${n}»`).join(' ');
         $('warn').hidden = !model.unsupported.length;
         $('warn').textContent = `O documento tem ${model.unsupported.join(', ')}, que a conversão ainda não trata: ficam de fora do código — confira o documento original e ajuste no WordPress.`;
-        places = [['No início do texto', 0], ...model.blocks.map((html, i) => {
+        places = [['Início do artigo', 0], ...model.blocks.map((html, i) => {
           const plain = new DOMParser().parseFromString(html, 'text/html').body.textContent.replace(/\s+/g, ' ').trim();
           return [`Depois de «${plain.length > 55 ? plain.slice(0, 55) + '…' : plain}»`, i + 1];
         })];

@@ -260,14 +260,21 @@
     h1,h2,h3,h4,h5,h6{margin:0;font-family:var(--font-display);color:var(--text)}
     h1{font-size:26px;font-weight:700;line-height:1.15;letter-spacing:-.02em}
     h2{font-size:17px;font-weight:900;letter-spacing:-.005em}
-    h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent-ink)}
+    h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent-text)}
     h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint)}
 
     /* Cabeçalho da página (padrão único em todas as telas): antetítulo (.page-kicker, opcional) +
        título (h1, 26px acima) + subtítulo (.page-subtitle) + ações "Buscar"/"Configurações"/"Nova postagem".
        Página nova usa estas classes em vez de definir fonte/tamanho/espaçamento próprios. */
     .page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}
-    .page-kicker{display:block;margin:0 0 6px;color:var(--accent-ink);font-size:12px;font-weight:800;line-height:1.2;letter-spacing:.12em;text-transform:uppercase}
+    /* Cor de destaque para TEXTO (antetítulo etc.): no claro é a --accent-ink da marca; no escuro sobe a
+       luminosidade só até ficar legível (destaques escuros como o verde da FG ou o azul da Pilar somem
+       no fundo escuro), mantendo o matiz — cores já claras (amarelo, cinza) passam sem alteração.
+       Sem suporte a cor relativa, cai numa mistura com branco. */
+    :root{--accent-text:var(--accent-ink)}
+    :root[data-theme="dark"]{--accent-text:color-mix(in srgb,var(--accent-ink) 45%,#fff)}
+    @supports (color:oklch(from red l c h)){:root[data-theme="dark"]{--accent-text:oklch(from var(--accent-ink) max(l,.72) c h)}}
+    .page-kicker{display:block;margin:0 0 6px;color:var(--accent-text);font-size:12px;font-weight:800;line-height:1.2;letter-spacing:.12em;text-transform:uppercase}
     .page-subtitle{margin:6px 0 0;max-width:72ch;font-size:14px;line-height:1.5;color:var(--muted)}
     @media (max-width:560px){h1{font-size:24px}}
     .page-header-actions{display:flex;gap:10px;align-items:center;flex-shrink:0}

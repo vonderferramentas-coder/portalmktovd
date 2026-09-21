@@ -306,7 +306,7 @@ sequenceDiagram
             Php->>Ovd: cURL/stream
             Php-->>Editor: imagem
         else Php falhou (ou ambiente sem PHP)
-            Editor->>Local: GET 127.0.0.1:8765/product-image (retry c/ backoff)
+            Editor->>Local: GET 127.0.0.1:8765/product-image (retry c/ backoff) — só em file:// ou localhost, nunca em site publicado
             Local->>Ovd: fetch imagem
             Local-->>Editor: imagem
         end
@@ -367,7 +367,7 @@ sequenceDiagram
 
 **Para alterar regras de acesso por perfil**: `admin-users.html`/`.js` (UI) grava em `portalStore/page-permissions-v1`; `auth-guard.js` é quem de fato aplica isso escondendo itens do menu. `firestore.rules` já exige `admin()` para escrever em `page-permissions-v1` (evita autopromoção via console), mas a granularidade fina de "qual página cada perfil vê" continua só client-side em `auth-guard.js` — as regras não sabem distinguir uma página da outra.
 
-**Para restringir uma página a certas marcas**: adicionar `brands:['<id-da-marca>']` ao item em `NAV_ITEMS` (`portal-shell.js`, hoje só Conecta FG → `ferramentas-gerais`). `auth-guard.js` tira essa página da lista liberada nas outras marcas, para qualquer perfil (inclusive admin): some do menu e dos cards da Início, e abrir a URL direto avisa e volta à Início. É só interface, como a permissão por página. A regra é reavaliada por `window.PortalAccess.refresh()` — a Início chama isso ao trocar o perfil, sem recarregar (junto com `PortalShell.setActiveBrand`).
+**Para restringir uma página a certas marcas**: adicionar `brands:['<id-da-marca>']` ao item em `NAV_ITEMS` (`portal-shell.js`, hoje Conecta FG → `ferramentas-gerais` e Gerador de Cartazes → `grupo-ovd`). `auth-guard.js` tira essa página da lista liberada nas outras marcas, para qualquer perfil (inclusive admin): some do menu e dos cards da Início, e abrir a URL direto avisa e volta à Início. É só interface, como a permissão por página. A regra é reavaliada por `window.PortalAccess.refresh()` — a Início chama isso ao trocar o perfil, sem recarregar (junto com `PortalShell.setActiveBrand`).
 
 **Para adicionar/trocar o proxy de imagem de produto**: replicar a mudança nos três locais (`cloudflare-worker.js`, `product-image.php`, `scripts/product-image-proxy.ps1`) — não há código compartilhado entre eles.
 

@@ -13,8 +13,11 @@
 // Produto que o redator não indicou (ou indicou errado) a tela adiciona/corrige por link ou código.
 //
 // Tudo roda no navegador. Rede: só o Worker (nome/código/link oficial do produto, ver
-// lookupLink) — as fotos entram no código como <img> de app.ovd.com.br e quem as baixa é o
-// WordPress/leitor. A tela fica em conecta-fg.html; aqui só a lógica, pra ser testável sozinha
+// lookupLink; e as fotos da miniatura/prévia, ver previewPhotoUrl) — no código do WordPress as
+// fotos entram como <img> de app.ovd.com.br e quem as baixa é o WordPress/leitor. O navegador do
+// usuário NÃO carrega app.ovd.com.br direto: na rede da empresa esse nome aponta para IP interno
+// (10.x) e o Chrome pediria "Acessar outros dispositivos na sua rede local". A tela fica em
+// conecta-fg.html; aqui só a lógica, pra ser testável sozinha
 // (tests/conecta-fg.test.html).
 // ============================================================
 (function(global){
@@ -26,6 +29,8 @@
 
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/ /g, '&nbsp;');
   const photoUrl = code => 'https://app.ovd.com.br/fotos/produto?codigo=' + encodeURIComponent(code);
+  // mesma foto, pelo Worker (host público): é o que a miniatura e a prévia da tela carregam
+  const previewPhotoUrl = code => WORKER + '/product-image?code=' + encodeURIComponent(code);
   const isHttp = url => /^https?:\/\//i.test(url || '');
   const digits = value => String(value || '').replace(/\D/g, '');
 
@@ -296,7 +301,8 @@
       const usageHtml = usage ? `<div style="margin:0 0 18px;padding:12px 14px;border-radius:8px;background:#eff6f2"><strong style="display:block;margin:0 0 4px;color:#004e32;font-size:13px">Aplicações e dicas de uso</strong><span style="display:block;color:#3f5149;font-size:14px;line-height:1.55">${esc(usage).replace(/\r?\n/g, '<br />')}</span></div>` : '';
       const cta = url ? `<a href="${url}" style="display:inline-block;padding:11px 18px;border-radius:7px;background:#004e32;color:#fff;font-size:13px;font-weight:700;text-decoration:none">Ver produto</a>` : '';
       const html = `<div class="fg-product-card" style="display:flex;flex-wrap:wrap;width:100%;max-width:100%;box-sizing:border-box;gap:24px;align-items:center;margin:28px 0;padding:24px;border:1px solid #d5e2db;border-left:5px solid #004e32;border-radius:12px;background:#fff"><div style="flex:0 1 ${box}px;width:${box}px;max-width:100%;aspect-ratio:1;text-align:center">${photo}</div><div style="flex:1 1 280px;min-width:0"><span style="display:block;margin:0 0 7px;color:#004e32;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">Produto em destaque</span><h3 style="margin:0 0 12px;color:#17171a;font-size:21px;line-height:1.3">${name}</h3>${usageHtml}${cta}</div></div>`;
-      return { wp: html, view: html };
+      // só o src da foto muda entre o código publicado (wp) e a prévia na tela (view)
+      return { wp: html, view: html.replace(esc(photoUrl(p.code)), esc(previewPhotoUrl(p.code))) };
     };
     const block = html => /^<(h\d|ul|ol)\b/.test(html) ? html : `<p>${html}</p>`;
     const shop = products.filter(p => p.on && p.code);
@@ -315,5 +321,5 @@
   function restoreModel(value){
     return { ...value, meta: Array.isArray(value.meta) ? value.meta : Object.entries(value.meta || {}) };
   }
-  global.ConectaFg = { esc, slug, guessLink, photoUrl, catalogProduct, productRef, lookupLink, readDocx, parseDocument, mentionAt, assemble, storageModel, restoreModel };
+  global.ConectaFg = { esc, slug, guessLink, photoUrl, previewPhotoUrl, catalogProduct, productRef, lookupLink, readDocx, parseDocument, mentionAt, assemble, storageModel, restoreModel };
 })(window);

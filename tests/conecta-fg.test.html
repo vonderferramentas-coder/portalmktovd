@@ -182,6 +182,12 @@
   const stacked = Cf.assemble(['Antes.', 'Depois.'], fourProducts, 260);
   eq(!stacked.wp.includes('fg-product-carousel') && (stacked.wp.match(/class="fg-product-card"/g) || []).length === 4, true, 'quatro produtos consecutivos continuam como cards empilhados');
   eq([...stacked.wp.matchAll(/codigo=(\d+)/g)].map(match => match[1]), ['33331', '33332', '33333', '33334'], 'cards empilhados preservam a ordem dos produtos');
+  // o navegador do usuário não pode carregar app.ovd.com.br (IP interno na rede da empresa → o Chrome pede "rede local"):
+  // a prévia usa o Worker; o código que vai pro WordPress continua com a URL pública oficial da foto
+  const photoCheck = Cf.assemble(['A'], [{ ...p1, at: 1 }], 260);
+  eq(photoCheck.wp.includes('https://app.ovd.com.br/fotos/produto?codigo=11111') && !photoCheck.wp.includes('workers.dev'), true, 'código do WordPress usa a foto oficial de app.ovd.com.br');
+  eq(photoCheck.view.includes('https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code=11111') && !photoCheck.view.includes('app.ovd.com.br'), true, 'prévia carrega a foto pelo Worker, nunca direto de app.ovd.com.br');
+  eq(Cf.previewPhotoUrl('1193696'), 'https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code=1193696', 'miniatura da tela usa o Worker');
   document.body.dataset.result = 'pass';
   document.body.textContent = 'PASS: slug igual ao da loja FG; .docx lido de ponta a ponta (zip/deflate → HTML) nos padrões de produto e de texto; posição dos produtos; código WordPress no formato dos posts publicados.';
 })().catch(error => {
