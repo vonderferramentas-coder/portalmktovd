@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Conecta FG</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
+  <script>document.documentElement.classList.add('auth-pending');</script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="auth-guard.js"></script>
+  <style>
+    .cf { max-width: 1240px; margin: 0 auto; --cf-ok: #15803d; --cf-caution: #b45309; }
+    :root[data-theme="dark"] .cf { --cf-ok: #4ade80; --cf-caution: #fbbf24; }
+    /* [hidden] precisa vencer os display:flex/grid abaixo (bug histórico do portal) */
+    .cf [hidden] { display: none !important; }
+
+    .cf-head { margin-bottom: 24px; }
+    .cf-library-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:14px; }
+    .cf-library-head h2 { margin:4px 0; font:800 24px var(--font-display); }
+    .cf-post-list { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius-sm); }
+    .cf-post-table-head, .cf-post-row { display:grid; grid-template-columns:minmax(280px,2fr) 170px 100px 110px 90px; gap:16px; align-items:center; min-width:820px; padding:12px 14px; }
+    .cf-post-table-head { background:var(--surface-muted); color:var(--muted); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+    .cf-post-row { border-top:1px solid var(--border); }
+    .cf-post-row:hover { background:var(--surface-muted); }
+    .cf-post-title { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:800; }
+    .cf-post-cell { color:var(--muted); font-size:12px; }
+    .cf-post-state { justify-self:start; padding:4px 8px; border-radius:999px; background:var(--accent-weak); color:var(--accent); font-size:10px; font-weight:800; }
+    .cf-post-empty { padding:24px 14px; color:var(--muted); font-size:14px; text-align:center; }
+    .cf-post-edit { height:34px; padding:0 12px; }
+    .cf-editor-nav { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 14px; }
+    .cf-editor-nav > div { display:flex; align-items:center; gap:12px; }
+    .cf-save-status { color:var(--muted); font-size:12px; }
+
+    .cf-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: 18px 20px; margin-bottom: 16px; }
+    .cf-card h2 { margin: 0 0 4px; font: 800 17px var(--font-display); }
+    .cf-hint { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+    .cf-upload { position: relative; display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1.5px dashed var(--border-strong); border-radius: var(--radius-md); background: var(--surface-muted); cursor: pointer; font-weight: 800; }
+    .cf-upload:hover { border-color: var(--accent); background: var(--accent-weak); }
+    .cf-upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .cf-upload small { display: block; font-weight: 500; color: var(--muted); }
+    .cf-upload-icon { font-size: 22px; }
+
+    .cf-alert { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--accent); background: var(--accent-weak); font-size: 13px; line-height: 1.45; }
+    .cf-alert.bad { border-color: var(--danger-border); background: var(--danger-bg); color: var(--danger); }
+
+    .cf-title-row { display: flex; gap: 12px; align-items: flex-end; }
+    .cf-meta { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+
+    .cf-field { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; font-size: 12px; font-weight: 800; color: var(--muted); }
+    .cf-field input, .cf-field select { width: 100%; height: var(--control-h); padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font-size: 14px; }
+    .cf-field.cf-narrow { flex: 0 0 200px; }
+
+    .cf-btn { height: var(--control-h); padding: 0 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-muted); color: var(--text); font-size: 13px; font-weight: 800; white-space: nowrap; cursor: pointer; }
+    .cf-btn:hover { background: var(--accent-weak); }
+    .cf-btn.cf-primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+    .cf-btn.cf-primary:hover { background: var(--accent-hover); }
+    .cf input:focus-visible, .cf select:focus-visible, .cf textarea:focus-visible, .cf-btn:focus-visible, .cf-open:focus-visible, .cf-upload:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .cf-prod { display: grid; grid-template-columns: auto 56px minmax(0, 1fr) minmax(0, 1.6fr); gap: 14px; align-items: center; padding: 12px 0; }
+    .cf-prod + .cf-prod { border-top: 1px solid var(--border); }
+    .cf-prod input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+    .cf-thumb { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: var(--radius-sm); background: var(--surface-muted); }
+    .cf-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .cf-prod-name { font-size: 14px; font-weight: 700; line-height: 1.35; }
+    .cf-prod small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .cf-link-line { display: flex; gap: 8px; }
+    .cf-link-line input { flex: 1; min-width: 0; height: var(--control-h); padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font-size: 13px; }
+    .cf-link-line input[aria-invalid="true"] { border-color: var(--danger); }
+    .cf-open { display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+    .cf-open:not([href]) { opacity: .4; pointer-events: none; }
+    .cf-status.ok { color: var(--cf-ok); }
+    .cf-status.caution { color: var(--cf-caution); }
+    .cf-status.bad, .cf-photo.bad { color: var(--danger); }
+    .cf-photo.caution { color: var(--cf-caution); }
+
+    .cf-tools { margin-top: 18px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-muted); }
+    .cf-tools-head h3 { margin: 0; font: 800 16px var(--font-display); }
+    .cf-tools-head p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .cf-tools-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+    .cf-tool { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 76px; padding: 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); text-align: left; cursor: pointer; }
+    .cf-tool:hover { border-color: var(--accent); background: var(--accent-weak); }
+    .cf-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .cf-tool svg { width: 22px; height: 22px; flex: 0 0 22px; color: var(--accent); }
+    .cf-tool span { min-width: 0; }
+    .cf-tool strong, .cf-tool small { display: block; }
+    .cf-tool strong { font-size: 13px; line-height: 1.3; }
+    .cf-tool small { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+    .cf-tool[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-weak); box-shadow: inset 0 0 0 1px var(--accent); }
+    .cf-tool-field { cursor: default; }
+    .cf-tool-field input { width: 86px; height: 34px; margin-top: 7px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--card); color: var(--text); }
+
+    .cf-out { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+    .cf-code { width: 100%; min-height: 440px; padding: 12px; resize: vertical; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font: 12.5px/1.55 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .cf-actions { margin-top: 10px; }
+    /* prévia = aproximação do blog: fundo branco fixo (mesmo no tema escuro) porque representa a página publicada */
+    .cf-view { max-height: 560px; overflow: auto; padding: 18px 20px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; color: #222; font: 15px/1.65 Arial, sans-serif; }
+    .cf-view p { margin: 0 0 1em; }
+    .cf-view a { color: #0b57d0; }
+    .cf-view .wp-caption { margin: 0 auto 6px; text-align: center; }
+    .cf-view .wp-caption img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+    .cf-view .wp-caption-text { margin: 6px 0 0; font-size: 13px; line-height: 1.4; }
+
+    .cf-prod-main { min-width: 0; }
+    .cf-name, .cf-code-in, .cf-where select { border: 1px solid var(--border-strong); background: var(--card); color: var(--text); }
+    /* seletores com 2 classes: o styles.css tem regra global para input sem type (width:100%, padding, altura) */
+    .cf-prod-main .cf-name { width: 100%; height: var(--control-h); padding: 0 10px; border-radius: var(--radius-sm); font-size: 13.5px; font-weight: 700; }
+    .cf-code-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; color: var(--muted); font-size: 12px; }
+    .cf-code-line .cf-code-in { width: 112px; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 12px; }
+    .cf-where { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--muted); font-size: 12px; font-weight: 800; }
+    .cf-where select { flex: 1; min-width: 0; height: 32px; padding: 0 8px; border-radius: 6px; font-size: 12.5px; }
+    .cf-editorial { grid-column: 3 / -1; }
+    .cf-editorial label { display: flex; flex-direction: column; gap: 5px; min-width: 0; color: var(--muted); font-size: 11px; font-weight: 800; }
+    .cf-editorial textarea { width: 100%; min-height: 66px; padding: 8px 10px; resize: vertical; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--card); color: var(--text); font: 12.5px/1.4 var(--font-body); }
+
+    .cf-add { display: flex; gap: 10px; align-items: flex-end; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .cf-add-msg { margin: 6px 0 0; color: var(--danger); font-size: 12px; }
+    @media (max-width: 860px) {
+      .cf-out { grid-template-columns: 1fr; }
+      .cf-prod { grid-template-columns: auto 56px minmax(0, 1fr); }
+      .cf-prod-link { grid-column: 1 / -1; }
+      .cf-editorial { grid-column: 1 / -1; }
+      .cf-title-row { flex-direction: column; align-items: stretch; }
+      .cf-field.cf-narrow { flex: 1 1 100%; }
+      .cf-tools-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 560px) { .cf-tools-grid { grid-template-columns: 1fr; } }
+
+  </style>
+</head>
+
+<body>
+  <div class="portal-shell">
+    <aside class="portal-sidebar" id="portalSidebar"></aside>
+    <main class="portal-main cf">
+      <header class="cf-head">
+        <span class="page-kicker">Blog · Ferramentas Gerais</span>
+        <h1>Conecta FG</h1>
+        <p class="page-subtitle">Envie o texto do blog em .docx. O portal converte para o formato do WordPress e monta os produtos do
+          documento (tabela com código ou links do site FG) com foto e link — é só copiar o código e colar no post.</p>
+      </header>
+
+      <div id="library">
+        <section class="cf-card">
+          <div class="cf-library-head"><div><span class="page-kicker">Novo post</span><h2>Enviar arquivo</h2><p class="cf-hint">O arquivo só será incluído na lista quando você clicar em “Salvar post”.</p></div></div>
+          <label class="cf-upload" for="docx"><input id="docx" type="file" accept=".docx"><span
+              class="cf-upload-icon" aria-hidden="true">↑</span>
+            <span><span id="docxName">Selecionar o .docx do texto</span><small>Produtos podem vir em tabela (nome + código)
+                ou como links do site FG no meio do texto</small></span></label>
+          <p class="cf-alert bad" id="error" role="alert" hidden></p>
+        </section>
+        <section class="cf-card">
+          <div class="cf-library-head"><div><span class="page-kicker">Conecta FG</span><h2>Posts salvos</h2><p class="cf-hint">Abra um post para continuar editando e gerar novamente o código do WordPress.</p></div></div>
+          <div class="cf-post-list" id="postList" aria-live="polite"></div>
+        </section>
+      </div>
+      <div id="work" hidden>
+        <div class="cf-editor-nav"><div><button class="cf-btn" id="backToPosts" type="button">← Todos os posts</button><span id="saveStatus" class="cf-save-status" role="status"></span></div><button class="cf-btn cf-primary" id="savePost" type="button">Salvar post</button></div>
+        <section class="cf-card">
+          <div class="cf-title-row">
+            <label class="cf-field"><span>Título do post (campo de título do WordPress)</span><input id="title"
+                readonly></label>
+            <button class="cf-btn" id="copyTitle" type="button">Copiar título</button>
+          </div>
+          <p class="cf-meta" id="meta"></p>
+          <p class="cf-alert" id="notes" hidden></p>
+          <p class="cf-alert" id="warn" hidden></p>
+        </section>
+
+        <section class="cf-card">
+          <h2>Produtos</h2>
+          <p class="cf-hint">Vêm do documento (tabela com código ou links do site FG). Marque quais entram, confira o
+            link, escolha onde aparece e revise as informações do card.</p>
+          <p class="cf-hint" id="noProducts" hidden>Nenhum produto encontrado no documento.</p>
+          <div id="products"></div>
+          <div class="cf-add">
+            <label class="cf-field">Adicionar produto<input id="addRef"
+                placeholder="Link do produto no site FG ou código"></label>
+            <button class="cf-btn" id="addBtn" type="button">Adicionar</button>
+          </div>
+          <p class="cf-add-msg" id="addMsg" role="alert"></p>
+          <section class="cf-tools" aria-labelledby="postToolsTitle">
+            <div class="cf-tools-head">
+              <h3 id="postToolsTitle">Organização dos produtos no post</h3>
+              <p>Ajuste a posição, o tamanho das fotos e as informações exibidas nos cards.</p>
+            </div>
+            <div class="cf-tools-grid">
+              <button class="cf-tool" id="spread" type="button" title="Põe cada produto depois do parágrafo que o cita">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5h16M4 12h10M4 19h16"/><path d="m17 9 3 3-3 3"/></svg>
+                <span><strong>Distribuir pelo texto</strong><small>Posiciona cada produto perto da citação.</small></span>
+              </button>
+              <button class="cf-tool" id="group" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="5" rx="1"/><rect x="4" y="15" width="16" height="5" rx="1"/><path d="M12 9v6"/></svg>
+                <span><strong>Agrupar no final</strong><small>Reúne os produtos antes do último parágrafo.</small></span>
+              </button>
+              <label class="cf-tool cf-tool-field" for="box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="m8 15 3-3 2 2 3-4 2 3"/></svg>
+                <span><strong>Tamanho da foto</strong><small>Máximo em pixels.</small><input id="box" type="number" min="100" max="600" step="10" value="260" aria-label="Tamanho máximo da foto em pixels"></span>
+              </label>
+              <button class="cf-tool" id="showUsage" type="button" aria-pressed="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+                <span><strong>Exibir aplicações</strong><small id="usageState">Ativado — mostra dicas de uso.</small></span>
+              </button>
+            </div>
+          </section>
+        </section>
+
+        <section class="cf-card cf-out">
+          <div>
+            <h2>Código para o WordPress</h2>
+            <p class="cf-hint">Você pode revisar ou apagar trechos antes de copiar. Alterar produtos ou opções acima gera o código novamente.</p>
+            <textarea class="cf-code" id="code" spellcheck="false" aria-label="Código para o WordPress"></textarea>
+            <div class="cf-actions"><button class="cf-btn cf-primary" id="copyCode" type="button">Copiar código</button>
+            </div>
+          </div>
+          <div>
+            <h2>Prévia</h2>
+            <p class="cf-hint">Aproximação: o tema do blog pode mudar fontes e espaçamentos.</p>
+            <div class="cf-view" id="view"></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script src="sync-backend.js"></script>
+  <script src="portal-shell.js"></script>
+  <script src="catalog-provider.js"></script>
+  <script src="conecta-fg.js"></script>
+  <script>
+    (function () {
+      const $ = id => document.getElementById(id);
+      const Cf = window.ConectaFg;
+      const isHttp = url => /^https?:\/\//i.test(url);
+      const cap = s => s.charAt(0).toLocaleUpperCase('pt-BR') + s.slice(1).toLocaleLowerCase('pt-BR');
+      let model = null, products = [], places = [], catalogItemsPromise = null;
+
+      function fillCatalogUsage(p) {
+        if (p.usage || !p.code) return Promise.resolve();
+        catalogItemsPromise ||= CatalogProvider.load('fg').then(result => result.items);
+        return catalogItemsPromise.then(items => {
+          const product = Cf.catalogProduct(items, p.code);
+          const usage = String(product && product.aplicacoes || '').trim();
+          const cut = usage.slice(0, 499).replace(/\s+\S*$/, '').trim();
+          if (usage && !p.usage) p.usage = usage.length <= 500 ? usage : (cut || usage.slice(0, 499)) + '…';
+        });
+      }
+
+      const STATUS = {
+        checking: ['', 'Consultando o site FG…'],
+        site: ['ok', '✓ Confirmado no site FG'],
+        guess: ['caution', '⚠ Link deduzido do nome do produto (não consegui consultar o site FG) — clique em Abrir e confira'],
+        doc: ['caution', '⚠ Link do documento (não consegui consultar o site FG para confirmar) — clique em Abrir e confira'],
+        notfound: ['bad', '✗ Não encontrei este produto no site FG — deixei de fora do código; corrija o código ou o link para incluir'],
+        manual: ['', 'Link editado por você']
+      };
+
+      // o que o documento não posiciona entra antes do último parágrafo (como no post publicado de exemplo)
+      const lastAt = () => Math.max(model.blocks.length - 1, 0);
+
+      function showStatus(p) {
+        const row = p.row, needsLink = !isHttp(p.url) && p.state !== 'checking' && p.state !== 'notfound';
+        let [tone, text] = STATUS[p.state];
+        // o produto existe, mas não é o do nome do documento: erro de digitação vira link/foto errados
+        if (p.state === 'site' && p.name && Cf.slug(p.siteName) !== Cf.slug(p.name)) {
+          tone = 'caution';
+          text += ` — mas no site este produto é «${p.siteName}»: confira se código/link e nome do documento batem`;
+        }
+        if (needsLink) { tone = 'bad'; text = 'Cole o link do produto no site FG (sem link, o nome sai só como texto)'; }
+        const status = row.querySelector('.cf-status');
+        status.className = 'cf-status ' + tone;
+        status.textContent = text;
+        for (const [selector, value] of [['.cf-name', p.name], ['.cf-code-in', p.code], ['.cf-url', p.url], ['.cf-usage', p.usage || '']]) {
+          const field = row.querySelector(selector);
+          if (field.value !== value) field.value = value;
+        }
+        row.querySelector('.cf-name').title = p.name; // o campo corta nomes longos
+        row.querySelector('.cf-url').setAttribute('aria-invalid', String(needsLink));
+        const open = row.querySelector('.cf-open');
+        if (isHttp(p.url)) open.href = p.url; else open.removeAttribute('href');
+      }
+
+      const usageEnabled = () => $('showUsage').getAttribute('aria-pressed') === 'true';
+      function setUsageEnabled(value) {
+        $('showUsage').setAttribute('aria-pressed', String(value));
+        $('usageState').textContent = value ? 'Ativado — mostra dicas de uso.' : 'Desativado — oculta as dicas.';
+      }
+
+      function update() {
+        if (!model) return;
+        const box = Math.min(600, Math.max(100, +$('box').value || 260));
+        const out = Cf.assemble(model.blocks, products, box, usageEnabled());
+        $('code').value = out.wp;
+        $('view').innerHTML = out.view;
+      }
+
+      // A própria miniatura mede a foto (naturalWidth/Height): as dimensões vão no <img> do card.
+      function loadPhoto(p) {
+        const thumb = p.row.querySelector('.cf-thumb'), msg = p.row.querySelector('.cf-photo');
+        thumb.replaceChildren();
+        msg.className = 'cf-photo';
+        msg.textContent = '';
+        p.w = p.h = 0;
+        p.img = null;
+        if (!p.code) {
+          msg.className = 'cf-photo caution';
+          msg.textContent = '· informe o código para carregar a foto (sem ela o produto não entra no código)';
+          return;
+        }
+        const img = p.img = new Image();
+        img.alt = '';
+        img.addEventListener('load', () => { if (p.img === img) { p.w = img.naturalWidth; p.h = img.naturalHeight; update(); } });
+        img.addEventListener('error', () => {
+          if (p.img !== img) return;
+          msg.className = 'cf-photo bad';
+          msg.textContent = '· ✗ foto não encontrada para este código';
+          update();
+        });
+        img.src = Cf.photoUrl(p.code);
+        thumb.append(img);
+      }
+
+      // Nome, código e link oficial pelo Worker (pelo link do produto, se houver; senão pelo código).
+      // Se ele não responder, o link do documento fica como está e o de um produto de tabela vira
+      // um link deduzido do nome — a linha avisa qual dos casos é.
+      function resolve(p) {
+        const catalog = fillCatalogUsage(p);
+        let siteUsage = '';
+        Cf.lookupLink(p.url ? { url: p.url } : { code: p.code }).then(site => {
+          if (p.state !== 'checking') return;
+          p.state = 'site';
+          p.siteName = site.name;
+          if (!p.url) p.url = site.url;
+          if (!p.name) p.name = site.name;
+          siteUsage = site.usage || '';
+          if (!p.code) { p.code = String(site.code); loadPhoto(p); }
+        }, err => {
+          if (p.state !== 'checking') return;
+          p.state = err.notFound ? 'notfound' : p.url ? 'doc' : 'guess';
+          if (p.state === 'guess' && p.name) p.url = Cf.guessLink(p.name);
+          // produto que não existe no site não vai pro código com link morto até ser corrigido
+          if (p.state === 'notfound') setOn(p, false);
+        }).then(() => catalog).then(() => fillCatalogUsage(p)).then(() => {
+          if (!p.usage && siteUsage) p.usage = siteUsage;
+          showStatus(p);
+          update();
+        });
+      }
+
+      function addRow(p) {
+        const row = p.row = document.createElement('div');
+        row.className = 'cf-prod';
+        row.innerHTML =
+          `<input type="checkbox" checked aria-label="Incluir este produto no texto">` +
+          `<div class="cf-thumb"></div>` +
+          `<div class="cf-prod-main"><input class="cf-name" spellcheck="false" placeholder="Nome do produto (vem do site FG)" aria-label="Nome do produto">` +
+          `<div class="cf-code-line">Código <input class="cf-code-in" inputmode="numeric" aria-label="Código do produto"><span class="cf-photo"></span></div></div>` +
+          `<div class="cf-prod-link"><div class="cf-link-line"><input class="cf-url" spellcheck="false" aria-label="Link do produto no site FG"><a class="cf-open" target="_blank" rel="noopener">Abrir ↗</a></div>` +
+          `<small class="cf-status" role="status"></small>` +
+          `<label class="cf-where">Depois de<select class="cf-at" aria-label="Onde o produto entra no texto"></select></label></div>` +
+          `<div class="cf-editorial"><label>Aplicações / dicas de uso<textarea class="cf-usage" maxlength="500" placeholder="Trazida do catálogo FG; você pode revisar antes de salvar"></textarea></label></div>`;
+        const at = row.querySelector('.cf-at');
+        at.replaceChildren(...places.map(([label, value]) => new Option(label, value)));
+        at.value = p.at;
+        row.querySelector('input[type="checkbox"]').checked = p.on !== false;
+        row.querySelector('input[type="checkbox"]').addEventListener('change', e => { p.on = e.target.checked; update(); });
+        row.querySelector('.cf-name').addEventListener('input', e => { p.name = e.target.value; showStatus(p); update(); });
+        row.querySelector('.cf-usage').addEventListener('input', e => { p.usage = e.target.value; update(); });
+        // corrigir o link ou o código é pedir para o produto entrar de novo no código
+        row.querySelector('.cf-url').addEventListener('input', e => { p.url = e.target.value.trim(); p.state = 'manual'; setOn(p, true); showStatus(p); update(); });
+        row.querySelector('.cf-code-in').addEventListener('change', e => {
+          // código novo: refaz a foto e busca o link/nome desse código no site
+          p.code = e.target.value.replace(/\D/g, '');
+          setOn(p, true);
+          loadPhoto(p);
+          if (p.code) { p.url = ''; p.state = 'checking'; resolve(p); }
+          showStatus(p);
+          update();
+        });
+        at.addEventListener('change', () => { p.at = +at.value; update(); });
+        $('products').append(row);
+        loadPhoto(p);
+        showStatus(p);
+      }
+
+      const setAt = (p, value) => { p.at = value; p.row.querySelector('.cf-at').value = value; };
+      const setOn = (p, value) => { p.on = value; p.row.querySelector('input[type="checkbox"]').checked = value; };
+
+      const INDEX_KEY = 'conecta-fg-post-index-v2';
+      const POST_KEY = 'conecta-fg-post-v2-';
+      let savedPosts = [], savedPostsVersion = 0, currentPostId = null, currentPostVersion = 0, currentCreatedAt = 0, sourceName = '';
+
+      function renderPostList() {
+        const list = $('postList');
+        list.replaceChildren();
+        if (!savedPosts.length) {
+          const empty = document.createElement('p');
+          empty.className = 'cf-post-empty';
+          empty.textContent = 'Nenhum post salvo ainda. Envie um DOCX acima para começar.';
+          list.append(empty);
+          return;
+        }
+        const head = document.createElement('div');
+        head.className = 'cf-post-table-head';
+        ['Título', 'Última alteração', 'Produtos', 'Status', 'Ações'].forEach(label => { const cell = document.createElement('span'); cell.textContent = label; head.append(cell); });
+        list.append(head);
+        savedPosts.slice().sort((a, b) => b.updatedAt - a.updatedAt).forEach(post => {
+          const row = document.createElement('div');
+          row.className = 'cf-post-row';
+          const title = document.createElement('div');
+          title.className = 'cf-post-title';
+          title.textContent = post.title;
+          title.title = post.title;
+          const updated = document.createElement('div');
+          updated.className = 'cf-post-cell';
+          updated.textContent = new Date(post.updatedAt).toLocaleString('pt-BR');
+          const count = document.createElement('div');
+          count.className = 'cf-post-cell';
+          count.textContent = String(post.productCount || 0);
+          const state = document.createElement('span');
+          state.className = 'cf-post-state';
+          state.textContent = 'SALVO';
+          const edit = document.createElement('button');
+          edit.type = 'button';
+          edit.className = 'cf-btn cf-post-edit';
+          edit.textContent = 'Editar';
+          edit.addEventListener('click', () => openSavedPost(post));
+          row.append(title, updated, count, state, edit);
+          list.append(row);
+        });
+      }
+
+      async function loadSavedPosts() {
+        $('postList').innerHTML = '<p class="cf-post-empty">Carregando posts…</p>';
+        try {
+          const record = await SyncBackend.get(INDEX_KEY);
+          savedPosts = Array.isArray(record.v) ? record.v : [];
+          savedPostsVersion = record.updated_at || 0;
+        } catch (_) {
+          savedPosts = [];
+          fail('Não foi possível carregar os posts salvos.');
+        }
+        renderPostList();
+      }
+
+      const productSnapshot = p => ({
+        code: p.code || '', name: p.name || '', url: p.url || '', at: Number(p.at || 0),
+        on: p.on !== false, state: p.state === 'checking' ? 'manual' : (p.state || 'manual'),
+        siteName: p.siteName || '', usage: p.usage || '',
+        w: Number(p.w || 0), h: Number(p.h || 0)
+      });
+
+      function openEditor(savedProducts, customCode = '') {
+        $('title').value = model.title;
+        $('meta').textContent = [...(model.category ? ['Categoria no WordPress: ' + model.category] : []), ...model.meta.map(([k, v]) => `${cap(k)}: ${v}`)].join(' · ');
+        $('notes').hidden = !model.notes.length;
+        $('notes').textContent = 'Recados do redator (ficam de fora do código): ' + model.notes.map(n => `«${n}»`).join(' ');
+        $('warn').hidden = !model.unsupported.length;
+        $('warn').textContent = `O documento tem ${model.unsupported.join(', ')}, que a conversão ainda não trata: ficam de fora do código — confira o documento original e ajuste no WordPress.`;
+        places = [['No início do texto', 0], ...model.blocks.map((html, i) => {
+          const plain = new DOMParser().parseFromString(html, 'text/html').body.textContent.replace(/\s+/g, ' ').trim();
+          return [`Depois de «${plain.length > 55 ? plain.slice(0, 55) + '…' : plain}»`, i + 1];
+        })];
+        $('products').replaceChildren();
+        products = (savedProducts || model.products).map(p => ({
+          ...p, on: p.on !== false, at: p.at ?? lastAt(), usage: p.usage || '',
+
+          state: savedProducts ? (p.state || 'manual') : 'checking'
+        }));
+        products.forEach(addRow);
+        $('noProducts').hidden = products.length > 0;
+        $('docxName').textContent = sourceName || 'Post salvo';
+        $('library').hidden = true;
+        $('work').hidden = false;
+        update();
+        if (customCode) { $('code').value = customCode; $('view').innerHTML = customCode; }
+        if (!savedProducts) products.forEach(p => resolve(p));
+        else products.forEach(p => fillCatalogUsage(p).then(() => { showStatus(p); if (!customCode) update(); }));
+      }
+
+      async function saveIndex(entry) {
+        const merged = [entry, ...savedPosts.filter(post => post.id !== entry.id)].sort((a, b) => b.updatedAt - a.updatedAt);
+        let result = await SyncBackend.put(INDEX_KEY, merged, savedPostsVersion);
+        if (result.conflict) {
+          const latest = await SyncBackend.get(INDEX_KEY);
+          const current = Array.isArray(latest.v) ? latest.v : [];
+          const retryValue = [entry, ...current.filter(post => post.id !== entry.id)].sort((a, b) => b.updatedAt - a.updatedAt);
+          result = await SyncBackend.put(INDEX_KEY, retryValue, latest.updated_at || 0);
+          if (result.conflict) throw new Error('A lista foi alterada por outra pessoa. Tente salvar novamente.');
+          savedPosts = retryValue;
+        } else savedPosts = merged;
+        savedPostsVersion = result.updated_at || savedPostsVersion;
+      }
+
+      async function saveCurrentPost() {
+        if (!model) return;
+        const button = $('savePost');
+        button.disabled = true;
+        $('saveStatus').textContent = 'Salvando…';
+        try {
+          const now = Date.now();
+          const id = currentPostId || crypto.randomUUID();
+          const createdAt = currentCreatedAt || now;
+          const generatedCode = Cf.assemble(model.blocks, products, Number($('box').value) || 260, usageEnabled()).wp;
+          const payload = { schema: 2, title: model.title, sourceName, createdAt, updatedAt: now, model: Cf.storageModel(model), products: products.map(productSnapshot), box: Number($('box').value) || 260, showUsage: usageEnabled(), customCode: $('code').value !== generatedCode ? $('code').value : '' };
+          const result = await SyncBackend.put(POST_KEY + id, payload, currentPostVersion);
+          if (result.conflict) throw new Error('Este post foi alterado em outra sessão. Volte à lista e abra novamente.');
+          currentPostId = id;
+          currentPostVersion = result.updated_at || currentPostVersion;
+          currentCreatedAt = createdAt;
+          await saveIndex({ id, title: model.title, createdAt, updatedAt: now, productCount: products.length });
+          $('saveStatus').textContent = 'Post salvo';
+          $('work').hidden = true;
+          $('library').hidden = false;
+          renderPostList();
+          fail('');
+        } catch (error) {
+          $('saveStatus').textContent = error.message || 'Não foi possível salvar';
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      async function openSavedPost(post) {
+        try {
+          const record = await SyncBackend.get(POST_KEY + post.id);
+          if (!record.v || !record.v.model) throw new Error('O conteúdo deste post não foi encontrado.');
+          model = Cf.restoreModel(record.v.model);
+          sourceName = record.v.sourceName || '';
+          currentPostId = post.id;
+          currentPostVersion = record.updated_at || 0;
+          currentCreatedAt = record.v.createdAt || post.createdAt || Date.now();
+          $('box').value = record.v.box || 260;
+          setUsageEnabled(record.v.showUsage !== false);
+          $('saveStatus').textContent = 'Post aberto para edição';
+          openEditor(Array.isArray(record.v.products) ? record.v.products : [], record.v.customCode || '');
+        } catch (error) {
+          fail(error.message || 'Não foi possível abrir este post.');
+        }
+      }
+
+      function fail(message) { $('error').textContent = message; $('error').hidden = !message; }
+
+      $('docx').addEventListener('change', async event => {
+        const file = event.target.files[0];
+        event.target.value = '';
+        if (!file) return;
+        fail('');
+        try { model = await Cf.readDocx(await file.arrayBuffer()); }
+        catch (error) { return fail(error.message || 'Não consegui ler este arquivo. Ele é um .docx do Word?'); }
+        currentPostId = null;
+        currentPostVersion = 0;
+        currentCreatedAt = 0;
+        sourceName = file.name;
+        $('box').value = 260;
+        setUsageEnabled(true);
+        $('saveStatus').textContent = 'Ainda não salvo';
+        openEditor(null);
+      });
+
+      function addProduct() {
+        const ref = Cf.productRef($('addRef').value);
+        $('addMsg').textContent = ref ? '' : 'Cole o link da página do produto no site FG (…/nome-do-produto/p) ou o código.';
+        if (!ref) return;
+        $('addRef').value = '';
+        const p = { code: ref.code || '', name: '', url: ref.url || '', at: lastAt(), usage: '', on: true, state: 'checking' };
+        products.push(p);
+        $('noProducts').hidden = true;
+        addRow(p);
+        update();
+        resolve(p);
+      }
+      $('addBtn').addEventListener('click', addProduct);
+      $('addRef').addEventListener('keydown', e => { if (e.key === 'Enter') addProduct(); });
+
+      // "Distribuir": cada produto depois do parágrafo que o cita; o não citado vai antes do último.
+      $('spread').addEventListener('click', () => {
+        products.forEach(p => { const at = Cf.mentionAt(model.blocks, p.name); setAt(p, at >= 0 ? at : lastAt()); });
+        update();
+      });
+      $('group').addEventListener('click', () => { products.forEach(p => setAt(p, lastAt())); update(); });
+
+      $('box').addEventListener('input', update);
+      $('showUsage').addEventListener('click', () => { setUsageEnabled(!usageEnabled()); update(); });
+      $('code').addEventListener('input', () => { $('view').innerHTML = $('code').value; });
+
+      async function copy(field, button) {
+        const label = button.textContent;
+        try { await navigator.clipboard.writeText(field.value); button.textContent = 'Copiado ✓'; }
+        catch { field.select(); button.textContent = 'Selecionado — use Ctrl+C'; }
+        setTimeout(() => { button.textContent = label; }, 2000);
+      }
+      $('backToPosts').addEventListener('click', () => { $('work').hidden = true; $('library').hidden = false; fail(''); loadSavedPosts(); });
+      $('savePost').addEventListener('click', saveCurrentPost);
+      loadSavedPosts();
+      $('copyTitle').addEventListener('click', e => copy($('title'), e.currentTarget));
+      $('copyCode').addEventListener('click', e => copy($('code'), e.currentTarget));
+    })();
+  </script>
+</body>
+
+</html>
