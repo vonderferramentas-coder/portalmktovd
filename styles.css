@@ -104,6 +104,10 @@
        nome+e-mail truncam com reticências antes de empurrar o ícone de sair). A barra inteira é
        clicável (abre o menu com Redefinir senha/Sair pra cima, ver portal-shell.js) — o ícone de
        sair dentro dela é só um atalho e usa stopPropagation pra não abrir o menu junto. */
+    /* Seletor claro/escuro, logo acima da barra de conta — mesmo padrão visual do .view-toggle
+       (Mês/Quinzena/Semana no calendário), só com ícones em vez de texto. */
+    .portal-theme-toggle{width:100%}
+    .portal-theme-toggle button{flex:1;display:flex;align-items:center;justify-content:center;padding:7px 0}
     .portal-account-bar{display:flex;align-items:center;gap:8px;width:100%;padding:6px 7px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--card);cursor:pointer;transition:border-color .12s,background .12s}
     .portal-account-bar:hover{background:var(--surface-muted)}
     .portal-account-bar.open{border-color:var(--accent-ink);box-shadow:0 0 0 2px var(--accent-weak)}
@@ -236,6 +240,9 @@
        do texto invisível, então precisa de display:none aqui pra não sobrar um vão entre os ícones */
     .portal-sidebar.collapsed .portal-account-bar{flex-direction:column;width:auto;margin:0 auto;gap:4px;padding:5px;border-color:transparent;background:transparent}
     .portal-sidebar.collapsed .portal-account-info{display:none}
+    /* mesma ideia: sem largura pra pílula horizontal, os dois ícones empilham soltos (sem fundo
+       nem borda do wrapper) — o "ativo" continua legível pelo próprio .view-toggle button.active */
+    .portal-sidebar.collapsed .portal-theme-toggle{flex-direction:column;width:auto;margin:0 auto;gap:4px;padding:0;border-color:transparent;background:transparent}
 
     @media (max-width:760px){
       .portal-sidebar{width:72px;padding:14px 10px}
@@ -243,6 +250,7 @@
       .portal-logo-text,.portal-nav-item span,.portal-nav-section-label,.portal-brand-trigger-body,.portal-brand-trigger-chevron,.portal-account-info{max-width:0;opacity:0}
       .portal-account-bar{flex-direction:column;width:auto;margin:0 auto;gap:4px;padding:5px;border-color:transparent;background:transparent}
       .portal-account-info{display:none}
+      .portal-theme-toggle{flex-direction:column;width:auto;margin:0 auto;gap:4px;padding:0;border-color:transparent;background:transparent}
       .portal-logo{gap:0}
       .portal-nav-item{justify-content:center;gap:0}
       .portal-brand-trigger{width:auto;margin:0 auto;justify-content:center;gap:0;padding:5px;border-color:transparent;background:transparent}
@@ -260,14 +268,21 @@
     h1,h2,h3,h4,h5,h6{margin:0;font-family:var(--font-display);color:var(--text)}
     h1{font-size:26px;font-weight:700;line-height:1.15;letter-spacing:-.02em}
     h2{font-size:17px;font-weight:900;letter-spacing:-.005em}
-    h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent-ink)}
+    h3{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent-text)}
     h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint)}
 
     /* Cabeçalho da página (padrão único em todas as telas): antetítulo (.page-kicker, opcional) +
        título (h1, 26px acima) + subtítulo (.page-subtitle) + ações "Buscar"/"Configurações"/"Nova postagem".
        Página nova usa estas classes em vez de definir fonte/tamanho/espaçamento próprios. */
     .page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}
-    .page-kicker{display:block;margin:0 0 6px;color:var(--accent-ink);font-size:12px;font-weight:800;line-height:1.2;letter-spacing:.12em;text-transform:uppercase}
+    /* Cor de destaque para TEXTO (antetítulo etc.): no claro é a --accent-ink da marca; no escuro sobe a
+       luminosidade só até ficar legível (destaques escuros como o verde da FG ou o azul da Pilar somem
+       no fundo escuro), mantendo o matiz — cores já claras (amarelo, cinza) passam sem alteração.
+       Sem suporte a cor relativa, cai numa mistura com branco. */
+    :root{--accent-text:var(--accent-ink)}
+    :root[data-theme="dark"]{--accent-text:color-mix(in srgb,var(--accent-ink) 45%,#fff)}
+    @supports (color:oklch(from red l c h)){:root[data-theme="dark"]{--accent-text:oklch(from var(--accent-ink) max(l,.72) c h)}}
+    .page-kicker{display:block;margin:0 0 6px;color:var(--accent-text);font-size:12px;font-weight:800;line-height:1.2;letter-spacing:.12em;text-transform:uppercase}
     .page-subtitle{margin:6px 0 0;max-width:72ch;font-size:14px;line-height:1.5;color:var(--muted)}
     @media (max-width:560px){h1{font-size:24px}}
     .page-header-actions{display:flex;gap:10px;align-items:center;flex-shrink:0}

@@ -6,7 +6,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js';
 import {
   getFirestore, doc, getDoc, addDoc, collection, serverTimestamp, updateDoc,
-  runTransaction, onSnapshot, writeBatch, query, where
+  runTransaction, onSnapshot, writeBatch, query, where, deleteDoc
 } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
 
 const config = window.PORTAL_FIREBASE_CONFIG;
@@ -110,6 +110,11 @@ export async function readPortalStore(key) {
   if (!snapshot.exists()) return { v: null, updated_at: 0 };
   const data = snapshot.data();
   return { v: data.v === undefined ? null : data.v, updated_at: Number(data.updated_at || 0), context };
+}
+
+export async function deletePortalStore(key) {
+  await currentContext();
+  await deleteDoc(doc(db, 'portalStore', String(key)));
 }
 
 export async function writePortalStore(key, value, expectedVersion) {
@@ -299,7 +304,7 @@ export async function updateOwnProfile(patch) {
 export { app, auth, db, profileFor, audit };
 
 window.PortalFirebase = {
-  readPortalStore, writePortalStore, ensurePostsStore, writePost, deletePost, subscribeToPosts,
+  readPortalStore, writePortalStore, deletePortalStore, ensurePostsStore, writePost, deletePost, subscribeToPosts,
   subscribeNotifications, markNotificationRead, currentContext, logout, requestPasswordReset,
   updateOwnProfile, audit
 };

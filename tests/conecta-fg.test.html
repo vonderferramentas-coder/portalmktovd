@@ -138,6 +138,22 @@
   ], 'link + nome em negrito completa a linha da tabela (mesmo produto); link com foto colada vira produto sem código, ambos na posição do texto');
   eq(b.unsupported, ['imagens', 'tabelas de texto'], 'imagem solta e tabela de texto avisadas em vez de sumir sem aviso');
 
+  // ---- documento C: "Parte superior/inferior do formulário" (lixo do Word ao colar de uma
+  // página com <form> — aparece como parágrafo solto e, na tabela de produtos, como um parágrafo
+  // a mais dentro da mesma célula do nome) -------------------------------------------------------
+  const c = await read(`
+    ${para(run('Documento C'))}
+    ${para(run('Parte superior do formulário'))}
+    ${para(run('Texto real do post.'))}
+    ${para(run('Parte inferior do formulário'))}
+    <w:tbl><w:tr>
+      <w:tc><w:p>${run('Parte superior do formulário')}</w:p><w:p>${run('Furadeira de Impacto 650W')}</w:p></w:tc>
+      ${cell('1234567')}
+    </w:tr></w:tbl>`);
+  eq(c.title, 'Documento C', 'título do documento C');
+  eq(c.blocks, ['Texto real do post.'], '"Parte superior/inferior do formulário" some dos blocos de texto');
+  eq(c.products, [{ code: '1234567', name: 'Furadeira de Impacto 650W', url: '', at: null }], '"Parte superior do formulário" colado na mesma célula não gruda no nome do produto');
+
   // ---- onde cada produto entra ------------------------------------------------------------------
   const nivel = [
     '<em>MODELOS QUE GARANTEM MÁXIMA PRECISÃO NO NIVELAMENTO.</em>',
@@ -182,6 +198,12 @@
   const stacked = Cf.assemble(['Antes.', 'Depois.'], fourProducts, 260);
   eq(!stacked.wp.includes('fg-product-carousel') && (stacked.wp.match(/class="fg-product-card"/g) || []).length === 4, true, 'quatro produtos consecutivos continuam como cards empilhados');
   eq([...stacked.wp.matchAll(/codigo=(\d+)/g)].map(match => match[1]), ['33331', '33332', '33333', '33334'], 'cards empilhados preservam a ordem dos produtos');
+  // o navegador do usuário não pode carregar app.ovd.com.br (IP interno na rede da empresa → o Chrome pede "rede local"):
+  // a prévia usa o Worker; o código que vai pro WordPress continua com a URL pública oficial da foto
+  const photoCheck = Cf.assemble(['A'], [{ ...p1, at: 1 }], 260);
+  eq(photoCheck.wp.includes('https://app.ovd.com.br/fotos/produto?codigo=11111') && !photoCheck.wp.includes('workers.dev'), true, 'código do WordPress usa a foto oficial de app.ovd.com.br');
+  eq(photoCheck.view.includes('https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code=11111') && !photoCheck.view.includes('app.ovd.com.br'), true, 'prévia carrega a foto pelo Worker, nunca direto de app.ovd.com.br');
+  eq(Cf.previewPhotoUrl('1193696'), 'https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code=1193696', 'miniatura da tela usa o Worker');
   document.body.dataset.result = 'pass';
   document.body.textContent = 'PASS: slug igual ao da loja FG; .docx lido de ponta a ponta (zip/deflate → HTML) nos padrões de produto e de texto; posição dos produtos; código WordPress no formato dos posts publicados.';
 })().catch(error => {

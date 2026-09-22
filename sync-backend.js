@@ -9,5 +9,6 @@
   }
   async function get(key){ return (await gateway()).readPortalStore(key); }
   async function put(key, value, expectedVersion){ return (await gateway()).writePortalStore(key, value, expectedVersion); }
-  global.SyncBackend = { get, put };
+  async function remove(key){ return (await gateway()).deletePortalStore(key); }
+  global.SyncBackend = { get, put, remove };
 })(window);
