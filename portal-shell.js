@@ -338,6 +338,25 @@
     applyTheme(theme);
     applyColorTheme(getColorTheme());
     syncLegacySettingsUi();
+    syncSidebarThemeToggle();
+  }
+  // Seletor claro/escuro da sidebar (acima da barra de conta) — funil único é setTheme() acima,
+  // então trocar por aqui, pelo modal de Configurações ou pela aba legada do calendário mantém
+  // os três em sincronia entre si.
+  function wireThemeToggle(){
+    const wrap = $('portalThemeToggle'); if(!wrap) return;
+    wrap.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', ()=> setTheme(btn.dataset.themeBtn));
+    });
+  }
+  function syncSidebarThemeToggle(){
+    const wrap = $('portalThemeToggle'); if(!wrap) return;
+    const theme = localStorage.getItem(THEME_KEY) || 'light';
+    wrap.querySelectorAll('button').forEach(btn=>{
+      const active = btn.dataset.themeBtn === theme;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-checked', String(active));
+    });
   }
   function setColorTheme(id){
     // só é chamado com a fonte "custom" ativa (o grid fica oculto na fonte "brand" — ver
@@ -1392,7 +1411,11 @@
       <div>
         ${renderNavHtml()}
       </div>
-      <div style="margin-top:auto">
+      <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">
+        <div class="portal-theme-toggle view-toggle" id="portalThemeToggle" role="radiogroup" aria-label="Aparência">
+          <button type="button" data-theme-btn="light" role="radio" aria-label="Tema claro" title="Tema claro">${svgIcon('<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>', 15)}</button>
+          <button type="button" data-theme-btn="dark" role="radio" aria-label="Tema escuro" title="Tema escuro">${svgIcon('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>', 15)}</button>
+        </div>
         <div class="portal-account-bar" id="portalAccountBar" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
           <span class="portal-account-avatar">${svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 14)}<span class="portal-account-avatar-dot" id="portalAccountAvatarDot" hidden></span></span>
           <span class="portal-account-info"><span class="portal-account-name" id="portalProfileName">Conta</span><span class="portal-account-email" id="portalProfileEmail"></span></span>
@@ -1407,6 +1430,8 @@
     $('portalBrandTrigger').addEventListener('click', ()=>{ brandPopoverOpen ? closeBrandPopover() : openBrandPopover(); });
     $('portalCollapseBtn').addEventListener('click', toggleSidebarCollapsed);
     wireAccountBar();
+    wireThemeToggle();
+    syncSidebarThemeToggle();
   }
 
   // ============================================================

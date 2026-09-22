@@ -36,14 +36,32 @@
     .cf-post-cell { color:var(--muted); font-size:12px; }
     .cf-post-state { justify-self:start; padding:4px 8px; border-radius:999px; background:var(--accent-weak); color:var(--accent-text); font-size:12px; font-weight:800; }
     .cf-post-empty { padding:24px 14px; color:var(--muted); font-size:14px; text-align:center; }
-    .cf-post-edit { height:34px; padding:0 12px; }
+    .cf-post-actions { display:flex; align-items:center; gap:8px; }
+    .cf-post-actions .btn-icon.danger:hover { background:var(--danger-bg); color:var(--danger); border-color:var(--danger-border); }
     .cf-editor-nav { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 14px; }
     .cf-editor-nav > div { display:flex; align-items:center; gap:12px; }
     .cf-save-status { color:var(--muted); font-size:12px; }
 
-    .cf-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: 18px 20px; margin-bottom: 16px; }
+    .cf-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: 36px; margin-bottom: 16px; }
     .cf-card h2 { margin: 0 0 4px; font: 800 17px var(--font-display); }
     .cf-hint { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    /* Cabeçalho colapsável de um cf-card (hoje só "Produtos") — mesmo padrão de
+       .section-divider do dashboard de seguidores: grid-template-rows 0fr<->1fr anima "até a
+       altura real do conteúdo" em CSS puro, sem medir pixels em JS; o filho único
+       (.cf-section-divider-body-inner) precisa de overflow:hidden pro recorte funcionar — de brinde,
+       esse overflow:hidden cria um novo contexto de formatação de bloco (BFC), então o margin-top
+       do primeiro filho (aqui embaixo) não "vaza" colapsando pra fora do card; sem isso os 24px
+       do primeiro produto até o subtítulo, por exemplo, sumiriam. */
+    .cf-section-divider { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; width: 100%; margin: 0; padding: 0; border: 0; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+    .cf-section-divider:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; border-radius: 6px; }
+    .cf-section-divider h2 { margin: 0 0 4px; }
+    .cf-section-divider .cf-hint { margin: 0; }
+    .cf-section-divider-chevron { flex: none; color: var(--muted); margin-top: 4px; transition: transform .15s; }
+    .cf-section-divider[aria-expanded="true"] .cf-section-divider-chevron { transform: rotate(180deg); }
+    .cf-section-divider-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .28s ease, opacity .22s ease; opacity: 1; }
+    .cf-section-divider-body.is-collapsed { grid-template-rows: 0fr; opacity: 0; }
+    .cf-section-divider-body-inner { overflow: hidden; min-height: 0; }
+    .cf-section-divider-body-inner > :first-child { margin-top: 24px; }
 
     .cf-upload { position: relative; display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1.5px dashed var(--border-strong); border-radius: var(--radius-md); background: var(--surface-muted); cursor: pointer; font-weight: 800; }
     .cf-upload:hover { border-color: var(--accent); background: var(--accent-weak); }
@@ -54,10 +72,19 @@
     .cf-alert { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--accent); background: var(--accent-weak); font-size: 13px; line-height: 1.45; }
     .cf-alert.bad { border-color: var(--danger-border); background: var(--danger-bg); color: var(--danger); }
 
+    /* h2.cf-title-heading precisa dessa especificidade pra vencer o "margin: 0 0 4px" de
+       .cf-card h2 (a regra geral dos demais títulos de card) — só este título pede 10px. */
+    .cf-card h2.cf-title-heading { margin-bottom: 10px; }
+    .cf-title-heading, .cf-title-row, .cf-meta { text-align: left; }
     .cf-title-row { display: flex; gap: 12px; align-items: flex-end; }
     .cf-meta { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
 
-    .cf-field { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; font-size: 12px; font-weight: 800; color: var(--muted); }
+    /* margin-bottom:0 anula o "label{margin-bottom:6px}" global (styles.css) — pensado pro padrão
+       <label>Legenda</label><input> (label sozinho, sem envolver o campo). Aqui .cf-field é um
+       <label> que ENVOLVE a legenda e o input (gap:5px já cuida do espaço entre eles); sem esse
+       reset, a margem extra do <label> deixava o campo mais curto que o botão ao lado
+       (.cf-title-row/.cf-add), desalinhando os dois numa linha com align-items:flex-end. */
+    .cf-field { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; margin-bottom: 0; font-size: 12px; font-weight: 800; color: var(--muted); }
     .cf-field input, .cf-field select { width: 100%; height: var(--control-h); padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font-size: 14px; }
     .cf-field.cf-narrow { flex: 0 0 200px; }
 
@@ -67,10 +94,50 @@
     .cf-btn.cf-primary:hover { background: var(--accent-hover); }
     .cf input:focus-visible, .cf select:focus-visible, .cf textarea:focus-visible, .cf-btn:focus-visible, .cf-open:focus-visible, .cf-upload:focus-within { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 
-    /* item de produto: cartão em coluna única — topo (marcar, foto, nome/código), link, posição e dica de uso */
-    .cf-prod { display: flex; flex-direction: column; gap: 16px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-muted); }
-    .cf-prod + .cf-prod { margin-top: 16px; }
+    /* Produtos: grade de 3 colunas de cards compactos (foto + nome + código + menu "⋮"). "Editar"
+       no menu abre o formulário completo (.cf-prod, o card de sempre) num modal centralizado, na
+       identidade da plataforma (mesma .modal-backdrop/.modal dos demais); "Excluir" funciona
+       igual ao X de sempre. .cf-prod só é anexado ao modal quando abre (openEditProductModal) —
+       fora disso fica solto, fora do documento, mas vivo (mesma instância, mesmos listeners),
+       porque showStatus()/loadPhoto() escrevem nos campos dele a qualquer momento (ex.: resposta
+       assíncrona de resolve() chegando com o produto fechado). */
+    #products { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
+
+    /* borda esquerda verde: mesma identidade do card publicado (fg-product-card, conecta-fg.js —
+       border-left:5px solid #004e32), pra o card do editor já lembrar o card final no post */
+    .cf-prod-mini { position: relative; display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--border); border-left: 5px solid #004e32; border-radius: var(--radius-md); background: var(--surface-muted); cursor: pointer; }
+    .cf-prod-mini-thumb { position: relative; flex: 0 0 72px; width: 72px; height: 72px; }
+    /* fundo sempre branco (não var(--card)): a maioria das fotos de produto tem fundo transparente
+       recortado pra branco — no tema escuro, var(--card) deixava a miniatura com uma caixa cinza
+       escura em volta da foto, destoando */
+    .cf-prod-mini-thumb .cf-thumb { border-radius: 12px; background: #fff; }
+    .cf-prod-mini-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding-right: 26px; }
+    /* até 2 linhas de nome antes de truncar com reticências (-webkit-line-clamp corta a última
+       linha visível sozinho, sem precisar medir texto em JS) */
+    .cf-prod-mini-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-family: var(--font-display); font-size: 14px; font-weight: 800; line-height: 1.3; color: var(--text); }
+    .cf-prod-mini-code { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* o ícone de aviso só aparece pra sinalizar problema (link não confirmado etc.) — "ok"/
+       "checking" ficam sem ícone, pra não gerar ruído visual num estado normal */
+    .cf-prod-mini-code::before { content: ""; flex: 0 0 12px; width: 12px; height: 12px; display: none; background: currentColor; }
+    .cf-prod-mini-code.caution { color: var(--cf-caution); }
+    .cf-prod-mini-code.caution::before { display: block; -webkit-mask: var(--cf-i-warn) center / contain no-repeat; mask: var(--cf-i-warn) center / contain no-repeat; }
+    .cf-prod-mini-code.bad { color: var(--danger); }
+    .cf-prod-mini-code.bad::before { display: block; -webkit-mask: var(--cf-i-bad) center / contain no-repeat; mask: var(--cf-i-bad) center / contain no-repeat; }
+    .cf-prod-mini-kebab { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; transition: background .12s, border-color .12s, color .12s; }
+    .cf-prod-mini-kebab:hover, .cf-prod-mini-kebab[aria-expanded="true"] { background: var(--card); border-color: var(--border); color: var(--text); }
+
+    /* formulário completo — agora é só conteúdo do modal (sem moldura própria: o .modal já dá
+       fundo/borda/sombra), então nada de padding/background/border aqui. */
+    .cf-prod { display: flex; flex-direction: column; gap: 16px; }
     .cf-prod-top { display: flex; align-items: flex-start; gap: 14px; }
+    /* modal de edição: mesma entrada suave já usada no aviso de conflito de sincronização
+       (sync-conflict-in) — reaproveita os mesmos valores (8px/.985/.18s) de propósito, pra toda
+       transformação "card → modal" do portal se mover igual */
+    #editProductBackdrop.is-open { display: flex; }
+    @media (prefers-reduced-motion: no-preference) {
+      #editProductBackdrop.is-open .cf-prod-modal { animation: cf-prod-modal-in .18s ease-out both; }
+      @keyframes cf-prod-modal-in { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+    }
     .cf-lab { display: block; margin: 0 0 6px; color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
     .cf-thumb-wrap { position: relative; flex: 0 0 76px; width: 76px; height: 76px; }
     .cf-thumb { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
@@ -78,14 +145,15 @@
     .cf-thumb::before { content: ""; position: absolute; width: 28px; height: 28px; background: var(--muted); opacity: .6; -webkit-mask: var(--cf-i-tool) center / contain no-repeat; mask: var(--cf-i-tool) center / contain no-repeat; }
     .cf-thumb.has-photo::before { display: none; }
     .cf-thumb img { position: relative; max-width: 100%; max-height: 100%; object-fit: contain; }
-    .cf-photo-edit { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 2px solid var(--surface-muted); border-radius: 50%; background: var(--card); color: var(--muted); cursor: pointer; }
-    .cf-photo-edit::after { content: ""; position: absolute; inset: -9px; } /* área de toque de 44px */
-    .cf-photo-edit:hover { background: var(--accent-weak); color: var(--text); }
-    .cf-photo-edit svg { width: 12px; height: 12px; }
     .cf-prod-main { flex: 1; min-width: 0; }
-    .cf-prod-main .cf-name { width: 100%; height: auto; min-height: 34px; padding: 2px 0 6px; border: 0; border-bottom: 1px solid var(--border-strong); border-radius: 0; background: transparent; color: var(--text); font-size: 18px; font-weight: 800; line-height: 1.3; }
+    /* .cf-name é um <input> (edita o nome do produto), mas visualmente é o título do card — sem
+       font-family aqui ele herda a fonte de corpo via "input:not([type]){font-family:inherit}"
+       (styles.css), destoando dos títulos reais ("Produtos" etc., que usam --font-display) */
+    .cf-prod-main .cf-name { width: 100%; height: auto; min-height: 34px; padding: 2px 0 6px; border: 0; border-bottom: 1px solid var(--border-strong); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); font-size: 17px; font-weight: 800; line-height: 1.3; }
     .cf-code-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 10px; }
-    .cf-code-line label { color: var(--muted); font-size: 13px; }
+    /* mesmo tratamento visual de .cf-lab (rótulo de campo do card) — só sem display:block, porque
+       este fica embutido na linha ao lado do input, não sozinho acima */
+    .cf-code-line label { color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
     .cf-code-line .cf-code-in { width: 124px; height: 32px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--card); color: var(--text); font: 13px/1 var(--cf-mono); }
     .cf-prod-link { padding-top: 16px; border-top: 1px solid var(--border); }
     .cf-link-line { display: flex; gap: 10px; }
@@ -147,7 +215,7 @@
     .cf-add-msg { margin: 6px 0 0; color: var(--danger); font-size: 12px; }
     @media (max-width: 860px) {
       .cf-out { grid-template-columns: 1fr; }
-      .cf-prod { padding: 16px; }
+      #products { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .cf-prod-main .cf-name { font-size: 16px; }
       .cf-title-row { flex-direction: column; align-items: stretch; }
       .cf-field.cf-narrow { flex: 1 1 100%; }
@@ -155,6 +223,7 @@
     }
 
     @media (max-width: 560px) {
+      #products { grid-template-columns: 1fr; }
       .cf-tools-grid { grid-template-columns: 1fr; }
       /* marcar + foto + código na primeira linha; o nome (que é cortado em coluna estreita) ocupa a largura toda */
       .cf-prod-top { display: grid; grid-template-columns: 76px minmax(0, 1fr); column-gap: 14px; row-gap: 12px; }
@@ -200,9 +269,10 @@
       <div id="work" hidden>
         <div class="cf-editor-nav"><div><button class="cf-btn" id="backToPosts" type="button">← Todos os posts</button><span id="saveStatus" class="cf-save-status" role="status"></span></div><button class="cf-btn cf-primary" id="savePost" type="button">Salvar post</button></div>
         <section class="cf-card">
+          <h2 class="cf-title-heading">Título do post (campo de título do WordPress)</h2>
           <div class="cf-title-row">
-            <label class="cf-field"><span>Título do post (campo de título do WordPress)</span><input id="title"
-                readonly></label>
+            <div class="cf-field"><input id="title" aria-label="Título do post (campo de título do WordPress)"
+                readonly></div>
             <button class="cf-btn" id="copyTitle" type="button">Copiar título</button>
           </div>
           <p class="cf-meta" id="meta"></p>
@@ -211,41 +281,54 @@
         </section>
 
         <section class="cf-card">
-          <h2>Produtos</h2>
-          <p class="cf-hint">Vêm do documento (tabela com código ou links do site FG). Confira o
-            link, escolha onde aparece e revise as informações do card.</p>
-          <p class="cf-hint" id="noProducts" hidden>Nenhum produto encontrado no documento.</p>
-          <div id="products"></div>
-          <div class="cf-add">
-            <label class="cf-field">Adicionar produto<input id="addRef"
-                placeholder="Link do produto no site FG ou código"></label>
-            <button class="cf-btn" id="addBtn" type="button">Adicionar</button>
+          <button type="button" class="cf-section-divider" id="productsToggle" aria-expanded="true"
+            aria-controls="productsBody">
+            <div>
+              <h2>Produtos</h2>
+              <p class="cf-hint">Vêm do documento (tabela com código ou links do site FG). Confira o
+                link, escolha onde aparece e revise as informações do card.</p>
+            </div>
+            <svg class="cf-section-divider-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2.4">
+              <path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="cf-section-divider-body" id="productsBody">
+            <div class="cf-section-divider-body-inner">
+              <p class="cf-hint" id="noProducts" hidden>Nenhum produto encontrado no documento.</p>
+              <div id="products"></div>
+              <div class="cf-add">
+                <label class="cf-field">Adicionar produto<input id="addRef"
+                    placeholder="Link do produto no site FG ou código"></label>
+                <button class="cf-btn" id="addBtn" type="button">Adicionar</button>
+              </div>
+              <p class="cf-add-msg" id="addMsg" role="alert"></p>
+              <section class="cf-tools" aria-labelledby="postToolsTitle">
+                <div class="cf-tools-head">
+                  <h3 id="postToolsTitle">Organização dos produtos no post</h3>
+                  <p>Ajuste a posição, o tamanho das fotos e as informações exibidas nos cards.</p>
+                </div>
+                <div class="cf-tools-grid">
+                  <button class="cf-tool" id="spread" type="button" title="Põe cada produto depois do parágrafo que o cita">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5h16M4 12h10M4 19h16"/><path d="m17 9 3 3-3 3"/></svg>
+                    <span><strong>Distribuir pelo texto</strong><small>Posiciona cada produto perto da citação.</small></span>
+                  </button>
+                  <button class="cf-tool" id="group" type="button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="5" rx="1"/><rect x="4" y="15" width="16" height="5" rx="1"/><path d="M12 9v6"/></svg>
+                    <span><strong>Agrupar no final</strong><small>Reúne os produtos antes do último parágrafo.</small></span>
+                  </button>
+                  <label class="cf-tool cf-tool-field" for="box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="m8 15 3-3 2 2 3-4 2 3"/></svg>
+                    <span><strong>Tamanho da foto</strong><small>Máximo em pixels.</small><input id="box" type="number" min="100" max="600" step="10" value="260" aria-label="Tamanho máximo da foto em pixels"></span>
+                  </label>
+                  <button class="cf-tool" id="showUsage" type="button" aria-pressed="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+                    <span><strong>Exibir aplicações</strong><small id="usageState">Ativado — mostra dicas de uso.</small></span>
+                  </button>
+                </div>
+              </section>
+            </div>
           </div>
-          <p class="cf-add-msg" id="addMsg" role="alert"></p>
-          <section class="cf-tools" aria-labelledby="postToolsTitle">
-            <div class="cf-tools-head">
-              <h3 id="postToolsTitle">Organização dos produtos no post</h3>
-              <p>Ajuste a posição, o tamanho das fotos e as informações exibidas nos cards.</p>
-            </div>
-            <div class="cf-tools-grid">
-              <button class="cf-tool" id="spread" type="button" title="Põe cada produto depois do parágrafo que o cita">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5h16M4 12h10M4 19h16"/><path d="m17 9 3 3-3 3"/></svg>
-                <span><strong>Distribuir pelo texto</strong><small>Posiciona cada produto perto da citação.</small></span>
-              </button>
-              <button class="cf-tool" id="group" type="button">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="5" rx="1"/><rect x="4" y="15" width="16" height="5" rx="1"/><path d="M12 9v6"/></svg>
-                <span><strong>Agrupar no final</strong><small>Reúne os produtos antes do último parágrafo.</small></span>
-              </button>
-              <label class="cf-tool cf-tool-field" for="box">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="m8 15 3-3 2 2 3-4 2 3"/></svg>
-                <span><strong>Tamanho da foto</strong><small>Máximo em pixels.</small><input id="box" type="number" min="100" max="600" step="10" value="260" aria-label="Tamanho máximo da foto em pixels"></span>
-              </label>
-              <button class="cf-tool" id="showUsage" type="button" aria-pressed="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
-                <span><strong>Exibir aplicações</strong><small id="usageState">Ativado — mostra dicas de uso.</small></span>
-              </button>
-            </div>
-          </section>
         </section>
 
         <section class="cf-card cf-out">
@@ -263,6 +346,67 @@
           </div>
         </section>
       </div>
+      <div id="removeProductBackdrop" class="modal-backdrop">
+        <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="removeProductTitle">
+          <div class="modal-header">
+            <div class="modal-header-title">
+              <h2 id="removeProductTitle">Remover produto?</h2>
+            </div>
+            <div class="modal-header-actions"><button type="button" id="removeProductCloseBtn" class="modal-close"
+                aria-label="Fechar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg></button></div>
+          </div>
+          <div class="modal-body">
+            <p id="removeProductMessage" style="margin:0;font-size:13px;line-height:1.55;color:var(--text)"></p>
+          </div>
+          <div class="modal-footer"><button type="button" id="removeProductCancel"
+              class="btn ghost">Cancelar</button><button type="button" id="removeProductOk"
+              class="btn ghost danger">Remover produto</button></div>
+        </div>
+      </div>
+      <div id="removePostBackdrop" class="modal-backdrop">
+        <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="removePostTitle">
+          <div class="modal-header">
+            <div class="modal-header-title">
+              <h2 id="removePostTitle">Excluir post?</h2>
+            </div>
+            <div class="modal-header-actions"><button type="button" id="removePostCloseBtn" class="modal-close"
+                aria-label="Fechar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg></button></div>
+          </div>
+          <div class="modal-body">
+            <p id="removePostMessage" style="margin:0;font-size:13px;line-height:1.55;color:var(--text)"></p>
+          </div>
+          <div class="modal-footer"><button type="button" id="removePostCancel"
+              class="btn ghost">Cancelar</button><button type="button" id="removePostOk"
+              class="btn ghost danger">Excluir post</button></div>
+        </div>
+      </div>
+      <div id="editProductBackdrop" class="modal-backdrop">
+        <div class="modal cf-prod-modal" role="dialog" aria-modal="true" aria-labelledby="editProductTitle">
+          <div class="modal-header">
+            <div class="modal-header-title">
+              <h2 id="editProductTitle">Editar produto</h2>
+            </div>
+            <div class="modal-header-actions"><button type="button" id="editProductCloseBtn" class="modal-close"
+                aria-label="Fechar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg></button></div>
+          </div>
+          <div class="modal-body" id="editProductBody"></div>
+          <div class="modal-footer"><button type="button" id="editProductCancel"
+              class="btn ghost">Cancelar</button><button type="button" id="editProductSave"
+              class="btn">Salvar</button></div>
+        </div>
+      </div>
     </main>
   </div>
   <script src="sync-backend.js"></script>
@@ -276,6 +420,10 @@
       const isHttp = url => /^https?:\/\//i.test(url);
       const cap = s => s.charAt(0).toLocaleUpperCase('pt-BR') + s.slice(1).toLocaleLowerCase('pt-BR');
       let model = null, products = [], places = [], catalogItemsPromise = null, rowSeq = 0;
+      // último código gerado automaticamente: se o usuário editar #code à mão (corrigindo
+      // quebra/negrito/itálico), o valor diverge disso e update() para de sobrescrever — senão
+      // qualquer clique em produto/posição/tamanho apaga a edição manual (perde a formatação).
+      let lastGenerated = '';
 
       function fillCatalogUsage(p) {
         if (p.usage || !p.code) return Promise.resolve();
@@ -283,8 +431,7 @@
         return catalogItemsPromise.then(items => {
           const product = Cf.catalogProduct(items, p.code);
           const usage = String(product && product.aplicacoes || '').trim();
-          const cut = usage.slice(0, 499).replace(/\s+\S*$/, '').trim();
-          if (usage && !p.usage) { p.usage = usage.length <= 500 ? usage : (cut || usage.slice(0, 499)) + '…'; p.usageFrom = 'catalog'; }
+          if (usage && !p.usage) { p.usage = usage; p.usageFrom = 'catalog'; }
         });
       }
 
@@ -328,6 +475,15 @@
         row.querySelector('.cf-url').setAttribute('aria-invalid', String(needsLink));
         const open = row.querySelector('.cf-open');
         if (isHttp(p.url)) open.href = p.url; else open.removeAttribute('href');
+        // card compacto (padrão): nome, código e — só quando há problema — o mesmo aviso do
+        // formulário completo, pra não esconder um produto que ficou de fora do código gerado
+        const miniName = p.miniRow.querySelector('.cf-prod-mini-name');
+        miniName.textContent = p.name || 'Sem nome';
+        miniName.title = p.name || '';
+        const miniCode = p.miniRow.querySelector('.cf-prod-mini-code');
+        miniCode.textContent = p.code ? `Código ${p.code}` : 'Sem código';
+        miniCode.className = 'cf-prod-mini-code' + (tone === 'caution' || tone === 'bad' ? ' ' + tone : '');
+        miniCode.title = tone === 'caution' || tone === 'bad' ? text : '';
       }
 
       const usageEnabled = () => $('showUsage').getAttribute('aria-pressed') === 'true';
@@ -340,15 +496,23 @@
         if (!model) return;
         const box = Math.min(600, Math.max(100, +$('box').value || 260));
         const out = Cf.assemble(model.blocks, products, box, usageEnabled());
-        $('code').value = out.wp;
-        $('view').innerHTML = out.view;
+        // só substitui #code se ele ainda for o último código gerado — se o usuário editou o
+        // texto à mão (formatação, quebra de linha etc.), essa edição fica intocada até ele
+        // mesmo mudar algo que force gerar de novo (ex.: reabrir o post)
+        if ($('code').value === lastGenerated) { $('code').value = out.wp; $('view').innerHTML = out.view; }
+        lastGenerated = out.wp;
       }
 
       // A própria miniatura mede a foto (naturalWidth/Height): as dimensões vão no <img> do card.
+      // O card compacto (miniThumb) só mostra a mesma foto — quem mede w/h pro código gerado é
+      // sempre o thumb do formulário completo (thumb/img abaixo), existindo ele visível ou não.
       function loadPhoto(p) {
         const thumb = p.row.querySelector('.cf-thumb'), msg = p.row.querySelector('.cf-photo');
+        const miniThumb = p.miniRow.querySelector('.cf-thumb');
         thumb.replaceChildren();
         thumb.classList.remove('has-photo');
+        miniThumb.replaceChildren();
+        miniThumb.classList.remove('has-photo');
         msg.className = 'cf-photo';
         msg.textContent = '';
         p.w = p.h = 0;
@@ -358,6 +522,7 @@
           msg.textContent = 'Informe o código para carregar a foto (sem ela o produto não entra no código)';
           return;
         }
+        const src = Cf.previewPhotoUrl(p.code);
         const img = p.img = new Image();
         img.alt = '';
         img.addEventListener('load', () => { if (p.img === img) { p.w = img.naturalWidth; p.h = img.naturalHeight; thumb.classList.add('has-photo'); update(); } });
@@ -367,8 +532,13 @@
           msg.textContent = 'Foto não encontrada para este código';
           update();
         });
-        img.src = Cf.previewPhotoUrl(p.code);
+        img.src = src;
         thumb.append(img);
+        const miniImg = new Image();
+        miniImg.alt = '';
+        miniImg.addEventListener('load', () => miniThumb.classList.add('has-photo'));
+        miniImg.src = src;
+        miniThumb.append(miniImg);
       }
 
       // Nome, código e link oficial pelo Worker (pelo link do produto, se houver; senão pelo código).
@@ -398,26 +568,111 @@
         });
       }
 
+      // Menu "⋮" de cada card compacto — um único menu flutuante em document.body, reposicionado a
+      // cada abertura (mesmo padrão do menu "⋮" dos cards do calendário, app.js/getCardMenuEl):
+      // se cada card criasse o seu próprio menu como filho, o layout em grade cortaria/empurraria
+      // o menu em vez de deixá-lo flutuar por cima dos vizinhos.
+      let prodMenuEl = null;
+      function getProdMenuEl() {
+        if (prodMenuEl) return prodMenuEl;
+        prodMenuEl = document.createElement('div');
+        prodMenuEl.className = 'event-menu';
+        prodMenuEl.innerHTML = `<button type="button" class="prod-menu-edit">Editar</button><button type="button" class="prod-menu-delete danger">Excluir</button>`;
+        prodMenuEl.addEventListener('click', e => e.stopPropagation());
+        document.body.appendChild(prodMenuEl);
+        return prodMenuEl;
+      }
+      function closeProdMenu() {
+        if (!prodMenuEl || !prodMenuEl.classList.contains('open')) return;
+        prodMenuEl.classList.remove('open');
+        const openBtn = document.querySelector('.cf-prod-mini-kebab[aria-expanded="true"]');
+        if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
+      }
+      document.addEventListener('click', closeProdMenu);
+      window.addEventListener('scroll', closeProdMenu, true);
+
+      function wireProdMenuButton(btn, p) {
+        btn.addEventListener('click', ev => {
+          ev.stopPropagation();
+          const menu = getProdMenuEl();
+          const wasOpenForThis = menu.classList.contains('open') && menu.dataset.forId === p.uid;
+          closeProdMenu();
+          if (wasOpenForThis) return;
+          menu.dataset.forId = p.uid;
+          menu.querySelector('.prod-menu-edit').onclick = e => { e.stopPropagation(); closeProdMenu(); openEditProductModal(p); };
+          menu.querySelector('.prod-menu-delete').onclick = e => { e.stopPropagation(); closeProdMenu(); openRemoveProductConfirm(p); };
+          const rect = btn.getBoundingClientRect();
+          menu.style.top = `${rect.bottom + 4}px`;
+          menu.style.left = `${Math.max(4, rect.right - 130)}px`;
+          menu.classList.add('open');
+          btn.setAttribute('aria-expanded', 'true');
+        });
+      }
+
+      // Modal "Editar produto": move o formulário completo (p.row, sempre a mesma instância) pra
+      // dentro do modal enquanto ele estiver aberto. Cancelar/fechar restaura os campos ao estado
+      // de antes de abrir (snapshot) — Salvar só fecha, porque os campos já ficam salvos em p a
+      // cada tecla (os listeners abaixo chamam showStatus()/update() a cada input, como sempre).
+      let pendingEditProduct = null, editProductSnapshot = null;
+      function openEditProductModal(p) {
+        pendingEditProduct = p;
+        editProductSnapshot = { code: p.code, name: p.name, url: p.url, at: p.at, usage: p.usage, usageFrom: p.usageFrom, state: p.state, siteName: p.siteName, on: p.on, w: p.w, h: p.h };
+        $('editProductBody').replaceChildren(p.row);
+        $('editProductBackdrop').classList.add('is-open');
+      }
+      function closeEditProductModal(save) {
+        const p = pendingEditProduct;
+        if (p && !save && editProductSnapshot) {
+          Object.assign(p, editProductSnapshot);
+          showStatus(p);
+          loadPhoto(p);
+          update();
+        }
+        $('editProductBackdrop').classList.remove('is-open');
+        pendingEditProduct = null;
+        editProductSnapshot = null;
+      }
+      wireModalDismiss('editProductBackdrop', () => closeEditProductModal(false), '#editProductCloseBtn');
+      $('editProductCancel').addEventListener('click', () => closeEditProductModal(false));
+      $('editProductSave').addEventListener('click', () => closeEditProductModal(true));
+
       function addRow(p) {
+        const id = 'cfp' + (++rowSeq);
+        p.uid = id;
+
+        const cell = p.cell = document.createElement('div');
+        cell.className = 'cf-prod-cell';
+
+        const mini = p.miniRow = document.createElement('div');
+        mini.className = 'cf-prod-mini';
+        mini.innerHTML =
+          `<div class="cf-prod-mini-thumb"><div class="cf-thumb"></div></div>` +
+          `<div class="cf-prod-mini-info"><span class="cf-prod-mini-name"></span><span class="cf-prod-mini-code"></span></div>` +
+          `<button type="button" class="cf-prod-mini-kebab" aria-haspopup="true" aria-expanded="false" aria-label="Mais ações" title="Mais ações"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>`;
+        wireProdMenuButton(mini.querySelector('.cf-prod-mini-kebab'), p);
+        // clicar no card inteiro já abre a edição (mesmo padrão dos cards do calendário,
+        // app.js/createDayPost — o "⋮" já para a propagação no próprio clique, então não conflita)
+        cell.addEventListener('click', () => openEditProductModal(p));
+        cell.append(mini);
+        $('products').append(cell);
+
         const row = p.row = document.createElement('div');
         row.className = 'cf-prod';
-        const id = 'cfp' + (++rowSeq);
         row.innerHTML =
           `<div class="cf-prod-top">` +
-          `<div class="cf-thumb-wrap"><div class="cf-thumb"></div><button type="button" class="cf-photo-edit" aria-label="Editar o código do produto (define a foto)" title="Editar o código do produto (define a foto)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button></div>` +
+          `<div class="cf-thumb-wrap"><div class="cf-thumb"></div></div>` +
           `<div class="cf-prod-main"><label class="cf-lab" for="${id}-name">Nome do produto</label><input id="${id}-name" class="cf-name" spellcheck="false" placeholder="Nome do produto (vem do site FG)">` +
           `<div class="cf-code-line"><label for="${id}-code">Código</label><input id="${id}-code" class="cf-code-in" inputmode="numeric"><span class="cf-photo"></span></div></div>` +
           `</div>` +
           `<div class="cf-prod-link"><label class="cf-lab" for="${id}-url">Link do produto</label><div class="cf-link-line"><input id="${id}-url" class="cf-url" spellcheck="false"><a class="cf-open" target="_blank" rel="noopener">Abrir ↗</a></div>` +
           `<small class="cf-status" role="status"></small></div>` +
           `<div class="cf-where"><label class="cf-lab" for="${id}-at">Inserir produto</label><select id="${id}-at" class="cf-at"></select></div>` +
-          `<div class="cf-editorial"><div class="cf-usage-head"><label class="cf-lab" for="${id}-usage">Aplicações / dicas de uso</label><span class="cf-src" hidden></span></div><textarea id="${id}-usage" class="cf-usage" maxlength="500" placeholder="Trazida do catálogo FG; você pode revisar antes de salvar"></textarea></div>`;
+          `<div class="cf-editorial"><div class="cf-usage-head"><label class="cf-lab" for="${id}-usage">Aplicações / dicas de uso</label><span class="cf-src" hidden></span></div><textarea id="${id}-usage" class="cf-usage" placeholder="Trazida do catálogo FG; você pode revisar antes de salvar"></textarea></div>`;
         const at = row.querySelector('.cf-at');
         at.replaceChildren(...places.map(([label, value]) => new Option(label, value)));
         at.value = p.at;
         row.querySelector('.cf-name').addEventListener('input', e => { p.name = e.target.value; showStatus(p); update(); });
         row.querySelector('.cf-usage').addEventListener('input', e => { p.usage = e.target.value; p.usageFrom = 'manual'; showUsageSource(p); update(); });
-        row.querySelector('.cf-photo-edit').addEventListener('click', () => row.querySelector('.cf-code-in').select());
         // corrigir o link ou o código é pedir para o produto entrar de novo no código
         row.querySelector('.cf-url').addEventListener('input', e => { p.url = e.target.value.trim(); p.state = 'manual'; setOn(p, true); showStatus(p); update(); });
         row.querySelector('.cf-code-in').addEventListener('change', e => {
@@ -430,7 +685,7 @@
           update();
         });
         at.addEventListener('change', () => { p.at = +at.value; update(); });
-        $('products').append(row);
+
         loadPhoto(p);
         showStatus(p);
       }
@@ -480,11 +735,21 @@
           state.textContent = 'SALVO';
           const edit = document.createElement('button');
           edit.type = 'button';
-          edit.className = 'cf-btn cf-post-edit';
-          edit.textContent = 'Editar';
+          edit.className = 'btn-icon';
+          edit.setAttribute('aria-label', 'Editar post');
+          edit.title = 'Editar post';
+          edit.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>';
           edit.addEventListener('click', () => openSavedPost(post));
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'btn-icon danger';
+          remove.setAttribute('aria-label', 'Excluir post');
+          remove.title = 'Excluir post';
+          remove.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+          remove.addEventListener('click', () => openRemovePostConfirm(post));
           const actions = document.createElement('div');
-          actions.append(edit);
+          actions.className = 'cf-post-actions';
+          actions.append(edit, remove);
           [title, updated, count, state, actions].forEach(cell => cell.setAttribute('role', 'cell'));
           row.append(title, updated, count, state, actions);
           list.append(row);
@@ -512,6 +777,9 @@
       });
 
       function openEditor(savedProducts, customCode = '') {
+        // reseta o rastreio de edição manual: o texto do post anterior não pode "proteger" o
+        // campo #code contra a geração do post que está abrindo agora
+        $('code').value = lastGenerated = '';
         $('title').value = model.title;
         $('meta').textContent = [...(model.category ? ['Categoria no WordPress: ' + model.category] : []), ...model.meta.map(([k, v]) => `${cap(k)}: ${v}`)].join(' · ');
         $('notes').hidden = !model.notes.length;
@@ -536,7 +804,16 @@
         update();
         if (customCode) { $('code').value = customCode; $('view').innerHTML = customCode; }
         if (!savedProducts) products.forEach(p => resolve(p));
-        else products.forEach(p => fillCatalogUsage(p).then(() => { showStatus(p); if (!customCode) update(); }));
+        else products.forEach(p => {
+          if (p.url) return fillCatalogUsage(p).then(() => { showStatus(p); if (!customCode) update(); });
+          // sem link salvo (post salvo enquanto a busca ainda estava em andamento, ou produto não
+          // encontrado da última vez): tenta de novo ao reabrir — resolve() só age com state
+          // 'checking' (guarda contra uma resposta antiga chegar depois de outra busca já ter
+          // mudado o produto), então precisa setar aqui antes de chamar
+          p.state = 'checking';
+          showStatus(p);
+          resolve(p);
+        });
       }
 
       async function saveIndex(entry) {
@@ -551,6 +828,21 @@
           savedPosts = retryValue;
         } else savedPosts = merged;
         savedPostsVersion = result.updated_at || savedPostsVersion;
+      }
+
+      async function deleteSavedPost(post) {
+        let result = await SyncBackend.put(INDEX_KEY, savedPosts.filter(p => p.id !== post.id), savedPostsVersion);
+        if (result.conflict) {
+          const latest = await SyncBackend.get(INDEX_KEY);
+          const current = Array.isArray(latest.v) ? latest.v : [];
+          const retryValue = current.filter(p => p.id !== post.id);
+          result = await SyncBackend.put(INDEX_KEY, retryValue, latest.updated_at || 0);
+          if (result.conflict) throw new Error('A lista foi alterada por outra pessoa. Tente excluir novamente.');
+          savedPosts = retryValue;
+        } else savedPosts = savedPosts.filter(p => p.id !== post.id);
+        savedPostsVersion = result.updated_at || savedPostsVersion;
+        // melhor esforço: o post já saiu da lista (o que importa pro usuário) mesmo se isso falhar
+        try { await SyncBackend.remove(POST_KEY + post.id); } catch (_) {}
       }
 
       async function saveCurrentPost() {
@@ -634,6 +926,56 @@
       $('addBtn').addEventListener('click', addProduct);
       $('addRef').addEventListener('keydown', e => { if (e.key === 'Enter') addProduct(); });
 
+      // Remoção de produto, com confirmação (modal padrão do portal — mesmo usado pelo calendário
+      // pra "Remover produto?"/"Excluir postagem?"): evita apagar por engano ao clicar no X.
+      let pendingRemoveProduct = null;
+      function openRemoveProductConfirm(p) {
+        pendingRemoveProduct = p;
+        const label = p.name || p.url || p.code || 'este produto';
+        $('removeProductMessage').textContent = `Remover "${label}" da lista de produtos? Essa ação não pode ser desfeita.`;
+        $('removeProductBackdrop').style.display = 'flex';
+      }
+      function closeRemoveProductConfirm() { $('removeProductBackdrop').style.display = 'none'; pendingRemoveProduct = null; }
+      function wireModalDismiss(backdropId, closeFn, closeBtnSelector) {
+        const backdrop = $(backdropId);
+        backdrop.addEventListener('click', e => { if (e.target === backdrop) closeFn(); });
+        backdrop.querySelector(closeBtnSelector).addEventListener('click', closeFn);
+      }
+      $('removeProductOk').addEventListener('click', () => {
+        const p = pendingRemoveProduct;
+        closeRemoveProductConfirm();
+        if (!p) return;
+        products.splice(products.indexOf(p), 1);
+        p.cell.remove();
+        $('noProducts').hidden = products.length > 0;
+        update();
+      });
+      $('removeProductCancel').addEventListener('click', closeRemoveProductConfirm);
+      wireModalDismiss('removeProductBackdrop', closeRemoveProductConfirm, '#removeProductCloseBtn');
+
+      // Exclusão de post salvo, mesmo padrão de confirmação acima.
+      let pendingRemovePost = null;
+      function openRemovePostConfirm(post) {
+        pendingRemovePost = post;
+        $('removePostMessage').textContent = `Excluir "${post.title || 'este post'}" da lista de posts salvos? Essa ação não pode ser desfeita.`;
+        $('removePostBackdrop').style.display = 'flex';
+      }
+      function closeRemovePostConfirm() { $('removePostBackdrop').style.display = 'none'; pendingRemovePost = null; }
+      $('removePostOk').addEventListener('click', async () => {
+        const post = pendingRemovePost;
+        closeRemovePostConfirm();
+        if (!post) return;
+        try {
+          await deleteSavedPost(post);
+          if (currentPostId === post.id) { currentPostId = null; currentPostVersion = 0; currentCreatedAt = 0; }
+          renderPostList();
+        } catch (error) {
+          fail(error.message || 'Não foi possível excluir este post.');
+        }
+      });
+      $('removePostCancel').addEventListener('click', closeRemovePostConfirm);
+      wireModalDismiss('removePostBackdrop', closeRemovePostConfirm, '#removePostCloseBtn');
+
       // "Distribuir": cada produto depois do parágrafo que o cita; o não citado vai antes do último.
       $('spread').addEventListener('click', () => {
         products.forEach(p => { const at = Cf.mentionAt(model.blocks, p.name); setAt(p, at >= 0 ? at : lastAt()); });
@@ -643,7 +985,10 @@
 
       $('box').addEventListener('input', update);
       $('showUsage').addEventListener('click', () => { setUsageEnabled(!usageEnabled()); update(); });
-      $('code').addEventListener('input', () => { $('view').innerHTML = $('code').value; });
+      // o código do WordPress separa parágrafo só por linha em branco (o wpautop fecha o <p> ao
+      // salvar); a prévia precisa do <p> aqui, senão o navegador ignora a linha em branco e tudo
+      // vira um parágrafo só — mesma regra usada em Cf.assemble (ver Cf.wpToPreviewHtml)
+      $('code').addEventListener('input', () => { $('view').innerHTML = Cf.wpToPreviewHtml($('code').value); });
 
       async function copy(field, button) {
         const label = button.textContent;
@@ -656,6 +1001,17 @@
       loadSavedPosts();
       $('copyTitle').addEventListener('click', e => copy($('title'), e.currentTarget));
       $('copyCode').addEventListener('click', e => copy($('code'), e.currentTarget));
+
+      // Seção "Produtos" colapsável (padrão section-divider do dashboard de seguidores) — abre
+      // por padrão (aria-expanded="true" já no HTML); usa classe animada em vez de hidden, pra
+      // recolher/abrir com transição.
+      $('productsToggle').addEventListener('click', () => {
+        const expanded = $('productsToggle').getAttribute('aria-expanded') === 'true';
+        $('productsToggle').setAttribute('aria-expanded', String(!expanded));
+        $('productsBody').classList.toggle('is-collapsed', expanded);
+        $('productsBody').setAttribute('aria-hidden', String(expanded));
+        $('productsBody').inert = expanded;
+      });
     })();
   </script>
 </body>

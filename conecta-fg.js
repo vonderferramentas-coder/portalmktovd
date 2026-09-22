@@ -284,6 +284,20 @@
   }
 
   // ---- montagem do código ---------------------------------------------------------------------
+  // O código pro WordPress (wp) separa parágrafo de título/lista/card só por linha em branco —
+  // sem <p> por cima do texto solto — porque é o wpautop do WordPress que fecha os <p> ao salvar
+  // o post (mesmo formato dos posts já publicados). Pra prévia (view) renderizar igual, cada
+  // trecho de texto solto (o que não é título/lista/card) ganha o <p> aqui, já que o navegador
+  // ignora linha em branco fora de <pre>.
+  // \n solto (uma linha só, sem virar parágrafo novo) é o que sobra quando o usuário aperta
+  // Enter editando #code à mão — o wpautop do WordPress trata isso como <br />, então a prévia
+  // faz o mesmo aqui (o texto vindo do .docx já chega com \n trocado por <br /> desde o parse,
+  // então isso não afeta o caminho normal, só a edição manual)
+  const wrapBlock = html => /^<(h\d|ul|ol|div)\b/.test(html) ? html : `<p>${html.replace(/\n/g, '<br />')}</p>`;
+  // Prévia a partir do código do WordPress já pronto (ex.: o usuário editou #code à mão): mesma
+  // regra de wrapBlock, usada tanto aqui quanto na tela ao vivo (ver conecta-fg.html #code input).
+  const wpToPreviewHtml = wp => wp.split('\n\n').map(wrapBlock).join('');
+
   // Devolve o código pro WordPress (wp) e uma prévia em HTML (view) a partir dos mesmos
   // pedaços. Cada produto (p.at = nº de blocos de texto antes dele) vira um card editorial
   // responsivo; produtos na mesma posição ficam empilhados na ordem da lista. Produto
@@ -295,21 +309,22 @@
       const label = p.name || p.url || p.code;
       const url = isHttp(p.url) ? esc(p.url) : '';
       const img = `<img src="${esc(photoUrl(p.code))}" alt="${esc(label)}" width="${box}" height="${box}" style="display:block;width:100%;height:100%;object-fit:contain" />`;
-      const photo = url ? `<a href="${url}" style="display:block;width:100%;height:100%">${img}</a>` : img;
-      const name = url ? `<a href="${url}" style="color:#17171a;text-decoration:none">${esc(label)}</a>` : esc(label);
+      // nova guia (target=_blank): é um link de saída pro site FG — clicar não pode navegar pra
+      // longe da prévia/do post, senão perde o trabalho em andamento na tela
+      const photo = url ? `<a href="${url}" target="_blank" rel="noopener" style="display:block;width:100%;height:100%">${img}</a>` : img;
+      const name = url ? `<a href="${url}" target="_blank" rel="noopener" style="color:#17171a;text-decoration:none">${esc(label)}</a>` : esc(label);
       const usage = showUsage ? String(p.usage || '').trim() : '';
       const usageHtml = usage ? `<div style="margin:0 0 18px;padding:12px 14px;border-radius:8px;background:#eff6f2"><strong style="display:block;margin:0 0 4px;color:#004e32;font-size:13px">Aplicações e dicas de uso</strong><span style="display:block;color:#3f5149;font-size:14px;line-height:1.55">${esc(usage).replace(/\r?\n/g, '<br />')}</span></div>` : '';
-      const cta = url ? `<a href="${url}" style="display:inline-block;padding:11px 18px;border-radius:7px;background:#004e32;color:#fff;font-size:13px;font-weight:700;text-decoration:none">Ver produto</a>` : '';
+      const cta = url ? `<a href="${url}" target="_blank" rel="noopener" style="display:inline-block;padding:11px 18px;border-radius:7px;background:#004e32;color:#fff;font-size:13px;font-weight:700;text-decoration:none">Ver produto</a>` : '';
       const html = `<div class="fg-product-card" style="display:flex;flex-wrap:wrap;width:100%;max-width:100%;box-sizing:border-box;gap:24px;align-items:center;margin:28px 0;padding:24px;border:1px solid #d5e2db;border-left:5px solid #004e32;border-radius:12px;background:#fff"><div style="flex:0 1 ${box}px;width:${box}px;max-width:100%;aspect-ratio:1;text-align:center">${photo}</div><div style="flex:1 1 280px;min-width:0"><span style="display:block;margin:0 0 7px;color:#004e32;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">Produto em destaque</span><h3 style="margin:0 0 12px;color:#17171a;font-size:21px;line-height:1.3">${name}</h3>${usageHtml}${cta}</div></div>`;
       // só o src da foto muda entre o código publicado (wp) e a prévia na tela (view)
       return { wp: html, view: html.replace(esc(photoUrl(p.code)), esc(previewPhotoUrl(p.code))) };
     };
-    const block = html => /^<(h\d|ul|ol)\b/.test(html) ? html : `<p>${html}</p>`;
     const shop = products.filter(p => p.on && p.code);
     const items = [];
     for(let i = 0; i <= blocks.length; i++){
       items.push(...shop.filter(p => Math.min(p.at, blocks.length) === i).map(p => card(p)));
-      if(i < blocks.length) items.push({ wp: blocks[i], view: block(blocks[i]) });
+      if(i < blocks.length) items.push({ wp: blocks[i], view: wrapBlock(blocks[i]) });
     }
     return { wp: items.map(i => i.wp).join('\n\n'), view: items.map(i => i.view).join('') };
   }
@@ -321,5 +336,5 @@
   function restoreModel(value){
     return { ...value, meta: Array.isArray(value.meta) ? value.meta : Object.entries(value.meta || {}) };
   }
-  global.ConectaFg = { esc, slug, guessLink, photoUrl, previewPhotoUrl, catalogProduct, productRef, lookupLink, readDocx, parseDocument, mentionAt, assemble, storageModel, restoreModel };
+  global.ConectaFg = { esc, slug, guessLink, photoUrl, previewPhotoUrl, catalogProduct, productRef, lookupLink, readDocx, parseDocument, mentionAt, assemble, wpToPreviewHtml, storageModel, restoreModel };
 })(window);
