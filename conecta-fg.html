@@ -13,14 +13,18 @@
   <style>
     .cf {
       max-width: 1240px; margin: 0 auto; --cf-ok: #15803d; --cf-caution: #b45309;
+      --cf-tok-tag: #c2185b; --cf-tok-attr: #966a06; --cf-tok-str: #1a7f37;
       --cf-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
       --cf-i-tool: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'/%3E%3C/svg%3E");
       --cf-i-ok: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E");
       --cf-i-warn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E");
       --cf-i-bad: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='m15 9-6 6'/%3E%3Cpath d='m9 9 6 6'/%3E%3C/svg%3E");
       --cf-i-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 16v-4'/%3E%3Cpath d='M12 8h.01'/%3E%3C/svg%3E");
+      --cf-i-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4 10-10'/%3E%3C/svg%3E");
+      --cf-i-question: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2.5-3 4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E");
+      --cf-i-exclaim: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 7v6'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E");
     }
-    :root[data-theme="dark"] .cf { --cf-ok: #4ade80; --cf-caution: #fbbf24; }
+    :root[data-theme="dark"] .cf { --cf-ok: #4ade80; --cf-caution: #fbbf24; --cf-tok-tag: #ff7b9c; --cf-tok-attr: #e3b341; --cf-tok-str: #7ee787; }
     /* [hidden] precisa vencer os display:flex/grid abaixo (bug histórico do portal) */
     .cf [hidden] { display: none !important; }
 
@@ -102,6 +106,19 @@
        porque showStatus()/loadPhoto() escrevem nos campos dele a qualquer momento (ex.: resposta
        assíncrona de resolve() chegando com o produto fechado). */
     #products { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
+    /* segurar e arrastar um card reordena products[] (ver moveProductTo) — a ordem da lista é o
+       que desempata produtos que caem na mesma posição do texto (Cf.assemble). Mesmo mecanismo dos
+       cards do calendário (app.js/createEventElement): Drag and Drop API nativa, dragover só marca
+       onde vai cair (drop-before/drop-after) e a troca de fato só acontece no drop — arrastar por
+       cima sem soltar não reordena nada. A diferença é só visual: no drop, quem mudou de posição
+       (o card solto e quem abriu/fechou espaço pra ele) desliza suavemente até o lugar novo em vez
+       de saltar — FLIP (mede a posição de cada card antes de mexer no DOM, mede de novo depois, e
+       anima só a diferença; ver moveProductTo). Indicador de soltar na borda esquerda/direita do
+       card (não topo/base, como no calendário): aqui o fluxo da grade é horizontal. */
+    .cf-prod-cell { cursor: grab; }
+    .cf-prod-cell.dragging { opacity: .5; }
+    .cf-prod-cell.drop-before .cf-prod-mini { box-shadow: inset 3px 0 0 0 var(--accent); }
+    .cf-prod-cell.drop-after .cf-prod-mini { box-shadow: inset -3px 0 0 0 var(--accent); }
 
     /* borda esquerda verde: mesma identidade do card publicado (fg-product-card, conecta-fg.js —
        border-left:5px solid #004e32), pra o card do editor já lembrar o card final no post */
@@ -111,6 +128,19 @@
        recortado pra branco — no tema escuro, var(--card) deixava a miniatura com uma caixa cinza
        escura em volta da foto, destoando */
     .cf-prod-mini-thumb .cf-thumb { border-radius: 12px; background: #fff; }
+    /* selo de validação do card: canto superior direito da foto, resumindo em 1 ícone o que
+       cf-status (link)/cf-photo (foto) já apuram campo a campo — ok só quando os dois concordam
+       que está tudo certo; qualquer "bad" nos dois vence; o resto (checking, link deduzido,
+       nome divergente etc.) cai em "revisar" por padrão. Anel com a cor do card separa o selo da
+       foto por baixo, já que fotos de produto costumam ter fundo branco colado na borda. */
+    .cf-prod-status-badge { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--card); }
+    .cf-prod-status-badge::before { content: ""; width: 12px; height: 12px; background: #fff; }
+    .cf-prod-status-badge.ok { background: var(--cf-ok); }
+    .cf-prod-status-badge.ok::before { -webkit-mask: var(--cf-i-check) center / contain no-repeat; mask: var(--cf-i-check) center / contain no-repeat; }
+    .cf-prod-status-badge.caution { background: var(--cf-caution); }
+    .cf-prod-status-badge.caution::before { -webkit-mask: var(--cf-i-question) center / contain no-repeat; mask: var(--cf-i-question) center / contain no-repeat; }
+    .cf-prod-status-badge.bad { background: var(--danger); }
+    .cf-prod-status-badge.bad::before { -webkit-mask: var(--cf-i-exclaim) center / contain no-repeat; mask: var(--cf-i-exclaim) center / contain no-repeat; }
     .cf-prod-mini-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding-right: 26px; }
     /* até 2 linhas de nome antes de truncar com reticências (-webkit-line-clamp corta a última
        linha visível sozinho, sem precisar medir texto em JS) */
@@ -141,6 +171,9 @@
     .cf-lab { display: block; margin: 0 0 6px; color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
     .cf-thumb-wrap { position: relative; flex: 0 0 76px; width: 76px; height: 76px; }
     .cf-thumb { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+    /* mesmo motivo da miniatura (.cf-prod-mini-thumb .cf-thumb abaixo): fundo sempre branco, não
+       var(--card), pra não sobrar caixa cinza escura em volta da foto de produto no tema escuro */
+    .cf-thumb-wrap .cf-thumb { background: #fff; }
     /* ícone de ferramenta enquanto não há foto (pseudo-elemento: o JS troca só os filhos da miniatura) */
     .cf-thumb::before { content: ""; position: absolute; width: 28px; height: 28px; background: var(--muted); opacity: .6; -webkit-mask: var(--cf-i-tool) center / contain no-repeat; mask: var(--cf-i-tool) center / contain no-repeat; }
     .cf-thumb.has-photo::before { display: none; }
@@ -200,8 +233,49 @@
     .cf-tool-field input { width: 86px; height: 34px; margin-top: 7px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--card); color: var(--text); }
 
     .cf-out { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
-    .cf-code { width: 100%; min-height: 440px; padding: 12px; resize: vertical; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font: 12.5px/1.55 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .cf-actions { margin-top: 10px; }
+    /* as dicas dos dois títulos ("Você pode revisar..." x "Aproximação:...") têm tamanhos
+       diferentes e quebram em números de linha diferentes — sem reservar o mesmo espaço pras
+       duas, o código e a prévia começavam em alturas diferentes mesmo com os widgets do mesmo
+       tamanho. 2.9em ~ 2 linhas no tamanho/entrelinha de .cf-hint (13px, line-height 1.45). */
+    .cf-out .cf-hint { min-height: 2.9em; }
+    /* Card do código no estilo animate-ui/Code Tabs (https://animate-ui.com/docs/components/animate/code-tabs):
+       cabeçalho com "aba" (rótulo do arquivo + sublinhado, aqui estático — só há um código, não
+       vários idiomas pra trocar) e botão de copiar embutido, corpo em fonte mono sem moldura
+       própria (a moldura é só do card). Escopo só deste bloco — o resto do portal (inclusive a
+       Prévia ao lado) mantém os componentes de sempre. */
+    .cf-code-card { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--card); }
+    .cf-code-card-head { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 8px 0 16px; background: var(--surface-muted); border-bottom: 1px solid var(--border); }
+    .cf-code-card-tab { position: relative; padding-bottom: 12px; margin-top: 12px; font: 800 12px var(--cf-mono); letter-spacing: .02em; color: var(--text); }
+    .cf-code-card-tab::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px 2px 0 0; background: var(--accent); }
+    .cf-code-copy { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 30px; height: 30px; padding: 0; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+    .cf-code-copy:hover { background: var(--accent-weak); color: var(--text); }
+    .cf-code-copy-icon { position: absolute; inset: 0; margin: auto; width: 15px; height: 15px; transition: opacity .16s ease, transform .16s ease; }
+    .cf-code-copy-icon-check { opacity: 0; transform: scale(.5) rotate(-20deg); color: var(--cf-ok); }
+    .cf-code-copy.is-copied .cf-code-copy-icon-copy { opacity: 0; transform: scale(.5) rotate(20deg); }
+    .cf-code-copy.is-copied .cf-code-copy-icon-check { opacity: 1; transform: scale(1) rotate(0); }
+    /* Realce de sintaxe: uma camada <pre> colorida por baixo do textarea real (que fica com o
+       texto transparente, só o cursor visível) — as duas ocupam a mesma célula do grid, mesma
+       fonte/padding, então ficam pixel a pixel alinhadas. O valor de verdade (o que é copiado,
+       salvo e colado no WordPress) continua só no textarea, sem reformatação — só a cor muda.
+       #code/scroll sincroniza o scroll das duas (ver JS). */
+    /* altura fixa pra bater com os 560px (border-box) da .cf-view ao lado, descontando o que o
+       resto do card do código já consome — a própria borda (1px em cima + 1px embaixo) e o
+       cabeçalho "wordpress.html" (40px, altura fixa) — senão o card do código ficava mais alto
+       que a prévia: 560 - 2 - 40 = 518. Sem essa altura fixa, o <pre> de realce (que não tem
+       altura própria, cresce pro tamanho do conteúdo) inflava a linha do grid pro tamanho do
+       código inteiro. min-height:0 nos filhos é o de sempre pra grid/flex: sem ele um item não
+       encolhe abaixo do próprio conteúdo. */
+    .cf-code-editor { position: relative; display: grid; height: 518px; }
+    .cf-code-editor > * { grid-area: 1 / 1; margin: 0; min-height: 0; }
+    .cf-code-highlight, .cf-code { padding: 14px 16px; font: 12.5px/1.55 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
+    .cf-code-highlight { color: var(--text); height: 100%; overflow: hidden; pointer-events: none; }
+    .cf-code-highlight code { font: inherit; }
+    .cf-code { position: relative; display: block; width: 100%; height: 100%; resize: none; border: 0; border-radius: 0; background: transparent; color: transparent; caret-color: var(--text); }
+    .cf-code::selection { background: var(--accent-weak); color: transparent; }
+    .cf-code:focus-visible { outline-offset: -2px; }
+    .tok-tag { color: var(--cf-tok-tag); }
+    .tok-attr { color: var(--cf-tok-attr); }
+    .tok-str { color: var(--cf-tok-str); }
     /* prévia = aproximação do blog: fundo branco fixo (mesmo no tema escuro) porque representa a página publicada */
     .cf-view { max-height: 560px; overflow: auto; padding: 18px 20px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; color: #222; font: 15px/1.65 Arial, sans-serif; }
     .cf-view p { margin: 0 0 1em; }
@@ -209,6 +283,11 @@
     .cf-view .wp-caption { margin: 0 auto 6px; text-align: center; }
     .cf-view .wp-caption img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
     .cf-view .wp-caption-text { margin: 6px 0 0; font-size: 13px; line-height: 1.4; }
+    /* "seleção" simulada da prévia (ver viewHighlight/CSS Custom Highlight API no JS) — não é a
+       seleção de texto real (window.getSelection()), que o navegador esvazia sozinho assim que o
+       foco vai pro #code; por isso um destaque à parte, que fica marcado nos dois painéis ao
+       mesmo tempo independente de quem está com foco. */
+    .cf-view::highlight(cf-view-sel) { background: var(--accent); color: var(--on-accent); }
 
 
     .cf-add { display: flex; gap: 10px; align-items: flex-end; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
@@ -296,13 +375,13 @@
           <div class="cf-section-divider-body" id="productsBody">
             <div class="cf-section-divider-body-inner">
               <p class="cf-hint" id="noProducts" hidden>Nenhum produto encontrado no documento.</p>
-              <div id="products"></div>
               <div class="cf-add">
                 <label class="cf-field">Adicionar produto<input id="addRef"
                     placeholder="Link do produto no site FG ou código"></label>
                 <button class="cf-btn" id="addBtn" type="button">Adicionar</button>
               </div>
               <p class="cf-add-msg" id="addMsg" role="alert"></p>
+              <div id="products"></div>
               <section class="cf-tools" aria-labelledby="postToolsTitle">
                 <div class="cf-tools-head">
                   <h3 id="postToolsTitle">Organização dos produtos no post</h3>
@@ -335,8 +414,18 @@
           <div>
             <h2>Código para o WordPress</h2>
             <p class="cf-hint">Você pode revisar ou apagar trechos antes de copiar. Alterar produtos ou opções acima gera o código novamente.</p>
-            <textarea class="cf-code" id="code" spellcheck="false" aria-label="Código para o WordPress"></textarea>
-            <div class="cf-actions"><button class="cf-btn cf-primary" id="copyCode" type="button">Copiar código</button>
+            <div class="cf-code-card">
+              <div class="cf-code-card-head">
+                <span class="cf-code-card-tab">wordpress.html</span>
+                <button class="cf-code-copy" id="copyCode" type="button" title="Copiar código" aria-label="Copiar código">
+                  <svg class="cf-code-copy-icon cf-code-copy-icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  <svg class="cf-code-copy-icon cf-code-copy-icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>
+                </button>
+              </div>
+              <div class="cf-code-editor">
+                <pre class="cf-code-highlight" aria-hidden="true"><code id="codeHighlight"></code></pre>
+                <textarea class="cf-code" id="code" spellcheck="false" aria-label="Código para o WordPress"></textarea>
+              </div>
             </div>
           </div>
           <div>
@@ -484,6 +573,16 @@
         miniCode.textContent = p.code ? `Código ${p.code}` : 'Sem código';
         miniCode.className = 'cf-prod-mini-code' + (tone === 'caution' || tone === 'bad' ? ' ' + tone : '');
         miniCode.title = tone === 'caution' || tone === 'bad' ? text : '';
+        updateProdBadge(p);
+      }
+
+      // Resumo de cf-status (link) + cf-photo (foto) num selo só: "bad" em qualquer um dos dois
+      // vence; "ok" só quando os dois concordam que está tudo certo; o resto vira "revisar".
+      function updateProdBadge(p) {
+        const statusEl = p.row.querySelector('.cf-status'), photoEl = p.row.querySelector('.cf-photo');
+        const bad = statusEl.classList.contains('bad') || photoEl.classList.contains('bad');
+        const ok = !bad && statusEl.classList.contains('ok') && !photoEl.classList.contains('caution');
+        p.miniRow.querySelector('.cf-prod-status-badge').className = 'cf-prod-status-badge ' + (bad ? 'bad' : ok ? 'ok' : 'caution');
       }
 
       const usageEnabled = () => $('showUsage').getAttribute('aria-pressed') === 'true';
@@ -499,9 +598,28 @@
         // só substitui #code se ele ainda for o último código gerado — se o usuário editou o
         // texto à mão (formatação, quebra de linha etc.), essa edição fica intocada até ele
         // mesmo mudar algo que force gerar de novo (ex.: reabrir o post)
-        if ($('code').value === lastGenerated) { $('code').value = out.wp; $('view').innerHTML = out.view; }
+        if ($('code').value === lastGenerated) { $('code').value = out.wp; $('view').innerHTML = out.view; clearViewHighlight(); }
         lastGenerated = out.wp;
+        syncCodeHighlight();
       }
+
+      // Realce de sintaxe do cf-code: tokenizer por regex (tag/atributo/valor), o bastante pra
+      // parecer código de verdade sem parser HTML completo nem lib externa (Shiki etc.) — roda só
+      // sobre uma cópia pro <pre> por trás do textarea (ver .cf-code-editor no CSS); o valor real
+      // do textarea (o que é copiado/salvo/colado no WordPress) nunca é tocado por isso.
+      function highlightHtml(src) {
+        const esc = src.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return esc.replace(
+          /(&lt;\/?[a-zA-Z][\w-]*)|(\s[\w-]+)(=)("[^"]*"|'[^']*')|(\/?&gt;)/g,
+          (m, tagOpen, attrName, eq, attrVal, tagClose) => {
+            if (tagOpen) return `<span class="tok-tag">${tagOpen}</span>`;
+            if (attrName) return `<span class="tok-attr">${attrName}</span>${eq}<span class="tok-str">${attrVal}</span>`;
+            if (tagClose) return `<span class="tok-tag">${tagClose}</span>`;
+            return m;
+          }
+        );
+      }
+      function syncCodeHighlight() { $('codeHighlight').innerHTML = highlightHtml($('code').value); }
 
       // A própria miniatura mede a foto (naturalWidth/Height): as dimensões vão no <img> do card.
       // O card compacto (miniThumb) só mostra a mesma foto — quem mede w/h pro código gerado é
@@ -520,16 +638,18 @@
         if (!p.code) {
           msg.className = 'cf-photo caution';
           msg.textContent = 'Informe o código para carregar a foto (sem ela o produto não entra no código)';
+          updateProdBadge(p);
           return;
         }
         const src = Cf.previewPhotoUrl(p.code);
         const img = p.img = new Image();
         img.alt = '';
-        img.addEventListener('load', () => { if (p.img === img) { p.w = img.naturalWidth; p.h = img.naturalHeight; thumb.classList.add('has-photo'); update(); } });
+        img.addEventListener('load', () => { if (p.img === img) { p.w = img.naturalWidth; p.h = img.naturalHeight; thumb.classList.add('has-photo'); updateProdBadge(p); update(); } });
         img.addEventListener('error', () => {
           if (p.img !== img) return;
           msg.className = 'cf-photo bad';
           msg.textContent = 'Foto não encontrada para este código';
+          updateProdBadge(p);
           update();
         });
         img.src = src;
@@ -642,16 +762,39 @@
 
         const cell = p.cell = document.createElement('div');
         cell.className = 'cf-prod-cell';
+        cell.draggable = true;
+        // mesmo padrão de drag-and-drop dos cards do calendário (app.js/createEventElement):
+        // dragstart guarda o uid, dragover só decide antes/depois pela metade em que o mouse está
+        // (aqui X, não Y — a grade de produtos flui na horizontal) e SÓ o drop reordena products[]
+        // (ver moveProductTo, que também dispara a animação de deslocamento dos cards afetados).
+        cell.addEventListener('dragstart', ev => { ev.dataTransfer.setData('text/plain', p.uid); cell.classList.add('dragging'); ev.dataTransfer.effectAllowed = 'move'; });
+        cell.addEventListener('dragend', () => cell.classList.remove('dragging'));
+        cell.addEventListener('dragover', ev => {
+          ev.preventDefault();
+          const rect = cell.getBoundingClientRect();
+          const before = (ev.clientX - rect.left) < rect.width / 2;
+          cell.classList.toggle('drop-before', before);
+          cell.classList.toggle('drop-after', !before);
+        });
+        cell.addEventListener('dragleave', () => cell.classList.remove('drop-before', 'drop-after'));
+        cell.addEventListener('drop', ev => {
+          ev.preventDefault();
+          const before = cell.classList.contains('drop-before');
+          cell.classList.remove('drop-before', 'drop-after');
+          const draggedP = products.find(x => x.uid === ev.dataTransfer.getData('text/plain'));
+          if (draggedP && draggedP !== p) moveProductTo(draggedP, p, before);
+        });
 
         const mini = p.miniRow = document.createElement('div');
         mini.className = 'cf-prod-mini';
         mini.innerHTML =
-          `<div class="cf-prod-mini-thumb"><div class="cf-thumb"></div></div>` +
+          `<div class="cf-prod-mini-thumb"><div class="cf-thumb"></div><span class="cf-prod-status-badge" aria-hidden="true"></span></div>` +
           `<div class="cf-prod-mini-info"><span class="cf-prod-mini-name"></span><span class="cf-prod-mini-code"></span></div>` +
           `<button type="button" class="cf-prod-mini-kebab" aria-haspopup="true" aria-expanded="false" aria-label="Mais ações" title="Mais ações"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>`;
         wireProdMenuButton(mini.querySelector('.cf-prod-mini-kebab'), p);
         // clicar no card inteiro já abre a edição (mesmo padrão dos cards do calendário,
-        // app.js/createDayPost — o "⋮" já para a propagação no próprio clique, então não conflita)
+        // app.js/createDayPost — o "⋮" já para a propagação no próprio clique, então não conflita;
+        // a Drag and Drop API nativa também já não dispara "click" depois de um arraste de verdade)
         cell.addEventListener('click', () => openEditProductModal(p));
         cell.append(mini);
         $('products').append(cell);
@@ -692,6 +835,32 @@
 
       const setAt = (p, value) => { p.at = value; p.row.querySelector('.cf-at').value = value; };
       const setOn = (p, value) => { p.on = value; };
+
+      const cardCells = () => Array.from($('products').children);
+
+      // Só o drop reordena products[] — arrastar por cima de outros cards sem soltar (dragover)
+      // não muda nada, só o indicador visual (drop-before/drop-after, no listener de dragover lá
+      // em cima). FLIP: mede a posição de cada card (inclusive o arrastado — ele nunca sai do
+      // grid, só fica com opacity:.5 via .dragging) antes de mexer no DOM, reordena, mede de novo
+      // e anima só quem realmente mudou de lugar (os parados nem ganham transition).
+      function moveProductTo(draggedP, targetP, insertBefore) {
+        let toIdx = products.indexOf(targetP) + (insertBefore ? 0 : 1);
+        if (products.indexOf(draggedP) < toIdx) toIdx--;
+        if (toIdx === products.indexOf(draggedP)) return;
+        const cells = cardCells();
+        const before = new Map(cells.map(c => [c, c.getBoundingClientRect()]));
+        products.splice(products.indexOf(draggedP), 1);
+        products.splice(toIdx, 0, draggedP);
+        if (insertBefore) targetP.cell.before(draggedP.cell); else targetP.cell.after(draggedP.cell);
+        cells.forEach(c => {
+          const b = before.get(c), a = c.getBoundingClientRect(), dx = b.left - a.left, dy = b.top - a.top;
+          if (!dx && !dy) return;
+          c.style.transition = 'none';
+          c.style.transform = `translate(${dx}px, ${dy}px)`;
+          requestAnimationFrame(() => { c.style.transition = 'transform .22s ease'; c.style.transform = ''; });
+        });
+        update();
+      }
 
       const INDEX_KEY = 'conecta-fg-post-index-v2';
       const POST_KEY = 'conecta-fg-post-v2-';
@@ -802,7 +971,7 @@
         $('library').hidden = true;
         $('work').hidden = false;
         update();
-        if (customCode) { $('code').value = customCode; $('view').innerHTML = customCode; }
+        if (customCode) { $('code').value = customCode; $('view').innerHTML = customCode; clearViewHighlight(); syncCodeHighlight(); }
         if (!savedProducts) products.forEach(p => resolve(p));
         else products.forEach(p => {
           if (p.url) return fillCatalogUsage(p).then(() => { showStatus(p); if (!customCode) update(); });
@@ -988,7 +1157,228 @@
       // o código do WordPress separa parágrafo só por linha em branco (o wpautop fecha o <p> ao
       // salvar); a prévia precisa do <p> aqui, senão o navegador ignora a linha em branco e tudo
       // vira um parágrafo só — mesma regra usada em Cf.assemble (ver Cf.wpToPreviewHtml)
-      $('code').addEventListener('input', () => { $('view').innerHTML = Cf.wpToPreviewHtml($('code').value); });
+      $('code').addEventListener('input', () => { $('view').innerHTML = Cf.wpToPreviewHtml($('code').value); clearViewHighlight(); syncCodeHighlight(); });
+      // camada de realce por trás (ver .cf-code-editor) tem seu próprio scroll — como ela não
+      // tem barra própria (overflow:hidden), sem isso o texto colorido ficaria parado enquanto
+      // o textarea (transparente, por cima) rola por cima dele.
+      $('code').addEventListener('scroll', () => {
+        const hl = $('codeHighlight').parentElement;
+        hl.scrollTop = $('code').scrollTop;
+        hl.scrollLeft = $('code').scrollLeft;
+        syncScrollFrom($('code'), $('view'));
+      });
+      // Scroll do código <-> prévia: rolar um acompanha o outro pela posição proporcional no
+      // conteúdo (% da altura rolável) — os dois vêm dos mesmos blocos, na mesma ordem, então a
+      // proporção aproxima bem "a mesma parte" dos dois lados sem precisar mapear cada bloco de
+      // texto/card à posição exata do código gerado. _syncingScroll trava o "eco": setar
+      // scrollTop de um lado dispara o 'scroll' dele, que sem a trava reenviaria de volta pro
+      // primeiro — o setTimeout cobre o caso (comum) do navegador disparar esse 'scroll' de volta
+      // de forma assíncrona, não no mesmo tick (setTimeout em vez de requestAnimationFrame:
+      // continua funcionando em aba em segundo plano, onde rAF pode nunca disparar).
+      let _syncingScroll = false;
+      function syncScrollFrom(source, target) {
+        if (_syncingScroll) return;
+        _syncingScroll = true;
+        const max = source.scrollHeight - source.clientHeight;
+        const targetMax = target.scrollHeight - target.clientHeight;
+        target.scrollTop = targetMax > 0 && max > 0 ? (source.scrollTop / max) * targetMax : 0;
+        setTimeout(() => { _syncingScroll = false; }, 0);
+      }
+      $('view').addEventListener('scroll', () => syncScrollFrom($('view'), $('code')));
+
+      // Seleção cruzada código <-> prévia: selecionar um texto de um lado seleciona/revela o
+      // trecho correspondente do outro. #code e #view guardam o mesmo conteúdo em duas formas —
+      // cru (com tags) e renderizado (só texto) — então a ponte entre os dois passa por um
+      // "texto puro" comum: tira as tags do HTML cru mantendo um mapa de volta pro índice
+      // original (pra reconstituir uma seleção no textarea) e usa esse texto puro pra achar a
+      // posição equivalente no textContent da prévia (proporcional — os dois vêm dos mesmos
+      // blocos, na mesma ordem, então os textos "puros" ficam bem parecidos).
+      // Decodifica as entidades que o próprio Cf.esc gera (conecta-fg.js) — cada espaço do texto
+      // do .docx vira "&nbsp;" (6 caracteres) no código gerado; sem decodificar de volta pra 1
+      // caractere, o texto "puro" do código saía bem mais comprido que o da prévia (que o
+      // navegador já decodifica sozinho ao renderizar), e essa diferença acumulada ao longo do
+      // texto ia derrubando a seleção mapeada pra fora da palavra certa.
+      const HTML_ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&nbsp;': ' ' };
+      function stripTagsWithMap(html) {
+        let plain = '', map = [];
+        for (let i = 0; i < html.length; i++) {
+          if (html[i] === '<') { const close = html.indexOf('>', i); i = close === -1 ? html.length - 1 : close; continue; }
+          if (html[i] === '&') {
+            const entity = Object.keys(HTML_ENTITIES).find(e => html.startsWith(e, i));
+            if (entity) { plain += HTML_ENTITIES[entity]; map.push(i); i += entity.length - 1; continue; }
+          }
+          plain += html[i]; map.push(i);
+        }
+        return { plain, map };
+      }
+      const nearestPlainIndex = (map, rawIndex) => { let lo = 0, hi = map.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (map[mid] < rawIndex) lo = mid + 1; else hi = mid; } return lo; };
+      // Índices num texto puro (start/end) -> Range do DOM dentro de container, andando pelos nós
+      // de texto até acumular esses offsets; e o inverso (Range -> índices), pra converter uma
+      // seleção real do usuário na prévia de volta pra offset. Serve tanto pro #view (texto
+      // renderizado) quanto pro #codeHighlight (que, tirando os <span> de cor, é o próprio #code
+      // caractere a caractere — por isso dá pra usar essas mesmas funções pra medir a posição em
+      // pixels de um trecho do código, coisa que um <textarea> não expõe sozinho).
+      function domRangeFromOffsets(container, start, end) {
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+        let pos = 0, range = document.createRange(), started = false, node;
+        while ((node = walker.nextNode())) {
+          const len = node.textContent.length;
+          if (!started && pos + len >= start) { range.setStart(node, Math.max(0, start - pos)); started = true; }
+          if (started && pos + len >= end) { range.setEnd(node, Math.max(0, end - pos)); return range; }
+          pos += len;
+        }
+        if (!started) return null;
+        range.setEnd(container, container.childNodes.length);
+        return range;
+      }
+      function offsetsFromDomRange(container, range) {
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+        let pos = 0, start = -1, end = -1, node;
+        while ((node = walker.nextNode())) {
+          const len = node.textContent.length;
+          if (start < 0 && node === range.startContainer) start = pos + range.startOffset;
+          if (node === range.endContainer) { end = pos + range.endOffset; break; }
+          pos += len;
+        }
+        return { start, end };
+      }
+      // Centraliza verticalmente o trecho (rect) dentro do painel que rola — mesma ideia dos dois
+      // lados: sem isso, selecionar um trecho fora da área visível do outro painel mostra a
+      // seleção, mas escondida fora da tela.
+      function centerRectScrollTop(scrollEl, rect) {
+        const box = scrollEl.getBoundingClientRect();
+        return Math.max(0, scrollEl.scrollTop + (rect.top - box.top) - scrollEl.clientHeight / 2 + rect.height / 2);
+      }
+
+      // Marca a "seleção" da prévia com a CSS Custom Highlight API em vez da Selection API comum
+      // (window.getSelection()) — essa é sempre única por documento e o navegador a esvazia
+      // sozinho assim que o foco vai pro #code (comportamento nativo, não dá pra evitar), o que
+      // apagava o destaque da prévia bem na hora de focar o código pra mostrar a seleção lá. Um
+      // Highlight próprio (registrado em CSS.highlights) não depende de foco nem briga com a
+      // seleção "de verdade" — fica ativo nos dois painéis ao mesmo tempo, mesmo sendo, como
+      // pedido, só uma simulação visual do lado da prévia. Sem suporte (navegador muito antigo):
+      // some só o destaque na prévia, o resto da sincronização continua funcionando.
+      const viewHighlight = window.Highlight && CSS.highlights ? new Highlight() : null;
+      if (viewHighlight) CSS.highlights.set('cf-view-sel', viewHighlight);
+      function clearViewHighlight() { if (viewHighlight) viewHighlight.clear(); }
+
+      // A proporção (comprimento total de um texto / comprimento total do outro) só acerta a
+      // posição exata quando a "densidade" de marcação (tags, negrito, listas...) é uniforme do
+      // início ao fim do post — na prática nunca é, então o erro ia crescendo conforme a seleção
+      // estava mais longe do início do texto (bem visível num post grande). Em vez de confiar cegamente
+      // nela, ela serve só de palpite inicial de ONDE procurar: o texto selecionado (código e
+      // prévia mostram, no fim das contas, as mesmas palavras, na mesma ordem) é buscado de
+      // verdade por igualdade de string perto desse palpite — a ocorrência mais próxima da
+      // estimativa desempata quando a palavra se repete no post (ex.: "Adesivos" aparecendo em
+      // vários parágrafos).
+      function nearestOccurrence(haystack, needle, approxIndex) {
+        if (!needle) return approxIndex;
+        let best = -1, bestDist = Infinity;
+        for (let idx = haystack.indexOf(needle); idx !== -1; idx = haystack.indexOf(needle, idx + 1)) {
+          const dist = Math.abs(idx - approxIndex);
+          if (dist < bestDist) { bestDist = dist; best = idx; }
+        }
+        return best === -1 ? approxIndex : best;
+      }
+
+      let _syncingSelection = false;
+      function syncSelectionFromCode() {
+        if (_syncingSelection) return;
+        const ta = $('code'), rawStart = ta.selectionStart, rawEnd = ta.selectionEnd;
+        if (rawStart === rawEnd) { clearViewHighlight(); return; }
+        const { plain: codePlain, map } = stripTagsWithMap(ta.value);
+        const pStart = nearestPlainIndex(map, rawStart), pEnd = nearestPlainIndex(map, rawEnd);
+        const selectedText = codePlain.slice(pStart, pEnd);
+        const viewText = $('view').textContent;
+        const scale = codePlain.length ? viewText.length / codePlain.length : 1;
+        const vStart = nearestOccurrence(viewText, selectedText, Math.round(pStart * scale));
+        const range = domRangeFromOffsets($('view'), vStart, vStart + selectedText.length);
+        if (!range) return;
+        _syncingSelection = true;
+        if (viewHighlight) { viewHighlight.clear(); viewHighlight.add(range); }
+        const rect = range.getClientRects()[0] || range.getBoundingClientRect();
+        if (rect.width || rect.height) { _syncingScroll = true; $('view').scrollTop = centerRectScrollTop($('view'), rect); setTimeout(() => { _syncingScroll = false; }, 0); }
+        setTimeout(() => { _syncingSelection = false; }, 0);
+      }
+      // 'select' do textarea dispara continuamente durante um arraste (a cada pequeno movimento
+      // do mouse selecionando texto), não só uma vez no fim — sem debounce, cada um desses
+      // disparos recentralizava o scroll da prévia e reescrevia a seleção, brigando com o próprio
+      // gesto de selecionar/editar em andamento no código. Só sincroniza depois que a seleção
+      // "assenta" (fica parada por 150ms) — cobre arrastar o mouse, teclado (Shift+setas) e
+      // duplo clique igual. Também escuta 'click'/'keyup' (não só 'select"): são os jeitos de
+      // ESVAZIAR uma seleção (clicar em outro ponto do texto, setas sem Shift) — sem eles, apagar
+      // a seleção no código não limpava o destaque deixado na prévia.
+      let _codeSelectDebounce = null;
+      ['select', 'click', 'keyup'].forEach(evt => $('code').addEventListener(evt, () => {
+        clearTimeout(_codeSelectDebounce);
+        _codeSelectDebounce = setTimeout(syncSelectionFromCode, 150);
+      }));
+
+      function syncSelectionFromView() {
+        if (_syncingSelection) return;
+        const sel = window.getSelection();
+        if (!sel.rangeCount || sel.isCollapsed) return;
+        const range = sel.getRangeAt(0);
+        if (!$('view').contains(range.commonAncestorContainer)) return;
+        const { start: vStart, end: vEnd } = offsetsFromDomRange($('view'), range);
+        if (vStart < 0 || vEnd < 0 || vStart === vEnd) return;
+        const viewText = $('view').textContent;
+        const selectedText = viewText.slice(vStart, vEnd);
+        const { plain: codePlain, map } = stripTagsWithMap($('code').value);
+        if (!map.length) return;
+        const scale = viewText.length ? codePlain.length / viewText.length : 1;
+        const pStart = nearestOccurrence(codePlain, selectedText, Math.round(vStart * scale));
+        const rawStart = map[Math.min(map.length - 1, pStart)];
+        const rawEnd = map[Math.min(map.length - 1, pStart + selectedText.length - 1)] + 1;
+        _syncingSelection = true;
+        // guarda a seleção da prévia no Highlight próprio ANTES de focar o #code — focar um campo
+        // faz o navegador esvaziar sozinho a seleção "de verdade" (window.getSelection()) de
+        // qualquer outro lugar da página; o Highlight não depende de foco, então continua marcado
+        // na prévia mesmo depois. Só assim dá pra mostrar as duas seleções ativas ao mesmo tempo:
+        // a de verdade no #code (que só aparece com o campo focado) e a simulada na prévia.
+        if (viewHighlight) { viewHighlight.clear(); viewHighlight.add(range.cloneRange()); }
+        $('code').focus();
+        $('code').setSelectionRange(rawStart, rawEnd);
+        const hlRange = domRangeFromOffsets($('codeHighlight'), rawStart, rawEnd);
+        if (hlRange) {
+          const rect = hlRange.getClientRects()[0] || hlRange.getBoundingClientRect();
+          if (rect.width || rect.height) { _syncingScroll = true; $('code').scrollTop = centerRectScrollTop($('codeHighlight').parentElement, rect); setTimeout(() => { _syncingScroll = false; }, 0); }
+        }
+        setTimeout(() => { _syncingSelection = false; }, 0);
+      }
+      let _viewSelectDebounce = null;
+      document.addEventListener('selectionchange', () => {
+        // 'selectionchange' do documento também dispara pra seleção interna de <textarea>/<input>
+        // (não só pra seleção "de verdade" via Selection API) — ex.: mover o cursor ao digitar no
+        // #code. Isso é inofensivo aqui: focar um campo já colapsa (e tira de dentro da #view) a
+        // seleção "de verdade" automaticamente — confirmado com um teste isolado (sel.isCollapsed
+        // vira true e sel.toString() fica vazio assim que o #code recebe foco, mesmo que a
+        // seleção anterior estivesse dentro da #view). Por isso "!sel.isCollapsed" já basta pra
+        // ignorar esses disparos-fantasma; não checa foco (chegou a checar antes, mas isso também
+        // bloqueava selecionar na prévia sempre que o #code já estava focado de uma seleção
+        // anterior — bug pior que o que resolvia). Mesma razão do debounce do #code (ver 'select'
+        // acima): isso dispara em sequência durante um arraste, não só uma vez no fim.
+        if (_syncingSelection) return;
+        const sel = window.getSelection();
+        const inView = sel.rangeCount && $('view').contains(sel.getRangeAt(0).commonAncestorContainer);
+        // clicar na prévia sem arrastar colapsa a seleção ali — some com o destaque, igual clicar
+        // no código sem arrastar limpa a marcação (ver 'click' no #code acima).
+        if (inView && sel.isCollapsed) { clearViewHighlight(); return; }
+        if (!inView || sel.isCollapsed) return;
+        clearTimeout(_viewSelectDebounce);
+        _viewSelectDebounce = setTimeout(syncSelectionFromView, 150);
+      });
+
+      // Tab normalmente pula pro próximo campo do formulário (comportamento padrão de textarea);
+      // aqui dentro do código isso deveria indentar, como um editor de verdade — Shift+Tab
+      // continua navegando pra trás, sem tratamento especial de "desindentar".
+      $('code').addEventListener('keydown', ev => {
+        if (ev.key !== 'Tab' || ev.shiftKey) return;
+        ev.preventDefault();
+        const ta = ev.target;
+        ta.setRangeText('  ', ta.selectionStart, ta.selectionEnd, 'end');
+        ta.dispatchEvent(new Event('input', { bubbles: true }));
+      });
 
       async function copy(field, button) {
         const label = button.textContent;
@@ -1000,7 +1390,17 @@
       $('savePost').addEventListener('click', saveCurrentPost);
       loadSavedPosts();
       $('copyTitle').addEventListener('click', e => copy($('title'), e.currentTarget));
-      $('copyCode').addEventListener('click', e => copy($('code'), e.currentTarget));
+      // botão ícone-only (card do código, estilo animate-ui/Code Tabs) — não usa copy() porque
+      // ela troca o textContent do botão, o que apagaria os SVGs; aqui é só a classe is-copied
+      // que faz o ícone copiar virar check por CSS (ver .cf-code-copy-icon acima).
+      $('copyCode').addEventListener('click', async () => {
+        const btn = $('copyCode');
+        try { await navigator.clipboard.writeText($('code').value); } catch { $('code').select(); }
+        btn.classList.add('is-copied');
+        btn.setAttribute('aria-label', 'Código copiado');
+        clearTimeout(btn._copyTimer);
+        btn._copyTimer = setTimeout(() => { btn.classList.remove('is-copied'); btn.setAttribute('aria-label', 'Copiar código'); }, 2000);
+      });
 
       // Seção "Produtos" colapsável (padrão section-divider do dashboard de seguidores) — abre
       // por padrão (aria-expanded="true" já no HTML); usa classe animada em vez de hidden, pra
