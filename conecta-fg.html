@@ -1199,10 +1199,20 @@
       // navegador já decodifica sozinho ao renderizar), e essa diferença acumulada ao longo do
       // texto ia derrubando a seleção mapeada pra fora da palavra certa.
       const HTML_ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&nbsp;': ' ' };
+      // Mesmo problema dos entities acima, mas com "\n": Cf.assemble junta cada bloco (parágrafo,
+      // card de produto) com "\n\n" no código pro WordPress (ver conecta-fg.js), e uma quebra
+      // manual no meio de um parágrafo também vira "\n" ali — nenhum dos dois tem equivalente no
+      // texto renderizado da prévia (os blocos ficam colados sem espaço nenhum no textContent, e
+      // "\n" vira <br /> na prévia, que não gera texto). Sem pular esses "\n" aqui, o "puro" do
+      // código ficava 2 caracteres mais comprido a cada bloco cruzado — por isso o desalinhamento
+      // só aparecia "a partir do segundo parágrafo" (depois do primeiro "\n\n"), e piorava conforme
+      // a seleção se afastava do início, chegando a acertar a palavra errada quando ela se repete
+      // no post (ex.: selecionar "combinam" destacava "maletas" na prévia).
       function stripTagsWithMap(html) {
         let plain = '', map = [];
         for (let i = 0; i < html.length; i++) {
           if (html[i] === '<') { const close = html.indexOf('>', i); i = close === -1 ? html.length - 1 : close; continue; }
+          if (html[i] === '\n') continue;
           if (html[i] === '&') {
             const entity = Object.keys(HTML_ENTITIES).find(e => html.startsWith(e, i));
             if (entity) { plain += HTML_ENTITIES[entity]; map.push(i); i += entity.length - 1; continue; }
