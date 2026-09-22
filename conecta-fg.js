@@ -49,6 +49,13 @@
 
   // Página de produto do site FG (/{slug}/p) — no docx costuma vir sozinha num parágrafo.
   const PRODUCT_URL = /^https?:\/\/(www\.)?fg\.com\.br\/([^/?#\s]+)\/p\/?$/i;
+  // "Parte superior/inferior do formulário": lixo que o Word cola sozinho quando o conteúdo
+  // (o texto do post ou, mais comum, a própria tabela de produtos) foi copiado de uma página
+  // com um <form> — o Word marca o início/fim do form com esses dois parágrafos fixos em
+  // português. Na tabela isso vira um parágrafo A MAIS dentro da mesma célula do produto (nome
+  // colado junto: "Parte superior do formulário Nome do Produto"), por isso filtra tanto
+  // parágrafo solto quanto texto de célula antes de virar bloco/produto.
+  const FORM_BOUNDARY = /^parte (superior|inferior) do formul[aá]rio$/i;
   // O que a tela aceita em "Adicionar produto": só o código ou só o link da página do produto.
   const productRef = text => { const t = String(text).trim(); return /^\d{5,20}$/.test(t) ? { code: t } : PRODUCT_URL.test(t) ? { url: t } : null; };
 
@@ -162,7 +169,7 @@
     const items = [], tables = [], unsupported = new Set();
     for(const el of body.children){
       if(el.localName === 'tbl'){
-        tables.push(kids(el, 'tr').map(tr => kids(tr, 'tc').map(tc => kids(tc, 'p').map(textOf).join(' ').trim())));
+        tables.push(kids(el, 'tr').map(tr => kids(tr, 'tc').map(tc => kids(tc, 'p').map(textOf).filter(t => !FORM_BOUNDARY.test(t.trim())).join(' ').trim())));
       }else if(el.localName === 'p'){
         const pPr = kids(el, 'pPr')[0], styleEl = pPr && kids(pPr, 'pStyle')[0], numPr = pPr && kids(pPr, 'numPr')[0];
         const numId = numPr && kids(numPr, 'numId')[0], ilvl = numPr && kids(numPr, 'ilvl')[0];
@@ -172,6 +179,7 @@
         const hasImage = !!(el.getElementsByTagNameNS(W, 'drawing').length || el.getElementsByTagNameNS(W, 'pict').length);
         if(hasImage && text) unsupported.add('imagens');
         if(!text){ if(hasImage) items.push({ image: true }); continue; }
+        if(FORM_BOUNDARY.test(text)) continue;
         items.push({
           runs, text, style: styleEl ? attr(styleEl, 'val') : '',
           list: numId && attr(numId, 'val') !== '0' ? formatOf[absOf[attr(numId, 'val')] + ':' + (ilvl ? attr(ilvl, 'val') : '0')] || 'bullet' : null
