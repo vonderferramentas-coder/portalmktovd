@@ -54,7 +54,7 @@ GitHub Actions (pytrends, sem credencial) ------------> Google Trends / Central 
 | Painel de seguidores | `followers-dashboard.*` | Visualizar histórico, metas e ranking dos melhores posts | JSON atualizado pelo GitHub Actions; lançamentos manuais locais |
 | Cartões de visita | `business-card-generator.*` | Gerar cartões e exportações | Principalmente armazenamento local |
 | Conecta FG | `conecta-fg.html`, `conecta-fg.js` | Converter o texto do blog (.docx) no código da aba Texto do WordPress, com cards editoriais dos produtos | O .docx bruto é lido só no navegador e não é armazenado; posts salvos explicitamente ficam no Firestore via `SyncBackend`; aplicações/dicas vêm de `data/catalog-fg.json`; nome e link vêm do Worker (`/product-link`); fotos são referenciadas por URL. **Exclusivo da marca Ferramentas Gerais** (ver histórico de 21/09/2026) |
-| Gerador de cartazes | cartaz-generator.html | Montar cartazes a partir de planilha tratada, com fotos automáticas por Código OVD |  Planilha local; fotos públicas de `app.ovd.com.br`; códigos de barras gerados no navegador; exclusivo da marca Grupo OVD |
+| Gerador de cartazes | `cartaz-generator.html` | Montar cartazes a partir de planilha tratada, com fotos automáticas por Código OVD | Planilha lida no navegador; grades salvas e ajustes de edição compartilhados via `SyncBackend`/`portalStore`; fotos públicas de `app.ovd.com.br`; códigos de barras gerados no navegador; exclusivo da marca Grupo OVD |
 
 **Decisão consciente (revisada em 15/09/2026):** diferente do calendário/config (Firestore) e do painel de seguidores, o gerador de cartões continua **100% `localStorage` por marca** — sem sincronização entre navegadores/máquinas e sem backup. Trocar de máquina ou limpar o navegador perde os cartões em edição. Avaliado e aceito por ora: é um processo de ciclo curto (importar planilha → editar → exportar PDF em uma sessão), sem o mesmo valor de continuidade de longo prazo que o calendário editorial tem — não é uma lacuna esquecida, é a mesma lógica de custo/benefício já aplicada ao HML (seção 17) e ao lockout de auditoria (seção 14). **Gatilho para reavaliar:** se o fluxo de trabalho real passar a depender de retomar uma edição de cartão em outra máquina/dia, ou perdas de trabalho em andamento começarem a acontecer na prática.
 
@@ -633,6 +633,12 @@ Cada marca nova conectada à coleta automática (seguidores/posts do Instagram/F
 |---|---|---|
 | 15/09/2026 | Avaliado com dado real do Console Firebase (Uso e faturamento) se o crescimento de marcas na coleta automática está perto de esgotar a cota diária do Firestore (Spark). Uso atual: 1% escritas, 9% leituras, 0,1% exclusões — longe do limite. Nenhuma ação tomada; gatilho de reavaliação definido para a próxima marca conectada ou 50-70% de uso da cota. | Equipe de Marketing / manutenção do portal |
 
+
+### Grades editáveis do Gerador de Cartazes (23/09/2026)
+
+`cartaz-generator.html` reaproveita o gateway Firestore existente (`SyncBackend`) para salvar grades explicitamente, compartilhadas entre os usuários autorizados. A listagem leve fica em `portalStore/cartaz-grid-index-v1` (id, título, datas, quantidade de produtos e marcas); cada grade fica em `portalStore/cartaz-grid-v1-<id>` com a estrutura já tratada da planilha e os ajustes feitos na tela — títulos, códigos de barras preenchidos manualmente e posição/tamanho de fotos. Abrir uma grade restaura esses ajustes; excluir remove a entrada do índice e o conteúdo associado.
+
+O `.xlsx` bruto não é armazenado: guardar a estrutura já lida evita duplicar arquivo, reduz o tamanho e é suficiente para continuar a edição. A gravação usa revisão otimista do `SyncBackend`, igual ao Conecta FG, para não sobrescrever silenciosamente uma edição concorrente. **Limite conhecido:** cada documento do Firestore aceita até 1 MiB; se uma grade real ultrapassar esse limite, a evolução é dividir o payload por página, mantendo o índice leve. Não há serviço, credencial ou regra nova: as chaves usam as regras atuais de `portalStore`.
 
 ### Posts editáveis do Conecta FG (21/09/2026)
 
