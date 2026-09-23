@@ -1342,6 +1342,66 @@
         .sheet.a4 {
             background: #003e55 url("cartaz-template-final.jpg") center / 100% 100% no-repeat;
         }
+
+        .sheet-footer {
+            position: absolute;
+            z-index: 6;
+            left: 50%;
+            bottom: -16px;
+            display: grid;
+            width: 276px;
+            height: 103px;
+            place-items: center;
+            transform: translateX(-50%);
+            border-radius: 16px;
+            background: #fff;
+            pointer-events: none;
+        }
+
+        .sheet-footer img {
+            display: block;
+            width: 195px;
+            height: 75px;
+            object-fit: contain;
+        }
+
+        .sheet-page-number {
+            position: absolute;
+            z-index: 7;
+            right: 14px;
+            bottom: 10px;
+            color: #fff;
+            font: 700 12px/1 Swiss721, "Arial Narrow", Arial, sans-serif;
+            pointer-events: none;
+        }
+
+        .sheet.a4 {
+            padding: 172px 65px 108px;
+            gap: 12px 10px;
+        }
+
+        .sheet.a3 {
+            padding: 243px 92px 153px;
+            gap: 12px;
+        }
+
+        .sheet.a3 .sheet-footer {
+            bottom: -22px;
+            width: 390px;
+            height: 145px;
+            border-radius: 20px;
+        }
+
+        .sheet.a3 .sheet-footer img {
+            width: 278px;
+            height: 105px;
+        }
+
+        .sheet.a3 .sheet-page-number {
+            right: 20px;
+            bottom: 14px;
+            font-size: 16px;
+        }
     </style>
 </head>
 
@@ -1465,7 +1525,7 @@
                 } function draw() {
                     let selectedPages = (S.brand ? S.pages.filter(page => page.brand === S.brand) : S.pages).filter(page => !S.printFormat || page.format === S.printFormat); if (!selectedPages.length) return; selectedPages.forEach(page => page.items.forEach(item => item.hiddenCodes = 0));
                     $('title').textContent = 'Prévia editável · ' + S.brand; $('previewFormat').textContent = selectedPages.length + ' página' + (selectedPages.length === 1 ? '' : 's') + ' da marca';
-                    $('preview').innerHTML = selectedPages.map(page => { let pageIndex = S.pages.indexOf(page), cells = page.items.map((item, index) => card(item, index, pageIndex)), filled = page.items.length; for (let i = filled; i < page.capacity; i++) cells.push('<div class="placeholder" aria-hidden="true"></div>'); return '<div class="sheet ' + page.format.toLowerCase() + '" data-page="' + pageIndex + '"><div class="sheet-heading" aria-hidden="true"><strong>VITRINE DIGITAL DE OFERTAS</strong><span>AS MELHORES OPORTUNIDADES<br>NA PALMA DA SUA MÃO!</span></div>' + cells.join('') + '</div>'; }).join('');
+                    $('preview').innerHTML = selectedPages.map(page => { let pageIndex = S.pages.indexOf(page), cells = page.items.map((item, index) => card(item, index, pageIndex)), filled = page.items.length; for (let i = filled; i < page.capacity; i++) cells.push('<div class="placeholder" aria-hidden="true"></div>'); return '<div class="sheet ' + page.format.toLowerCase() + '" data-page="' + pageIndex + '"><div class="sheet-footer" aria-hidden="true"><img src="cartaz-logo-feira.png" alt=""></div><span class="sheet-page-number" aria-hidden="true">' + (pageIndex + 1) + '</span><div class="sheet-heading" aria-hidden="true"><strong>VITRINE DIGITAL DE OFERTAS</strong><span>AS MELHORES OPORTUNIDADES<br>NA PALMA DA SUA MÃO!</span></div>' + cells.join('') + '</div>'; }).join('');
                     [...$('preview').querySelectorAll('.sheet')].forEach(sheet => { let page = S.pages[+sheet.dataset.page]; sheet.querySelectorAll('.card').forEach(trimOverflow); sheet.querySelectorAll('.card:not(.big)').forEach(centerPhoto); if (page.items.length < page.capacity) { let cards = [...sheet.querySelectorAll('.card')], style = getComputedStyle(sheet), top = parseFloat(style.paddingTop), bottom = sheet.clientHeight - parseFloat(style.paddingBottom), contentHeight = Math.max(...cards.map(card => card.offsetTop + card.offsetHeight)) - top, offset = Math.max(0, (bottom - top - contentHeight) / 2); cards.forEach(card => card.style.transform = (card.classList.contains('pair') ? 'translateX(calc(50% + 9px)) ' : '') + 'translateY(' + offset + 'px)') } sheet.querySelectorAll('.card .photo').forEach(enablePhotoEditing); });
                     pages(); updateDashboard(); let printSize = document.getElementById('printPageSize') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'printPageSize' })); printSize.textContent = '@media print { @page { size: ' + (selectedPages[0].format === 'A3' ? 'A3 portrait' : 'A4 portrait') + '; margin: 0 } }'
                 } $('sheet').onchange = x => x.target.files[0] && load(x.target.files[0]); $('saveGrid').onclick = saveCurrentGrid; loadSavedGrids(); if ($('codes')) $('codes').onchange = x => map(x.target.files, S.codes, 'codeInfo'); async function waitForImages(root) { await Promise.all([...root.querySelectorAll('img')].map(image => image.complete ? Promise.resolve() : new Promise(resolve => { let done = () => resolve(); image.addEventListener('load', done, { once: true }); image.addEventListener('error', done, { once: true }); setTimeout(done, 15000); }))); }
