@@ -683,7 +683,7 @@
                contraste real de peso com a variacao em negrito, e menos condensada que a Swiss721 e sem isso
                quebrava linha demais. Ancorada por bottom: com menos linhas a caixa encolhe e fica embaixo sozinha */
             left: 28px;
-            right: 144px;
+            right: 162px;
             bottom: 16px;
             max-height: 160px;
             overflow: hidden;
@@ -881,10 +881,10 @@
     <style>
         .card .ean {
             position: absolute;
-            right: 28px;
-            bottom: 14px;
-            width: 110px;
-            height: 42px
+            right: 24px;
+            bottom: 12px;
+            width: 142px;
+            height: 54px
         }
 
         .card .ean-svg {
@@ -977,6 +977,12 @@
         .card .photo.photo-editing:active {
             cursor: grabbing;
         }
+
+        @media print {
+            .card .photo.photo-editing {
+                outline: none !important;
+            }
+        }
     </style>
 
     <style>
@@ -1030,9 +1036,9 @@
         .card h3 { max-height: 88px; -webkit-line-clamp: 4; line-clamp: 4; }
         .card .lines { max-height: 180px; }
         .sheet.a3 .card .lines { max-height: 340px; }
-        .card .lines.two-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px; }
-        .card .lines.two-cols::before { grid-column: 1 / -1; }
-        .card .lines.two-cols .code-col { min-width: 0; }
+        .card .lines.two-cols { display: block; font-size: 12px; letter-spacing: -.03em; }
+        .card .lines.two-cols .code-pair { display: flex; align-items: baseline; gap: 8px; overflow: visible; white-space: nowrap; }
+        .card .lines.two-cols .code-separator { font-weight: 700; }
     </style><style>
         .brand-filter {
             display: grid;
@@ -1253,7 +1259,91 @@
             color: var(--cg-ink);
             border: 1px solid var(--cg-line);
         }
-    </style></head>
+    </style>
+    <style>
+        /* Layout final: cabeçalho e marca ocupam o topo; a grade começa na área livre abaixo. */
+        .sheet-heading {
+            position: absolute;
+            z-index: 6;
+            top: 42px;
+            left: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            color: #fdc300;
+            font-family: Swiss721, "Arial Narrow", Arial, sans-serif;
+            font-weight: 900;
+            line-height: 1;
+            pointer-events: none;
+        }
+
+        .sheet-heading strong {
+            display: block;
+            margin-left: -50px;
+            padding: 5px 20px 4px 70px;
+            background: #fdc300;
+            color: #00445c;
+            font-size: 27px;
+        }
+
+        .sheet-heading span {
+            display: block;
+            padding: 7px 0 0 20px;
+            font-size: 20px;
+            letter-spacing: .2px;
+        }
+
+        .sheet.a4 {
+            padding-top: 165px;
+            padding-bottom: 60px;
+        }
+
+        .sheet.a3 {
+            padding: 245px 56px 60px;
+        }
+
+        .sheet::after {
+            z-index: 6;
+            left: auto;
+            right: 50px;
+            top: 30px;
+            bottom: auto;
+            width: 250px;
+            height: 95px;
+            margin-left: 0;
+            pointer-events: none;
+        }
+
+        .sheet.a3 .sheet-heading {
+            top: 48px;
+            left: 56px;
+        }
+
+        .sheet.a3 .sheet-heading strong {
+            margin-left: -56px;
+            padding: 6px 24px 5px 80px;
+            font-size: 36px;
+        }
+
+        .sheet.a3 .sheet-heading span {
+            padding: 8px 0 0 24px;
+            font-size: 26px;
+        }
+
+        .sheet.a3::after {
+            right: 56px;
+            top: 36px;
+            width: 365px;
+            height: 120px;
+            margin-left: 0;
+        }
+
+        .sheet.a3,
+        .sheet.a4 {
+            background: #003e55 url("cartaz-template-final.jpg") center / 100% 100% no-repeat;
+        }
+    </style>
+</head>
 
 <body>
     <div class="portal-shell">
@@ -1341,11 +1431,11 @@
                    rowLines() que so servia pra ESTIMAR - o card real de 23 variacoes que motivou essa troca media
                    1 variacao a menos do que cabia de verdade na caixa (23 linhas de 15.6px cabem em max-height:390px,
                    a conta de fitRows(rows,24) so permitia 22) */
-                codeLines = group.rows.map(r => '<div><span class="cd">' + e(code(r.code)) + '</span></div>'), lines = group.rows.length > 9 ? '<div class="code-col">' + codeLines.slice(0, Math.ceil(codeLines.length / 2)).join('') + '</div><div class="code-col">' + codeLines.slice(Math.ceil(codeLines.length / 2)).join('') + '</div>' : codeLines.join(''), style = 'grid-column:' + (item.col + 1) + ';grid-row:' + (item.gridRow + 1) + ' / span ' + item.size + ';--card-extra:' + (item.extraHeight || 0) + 'px', eanSvg = ean13(row.principal); return '<article class="card' + (big ? ' big' : '') + (a3 ? ' a3' : '') + (item.center ? ' center' : '') + (item.pair ? ' pair' : '') + (item.extraHeight ? ' expand' : '') + '" data-codes="' + group.rows.length + '" data-idx="' + idx + '" data-page="' + pageIndex + '" style="' + style + '">' + '<div class="cutwarn" hidden title="Esses códigos não aparecem no cartão - avise quem for revisar"></div>' + '<h3 contenteditable="true" spellcheck="true" oninput="updateTitle(this);centerPhoto(this.closest(\'.card\'))">' + e(displayTitle) + '</h3><div class="photo" title="Dê dois cliques para editar a foto" style="transform:translate(' + photoState.x + 'px,' + photoState.y + 'px) scale(' + photoState.scale + ')">' + photo + '</div><div class="lines' + (group.rows.length > 9 ? ' two-cols' : '') + '" contenteditable="true" spellcheck="false">' + lines + '</div>' + (eanSvg ? '<div class="ean">' + eanSvg + '</div>' : '<div class="ean ean-missing" onclick="addBarcode(this)" title="Adicionar código de barras manualmente - não aparece na impressão até ser preenchido">+ Código de barras</div>') + '<small>' + (S.codes[row.ovd] ? 'WMF ' + e(row.ovd) + ' encontrado' : 'WMF ' + e(row.ovd) + ' pendente') + '</small></article>' } function trimOverflow(card) { /* mede a altura real da lista depois do layout. Em duas colunas, cada .code-col
+                codeLines = group.rows.map(r => '<div><span class="cd">' + e(code(r.code)) + '</span></div>'), pairCodes = group.rows.map(r => '<span class="cd">' + e(code(r.code)) + '</span>'), split = Math.ceil(pairCodes.length / 2), lines = group.rows.length > 9 ? pairCodes.slice(0, split).map((left, index) => { let right = pairCodes[split + index]; return '<div class="code-pair">' + left + (right ? '<span class="code-separator" aria-hidden="true">|</span>' + right : '') + '</div>'; }).join('') : codeLines.join(''), style = 'grid-column:' + (item.col + 1) + ';grid-row:' + (item.gridRow + 1) + ' / span ' + item.size + ';--card-extra:' + (item.extraHeight || 0) + 'px', eanSvg = ean13(row.principal); return '<article class="card' + (big ? ' big' : '') + (a3 ? ' a3' : '') + (item.center ? ' center' : '') + (item.pair ? ' pair' : '') + (item.extraHeight ? ' expand' : '') + '" data-codes="' + group.rows.length + '" data-idx="' + idx + '" data-page="' + pageIndex + '" style="' + style + '">' + '<div class="cutwarn" hidden title="Esses códigos não aparecem no cartão - avise quem for revisar"></div>' + '<h3 contenteditable="true" spellcheck="true" oninput="updateTitle(this);centerPhoto(this.closest(\'.card\'))">' + e(displayTitle) + '</h3><div class="photo" title="Dê dois cliques para editar a foto" style="transform:translate(' + photoState.x + 'px,' + photoState.y + 'px) scale(' + photoState.scale + ')">' + photo + '</div><div class="lines' + (group.rows.length > 9 ? ' two-cols' : '') + '" contenteditable="true" spellcheck="false">' + lines + '</div>' + (eanSvg ? '<div class="ean">' + eanSvg + '</div>' : '<div class="ean ean-missing" onclick="addBarcode(this)" title="Adicionar código de barras manualmente - não aparece na impressão até ser preenchido">+ Código de barras</div>') + '<small>' + (S.codes[row.ovd] ? 'WMF ' + e(row.ovd) + ' encontrado' : 'WMF ' + e(row.ovd) + ' pendente') + '</small></article>' } function trimOverflow(card) { /* mede a altura real da lista depois do layout. Em duas colunas, cada .code-col
                    contem varias linhas: tratar a coluna inteira como uma unica linha apagava a coluna direita inteira.
                    Por isso calcula quantas linhas cabem em CADA coluna e redistribui as linhas visiveis de forma equilibrada. */ let lines = card.querySelector('.lines'), warn = card.querySelector('.cutwarn'); if (!lines || lines.scrollHeight <= lines.clientHeight) return;
                 let item = S.pages[+card.dataset.page].items[+card.dataset.idx], top = lines.getBoundingClientRect().top, showWarning = removed => { item.hiddenCodes = removed; if (warn && removed > 0) { warn.hidden = false; warn.textContent = '⚠ +' + removed + ' código' + (removed === 1 ? '' : 's') + ' fora do cartão'; } };
-                if (lines.classList.contains('two-cols')) { let columns = [...lines.querySelectorAll('.code-col')], rows = columns.flatMap(column => [...column.children]); if (columns.length !== 2) return; let perColumn = Math.min(...columns.map(column => [...column.children].filter(row => row.getBoundingClientRect().bottom - top <= lines.clientHeight).length)); let kept = Math.min(rows.length, perColumn * 2); if (kept === rows.length) return; let split = Math.ceil(kept / 2); columns[0].replaceChildren(...rows.slice(0, split)); columns[1].replaceChildren(...rows.slice(split, kept)); showWarning(rows.length - kept); return; }
+                if (lines.classList.contains('two-cols')) { let rows = [...lines.querySelectorAll('.code-pair')], cut = rows.findIndex(row => row.getBoundingClientRect().bottom - top > lines.clientHeight); if (cut < 0) return; let removed = rows.slice(cut).reduce((sum, row) => sum + row.querySelectorAll('.cd').length, 0); rows.slice(cut).forEach(row => row.remove()); showWarning(removed); return; }
                 let cut = [...lines.children].findIndex(child => child.getBoundingClientRect().bottom - top > lines.clientHeight); if (cut < 0) return; cut = Math.max(cut, 1); let removed = lines.children.length - cut; while (lines.children.length > cut) lines.removeChild(lines.lastElementChild); showWarning(removed); } function measureAllPages() { let probe = document.createElement('div'); probe.className = 'cartaz-measure'; probe.innerHTML = S.pages.map((page, pageIndex) => '<div class="sheet ' + page.format.toLowerCase() + '" data-page="' + pageIndex + '">' + page.items.map((item, index) => card(item, index, pageIndex, true)).join('') + '</div>').join(''); document.body.append(probe); S.pages.forEach(page => page.items.forEach(item => item.hiddenCodes = 0)); probe.querySelectorAll('.sheet').forEach(sheet => sheet.querySelectorAll('.card').forEach(trimOverflow)); probe.remove(); } function addBarcode(el) { /* preenche na hora um EAN que faltou na planilha (coluna CODIGO PRINCIPAL vazia) - reusa
                     ean13() e o proprio fluxo de render (S.pages[...].group.rows[0].principal + draw()) em vez de
                     desenhar o svg na mao, pra ficar identico a um codigo que veio da planilha. So aparece na tela
@@ -1375,7 +1465,7 @@
                 } function draw() {
                     let selectedPages = (S.brand ? S.pages.filter(page => page.brand === S.brand) : S.pages).filter(page => !S.printFormat || page.format === S.printFormat); if (!selectedPages.length) return; selectedPages.forEach(page => page.items.forEach(item => item.hiddenCodes = 0));
                     $('title').textContent = 'Prévia editável · ' + S.brand; $('previewFormat').textContent = selectedPages.length + ' página' + (selectedPages.length === 1 ? '' : 's') + ' da marca';
-                    $('preview').innerHTML = selectedPages.map(page => { let pageIndex = S.pages.indexOf(page), cells = page.items.map((item, index) => card(item, index, pageIndex)), filled = page.items.length; for (let i = filled; i < page.capacity; i++) cells.push('<div class="placeholder" aria-hidden="true"></div>'); return '<div class="sheet ' + page.format.toLowerCase() + '" data-page="' + pageIndex + '">' + cells.join('') + '</div>'; }).join('');
+                    $('preview').innerHTML = selectedPages.map(page => { let pageIndex = S.pages.indexOf(page), cells = page.items.map((item, index) => card(item, index, pageIndex)), filled = page.items.length; for (let i = filled; i < page.capacity; i++) cells.push('<div class="placeholder" aria-hidden="true"></div>'); return '<div class="sheet ' + page.format.toLowerCase() + '" data-page="' + pageIndex + '"><div class="sheet-heading" aria-hidden="true"><strong>VITRINE DIGITAL DE OFERTAS</strong><span>AS MELHORES OPORTUNIDADES<br>NA PALMA DA SUA MÃO!</span></div>' + cells.join('') + '</div>'; }).join('');
                     [...$('preview').querySelectorAll('.sheet')].forEach(sheet => { let page = S.pages[+sheet.dataset.page]; sheet.querySelectorAll('.card').forEach(trimOverflow); sheet.querySelectorAll('.card:not(.big)').forEach(centerPhoto); if (page.items.length < page.capacity) { let cards = [...sheet.querySelectorAll('.card')], style = getComputedStyle(sheet), top = parseFloat(style.paddingTop), bottom = sheet.clientHeight - parseFloat(style.paddingBottom), contentHeight = Math.max(...cards.map(card => card.offsetTop + card.offsetHeight)) - top, offset = Math.max(0, (bottom - top - contentHeight) / 2); cards.forEach(card => card.style.transform = (card.classList.contains('pair') ? 'translateX(calc(50% + 9px)) ' : '') + 'translateY(' + offset + 'px)') } sheet.querySelectorAll('.card .photo').forEach(enablePhotoEditing); });
                     pages(); updateDashboard(); let printSize = document.getElementById('printPageSize') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'printPageSize' })); printSize.textContent = '@media print { @page { size: ' + (selectedPages[0].format === 'A3' ? 'A3 portrait' : 'A4 portrait') + '; margin: 0 } }'
                 } $('sheet').onchange = x => x.target.files[0] && load(x.target.files[0]); $('saveGrid').onclick = saveCurrentGrid; loadSavedGrids(); if ($('codes')) $('codes').onchange = x => map(x.target.files, S.codes, 'codeInfo'); async function waitForImages(root) { await Promise.all([...root.querySelectorAll('img')].map(image => image.complete ? Promise.resolve() : new Promise(resolve => { let done = () => resolve(); image.addEventListener('load', done, { once: true }); image.addEventListener('error', done, { once: true }); setTimeout(done, 15000); }))); }
@@ -1392,6 +1482,7 @@
                 $('exportBrand').onclick = () => { closeActionMenus(); exportZip(false); };
                 $('exportAll').onclick = () => { closeActionMenus(); exportZip(true); };
                 document.addEventListener('click', event => { if (!event.target.closest('.action-menu')) closeActionMenus(); });
+                document.addEventListener('pointerdown', event => { if (!event.target.closest('.card .photo')) document.querySelectorAll('.photo.photo-editing').forEach(photo => photo.classList.remove('photo-editing')); });
                 document.addEventListener('keydown', event => { if (event.key === 'Escape') closeActionMenus(); });
                 /* addBarcode/centerPhoto sao chamadas de atributo inline (onclick/oninput) no HTML que card() gera -
                    esses atributos só enxergam funcao GLOBAL, nao a closure deste IIFE, entao precisam ser expostas
