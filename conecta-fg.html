@@ -24,7 +24,7 @@
       --cf-i-question: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2.5-3 4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E");
       --cf-i-exclaim: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 7v6'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E");
     }
-    :root[data-theme="dark"] .cf { --cf-ok: #4ade80; --cf-caution: #fbbf24; --cf-tok-tag: #ff7b9c; --cf-tok-attr: #e3b341; --cf-tok-str: #7ee787; }
+    :root[data-theme="dark"] .cf { --cf-ok: #4ade80; --cf-caution: #fbbf24; --cf-tok-tag: #ff7b9c; --cf-tok-attr: #e3b341; --cf-tok-str: #7ee787; --cf-code-sel: rgba(246,190,0,.42); }
     /* [hidden] precisa vencer os display:flex/grid abaixo (bug histórico do portal) */
     .cf [hidden] { display: none !important; }
 
@@ -271,7 +271,10 @@
     .cf-code-highlight { color: var(--text); height: 100%; overflow: hidden; pointer-events: none; }
     .cf-code-highlight code { font: inherit; }
     .cf-code { position: relative; display: block; width: 100%; height: 100%; resize: none; border: 0; border-radius: 0; background: transparent; color: transparent; caret-color: var(--text); }
-    .cf-code::selection { background: var(--accent-weak); color: transparent; }
+    .cf-code::selection { background: var(--cf-code-sel, var(--accent-weak)); color: transparent; }
+    /* sem foco o textarea guarda a última seleção; ela não pode aparecer junto da marcação vinda da prévia */
+    .cf-code:not(:focus)::selection { background: transparent; }
+    ::highlight(cf-code-sel) { background: var(--cf-code-sel, var(--accent-weak)); }
     .cf-code:focus-visible { outline-offset: -2px; }
     .tok-tag { color: var(--cf-tok-tag); }
     .tok-attr { color: var(--cf-tok-attr); }
@@ -283,10 +286,7 @@
     .cf-view .wp-caption { margin: 0 auto 6px; text-align: center; }
     .cf-view .wp-caption img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
     .cf-view .wp-caption-text { margin: 6px 0 0; font-size: 13px; line-height: 1.4; }
-    /* "seleção" simulada da prévia (ver viewHighlight/CSS Custom Highlight API no JS) — não é a
-       seleção de texto real (window.getSelection()), que o navegador esvazia sozinho assim que o
-       foco vai pro #code; por isso um destaque à parte, que fica marcado nos dois painéis ao
-       mesmo tempo independente de quem está com foco. */
+    /* marcação da seleção vinda do código (CSS Custom Highlight API; ver syncSelection no JS) */
     .cf-view::highlight(cf-view-sel) { background: var(--accent); color: var(--on-accent); }
 
 
@@ -1165,59 +1165,90 @@
         const hl = $('codeHighlight').parentElement;
         hl.scrollTop = $('code').scrollTop;
         hl.scrollLeft = $('code').scrollLeft;
-        syncScrollFrom($('code'), $('view'));
+        if (!isScrollEcho($('code'))) syncScrollFrom($('code'), $('view'));
       });
-      // Scroll do código <-> prévia: rolar um acompanha o outro pela posição proporcional no
-      // conteúdo (% da altura rolável) — os dois vêm dos mesmos blocos, na mesma ordem, então a
-      // proporção aproxima bem "a mesma parte" dos dois lados sem precisar mapear cada bloco de
-      // texto/card à posição exata do código gerado. _syncingScroll trava o "eco": setar
-      // scrollTop de um lado dispara o 'scroll' dele, que sem a trava reenviaria de volta pro
-      // primeiro — o setTimeout cobre o caso (comum) do navegador disparar esse 'scroll' de volta
-      // de forma assíncrona, não no mesmo tick (setTimeout em vez de requestAnimationFrame:
-      // continua funcionando em aba em segundo plano, onde rAF pode nunca disparar).
-      let _syncingScroll = false;
+      // Scroll do código <-> prévia: rolar um acompanha o outro pela posição proporcional (% da
+      // altura rolável). O "eco" (setar scrollTop de um lado dispara o 'scroll' dele, que
+      // reenviaria de volta) é filtrado por valor, não por tempo: o evento 'scroll' só chega no
+      // próximo frame, depois de qualquer setTimeout(0), então uma trava por tempo já tinha
+      // sido liberada e o painel de destino "brigava" com a rolagem que acabou de receber.
+      function setScroll(el, top) {
+        const before = el.scrollTop;
+        el.scrollTop = top;
+        if (el.scrollTop !== before) el._echo = el.scrollTop;
+      }
+      function isScrollEcho(el) { const echo = el._echo === el.scrollTop; el._echo = null; return echo; }
       function syncScrollFrom(source, target) {
-        if (_syncingScroll) return;
-        _syncingScroll = true;
         const max = source.scrollHeight - source.clientHeight;
         const targetMax = target.scrollHeight - target.clientHeight;
-        target.scrollTop = targetMax > 0 && max > 0 ? (source.scrollTop / max) * targetMax : 0;
-        setTimeout(() => { _syncingScroll = false; }, 0);
+        setScroll(target, targetMax > 0 && max > 0 ? (source.scrollTop / max) * targetMax : 0);
       }
-      $('view').addEventListener('scroll', () => syncScrollFrom($('view'), $('code')));
+      $('view').addEventListener('scroll', () => { if (!isScrollEcho($('view'))) syncScrollFrom($('view'), $('code')); });
 
-      // Seleção cruzada código <-> prévia: selecionar um texto de um lado seleciona/revela o
-      // trecho correspondente do outro. #code e #view guardam o mesmo conteúdo em duas formas —
-      // cru (com tags) e renderizado (só texto) — então a ponte entre os dois passa por um
-      // "texto puro" comum: tira as tags do HTML cru mantendo um mapa de volta pro índice
-      // original (pra reconstituir uma seleção no textarea) e usa esse texto puro pra achar a
-      // posição equivalente no textContent da prévia (proporcional — os dois vêm dos mesmos
-      // blocos, na mesma ordem, então os textos "puros" ficam bem parecidos).
-      // Decodifica as entidades que o próprio Cf.esc gera (conecta-fg.js) — cada espaço do texto
-      // do .docx vira "&nbsp;" (6 caracteres) no código gerado; sem decodificar de volta pra 1
-      // caractere, o texto "puro" do código saía bem mais comprido que o da prévia (que o
-      // navegador já decodifica sozinho ao renderizar), e essa diferença acumulada ao longo do
-      // texto ia derrubando a seleção mapeada pra fora da palavra certa.
-      const HTML_ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&nbsp;': ' ' };
+      // Seleção cruzada código <-> prévia: a palavra selecionada de um lado é marcada no outro.
+      // #code guarda o HTML cru e #view o mesmo conteúdo renderizado; tirando tags, entidades e
+      // espaços/quebras de linha, os dois têm exatamente os mesmos caracteres na mesma ordem. Então
+      // o k-ésimo caractere visível do código é o k-ésimo caractere visível da prévia — mapeamento
+      // exato, sem proporção nem busca por texto (que errava quando a palavra se repete). Só se os
+      // dois textos divergirem (ex.: entidade desconhecida) cai numa busca da ocorrência mais
+      // próxima. Nada aqui muda foco, seleção real ou conteúdo do #code: as duas marcações são
+      // destaques visuais (CSS Custom Highlight API), então editar o código segue normal.
+      const entityBox = document.createElement('textarea');
+      const ENTITY = /&(?:#\d+|#x[0-9a-f]+|[a-z][a-z0-9]*);/iy;
+      // Devolve o texto puro do HTML cru + para cada caractere o índice cru onde começa (map) e
+      // onde termina (ends). "\n" some: Cf.assemble junta blocos com "\n\n" e quebra manual vira
+      // <br /> na prévia — nenhum deles gera texto lá.
       function stripTagsWithMap(html) {
-        let plain = '', map = [];
+        let plain = '', map = [], ends = [];
+        const add = (str, from, to) => { for (let k = 0; k < str.length; k++) { plain += str[k]; map.push(from); ends.push(to); } };
         for (let i = 0; i < html.length; i++) {
-          if (html[i] === '<') { const close = html.indexOf('>', i); i = close === -1 ? html.length - 1 : close; continue; }
-          if (html[i] === '&') {
-            const entity = Object.keys(HTML_ENTITIES).find(e => html.startsWith(e, i));
-            if (entity) { plain += HTML_ENTITIES[entity]; map.push(i); i += entity.length - 1; continue; }
+          if (html[i] === '<') {
+            const close = html.startsWith('<!--', i) ? html.indexOf('-->', i) + 2 : html.indexOf('>', i);
+            i = close < i ? html.length : close; continue;
           }
-          plain += html[i]; map.push(i);
+          if (html[i] === '\n') continue;
+          if (html[i] === '&') {
+            ENTITY.lastIndex = i;
+            const m = ENTITY.exec(html);
+            if (m) { entityBox.innerHTML = m[0]; if (entityBox.value !== m[0]) { add(entityBox.value, i, i + m[0].length); i += m[0].length - 1; continue; } }
+          }
+          add(html[i], i, i + 1);
         }
-        return { plain, map };
+        return { plain, map, ends };
       }
-      const nearestPlainIndex = (map, rawIndex) => { let lo = 0, hi = map.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (map[mid] < rawIndex) lo = mid + 1; else hi = mid; } return lo; };
-      // Índices num texto puro (start/end) -> Range do DOM dentro de container, andando pelos nós
-      // de texto até acumular esses offsets; e o inverso (Range -> índices), pra converter uma
-      // seleção real do usuário na prévia de volta pra offset. Serve tanto pro #view (texto
-      // renderizado) quanto pro #codeHighlight (que, tirando os <span> de cor, é o próprio #code
-      // caractere a caractere — por isso dá pra usar essas mesmas funções pra medir a posição em
-      // pixels de um trecho do código, coisa que um <textarea> não expõe sozinho).
+      // primeiro índice de `sorted` (crescente) que é >= value
+      const lowerBound = (sorted, value) => { let lo = 0, hi = sorted.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (sorted[mid] < value) lo = mid + 1; else hi = mid; } return lo; };
+      // "lado" = um texto puro + posições dos caracteres não-branco (pos) e só eles (chars)
+      function textSide(plain) {
+        const pos = [];
+        for (let i = 0; i < plain.length; i++) if (!/\s/.test(plain[i])) pos.push(i);
+        return { plain, pos, chars: pos.map(i => plain[i]).join('') };
+      }
+      // ocorrência de needle em haystack mais próxima de approxIndex; -1 se não existir
+      function nearestOccurrence(haystack, needle, approxIndex) {
+        let best = -1, bestDist = Infinity;
+        for (let idx = haystack.indexOf(needle); idx !== -1; idx = haystack.indexOf(needle, idx + 1)) {
+          const dist = Math.abs(idx - approxIndex);
+          if (dist < bestDist) { bestDist = dist; best = idx; }
+        }
+        return best;
+      }
+      // [start,end) em índices do texto puro de `from` -> [start,end) em índices do texto puro de
+      // `to` (sem os espaços/quebras nas pontas); null se a seleção só pegou espaço/tag.
+      function mapSelection(from, to, start, end) {
+        const k0 = lowerBound(from.pos, start), k1 = lowerBound(from.pos, end);
+        if (k1 <= k0) return null;
+        let j0 = k0;
+        if (from.chars !== to.chars) {
+          j0 = nearestOccurrence(to.chars, from.chars.slice(k0, k1), Math.round(k0 * to.chars.length / (from.chars.length || 1)));
+          if (j0 < 0) return null;
+        }
+        const j1 = j0 + (k1 - k0) - 1;
+        return j1 < to.pos.length ? [to.pos[j0], to.pos[j1] + 1] : null;
+      }
+      // Índices num texto puro -> Range do DOM dentro de container (andando pelos nós de texto).
+      // Serve pro #view e pro #codeHighlight (que, sem os <span> de cor, é o #code caractere a
+      // caractere — o textarea em si não expõe a posição de um trecho).
       function domRangeFromOffsets(container, start, end) {
         const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
         let pos = 0, range = document.createRange(), started = false, node;
@@ -1227,147 +1258,70 @@
           if (started && pos + len >= end) { range.setEnd(node, Math.max(0, end - pos)); return range; }
           pos += len;
         }
-        if (!started) return null;
-        range.setEnd(container, container.childNodes.length);
-        return range;
+        return null;
       }
-      function offsetsFromDomRange(container, range) {
-        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
-        let pos = 0, start = -1, end = -1, node;
-        while ((node = walker.nextNode())) {
-          const len = node.textContent.length;
-          if (start < 0 && node === range.startContainer) start = pos + range.startOffset;
-          if (node === range.endContainer) { end = pos + range.endOffset; break; }
-          pos += len;
-        }
-        return { start, end };
-      }
-      // Centraliza verticalmente o trecho (rect) dentro do painel que rola — mesma ideia dos dois
-      // lados: sem isso, selecionar um trecho fora da área visível do outro painel mostra a
-      // seleção, mas escondida fora da tela.
-      function centerRectScrollTop(scrollEl, rect) {
-        const box = scrollEl.getBoundingClientRect();
-        return Math.max(0, scrollEl.scrollTop + (rect.top - box.top) - scrollEl.clientHeight / 2 + rect.height / 2);
-      }
-
-      // Marca a "seleção" da prévia com a CSS Custom Highlight API em vez da Selection API comum
-      // (window.getSelection()) — essa é sempre única por documento e o navegador a esvazia
-      // sozinho assim que o foco vai pro #code (comportamento nativo, não dá pra evitar), o que
-      // apagava o destaque da prévia bem na hora de focar o código pra mostrar a seleção lá. Um
-      // Highlight próprio (registrado em CSS.highlights) não depende de foco nem briga com a
-      // seleção "de verdade" — fica ativo nos dois painéis ao mesmo tempo, mesmo sendo, como
-      // pedido, só uma simulação visual do lado da prévia. Sem suporte (navegador muito antigo):
-      // some só o destaque na prévia, o resto da sincronização continua funcionando.
-      const viewHighlight = window.Highlight && CSS.highlights ? new Highlight() : null;
-      if (viewHighlight) CSS.highlights.set('cf-view-sel', viewHighlight);
-      function clearViewHighlight() { if (viewHighlight) viewHighlight.clear(); }
-
-      // A proporção (comprimento total de um texto / comprimento total do outro) só acerta a
-      // posição exata quando a "densidade" de marcação (tags, negrito, listas...) é uniforme do
-      // início ao fim do post — na prática nunca é, então o erro ia crescendo conforme a seleção
-      // estava mais longe do início do texto (bem visível num post grande). Em vez de confiar cegamente
-      // nela, ela serve só de palpite inicial de ONDE procurar: o texto selecionado (código e
-      // prévia mostram, no fim das contas, as mesmas palavras, na mesma ordem) é buscado de
-      // verdade por igualdade de string perto desse palpite — a ocorrência mais próxima da
-      // estimativa desempata quando a palavra se repete no post (ex.: "Adesivos" aparecendo em
-      // vários parágrafos).
-      function nearestOccurrence(haystack, needle, approxIndex) {
-        if (!needle) return approxIndex;
-        let best = -1, bestDist = Infinity;
-        for (let idx = haystack.indexOf(needle); idx !== -1; idx = haystack.indexOf(needle, idx + 1)) {
-          const dist = Math.abs(idx - approxIndex);
-          if (dist < bestDist) { bestDist = dist; best = idx; }
-        }
-        return best === -1 ? approxIndex : best;
-      }
-
-      let _syncingSelection = false;
-      function syncSelectionFromCode() {
-        if (_syncingSelection) return;
-        const ta = $('code'), rawStart = ta.selectionStart, rawEnd = ta.selectionEnd;
-        if (rawStart === rawEnd) { clearViewHighlight(); return; }
-        const { plain: codePlain, map } = stripTagsWithMap(ta.value);
-        const pStart = nearestPlainIndex(map, rawStart), pEnd = nearestPlainIndex(map, rawEnd);
-        const selectedText = codePlain.slice(pStart, pEnd);
-        const viewText = $('view').textContent;
-        const scale = codePlain.length ? viewText.length / codePlain.length : 1;
-        const vStart = nearestOccurrence(viewText, selectedText, Math.round(pStart * scale));
-        const range = domRangeFromOffsets($('view'), vStart, vStart + selectedText.length);
-        if (!range) return;
-        _syncingSelection = true;
-        if (viewHighlight) { viewHighlight.clear(); viewHighlight.add(range); }
+      // ponto do DOM (nó + offset, podendo ser um elemento — ex.: triple-click) -> índice no texto
+      const textOffset = (container, node, offset) => { const r = document.createRange(); r.selectNodeContents(container); r.setEnd(node, offset); return r.toString().length; };
+      // Rola o painel só se o trecho estiver fora da área visível — nunca mexe no painel onde o
+      // usuário está selecionando/editando.
+      function revealRange(range, scrollEl) {
         const rect = range.getClientRects()[0] || range.getBoundingClientRect();
-        if (rect.width || rect.height) { _syncingScroll = true; $('view').scrollTop = centerRectScrollTop($('view'), rect); setTimeout(() => { _syncingScroll = false; }, 0); }
-        setTimeout(() => { _syncingSelection = false; }, 0);
+        if (!rect.width && !rect.height) return;
+        const box = scrollEl.getBoundingClientRect();
+        if (rect.top >= box.top && rect.bottom <= box.bottom) return;
+        setScroll(scrollEl, Math.max(0, scrollEl.scrollTop + (rect.top - box.top) - scrollEl.clientHeight / 2 + rect.height / 2));
       }
-      // 'select' do textarea dispara continuamente durante um arraste (a cada pequeno movimento
-      // do mouse selecionando texto), não só uma vez no fim — sem debounce, cada um desses
-      // disparos recentralizava o scroll da prévia e reescrevia a seleção, brigando com o próprio
-      // gesto de selecionar/editar em andamento no código. Só sincroniza depois que a seleção
-      // "assenta" (fica parada por 150ms) — cobre arrastar o mouse, teclado (Shift+setas) e
-      // duplo clique igual. Também escuta 'click'/'keyup' (não só 'select"): são os jeitos de
-      // ESVAZIAR uma seleção (clicar em outro ponto do texto, setas sem Shift) — sem eles, apagar
-      // a seleção no código não limpava o destaque deixado na prévia.
-      let _codeSelectDebounce = null;
-      ['select', 'click', 'keyup'].forEach(evt => $('code').addEventListener(evt, () => {
-        clearTimeout(_codeSelectDebounce);
-        _codeSelectDebounce = setTimeout(syncSelectionFromCode, 150);
-      }));
 
-      function syncSelectionFromView() {
-        if (_syncingSelection) return;
-        const sel = window.getSelection();
-        if (!sel.rangeCount || sel.isCollapsed) return;
-        const range = sel.getRangeAt(0);
-        if (!$('view').contains(range.commonAncestorContainer)) return;
-        const { start: vStart, end: vEnd } = offsetsFromDomRange($('view'), range);
-        if (vStart < 0 || vEnd < 0 || vStart === vEnd) return;
-        const viewText = $('view').textContent;
-        const selectedText = viewText.slice(vStart, vEnd);
-        const { plain: codePlain, map } = stripTagsWithMap($('code').value);
-        if (!map.length) return;
-        const scale = viewText.length ? codePlain.length / viewText.length : 1;
-        const pStart = nearestOccurrence(codePlain, selectedText, Math.round(vStart * scale));
-        const rawStart = map[Math.min(map.length - 1, pStart)];
-        const rawEnd = map[Math.min(map.length - 1, pStart + selectedText.length - 1)] + 1;
-        _syncingSelection = true;
-        // guarda a seleção da prévia no Highlight próprio ANTES de focar o #code — focar um campo
-        // faz o navegador esvaziar sozinho a seleção "de verdade" (window.getSelection()) de
-        // qualquer outro lugar da página; o Highlight não depende de foco, então continua marcado
-        // na prévia mesmo depois. Só assim dá pra mostrar as duas seleções ativas ao mesmo tempo:
-        // a de verdade no #code (que só aparece com o campo focado) e a simulada na prévia.
-        if (viewHighlight) { viewHighlight.clear(); viewHighlight.add(range.cloneRange()); }
-        $('code').focus();
-        $('code').setSelectionRange(rawStart, rawEnd);
-        const hlRange = domRangeFromOffsets($('codeHighlight'), rawStart, rawEnd);
-        if (hlRange) {
-          const rect = hlRange.getClientRects()[0] || hlRange.getBoundingClientRect();
-          if (rect.width || rect.height) { _syncingScroll = true; $('code').scrollTop = centerRectScrollTop($('codeHighlight').parentElement, rect); setTimeout(() => { _syncingScroll = false; }, 0); }
+      // Destaques próprios (CSS.highlights) em vez da seleção real: a seleção real é única por
+      // documento e o navegador a esvazia ao mudar o foco. Sem suporte (navegador muito antigo):
+      // some só o destaque, o resto continua funcionando.
+      const viewHighlight = window.Highlight && CSS.highlights ? new Highlight() : null;
+      const codeHighlight = viewHighlight && new Highlight();
+      if (viewHighlight) { CSS.highlights.set('cf-view-sel', viewHighlight); CSS.highlights.set('cf-code-sel', codeHighlight); }
+      function clearViewHighlight() { if (viewHighlight) { viewHighlight.clear(); codeHighlight.clear(); } }
+
+      function syncSelection() {
+        if (!viewHighlight) return;
+        const ta = $('code'), view = $('view');
+        if (document.activeElement === ta) {
+          // seleção real do código -> marca na prévia
+          if (ta.selectionStart === ta.selectionEnd) return clearViewHighlight();
+          const { plain, map } = stripTagsWithMap(ta.value);
+          const r = mapSelection(textSide(plain), textSide(view.textContent), lowerBound(map, ta.selectionStart), lowerBound(map, ta.selectionEnd));
+          const range = r && domRangeFromOffsets(view, r[0], r[1]);
+          clearViewHighlight();
+          if (!range) return;
+          viewHighlight.add(range);
+          revealRange(range, view);
+          return;
         }
-        setTimeout(() => { _syncingSelection = false; }, 0);
-      }
-      let _viewSelectDebounce = null;
-      document.addEventListener('selectionchange', () => {
-        // 'selectionchange' do documento também dispara pra seleção interna de <textarea>/<input>
-        // (não só pra seleção "de verdade" via Selection API) — ex.: mover o cursor ao digitar no
-        // #code. Isso é inofensivo aqui: focar um campo já colapsa (e tira de dentro da #view) a
-        // seleção "de verdade" automaticamente — confirmado com um teste isolado (sel.isCollapsed
-        // vira true e sel.toString() fica vazio assim que o #code recebe foco, mesmo que a
-        // seleção anterior estivesse dentro da #view). Por isso "!sel.isCollapsed" já basta pra
-        // ignorar esses disparos-fantasma; não checa foco (chegou a checar antes, mas isso também
-        // bloqueava selecionar na prévia sempre que o #code já estava focado de uma seleção
-        // anterior — bug pior que o que resolvia). Mesma razão do debounce do #code (ver 'select'
-        // acima): isso dispara em sequência durante um arraste, não só uma vez no fim.
-        if (_syncingSelection) return;
         const sel = window.getSelection();
-        const inView = sel.rangeCount && $('view').contains(sel.getRangeAt(0).commonAncestorContainer);
-        // clicar na prévia sem arrastar colapsa a seleção ali — some com o destaque, igual clicar
-        // no código sem arrastar limpa a marcação (ver 'click' no #code acima).
-        if (inView && sel.isCollapsed) { clearViewHighlight(); return; }
-        if (!inView || sel.isCollapsed) return;
-        clearTimeout(_viewSelectDebounce);
-        _viewSelectDebounce = setTimeout(syncSelectionFromView, 150);
-      });
+        if (!sel.rangeCount) return;
+        const selRange = sel.getRangeAt(0);
+        const startIn = view.contains(selRange.startContainer), endIn = view.contains(selRange.endContainer);
+        if (!startIn && !endIn) return;
+        // clicar na prévia sem arrastar colapsa a seleção ali — some com as marcações
+        if (sel.isCollapsed) return clearViewHighlight();
+        // seleção da prévia -> marca no código (as pontas fora da prévia contam como início/fim)
+        const viewText = view.textContent;
+        const vStart = startIn ? textOffset(view, selRange.startContainer, selRange.startOffset) : 0;
+        const vEnd = endIn ? textOffset(view, selRange.endContainer, selRange.endOffset) : viewText.length;
+        const { plain, map, ends } = stripTagsWithMap(ta.value);
+        const r = mapSelection(textSide(viewText), textSide(plain), vStart, vEnd);
+        const range = r && domRangeFromOffsets($('codeHighlight'), map[r[0]], ends[r[1] - 1]);
+        clearViewHighlight();
+        if (!range) return;
+        codeHighlight.add(range);
+        // a marcação da prévia é a própria seleção real dela (visível, sem precisar de destaque à parte)
+        revealRange(range, ta);
+      }
+      // rAF agrupa a rajada de eventos de um arraste em uma sincronização por frame (marca ao vivo,
+      // sem esperar o usuário parar). 'selectionchange' do documento também cobre a seleção interna
+      // do textarea nos navegadores atuais; os eventos do #code abaixo são o reforço pros demais.
+      let _selectionFrame = 0;
+      const scheduleSelectionSync = () => { cancelAnimationFrame(_selectionFrame); _selectionFrame = requestAnimationFrame(syncSelection); };
+      document.addEventListener('selectionchange', scheduleSelectionSync);
+      ['select', 'keyup', 'mouseup'].forEach(evt => $('code').addEventListener(evt, scheduleSelectionSync));
 
       // Tab normalmente pula pro próximo campo do formulário (comportamento padrão de textarea);
       // aqui dentro do código isso deveria indentar, como um editor de verdade — Shift+Tab
