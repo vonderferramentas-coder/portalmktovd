@@ -286,6 +286,7 @@
     .page-subtitle{margin:6px 0 0;max-width:72ch;font-size:14px;line-height:1.5;color:var(--muted)}
     @media (max-width:560px){h1{font-size:24px}}
     .page-header-actions{display:flex;gap:10px;align-items:center;flex-shrink:0}
+    .field-help{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;padding:0;border:1px solid var(--border-strong);border-radius:50%;background:var(--card);color:var(--muted);font:800 11px/1 var(--font-ui);cursor:help;vertical-align:middle}.field-help:hover,.field-help:focus-visible{border-color:var(--accent-ink);color:var(--accent-ink);outline:none}
 
     /* Busca de postagens (lupa no cabeçalho): em repouso é só o botão-lupa; ao abrir, a barra
        cresce por cima do espaço vazio do cabeçalho (entre o título e os botões) como uma camada
@@ -824,6 +825,7 @@
     .guided-post-footer #cancelModal{margin-right:auto}
     /* telas estreitas: o menu de Configurações vira uma barra horizontal de abas acima do conteúdo */
     @media (max-width:640px){
+      .portal-main{padding:18px 14px}.page-header{flex-direction:column;margin-bottom:18px}.page-header-actions{width:100%;flex-wrap:wrap}.page-header-actions .btn{flex:1 1 auto}.toolbar-row{gap:8px}.toolbar-row .toolbar-spacer{display:none}.month-nav{order:0}.view-toggle{order:1;overflow-x:auto;max-width:100%}.toolbar-row:has(#tabs){flex-wrap:wrap}.toolbar-row:has(#tabs) #tabs{order:2;width:100%;overflow-x:auto}.toolbar-row:has(#tabs) .toolbar-spacer{display:block;flex:1}.weekday-header{display:none}.grid-month{grid-template-columns:1fr;gap:10px;margin-top:12px}.day{min-height:104px}.day.empty{display:none}.grid-week{grid-template-columns:1fr;gap:10px}.week-day{min-height:0}.guided-flow-nav{align-items:flex-start;gap:8px}.guided-flow-steps{overflow-x:auto;padding-bottom:2px}.guided-step-btn{white-space:nowrap}.guided-post-layout{grid-template-columns:1fr}.guided-preview-panel{position:static}.guided-preview-panel #mBriefingPreview{max-height:none}.modal.modal--guided-post{max-width:100%}
       .settings-layout{flex-direction:column;gap:10px}
       .settings-sidebar{flex-direction:row;flex-wrap:wrap;flex:none;border-right:0;border-bottom:1px solid var(--border);padding-right:0;padding-bottom:10px}
       .settings-nav-btn{width:auto}
