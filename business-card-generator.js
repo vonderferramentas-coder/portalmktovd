@@ -38,6 +38,13 @@
     return normalize(value).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "cartao";
   }
 
+  // Nome do ZIP: nomes das pessoas (ex.: mariana-alves_lucas-ribeiro.zip); em lotes grandes, cujo nome
+  // passaria de 100 caracteres, cai para o padrão marca + rótulo + quantidade.
+  function zipFileName(records, fallback) {
+    var names = records.map(function (r) { return safeFile(r.name); }).join("_");
+    return (names.length <= 100 ? names : fallback) + ".zip";
+  }
+
   var VALID_DDDS = {
     11:1,12:1,13:1,14:1,15:1,16:1,17:1,18:1,19:1,21:1,22:1,24:1,27:1,28:1,
     31:1,32:1,33:1,34:1,35:1,37:1,38:1,41:1,42:1,43:1,44:1,45:1,46:1,47:1,48:1,49:1,
@@ -71,16 +78,16 @@
     if (type === "landline") {
       if (digits.length !== 10) return { valid: false, empty: false, message: label + " deve ter DDD + 8 números." };
       if (!VALID_DDDS[digits.slice(0, 2)]) return { valid: false, empty: false, message: "DDD inválido. Confira os dois primeiros números." };
-      if (!/[2-5]/.test(digits.charAt(2))) return { valid: false, empty: false, message: "Telefone fixo deve começar entre 2 e 5 após o DDD." };
+      if (!/[23]/.test(digits.charAt(2))) return { valid: false, empty: false, message: "Telefone fixo deve começar com 2 ou 3 após o DDD." };
       return { valid: true, empty: false, message: "Telefone fixo válido" };
     }
     // Celular aceita o padrão DDD + 9 (começando com 9) e também o ramal interno da empresa, que
-    // funciona como WhatsApp e é cadastrável aqui: DDD + 8 números começando com 2, ex.: (41) 2101-3357.
+    // funciona como WhatsApp e é cadastrável aqui: DDD + 8 números começando com 2 ou 3, ex.: (41) 2101-3357.
     var isMobile9 = digits.length === 11 && digits.charAt(2) === "9";
-    var isRamal8 = digits.length === 10 && digits.charAt(2) === "2";
+    var isRamal8 = digits.length === 10 && /[23]/.test(digits.charAt(2));
     if (!isMobile9 && !isRamal8) {
       if (digits.length !== 10 && digits.length !== 11) return { valid: false, empty: false, message: "Celular deve ter DDD + 8 (ramal) ou DDD + 9 números." };
-      return { valid: false, empty: false, message: "Celular deve começar com 9 (DDD + 9) ou com 2 no caso de ramal (DDD + 8)." };
+      return { valid: false, empty: false, message: "Celular deve começar com 9 (DDD + 9) ou com 2 ou 3 no caso de ramal (DDD + 8)." };
     }
     if (!VALID_DDDS[digits.slice(0, 2)]) return { valid: false, empty: false, message: "DDD inválido. Confira os dois primeiros números." };
     return { valid: true, empty: false, message: "Celular válido" };
@@ -158,7 +165,7 @@
       email: clean(obj.email),
       website: clean(obj.website),
       logoVariant: obj.logoVariant === "fg-ico" ? "fg-ico" : "fg",
-      selected: true,
+      selected: false,
       reviewed: false,
       approved: false,
       issues: []
@@ -239,26 +246,46 @@
   function renderRecords() {
     var list = $("recordsList");
     $("recordsTitle").textContent = state.records.length + " " + (state.records.length === 1 ? "cartão" : "cartões");
+    // Como a lista é recriada, a checkbox nova nasceria já no estado final e não animaria. Guardamos o
+    // estado anterior e, no próximo quadro, aplicamos o estado atual para a transição rodar.
+    var prevChecked = {};
+    list.querySelectorAll("[data-select]").forEach(function (c) { prevChecked[c.getAttribute("data-select")] = c.checked; });
     list.innerHTML = state.records.map(function (r, index) {
+      var shown = prevChecked.hasOwnProperty(r.id) ? prevChecked[r.id] : r.selected;
       var cls = "bc-record" + (r.id === state.activeId ? " is-active" : "") + (r.reviewed ? " is-reviewed" : "") + (r.approved ? " is-approved" : "");
       return '<div class="' + cls + '" data-record="' + r.id + '" role="button" tabindex="0">' +
-        '<input type="checkbox" data-select="' + r.id + '" ' + (r.selected ? "checked" : "") + ' aria-label="Selecionar cartão ' + (index + 1) + '">' +
+        '<input type="checkbox" data-select="' + r.id + '" ' + (shown ? "checked" : "") + ' aria-label="Selecionar cartão ' + (index + 1) + '">' +
         '<span><strong>' + (esc(r.name) || "Cartão sem nome") + '</strong><small>' + esc(r.role || "Cargo não informado") + '</small></span>' +
         '<i class="bc-record-status" title="' + (r.approved ? "Aprovado" : r.reviewed ? "Revisado" : "Pendente") + '"></i>' +
         '<button type="button" class="bc-record-delete" data-delete="' + r.id + '" title="Excluir colaborador" aria-label="Excluir cartão de ' + esc(r.name || "colaborador") + '">✕</button>' +
         '</div>';
     }).join("");
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        list.querySelectorAll("[data-select]").forEach(function (c) {
+          var r = state.records.find(function (item) { return item.id === c.getAttribute("data-select"); });
+          if (r) c.checked = !!r.selected;
+        });
+      });
+    });
     list.querySelectorAll("[data-record]").forEach(function (row) {
+      // Clique simples só abre o cartão. Não recria a lista, para o duplo clique acertar a mesma linha.
+      function openRecord() {
+        state.activeId = row.getAttribute("data-record");
+        list.querySelectorAll("[data-record]").forEach(function (el) { el.classList.toggle("is-active", el === row); });
+        renderEditor();
+        renderStats();
+        updateFlow();
+        renderCanvas(current());
+      }
       row.addEventListener("click", function (ev) {
         if (ev.target.closest("[data-select],[data-delete]")) return;
-        state.activeId = row.getAttribute("data-record");
-        renderAll();
+        openRecord();
       });
       row.addEventListener("keydown", function (ev) {
         if ((ev.key === "Enter" || ev.key === " ") && !ev.target.closest("[data-select],[data-delete]")) {
           ev.preventDefault();
-          state.activeId = row.getAttribute("data-record");
-          renderAll();
+          openRecord();
         }
       });
     });
@@ -268,7 +295,6 @@
         if (r) {
           r.selected = check.checked;
           save();
-          renderRecords();
           renderStats();
         }
       });
@@ -403,9 +429,12 @@
     $("selectAll").checked = state.records.length > 0 && selected === state.records.length;
     $("selectAll").indeterminate = selected > 0 && selected < state.records.length;
     $("approvedCount").textContent = approved + " de " + state.records.length + " aprovados";
-    $("exportCurrent").disabled = !current() || !current().approved;
-    $("exportSelected").disabled = !selected;
-    $("exportAll").disabled = !state.records.length;
+    var currentOff = !current() || !current().approved;
+    ["exportCurrent", "exportDigitalCurrent", "exportBothCurrent"].forEach(function (id) { $(id).disabled = currentOff; });
+    var selectedOff = !selected || state.records.some(function (r) { return r.selected && !r.approved; });
+    ["exportSelected", "exportDigitalSelected", "exportBothSelected"].forEach(function (id) { $(id).disabled = selectedOff; });
+    $("exportAll").disabled = !state.records.length || approved < state.records.length;
+    $("exportMenu").disabled = !state.records.length;
     $("deleteSelected").disabled = !selected;
   }
 
@@ -1005,8 +1034,9 @@
     return lines.join("\r\n");
   }
 
-  function drawContactQr(r, layout) {
+  function drawContactQr(r, layout, target) {
     if (!layout || !window.qrcode) return;
+    var g = target || ctx; // o cartão digital passa seu próprio contexto
     // UTF-8 preserva corretamente os acentos de nomes, cargos e endereços.
     if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs["UTF-8"]) qrcode.stringToBytes = qrcode.stringToBytesFuncs["UTF-8"];
     var qr = qrcode(0, "M");
@@ -1018,10 +1048,10 @@
     var x = layout.x;
     var y = layout.y;
     var size = layout.size;
-    ctx.save();
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(x, y, size, size);
-    ctx.fillStyle = "#000";
+    g.save();
+    g.fillStyle = "#fff";
+    g.fillRect(x, y, size, size);
+    g.fillStyle = "#000";
     for (var row = 0; row < modules; row++) {
       for (var col = 0; col < modules; col++) {
         if (qr.isDark(row, col)) {
@@ -1029,11 +1059,11 @@
           var x1 = x + Math.ceil((col + quiet + 1) * size / total);
           var y0 = y + Math.floor((row + quiet) * size / total);
           var y1 = y + Math.ceil((row + quiet + 1) * size / total);
-          ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+          g.fillRect(x0, y0, x1 - x0, y1 - y0);
         }
       }
     }
-    ctx.restore();
+    g.restore();
   }
 
   function drawContact(r, x, y, width, color) {
@@ -1812,6 +1842,131 @@
     drawContactQr(r, template.qr);
   }
 
+  // ==== CARTÃO DIGITAL FG (5 × 9 cm, vertical, RGB) ====
+  // Base: JPGs do CorelDRAW (business-card-digital-assets.js) já sem nome, cargo, QR e site, com o
+  // verde recolorido para #005B44 (R0 G91 B68). Coordenadas em px lógicos de 592 × 1064 (300 dpi);
+  // o canvas físico é 2×. Tamanhos: nome 11,5 pt, cargo 8,5 pt, site 7 pt (px = pt × 300 / 72).
+  var DIGITAL_W = 592, DIGITAL_H = 1064;
+  var DIGITAL_FONT = "Swiss721,Arial Narrow,Arial,sans-serif";
+  var DIGITAL_INK = FG_GRAY; // 70% de preto, igual à referência e ao cartão físico
+  var DIGITAL_QR = { fg: { cy: 590, size: 280 }, "fg-ico": { cy: 567, size: 255 } };
+  var DIGITAL_LOWER = { da: 1, de: 1, do: 1, das: 1, dos: 1, e: 1 };
+
+  // Iniciais em caixa alta e demais letras em baixa; só mexe em palavras digitadas totalmente em
+  // minúsculas, preservando siglas (TI) e grafias como McDonald.
+  function titleCase(text) {
+    return clean(text).split(" ").map(function (w, i) {
+      return w === w.toLowerCase() && (i === 0 || !DIGITAL_LOWER[w]) ? w.charAt(0).toUpperCase() + w.slice(1) : w;
+    }).join(" ");
+  }
+
+  function digitalSite(r) {
+    return clean(r.website).replace(/^https?:\/\//i, "").replace(/\/$/, "").toLowerCase() || "www.fg.com.br";
+  }
+
+  function drawCentered(c, text, y, weight, px, maxWidth) {
+    do c.font = weight + " " + px + "px " + DIGITAL_FONT; while (c.measureText(text).width > maxWidth && (px -= 1) > 20);
+    c.fillText(text, DIGITAL_W / 2, y);
+  }
+
+  // Nome em 1 linha se couber; senão em 2, com a quebra que deixa as linhas mais equilibradas.
+  // Só reduz a fonte (de 0,5 em 0,5 px) quando nem 2 linhas cabem na largura.
+  function digitalNameLines(c, text, px, maxWidth) {
+    for (; px > 20; px -= .5) {
+      c.font = "700 " + px + "px " + DIGITAL_FONT;
+      if (c.measureText(text).width <= maxWidth) return { lines: [text], px: px };
+      var words = text.split(" "), best = null;
+      for (var i = 1; i < words.length; i++) {
+        var a = words.slice(0, i).join(" "), b = words.slice(i).join(" ");
+        var wide = Math.max(c.measureText(a).width, c.measureText(b).width);
+        if (wide <= maxWidth && (!best || wide < best.wide)) best = { lines: [a, b], wide: wide };
+      }
+      if (best) return { lines: best.lines, px: px };
+    }
+    return { lines: [text], px: px };
+  }
+
+  async function renderDigital(r, target) {
+    target = target || $("digitalCanvas");
+    if (!target || template.style !== "fg") return;
+    r = r || recordFrom({});
+    await fontsReady;
+    var variant = r.logoVariant === "fg-ico" ? "fg-ico" : "fg";
+    var assets = window.BusinessCardDigitalAssets || {};
+    var bg = await loadImage(assets[variant === "fg" ? "fg" : "fgIco"]);
+    var c = target.getContext("2d");
+    c.setTransform(target.width / DIGITAL_W, 0, 0, target.height / DIGITAL_H, 0, 0);
+    c.fillStyle = "#fff";
+    c.fillRect(0, 0, DIGITAL_W, DIGITAL_H);
+    if (bg) c.drawImage(bg, 0, 0, DIGITAL_W, DIGITAL_H);
+    c.textAlign = "center";
+    c.fillStyle = DIGITAL_INK;
+    var name = digitalNameLines(c, titleCase(r.name) || "Nome Sobrenome", 47.9, 520);
+    var lineGap = name.px * 1.1;
+    c.font = "700 " + name.px + "px " + DIGITAL_FONT;
+    name.lines.forEach(function (line, i) { c.fillText(line, DIGITAL_W / 2, 270 + i * lineGap); });
+    drawCentered(c, titleCase(r.role) || "Cargo", 322 + (name.lines.length - 1) * lineGap, 400, 35.4, 520);
+    var qr = DIGITAL_QR[variant];
+    drawContactQr(r, { x: (DIGITAL_W - qr.size) / 2, y: qr.cy - qr.size / 2, size: qr.size }, c);
+    c.fillStyle = "#fff";
+    drawCentered(c, digitalSite(r), 1049, 700, 29.2, 420);
+    c.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  function digitalBlob(r) {
+    var scratch = document.createElement("canvas");
+    scratch.width = 1184;
+    scratch.height = 2128;
+    return new Promise(function (resolve) {
+      renderDigital(r, scratch).then(function () {
+        scratch.toBlob(function (blob) {
+          var reader = new FileReader();
+          reader.onload = function () {
+            // canvas.toBlob não grava a densidade: JFIF unidade 1 (dpi) = 1184 px / 5 cm ≈ 601 dpi.
+            var bytes = new Uint8Array(reader.result);
+            var dpi = Math.round(1184 / 5 * 2.54);
+            if (bytes[2] === 0xff && bytes[3] === 0xe0) { bytes[13] = 1; bytes[14] = bytes[16] = dpi >> 8; bytes[15] = bytes[17] = dpi & 255; }
+            resolve(new Blob([bytes], { type: "image/jpeg" }));
+          };
+          reader.readAsArrayBuffer(blob);
+        }, "image/jpeg", 0.95);
+      });
+    });
+  }
+
+  async function exportDigital(records, label) {
+    if (!validateExport(records)) return;
+    if (records.length === 1) {
+      triggerBlob(await digitalBlob(records[0]), safeFile(records[0].name) + ".jpg");
+      toast("JPG digital gerado com sucesso.");
+      return;
+    }
+    toast("Preparando " + records.length + " cartões digitais…");
+    var used = {}, files = [];
+    for (var i = 0; i < records.length; i++) {
+      var blob = await digitalBlob(records[i]);
+      files.push({ name: uniqueFileName(safeFile(records[i].name), used) + ".jpg", data: new Uint8Array(await blob.arrayBuffer()) });
+    }
+    triggerBlob(makeZip(files), zipFileName(records, safeFile(brand.name) + "-digital-" + label + "-" + records.length + "-cartoes"));
+    toast("ZIP com " + records.length + " JPGs gerado com sucesso.");
+  }
+
+  // PDF (físico) + JPG (digital) de cada cartão, sempre dentro de um ZIP.
+  async function exportBoth(records, label) {
+    if (!validateExport(records)) return;
+    toast("Preparando PDF e JPG de " + records.length + (records.length === 1 ? " cartão…" : " cartões…"));
+    var used = {}, files = [];
+    for (var i = 0; i < records.length; i++) {
+      var name = uniqueFileName(safeFile(records[i].name), used);
+      var doc = await cardPdfDoc(records[i]);
+      var blob = await digitalBlob(records[i]);
+      files.push({ name: name + ".pdf", data: new Uint8Array(doc.output("arraybuffer")) });
+      files.push({ name: name + ".jpg", data: new Uint8Array(await blob.arrayBuffer()) });
+    }
+    triggerBlob(makeZip(files), zipFileName(records, safeFile(brand.name) + "-pdf-e-jpg-" + label + "-" + records.length + (records.length === 1 ? "-cartao" : "-cartoes")));
+    toast("ZIP com PDF e JPG gerado com sucesso.");
+  }
+
   async function renderCanvas(r, targetCanvas, logicalSize) {
     await fontsReady;
     if (targetCanvas && targetCanvas !== canvas) {
@@ -1844,6 +1999,7 @@
     else if (template.style === "ovd") await drawOvd(r, token);
     else if (template.style === "pilar") await drawPilar(r, token);
     else await drawGeneric(r, token);
+    renderDigital(r);
   }
 
   function validateExport(records) {
@@ -2286,8 +2442,7 @@
       files.push({ name: name + ".pdf", data: new Uint8Array(recordDoc.output("arraybuffer")) });
     }
     var zip = makeZip(files);
-    var zipName = safeFile(brand.name) + "-" + label + "-" + records.length + "-cartoes";
-    triggerBlob(zip, zipName + ".zip");
+    triggerBlob(zip, zipFileName(records, safeFile(brand.name) + "-" + label + "-" + records.length + "-cartoes"));
     toast("ZIP com " + records.length + " PDFs gerado com sucesso.");
   }
 
@@ -2326,6 +2481,8 @@
     $("brandDot").textContent = brand.shortName || brand.name.slice(0, 3).toUpperCase();
     $("miniBrand").textContent = brand.shortName || brand.name.slice(0, 3).toUpperCase();
     $("logoVariantField").hidden = template.style !== "fg";
+    $("digitalPreview").hidden = template.style !== "fg";
+    document.querySelectorAll("[data-fg-only]").forEach(function (el) { el.hidden = template.style !== "fg"; });
     if (template.style === "pilar") {
       // O cartão PILAR TECNOLOGIA não tem site impresso e mostra o e-mail logo após o cargo
       // (mesma ordem da arte impressa: nome, cargo, e-mail, endereço).
@@ -2377,11 +2534,23 @@
         return;
       }
       r.approved = this.checked;
+      if (this.checked) r.selected = true; // só entra na seleção depois de revisado e aprovado
       state.currentStep = this.checked ? "export" : "review";
       save();
       renderRecords();
       renderStats();
       updateFlow();
+    });
+    // Duplo clique na linha do cartão marca/desmarca a checkbox (a outra via de seleção é a aprovação).
+    $("recordsList").addEventListener("dblclick", function (ev) {
+      var row = ev.target.closest("[data-record]");
+      if (!row || ev.target.closest("[data-select],[data-delete]")) return;
+      var r = state.records.find(function (item) { return item.id === row.getAttribute("data-record"); });
+      if (!r) return;
+      r.selected = !r.selected;
+      save();
+      renderRecords();
+      renderStats();
     });
     $("selectAll").addEventListener("change", function () {
       var value = this.checked;
@@ -2392,7 +2561,42 @@
     });
     $("exportCurrent").addEventListener("click", function () { var r = current(); exportPdf(r ? [r] : [], "individual"); });
     $("exportSelected").addEventListener("click", function () { exportPdf(state.records.filter(function (r) { return r.selected; }), "selecionados"); });
-    $("exportAll").addEventListener("click", function () { exportPdf(state.records, "lote-completo"); });
+    $("exportDigitalCurrent").addEventListener("click", function () { var r = current(); exportDigital(r ? [r] : [], "individual"); });
+    $("exportDigitalSelected").addEventListener("click", function () { exportDigital(state.records.filter(function (r) { return r.selected; }), "selecionados"); });
+    $("exportBothCurrent").addEventListener("click", function () { var r = current(); exportBoth(r ? [r] : [], "individual"); });
+    $("exportBothSelected").addEventListener("click", function () { exportBoth(state.records.filter(function (r) { return r.selected; }), "selecionados"); });
+    // "Tudo": no FG inclui o cartão digital; nas demais marcas continua só o PDF.
+    $("exportAll").addEventListener("click", function () { (template.style === "fg" ? exportBoth : exportPdf)(state.records, "lote-completo"); });
+    function closeInfoTips(except) {
+      document.querySelectorAll(".bc-info-btn").forEach(function (btn) {
+        if (btn === except) return;
+        $(btn.getAttribute("aria-controls")).hidden = true;
+        btn.setAttribute("aria-expanded", "false");
+      });
+    }
+    document.querySelectorAll(".bc-info-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var note = $(btn.getAttribute("aria-controls")), open = note.hidden;
+        closeInfoTips(btn);
+        note.hidden = !open;
+        btn.setAttribute("aria-expanded", String(open));
+      });
+    });
+    document.addEventListener("click", function (ev) { if (!ev.target.closest(".bc-head-tools")) closeInfoTips(); });
+    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") closeInfoTips(); });
+    var exportMenu = $("exportMenu"), exportList = $("exportMenuList");
+    function closeExportMenu() { exportList.hidden = true; exportMenu.setAttribute("aria-expanded", "false"); }
+    exportMenu.addEventListener("click", function () { var open = exportList.hidden; exportList.hidden = !open; exportMenu.setAttribute("aria-expanded", String(open)); });
+    exportList.addEventListener("click", function (ev) {
+      var toggle = ev.target.closest(".bc-export-group-toggle");
+      if (!toggle) return closeExportMenu();
+      var items = toggle.nextElementSibling, open = items.hidden;
+      exportList.querySelectorAll(".bc-export-group-items").forEach(function (el) { el.hidden = true; el.previousElementSibling.setAttribute("aria-expanded", "false"); });
+      items.hidden = !open;
+      toggle.setAttribute("aria-expanded", String(open));
+    });
+    document.addEventListener("click", function (ev) { if (!ev.target.closest(".bc-action-menu")) closeExportMenu(); });
+    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") closeExportMenu(); });
     load();
     if (!state.records.length) renderCanvas(null);
     else renderAll();
@@ -2402,6 +2606,8 @@
     loadDemo: loadDemo,
     importRows: importRows,
     exportPdf: exportPdf,
+    exportDigital: exportDigital,
+    exportBoth: exportBoth,
     createPdf: cardPdfDoc,
     buildVCard: contactVCard,
     formatPhone: formatPhone,
