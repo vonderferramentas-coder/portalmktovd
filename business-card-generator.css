@@ -17,6 +17,8 @@
 :root[data-theme="dark"] .bc-page .bc-issue.is-ok{background:color-mix(in srgb,#22a06b 18%,var(--card));color:#7ce4ba}
 :root[data-theme="dark"] .bc-page .bc-proof{color:#72dfb4}
 :root[data-theme="dark"] .bc-page .bc-export-actions button:disabled{color:var(--muted);opacity:.62}
+/* Exportar desabilitado usa a cor da marca: em cinza (Grupo OVD) o texto muted/opacidade baixa ficava ~1,8:1; mantém o texto da marca e sobe a opacidade (≥4:1) */
+.bc-export-actions .bc-primary:disabled,:root[data-theme="dark"] .bc-page .bc-export-actions .bc-primary:disabled{color:var(--on-accent);opacity:.75}
 :root[data-theme="dark"] .bc-page .bc-upload small{opacity:.82}
 /* Accessible typography scale */
 .bc-page{font-size:14px;line-height:1.5}

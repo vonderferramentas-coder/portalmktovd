@@ -1,0 +1,1750 @@
+/* Gerador de Cartazes: estilos da página cartaz-generator.html.
+   Os cartões (.card, .photo, .lines, .ean) ficam TODOS na seção "Cartões", uma regra por seletor. */
+
+/* Cores da tela (não da arte do cartaz) ficam nestas variáveis: neutros no claro com os valores originais e no escuro pelos tokens do portal; os destaques (kicker, botões, página ativa) seguem a cor da marca ativa (--accent*, definidos por portal-shell.js). A folha .sheet é a arte que vai pra impressão e nunca muda com o tema nem com a marca. */
+.cg {
+    --cg-ink: #18242d;
+    --cg-muted: #5d6a73;
+    --cg-card: #fff;
+    --cg-line: #d8e0e4;
+    --cg-dash: #81939b;
+    --cg-accent: var(--accent-text);
+    --cg-accent-weak: var(--accent-weak);
+    --cg-btn-bg: #fff;
+    --cg-canvas: #e9edef;
+    --cg-toast: #19242d;
+    max-width: 1440px;
+    margin: auto;
+    padding: 28px;
+    color: var(--cg-ink);
+}
+:root[data-theme="dark"] .cg {
+    --cg-ink: var(--text);
+    --cg-muted: var(--muted);
+    --cg-card: var(--card);
+    --cg-line: var(--border);
+    --cg-dash: #7d8794;
+    --cg-btn-bg: var(--surface-muted);
+    --cg-canvas: #2a2c33;
+    --cg-toast: #2c2d33;
+}
+/* a arte não herda a cor do tema: o texto dentro dela continua sendo o do tema claro */
+.cg .sheet {
+    color: #18242d;
+}
+:root[data-theme="dark"] .preview .sheet {
+    outline: 1px solid rgba(255, 255, 255, .16);
+}
+.cg header {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+}
+.cg p:not(.page-subtitle) {
+    color: var(--cg-muted);
+}
+.cg .k {
+    font-size: 12px;
+    color: var(--cg-accent);
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.import {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 24px 0;
+}
+.box {
+    background: var(--cg-card);
+    border: 1px solid var(--cg-line);
+    border-radius: 10px;
+    padding: 30px;
+}
+.box h2 {
+    font-size: 17px;
+    margin: 0 0 7px;
+}
+.upload {
+    display: block;
+    border: 1px dashed var(--cg-dash);
+    padding: 12px;
+    border-radius: 7px;
+    color: var(--cg-accent);
+    font-weight: bold;
+    cursor: pointer;
+}
+.upload input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+button {
+    border: 0;
+    border-radius: 7px;
+    background: var(--accent);
+    color: var(--on-accent);
+    padding: 12px 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+button:disabled {
+    opacity: .5;
+}
+.work[hidden] {
+    display: none;
+}
+.work {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 18px;
+}
+.pages button {
+    display: block;
+    width: 100%;
+    margin: 6px 0;
+    text-align: left;
+    background: var(--cg-btn-bg);
+    color: var(--cg-ink);
+    border: 1px solid var(--cg-line);
+}
+.pages button.active {
+    background: var(--cg-accent-weak);
+    border-color: var(--cg-accent);
+}
+.preview {
+    background: var(--cg-canvas);
+    padding: 24px;
+    overflow: auto;
+}
+.sheet {
+    width: 794px;
+    min-height: 1123px;
+    background: #fff;
+    margin: auto;
+    padding: 25px;
+    box-sizing: border-box;
+    box-shadow: 0 5px 18px #0002;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    align-content: start;
+}
+.sheet::before {
+    content: "FEIRA GRANDES MARCAS";
+    grid-column: 1/-1;
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: .16em;
+    font-weight: 800;
+    color: #126d62;
+    margin-top: 4px;
+}
+.head {
+    grid-column: 1/-1;
+    border-bottom: 2px solid #1c514b;
+    padding: 0 0 10px;
+    display: flex;
+    justify-content: space-between;
+}
+.head strong {
+    font-size: 22px;
+    color: #00766a;
+}
+/* ============ Cartões ============
+   Uma regra por seletor. Base (A4) primeiro; variações A3, grande, duas colunas e estados depois.
+   Respiro padrão de 20px nos quatro lados; título e códigos rentes ao padding esquerdo, código de barras rente ao direito. */
+.card {
+    position: relative;
+    box-sizing: border-box;
+    display: block;
+    min-height: 0;
+    padding: 20px;
+    gap: 6px; /* só age no .card.big (flex) */
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    overflow: hidden;
+}
+.card::before {
+    display: none;
+}
+.card h3 {
+    position: relative;
+    z-index: 2;
+    width: 70%;
+    max-height: 88px;
+    margin: 0;
+    padding: 0;
+    font: 700 18.6667px/21.8667px Swiss721, "Arial Narrow", Arial, sans-serif;
+    letter-spacing: -.02em;
+    text-transform: uppercase;
+    color: #080808;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+}
+.card h3:focus,
+.card .lines:focus {
+    outline: 2px solid #0c8794;
+    outline-offset: 2px;
+}
+.card .photo {
+    position: absolute;
+    top: 94px;
+    right: 20px;
+    bottom: 66px;
+    width: 110px;
+    height: 103.5px;
+    margin: auto 0;
+    display: grid;
+    place-items: center;
+    align-self: start;
+    font-size: 11px;
+    text-align: center;
+    color: #687780;
+    background: transparent;
+    overflow: hidden;
+}
+.card .photo span {
+    font-size: 9px;
+    color: #9aa2a6;
+}
+/* a foto ocupa a caixa e o object-fit encaixa: max-height:% nao limita item de grid */
+.card .photo img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: scale-down;
+}
+.card .lines {
+    position: absolute;
+    left: 20px;
+    right: 162px;
+    bottom: 20px;
+    align-self: start; /* só age no .card.big (flex) */
+    max-height: 190px;
+    font: 400 13px/15.6px "Arial Narrow", Arial, sans-serif;
+    letter-spacing: -.02em;
+    color: #111;
+    overflow: hidden;
+}
+.card .lines b {
+    font-family: Swiss721, "Arial Narrow", Arial, sans-serif;
+    font-weight: 800;
+}
+.card .lines div {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+}
+.card .lines .cd {
+    white-space: nowrap;
+}
+.card .lines::before {
+    content: "Códigos:";
+    display: block;
+    margin-bottom: 0;
+    font-size: 13px;
+    line-height: 15.6px;
+    font-style: italic;
+}
+.card .lines:has(> div:only-child)::before {
+    content: "Código: ";
+    display: inline;
+}
+.card .lines > div:only-child {
+    display: inline;
+    white-space: normal;
+}
+.card .ean {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    width: 142px;
+    height: 54px;
+}
+.card .ean-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+.card .ean.ean-invalid {
+    outline: 2px solid #ef6b5b;
+    outline-offset: 2px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+.ean-missing {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2px;
+    font: 700 10px/1.2 Arial, sans-serif;
+    color: #0c8794;
+    border: 1px dashed #0c8794;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+}
+.cutwarn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 5;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: #fef3c7;
+    color: #92400e;
+    font: 700 9px/1.3 Arial, sans-serif;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+.card small,
+.card small::after {
+    display: none;
+}
+.sheet.a3 .card,
+.sheet.a4 .card {
+    background: #fff;
+    border-radius: 14px;
+}
+
+/* --- código de barras clicável (editar) --- */
+@media screen {
+    .card .ean:not(.ean-missing) { cursor: pointer; }
+    .card .ean:not(.ean-missing):not(.ean-invalid):hover { outline: 2px dashed #0c8794; outline-offset: 2px; border-radius: 3px; }
+}
+
+/* --- A3 --- */
+.sheet.a3 .card .ean {
+    width: 132px;
+    height: 50px;
+}
+.sheet.a3 .card .lines {
+    max-height: 340px;
+}
+.sheet.a3 .card .lines.dense {
+    font-size: 11px;
+    line-height: 13px;
+    max-height: 310px;
+}
+.sheet.a3 .card .lines.denser {
+    font-size: 10px;
+    line-height: 12px;
+}
+.sheet.a3 .card.a3 .photo {
+    left: 50%;
+    right: auto;
+    top: 92px;
+    width: 150px;
+    height: 145px;
+    margin-left: -75px;
+}
+.sheet.a3 .card.a3 .photo img {
+    object-fit: contain;
+}
+
+/* --- A4: cartão centralizado e cartão que cresce na última linha --- */
+.sheet.a4 .card.center {
+    grid-column: 1 / -1 !important;
+    justify-self: center;
+    width: calc((100% - 13.78px) / 2);
+}
+/* Em páginas A4 curtas, o último cartão (ou a dupla final) pode crescer: não há outra linha abaixo e o limite de 150px preserva a faixa da logo no rodapé. */
+.sheet.a4 .card.expand {
+    align-self: start;
+    height: calc(100% + var(--card-extra));
+}
+.sheet.a4 .card.expand .lines {
+    max-height: calc(190px + var(--card-extra));
+}
+
+/* --- cartão grande (ocupa 2 linhas) --- */
+.card.big {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 14px;
+}
+.card.big h3 {
+    flex: 0 0 66px;
+}
+.card.big .photo {
+    position: relative;
+    flex: 1 1 0;
+    min-height: 0;
+    width: 200px;
+    max-width: 200px;
+    max-height: 180px;
+    margin: auto 0;
+    align-self: center;
+    top: auto;
+    right: auto;
+    bottom: auto;
+}
+.card.big .photo img {
+    object-fit: contain;
+}
+.card.big .lines {
+    position: static;
+    left: auto;
+    bottom: auto;
+    margin-right: 116px;
+    max-height: 390px;
+    flex: 0 0 auto;
+}
+.sheet.a3 .card.big .photo {
+    left: auto;
+    top: auto;
+    margin: auto 0;
+}
+
+/* --- códigos em duas colunas (A4 com mais de 9 códigos; A3 reposiciona) --- */
+.card .lines.two-cols {
+    display: block;
+    font-size: 12px;
+    letter-spacing: -.03em;
+}
+.card .lines.two-cols .code-pair {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    overflow: visible;
+    white-space: nowrap;
+}
+.card .lines.two-cols .code-separator {
+    font-weight: 700;
+}
+.sheet.a3 .card:has(.lines.two-cols) .photo {
+    top: 75px;
+    height: 118px;
+}
+.sheet.a3 .card .lines.two-cols {
+    right: 28px;
+    bottom: 80px;
+    max-height: 108px;
+    font-size: 11px;
+    line-height: 13px;
+}
+.sheet.a3 .card .lines.two-cols .code-pair {
+    justify-content: space-between;
+    gap: 0;
+}
+
+/* --- estados --- */
+.card .photo.photo-editing {
+    outline: 2px dashed #0c8794;
+    outline-offset: 3px;
+    cursor: grab;
+}
+.card .photo.photo-editing:active {
+    cursor: grabbing;
+}
+.card.flash {
+    animation: cardFlash 1.6s ease 1;
+}
+/* ============ fim dos cartões ============ */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--cg-toast);
+    color: #fff;
+    padding: 12px;
+    border-radius: 7px;
+}
+@media(max-width:900px) {
+    .import,
+    .work {
+        grid-template-columns: 1fr;
+    }
+    .preview {
+        padding: 8px;
+    }
+}
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .preview,
+    .preview * {
+        visibility: visible;
+    }
+    .preview {
+        position: absolute;
+        left: 0;
+        top: 0;
+        padding: 0;
+        background: #fff;
+    }
+    /* visibility:hidden acima nao tira esses elementos do fluxo (continuam ocupando altura, so ficam invisiveis) - a pagina toda contava como "alta" o suficiente pra sobrar uma segunda folha com so uma tira do fundo do cartaz, principalmente com "Margens: Nenhuma" no dialogo de impressao (usa a folha inteira, sem a margem padrao do navegador que escondia essa sobra por acaso). display:none tira mesmo do fluxo - sao os unicos elementos visiveis fora de .preview */
+    .portal-sidebar,
+    .cg>header,
+    .import,
+    .pages,
+    .box>.k,
+    .box>h2,
+    #toast {
+        display: none;
+    }
+    .sheet {
+        box-shadow: none;
+    }
+}
+.sheet::before {
+    display: none;
+}
+.sheet::after {
+    content: "FEIRA\A GRANDES MARCAS\A OVD";
+    white-space: pre;
+    position: absolute;
+    z-index: 1;
+    left: 0;
+    right: 0;
+    bottom: 35px;
+    text-align: center;
+    font-family: Impact, Arial Black, sans-serif;
+    font-style: italic;
+    font-size: 28px;
+    line-height: .82;
+    letter-spacing: -1px;
+    color: #ffd52d;
+    text-shadow: 3px 3px 0 #27333c, 5px 5px 0 #0b1720;
+}
+.head {
+    display: none;
+}
+.placeholder {
+    background: #fff;
+    border-radius: 12px;
+}
+.cg-sheet-note {
+    position: absolute;
+    left: 30px;
+    right: 30px;
+    bottom: 96px;
+    color: #d9edf0;
+    text-align: center;
+    font-size: 8px;
+    letter-spacing: .03em;
+}
+.sheet {
+    display: block;
+    padding: 0;
+    min-height: 0;
+    background: #fff;
+}
+.sheet::after,
+.sheet::before {
+    display: none;
+}
+.ai-template {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+.template-note {
+    margin: 12px 0 0;
+    color: #52636c;
+    font-size: 13px;
+}
+.sheet {
+    position: relative;
+    display: grid;
+    width: 794px;
+    min-height: 0;
+    aspect-ratio: 595/842;
+    box-sizing: border-box;
+    padding: 94.75px 62.68px 193.94px 38.23px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: 13.12px 13.78px;
+    background: #003e55 url("cartaz-template-base.png") center/100% 100% no-repeat;
+    overflow: hidden;
+}
+.sheet::before,
+.sheet::after {
+    display: none;
+}
+.ai-template,
+.template-note {
+    display: none;
+}
+.placeholder {
+    background: transparent;
+    border-radius: 14px;
+}
+@font-face {
+    font-family: Swiss721;
+    src: url("business-card-assets/fonts/Swis721 Cn BT Bold.ttf") format("truetype");
+    font-weight: 700;
+    font-display: swap
+}
+@font-face {
+    font-family: Swiss721Italic; src: url("business-card-assets/fonts/Swis721 Cn BT Bold Italic.ttf") format("truetype"); font-weight:700; font-display:swap;
+}
+@media print {
+    @page {
+        size: A4;
+        margin: 0
+    }
+    .sheet {
+        width: 210mm;
+        height: 297mm;
+        aspect-ratio: auto;
+        overflow: hidden;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .cutwarn {
+        display: none;
+    }
+}
+/* logo da feira: no PNG do template ela era coberta pelas caixas, entao vem por cima como elemento */
+.sheet::after {
+    content: "";
+    display: block;
+    position: absolute;
+    z-index: 1;
+    left: 50%;
+    right: auto;
+    top: auto;
+    bottom: 28px;
+    width: 332px;
+    height: 140px;
+    margin-left: -166px;
+    padding: 0;
+    font-size: 0;
+    text-shadow: none;
+    background: url("cartaz-logo-feira.png") center/contain no-repeat;
+}
+@media print {
+    /* precisa vir DEPOIS da regra ".ean-missing{display:flex}" acima (mesma especificidade - quem vem por ultimo no arquivo vence, ver o mesmo padrao em ".cutwarn"/".sheet" mais acima) - colocar esse display:none junto do outro bloco @media print (que fica antes dessa regra) perdia a briga e o botao "+ Código de barras" vazava pra impressao real */
+    .ean-missing {
+        display: none;
+    }
+}
+.sheet.a3 {
+    width: 1123px;
+    aspect-ratio: 841.89 / 1190.55;
+    padding: 58px 56px 240px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    background: #003e55;
+}
+.sheet.a4 {
+    background: #003e55;
+}
+.sheet.a3::after {
+    width: 420px;
+    height: 150px;
+    margin-left: -210px;
+}
+@media print {
+    .sheet.a3 {
+        width: 297mm;
+        height: 420mm;
+        aspect-ratio: auto;
+    }
+}
+@media print {
+    .card .photo.photo-editing {
+        outline: none !important;
+    }
+}
+.brand-filter {
+    display: grid;
+    gap: 6px;
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.brand-filter select {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid var(--cg-line);
+    border-radius: 7px;
+    padding: 0 10px;
+    background: var(--cg-card);
+    color: var(--cg-ink);
+    font: inherit;
+}
+.preview {
+    display: grid;
+    gap: 24px;
+}
+.pages button {
+    position: relative;
+    padding-right: 42px;
+}
+.brand-alerts {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    display: flex;
+    gap: 4px;
+    transform: translateY(-50%);
+}
+.brand-alert {
+    width: 17px;
+    height: 16px;
+    display: grid;
+    place-items: center;
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    color: #3a2a00;
+    font: 900 11px/1 Arial, sans-serif;
+}
+.brand-alert.missing {
+    background: #f6c445;
+}
+.brand-alert.hidden {
+    background: #ef6b5b;
+    color: #fff;
+}
+.brand-entry {
+    display: flex;
+    gap: 6px;
+    align-items: stretch;
+    min-width: 0;
+}
+.brand-entry > button:first-child {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+}
+.pages .brand-logo-settings {
+    flex: 0 0 36px;
+    width: 36px;
+    min-width: 36px;
+    display: grid;
+    place-items: center;
+    margin: 6px 0;
+    padding: 0 !important;
+    text-align: center;
+    font: 700 18px/1 Arial,sans-serif;
+    cursor: pointer;
+}
+.brand-logo-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(120px,1fr));
+    gap: 10px;
+    margin-top: 16px;
+}
+.brand-logo-option {
+    min-height: 92px;
+    padding: 10px;
+    border: 1px solid var(--cg-line);
+    border-radius: 8px;
+    background: var(--cg-card);
+    cursor: pointer;
+}
+.brand-logo-option img {
+    display: block;
+    width: 100%;
+    height: 54px;
+    object-fit: contain;
+}
+.sheet.a4 {
+    padding-left: 50.45px;
+    padding-right: 50.45px;
+}
+@media print {
+    .preview {
+        overflow: visible !important;
+        display: block !important;
+    }
+    .preview .sheet {
+        margin: 0 auto;
+        break-after: page;
+        page-break-after: always;
+    }
+    .preview .sheet:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+}
+.cg-dashboard {
+    grid-column: span 2;
+}
+.cg-metrics {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+}
+.cg-metrics > div {
+    min-width: 0;
+    padding: 10px;
+    border-radius: 7px;
+    background: var(--cg-canvas);
+}
+.cg-metrics > div {
+    min-height: 76px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.cg-metrics strong,
+.cg-metrics span {
+    display: block;
+}
+.cg-metrics strong {
+    font-size: 20px;
+}
+.cg-metrics span {
+    margin-top: 3px;
+    color: var(--cg-muted);
+    font-size: 11px;
+    line-height: 1.2;
+}
+@media(max-width:900px) {
+    .cg-dashboard {
+        grid-column: auto;
+    }
+    .cg-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+.cg-dialog {
+    width: min(420px, calc(100vw - 32px));
+    border: 1px solid var(--cg-line);
+    border-radius: 14px;
+    padding: 0;
+    background: var(--cg-card);
+    color: var(--cg-ink);
+    box-shadow: 0 20px 55px #0005;
+}
+.cg-dialog::backdrop {
+    background: #001d2b99;
+}
+.cg-dialog form {
+    padding: 24px;
+}
+.cg-dialog h2 {
+    margin: 0;
+}
+.cg-dialog p {
+    margin: 7px 0 18px;
+    color: var(--cg-muted);
+}
+.cg-dialog label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 700;
+    font-size: 13px;
+}
+.cg-dialog input {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 42px;
+    border: 1px solid var(--cg-line);
+    border-radius: 7px;
+    padding: 0 11px;
+    font: inherit;
+}
+.cg-dialog form {
+    position: relative;
+}
+#brandLogoDialog h2 {
+    padding-right: 36px;
+}
+.cg-dialog-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    color: var(--cg-muted);
+    font-size: 22px;
+    line-height: 1;
+}
+.cg-dialog-close:hover,
+.cg-dialog-close:focus-visible {
+    background: var(--cg-accent-weak);
+    color: var(--cg-ink);
+}
+.brand-logo-upload {
+    position: relative;
+    margin-top: 16px;
+}
+.cg-dialog .upload input {
+    width: 1px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+}
+.brand-logo-option.selected {
+    border-color: var(--cg-accent);
+    box-shadow: 0 0 0 2px var(--cg-accent);
+}
+#brandLogoDialog .cg-dialog-actions [value="cancel"] {
+    background: var(--cg-btn-bg);
+    color: var(--cg-ink);
+    border: 1px solid var(--cg-line);
+}
+/* Título → conteúdo com a mesma altura e espaço em "Importar itens" e "Resumo"; o campo de upload preenche a altura que sobrar, ficando igual à das métricas (as duas boxes têm a mesma altura) */
+.cg-box-head,
+.cg-dashboard > h2 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 26px;
+    margin: 0 0 14px;
+}
+.cg-box-head h2 {
+    margin: 0;
+}
+.import > .box:not(.cg-dashboard) {
+    display: flex;
+    flex-direction: column;
+}
+.import .upload {
+    position: relative;
+    margin: 0;
+    flex: 1;
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    text-align: center;
+}
+.cg-tip {
+    position: relative;
+    flex-shrink: 0;
+}
+.cg-tip-btn {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--cg-line);
+    background: transparent;
+    color: var(--cg-muted);
+    font: italic 700 14px/1 Georgia, serif;
+}
+.cg-tip-btn:hover,
+.cg-tip:focus-within .cg-tip-btn {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+}
+.cg-tip-text {
+    display: none;
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 10px);
+    right: 0;
+    width: min(340px, calc(100vw - 64px));
+    padding: 14px 16px;
+    border: 1px solid var(--cg-line);
+    border-radius: 8px;
+    background: var(--cg-card);
+    color: var(--cg-ink);
+    box-shadow: 0 12px 30px #0004;
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: left;
+    font-weight: 400;
+}
+.cg-tip-text strong {
+    display: block;
+    margin-bottom: 6px;
+}
+.cg-tip-p {
+    display: block;
+}
+.cg-tip-p + .cg-tip-p {
+    margin-top: 8px;
+}
+.cg-tip:hover .cg-tip-text,
+.cg-tip:focus-within .cg-tip-text {
+    display: block;
+}
+/* Vincular marcas: seleção, grupo vinculado na lista e rodapé com um cartão de logo por marca */
+.link-bar:empty {
+    display: none;
+}
+.link-bar {
+    margin: 4px 0 8px;
+}
+.link-bar p {
+    margin: 0 0 8px;
+    font-size: 12px;
+    color: var(--cg-muted);
+}
+.link-actions {
+    display: grid;
+    gap: 6px;
+}
+.link-actions button {
+    padding: 9px 10px;
+}
+.pages .link-actions #linkConfirm {
+    background: var(--accent);
+    color: var(--on-accent);
+    border: 0;
+    text-align: center;
+}
+.pages .link-actions button {
+    margin: 0;
+    text-align: center;
+}
+.brand-entry.picking > button[data-brand] {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+}
+.pages button.secondary,
+.link-bar button.secondary {
+    background: var(--cg-btn-bg);
+    color: var(--cg-ink);
+    border: 1px solid var(--cg-line);
+}
+.link-bar .link-start {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    padding: 9px 10px;
+}
+.link-icon {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.brand-pick {
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+    margin: 0 8px 0 2px;
+    align-self: center;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+.linked-group {
+    margin: 6px 0;
+    padding: 0 8px 8px;
+    border: 1px solid var(--cg-accent);
+    border-left-width: 4px;
+    border-radius: 9px;
+    background: var(--cg-accent-weak);
+}
+.pages .linked-main {
+    margin: 8px 0 4px;
+}
+.linked-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--cg-accent);
+}
+.linked-pages {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--cg-muted);
+}
+.linked-member {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0 4px 4px;
+}
+.logo-toggle {
+    margin-right: auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cg-muted);
+    cursor: pointer;
+}
+.logo-toggle input {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+.logo-toggle input:disabled {
+    cursor: not-allowed;
+}
+.linked-member strong {
+    flex: 1 1 100%;
+    min-width: 0;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+.pages .linked-unlink {
+    margin: 4px 0 0;
+    padding: 7px 10px;
+    text-align: center;
+    font-size: 12px;
+}
+.sheet .sheet-footer.multi {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    width: auto;
+    max-width: calc(100% - 100px);
+    background: none;
+    border-radius: 0;
+}
+.sheet.a3 .sheet-footer.multi {
+    max-width: calc(100% - 100px);
+}
+.sheet-logo-card {
+    flex: 0 1 220px;
+    min-width: 0;
+    height: 100%;
+    padding: 0 10px;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    background: #fff;
+}
+.sheet.a3 .sheet-logo-card {
+    flex-basis: 300px;
+    border-radius: 20px;
+}
+.sheet-logo-card img {
+    display: block;
+    width: 150px;
+    max-width: 100%;
+    height: 48px;
+    object-fit: contain;
+}
+.sheet.a3 .sheet-logo-card img {
+    width: 210px;
+    height: 68px;
+}
+.sheet-logo-card span {
+    font: 800 14px/1.15 Arial, sans-serif;
+    color: #18242d;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+/* Template de fundo enviado (A4/A3): troca a arte de fundo e esconde o cabeçalho desenhado pelo portal */
+.cg-template-slots {
+    display: grid;
+    gap: 16px;
+}
+.cg-template-slot {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    min-width: 0;
+}
+.cg-template-thumb {
+    flex: 0 0 74px;
+    aspect-ratio: 1 / 1.414;
+    border: 1px solid var(--cg-line);
+    border-radius: 6px;
+    background: #003e55 url("cartaz-template-final.jpg") center / 100% 100% no-repeat;
+}
+.cg-template-info {
+    min-width: 0;
+    display: grid;
+    gap: 4px;
+}
+.cg-template-name {
+    font-size: 12px;
+    color: var(--cg-muted);
+    overflow-wrap: anywhere;
+}
+.cg-template-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+}
+.cg-template-actions .upload {
+    position: relative;
+    margin: 0;
+    padding: 9px 12px;
+}
+.cg-template-actions button {
+    padding: 9px 12px;
+}
+.cg-templates button.secondary {
+    background: var(--cg-btn-bg);
+    color: var(--cg-ink);
+    border: 1px solid var(--cg-line);
+}
+.cg-template-actions [hidden] {
+    display: none;
+}
+/* Lista de Páginas: cabeçalho com menu ⋯ e contagem de itens por marca */
+.pages-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+.pages-head h2 {
+    margin-bottom: 7px;
+}
+.pages-menu {
+    position: relative;
+    flex-shrink: 0;
+}
+.pages .pages-menu-btn {
+    width: 32px;
+    height: 32px;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    background: var(--cg-btn-bg);
+    color: var(--cg-ink);
+    border: 1px solid var(--cg-line);
+}
+.pages-menu-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+.pages-menu-list {
+    position: absolute;
+    z-index: 25;
+    top: calc(100% + 6px);
+    right: 0;
+    width: 196px;
+    padding: 6px;
+    border: 1px solid var(--cg-line);
+    border-radius: 8px;
+    background: var(--cg-card);
+    box-shadow: 0 12px 30px #0004;
+}
+.pages-menu-list[hidden] {
+    display: none;
+}
+.pages .pages-menu-list .pm-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    margin: 0;
+    padding: 9px 10px;
+    border: 0;
+    background: transparent;
+    color: var(--cg-ink);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+}
+.pages .pages-menu-list .pm-item:hover:not(:disabled),
+.pages .pages-menu-list .pm-item:focus-visible {
+    background: var(--cg-accent-weak);
+}
+.pages .pages-menu-list .pm-item:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+.pm-chevron {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: var(--cg-muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform .15s;
+}
+.pm-section[aria-expanded="true"] .pm-chevron {
+    transform: rotate(180deg);
+}
+.pm-sub {
+    margin: 0 0 4px 10px;
+    padding-left: 6px;
+    border-left: 2px solid var(--cg-line);
+}
+.pm-sub .pm-item[aria-checked="true"] {
+    color: var(--cg-accent);
+}
+.sort-arrow {
+    font-size: 15px;
+    font-weight: 800;
+}
+.pages .brand-entry > button[data-brand] strong {
+    display: block;
+    overflow-wrap: anywhere;
+}
+.brand-count {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--cg-muted);
+}
+.linked-member .brand-count {
+    flex: 1 1 100%;
+    margin: -4px 0 2px;
+}
+.pages-empty {
+    margin: 8px 0;
+    font-size: 13px;
+    color: var(--cg-muted);
+}
+.cg-metrics > .metric-link {
+    cursor: pointer;
+    transition: box-shadow .12s;
+}
+.cg-metrics > .metric-link:hover {
+    box-shadow: inset 0 0 0 1px var(--cg-accent);
+}
+.cg-metrics > .metric-link.active {
+    box-shadow: inset 0 0 0 2px var(--cg-accent);
+}
+.cg-metrics > .metric-link:focus-visible {
+    outline: 2px solid var(--cg-accent);
+    outline-offset: 2px;
+}
+.pages-status {
+    margin: 0 0 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--cg-muted);
+}
+.pages-status b {
+    font-weight: 700;
+    color: var(--cg-ink);
+}
+.pages .pages-status .pages-reset {
+    display: inline;
+    width: auto;
+    margin: 0 0 0 4px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--cg-accent);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.pages .pages-menu-list .pm-reset {
+    margin-top: 4px;
+    border-top: 1px solid var(--cg-line);
+    border-radius: 0;
+}
+@media print {
+    .card .ean.ean-invalid {
+        outline: 0;
+    }
+}
+@media screen {
+    .card.title-cut {
+        outline: 2px dashed #ef6b5b;
+        outline-offset: -5px;
+    }
+}
+.brand-alert {
+    cursor: pointer;
+}
+@keyframes cardFlash {
+    0%, 100% { box-shadow: 0 0 0 0 transparent; } 25% { box-shadow: 0 0 0 7px #ef6b5b; }
+}
+.export-pick-list {
+    max-height: 320px;
+    overflow: auto;
+    display: grid;
+    gap: 4px;
+}
+.cg-dialog .export-pick-list label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--cg-line);
+    border-radius: 7px;
+    cursor: pointer;
+}
+.cg-dialog .export-pick-list input {
+    width: 18px;
+    min-height: 0;
+    padding: 0;
+    flex: none;
+}
+#exportPickDialog .cg-dialog-actions .secondary {
+    background: var(--cg-btn-bg);
+    color: var(--cg-ink);
+    border: 1px solid var(--cg-line);
+}
+.cg-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+}
+.cg-dialog-actions > button {
+    flex: 1 1 0;
+}
+.cg-library-desc {
+    margin: 0 0 14px;
+    color: var(--cg-muted);
+}
+/* menus sanfona (fechados por padrão): Template do cartaz e Biblioteca */
+.cg-fold {
+    margin: 0 0 16px;
+}
+.cg-library {
+    margin-bottom: 24px;
+}
+.cg-fold > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    list-style: none;
+    border-radius: 6px;
+}
+.cg-fold > summary::-webkit-details-marker {
+    display: none;
+}
+.cg-fold > summary:focus-visible {
+    outline: 2px solid var(--cg-accent);
+    outline-offset: 4px;
+}
+.cg-fold > summary > :first-child {
+    flex: 1;
+    min-width: 0;
+}
+.cg-fold > summary h2 {
+    margin: 0;
+}
+.cg-fold[open] > summary {
+    margin-bottom: 20px;
+}
+.cg-fold-chevron {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    fill: none;
+    stroke: var(--cg-muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform .15s;
+}
+.cg-fold[open] > summary .cg-fold-chevron {
+    transform: rotate(180deg);
+}
+.cg-template-groups {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 30px;
+}
+.cg-template-group h3 {
+    margin: 0 0 12px;
+}
+.cg-logo-thumb {
+    flex: 0 0 120px;
+    height: 60px;
+    border: 1px solid var(--cg-line);
+    border-radius: 6px;
+    background: #003e55 url("cartaz-logo-feira.png") center / contain no-repeat;
+}
+.cg-header-fields {
+    display: grid;
+    gap: 12px;
+}
+.cg-header-fields label {
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+}
+.cg-header-fields small {
+    font-weight: 400;
+    color: var(--cg-muted);
+}
+.cg-header-fields input,
+.cg-header-fields textarea {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    font-weight: 400;
+}
+.cg-header-fields textarea {
+    resize: vertical;
+    min-height: 56px;
+}
+@media(max-width:1100px) {
+    .cg-template-groups {
+        grid-template-columns: 1fr;
+    }
+}
+@media print {
+    .cg-fold {
+        display: none;
+    }
+}
+.cg-saved-grids {
+    display: grid;
+    gap: 8px;
+}
+.cg-saved-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid var(--cg-line);
+    border-radius: 8px;
+}
+.cg-saved-grid strong,
+.cg-saved-grid span {
+    display: block;
+}
+.cg-saved-grid span {
+    margin-top: 3px;
+    color: var(--cg-muted);
+    font-size: 12px;
+}
+.cg-saved-grid button {
+    white-space: nowrap;
+}
+.cg-saved-grid .danger {
+    color: #b42318;
+}
+:root[data-theme="dark"] .cg-saved-grid .danger {
+    color: #ff8f87;
+}
+.cg-saved-empty {
+    margin: 0;
+    color: var(--cg-muted);
+}
+@media(max-width:700px) {
+    .cg-saved-grid {
+        grid-template-columns: 1fr auto;
+    }
+    .cg-saved-grid > div {
+        grid-column: 1 / -1;
+    }
+}
+.save-grid {
+    background: #f6c445 !important;
+    color: #3a2a00 !important;
+    border-color: #d39f10 !important;
+}
+.save-grid:hover:not(:disabled) {
+    background: #eab22c !important;
+}
+.print-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.print-actions button,
+.print-submenu button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+.print-icon {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.action-menu {
+    position: relative;
+}
+.print-submenu[hidden] {
+    display: none !important;
+}
+.print-submenu {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 8px);
+    right: 0;
+    display: grid;
+    gap: 6px;
+    min-width: 210px;
+    padding: 8px;
+    border: 1px solid var(--cg-line);
+    border-radius: 8px;
+    background: var(--cg-card);
+    box-shadow: 0 10px 24px #0002;
+}
+.cartaz-measure {
+    position: fixed;
+    top: 0;
+    left: -100000px;
+    visibility: hidden;
+    pointer-events: none;
+}
+.print-submenu button {
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+    background: var(--cg-btn-bg);
+    color: var(--cg-ink);
+    border: 1px solid var(--cg-line);
+}
+/* Layout final: cabeçalho e marca ocupam o topo; a grade começa na área livre abaixo. */
+.sheet-heading {
+    position: absolute;
+    z-index: 6;
+    top: 42px;
+    left: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    color: #fdc300;
+    font-family: Swiss721, "Arial Narrow", Arial, sans-serif;
+    font-weight: 900;
+    line-height: 1;
+    pointer-events: none;
+}
+.sheet-heading strong {
+    display: block;
+    margin-left: -50px;
+    padding: 5px 20px 4px 70px;
+    background: #fdc300;
+    color: #00445c;
+    font-size: 27px;
+}
+.sheet-heading span {
+    display: block;
+    padding: 7px 0 0 20px;
+    font-size: 20px;
+    letter-spacing: .2px;
+}
+.sheet.a4 {
+    padding-top: 165px;
+    padding-bottom: 60px;
+}
+.sheet.a3 {
+    padding: 245px 56px 60px;
+}
+.sheet::after {
+    z-index: 6;
+    left: auto;
+    right: 50px;
+    top: 30px;
+    bottom: auto;
+    width: 250px;
+    height: 95px;
+    margin-left: 0;
+    pointer-events: none;
+}
+.sheet.a3 .sheet-heading {
+    top: 48px;
+    left: 56px;
+}
+.sheet.a3 .sheet-heading strong {
+    margin-left: -56px;
+    padding: 6px 24px 5px 80px;
+    font-size: 36px;
+}
+.sheet.a3 .sheet-heading span {
+    padding: 8px 0 0 24px;
+    font-size: 26px;
+}
+.sheet.a3::after {
+    right: 56px;
+    top: 36px;
+    width: 365px;
+    height: 120px;
+    margin-left: 0;
+}
+.sheet.a3,
+.sheet.a4 {
+    background: #003e55 url("cartaz-template-final.jpg") center / 100% 100% no-repeat;
+}
+.sheet-footer {
+    position: absolute;
+    z-index: 6;
+    left: 50%;
+    bottom: 16px;
+    display: grid;
+    width: 220px;
+    height: 74px;
+    place-items: center;
+    transform: translateX(-50%);
+    border-radius: 16px;
+    background: #fff;
+    pointer-events: none;
+}
+.sheet-footer img {
+    display: block;
+    width: 150px;
+    height: 48px;
+    object-fit: contain;
+}
+.sheet-page-number {
+    position: absolute;
+    z-index: 7;
+    right: 20px;
+    bottom: 20px;
+    color: #fff;
+    font: 700 italic 12px/1 Swiss721Italic, "Arial Narrow", Arial, sans-serif;
+    pointer-events: none;
+}
+.sheet.a4 {
+    padding: 172px 65px 108px;
+    gap: 12px 10px;
+}
+.sheet.a3 {
+    padding: 243px 92px 153px;
+    gap: 12px;
+}
+.sheet.a3 .sheet-footer {
+    bottom: 24px;
+    width: 300px;
+    height: 100px;
+    border-radius: 20px;
+}
+.sheet.a3 .sheet-footer img {
+    width: 210px;
+    height: 68px;
+}
+.sheet.a3 .sheet-page-number {
+    right: 28px;
+    bottom: 28px;
+    font-size: 16px;
+}
+
+/* Diálogo de código de barras (adicionar/corrigir) */
+#barcodeDialog h2 { padding-right: 36px; }
+#barcodeDialog input { font-variant-numeric: tabular-nums; letter-spacing: .06em; }
+#barcodeDialog .cg-dialog-actions [value="cancel"] { background: var(--cg-btn-bg); color: var(--cg-ink); border: 1px solid var(--cg-line); }
+.cg-dialog .cg-dialog-status { min-height: 20px; margin: 8px 0 0; font-size: 13px; color: var(--cg-muted); }
+.cg-dialog .cg-dialog-status[data-kind="ok"] { color: #0f766e; font-weight: 700; }
+.cg-dialog .cg-dialog-status[data-kind="bad"] { color: #d64a3a; font-weight: 700; }

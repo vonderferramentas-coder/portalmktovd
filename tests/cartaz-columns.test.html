@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste das colunas do Gerador de Cartazes</title>
+<body data-result="running">RUNNING</body>
+<script src="../cartaz-columns.js"></script>
+<script>
+// Roda em Chrome headless: chrome --headless=new --dump-dom file:///.../tests/cartaz-columns.test.html
+try {
+  const eq = (a, b, label) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(label + '\n  esperado: ' + JSON.stringify(b) + '\n  obtido:   ' + JSON.stringify(a)); };
+  const run = (headers, rows) => { const c = CartazColumns.detect(headers, rows); return { ovd: c.ovd, title: c.title, barcode: c.barcode, brand: c.brand }; };
+
+  // Planilha real da feira: barcode "CORRETO" vence o "ANTIGO"; título com "(PDF)"
+  eq(run(['CÓDIGO OVD', 'NOME DO TÍTULO (PDF)', 'MARCA', 'CÓDIGO DE BARRAS CORRETO', 'CÓDIGO DE BARRAS ANTIGO'], []),
+    { ovd: 'CÓDIGO OVD', title: 'NOME DO TÍTULO (PDF)', barcode: 'CÓDIGO DE BARRAS CORRETO', brand: 'MARCA' }, 'planilha da feira');
+  // Planilha tratada antiga continua funcionando (espaço no fim, VARIAÇÕES não vira título)
+  eq(run(['CÓDIGO OVD ', 'CÓDIGO FG ', 'NOME DO TÍTULO', 'VARIAÇÕES (nome na grade do B2B)', 'CÓDIGO PRINCIPAL', 'MARCA', 'PREÇO'], []),
+    { ovd: 'CÓDIGO OVD ', title: 'NOME DO TÍTULO', barcode: 'CÓDIGO PRINCIPAL', brand: 'MARCA' }, 'planilha tratada antiga');
+  // Sinônimos
+  eq(run(['SKU', 'Descrição', 'EAN'], []), { ovd: 'SKU', title: 'Descrição', barcode: 'EAN' }, 'sinônimos');
+  eq(run(['Código do Produto', 'Produto', 'GTIN'], []), { ovd: 'Código do Produto', title: 'Produto', barcode: 'GTIN' }, 'sinônimos 2');
+
+  // Sem cabeçalho útil: deduz pelo conteúdo, sem exigir 10 dígitos no código
+  const rows = [
+    { a: '12345', b: 'Alicate universal 8 pol', c: '7898322710072' },
+    { a: '12346', b: 'Chave de fenda', c: '78983227' },
+    { a: '12347', b: 'Broca de aço rápido', c: '17898322710079' },
+    { a: '12348', b: 'Martelo de borracha', c: '789832271007' }
+  ];
+  eq(run(['a', 'b', 'c'], rows), { ovd: 'a', title: 'b', barcode: 'c' }, 'conteúdo: barras de 13/8/14/12 dígitos e código de 5');
+  const numeric = [{ x: 3199000475, y: 'Adubadeira manual', z: 7898322710072 }, { x: 3880003155, y: 'Alicate amperímetro', z: 7898112603515 }];
+  eq(run(['x', 'y', 'z'], numeric), { ovd: 'x', title: 'y', barcode: 'z' }, 'conteúdo: células numéricas');
+
+  document.body.dataset.result = 'pass';
+  document.body.textContent = 'PASS: colunas identificadas por cabeçalho (sinônimos, barras correto x antigo) e por conteúdo';
+} catch (error) {
+  document.body.dataset.result = 'fail';
+  document.body.textContent = 'FAIL: ' + error.message;
+}
+</script>

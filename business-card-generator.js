@@ -1333,20 +1333,15 @@
 
   async function drawOvd(r, token) {
     var logo = await loadImage(embeddedAssets.ovdLogo || "business-card-assets/ovd-logo.png");
-    var toolWrench = await loadImage(embeddedAssets.ovdToolWrench || "business-card-assets/ovd-tool-wrench.png");
-    var toolDrillbit = await loadImage(embeddedAssets.ovdToolDrillbit || "business-card-assets/ovd-tool-drillbit.png");
-    var toolScrewdriver = await loadImage(embeddedAssets.ovdToolScrewdriver || "business-card-assets/ovd-tool-screwdriver.png");
-    var toolPliers = await loadImage(embeddedAssets.ovdToolPliers || "business-card-assets/ovd-tool-pliers.png");
+    var tools = await loadImage(embeddedAssets.ovdTools || "business-card-assets/ovd-tools.png");
     if (token !== renderToken) return;
 
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, W, H);
 
-    // Fotos das ferramentas (posição e rotação idênticas ao arquivo da gráfica).
-    drawOvdPdfImage(toolWrench, -20.2346356, -48.7293190, 47.8899378, -19.8861084, 153.6332, 94.0803, 0.5);
-    drawOvdPdfImage(toolDrillbit, 60.1674419, 0, 0, 80.3255494, 125.4575, 9.6769);
-    drawOvdPdfImage(toolScrewdriver, -0.0000001, -68.7113759, 8.6619437, -0.0000001, 179.2327, 94.7162, 0.4);
-    drawOvdPdfImage(toolPliers, 94.8452309, 0, 0, 55.4776504, 102.5639, 12.9421);
+    // Foto única das ferramentas (já tratada), no tamanho e posição do PDF de referência: 75,4 × 64,2 pt,
+    // topo da chave de fenda em y≈95 pt; a base fica escondida atrás da barra preta inferior.
+    drawOvdPdfImage(tools, 75.4, 0, 0, 64.2, 114.5, 30.8);
 
     // Barra preta superior e inferior — sangram até a borda da folha (ver ovdBarRect/clamp).
     ctx.fillStyle = "#000";

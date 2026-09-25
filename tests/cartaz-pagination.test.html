@@ -1,0 +1,69 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste da paginação do Gerador de Cartazes</title>
+<body data-result="running">RUNNING</body>
+<script src="../cartaz-pagination.js"></script>
+<script>
+// Roda em Chrome headless: chrome --headless=new --dump-dom file:///.../tests/cartaz-pagination.test.html
+try {
+  const { paginate, link, unlink, groupBrand } = CartazPagination;
+  const eq = (a, b, label) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(label + '\n  esperado: ' + JSON.stringify(b) + '\n  obtido:   ' + JSON.stringify(a)); };
+  const groups = (n, brand, codes = 1) => Array.from({ length: n }, (_, i) => ({ title: brand + ' ' + i, rows: Array.from({ length: codes }, () => ({ brand })) }));
+  const shape = pagesList => pagesList.map(p => p.format + ':' + p.items.length);
+
+  // Regra de formato e divisão: até 6 = A4; 7 a 9 = A3; 10 a 12 = A4 em duas; acima de 12 = A3
+  eq(shape(paginate('X', groups(1))), ['A4:1'], '1 produto');
+  eq(shape(paginate('X', groups(6))), ['A4:6'], '6 produtos');
+  eq(shape(paginate('X', groups(7))), ['A3:7'], '7 produtos');
+  eq(shape(paginate('X', groups(9))), ['A3:9'], '9 produtos');
+  eq(shape(paginate('X', groups(10))), ['A4:5', 'A4:5'], '10 produtos');
+  eq(shape(paginate('X', groups(12))), ['A4:6', 'A4:6'], '12 produtos');
+  eq(shape(paginate('X', groups(13))), ['A3:7', 'A3:6'], '13 produtos');
+  eq(paginate('X', groups(13))[0].name, 'X · A3 · pág 1/2', 'nome da página');
+
+  // Última linha incompleta: A4 centraliza 1 card; A3 põe 2 lado a lado (pair) ou 1 na coluna do meio
+  let a4 = paginate('X', groups(5))[0].items;
+  eq(a4.map(i => i.center), [false, false, false, false, true], 'A4 com 5: último centralizado');
+  let a3two = paginate('X', groups(8))[0].items;
+  eq(a3two.map(i => i.pair), [false, false, false, false, false, false, true, true], 'A3 com 8: dupla final');
+  let a3one = paginate('X', groups(7))[0].items;
+  eq([a3one[6].col, a3one[6].gridRow], [1, 2], 'A3 com 7: último na coluna do meio');
+
+  // Card com mais de 20 códigos ganha altura extra quando sozinho na última linha (A4)
+  let big = groups(3); big[2].rows = Array.from({ length: 30 }, () => ({ brand: 'X' }));
+  let extra = paginate('X', big)[0].items[2];
+  eq([extra.center, extra.extraHeight], [true, 88], 'altura extra por códigos (30 → 88px)');
+  eq(paginate('X', groups(3))[0].items[2].extraHeight, 0, 'sem extra com poucos códigos');
+
+  // Vincular: 4 + 4 produtos de duas marcas viram 1 folha A3, no lugar da primeira; título/foto editados sobrevivem
+  const A = groups(4, 'A'), B = groups(4, 'B'), C = groups(2, 'C');
+  let pages = [...paginate('A', A), ...paginate('B', B), ...paginate('C', C)];
+  pages[0].items[1].title = 'TITULO EDITADO'; pages[1].items[0].photo = { x: 5, y: 6, scale: 1.5 };
+  let linked = link(pages, ['A', 'B']);
+  eq(linked.key, 'A + B', 'chave do vínculo');
+  eq(linked.pages.map(p => p.brand + '|' + p.format + ':' + p.items.length), ['A + B|A3:8', 'C|A4:2'], 'vínculo 4+4 = 1 A3, C fica');
+  eq(linked.pages[0].brands, ['A', 'B'], 'membros do vínculo');
+  eq(linked.pages[0].items[1].title, 'TITULO EDITADO', 'título editado preservado');
+  eq(linked.pages[0].items[4].photo, { x: 5, y: 6, scale: 1.5 }, 'foto ajustada preservada');
+  eq(pages.length, 3, 'lista original não é alterada');
+
+  // Desvincular: cada marca volta às suas páginas; edições preservadas; ordem A, B, C
+  let un = unlink(linked.pages, 'A + B');
+  eq(un.pages.map(p => p.brand + '|' + p.format + ':' + p.items.length), ['A|A4:4', 'B|A4:4', 'C|A4:2'], 'desvínculo restaura as marcas');
+  eq(un.first, 'A', 'primeira marca do vínculo');
+  eq(un.pages[0].items[1].title, 'TITULO EDITADO', 'título preservado ao desvincular');
+  eq(unlink(pages, 'inexistente'), null, 'chave inexistente');
+
+  // Vínculo que passa de 9 produtos, vira duas folhas A4 (10 a 12) ou A3 (acima de 12)
+  eq(shape(link([...paginate('A', groups(6, 'A')), ...paginate('B', groups(5, 'B'))], ['A', 'B']).pages), ['A4:6', 'A4:5'], '6+5 = 11 produtos: A4 em duas folhas');
+  eq(shape(link([...paginate('A', groups(8, 'A')), ...paginate('B', groups(8, 'B'))], ['A', 'B']).pages), ['A3:8', 'A3:8'], '8+8 = 16 produtos: A3 em duas folhas');
+
+  eq([groupBrand({ rows: [{ brand: '' }, { brand: 'Z' }] }), groupBrand({ rows: [{}] })], ['Z', 'SEM MARCA'], 'groupBrand');
+
+  document.body.dataset.result = 'pass';
+  document.body.textContent = 'PASS: formato A4/A3, divisão em folhas, última linha, altura extra, vincular e desvincular';
+} catch (error) {
+  document.body.dataset.result = 'fail';
+  document.body.textContent = 'FAIL: ' + error.message;
+}
+</script>
