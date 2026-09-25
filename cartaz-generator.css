@@ -704,6 +704,23 @@ button:disabled {
 .brand-alert.missing {
     background: #f6c445;
 }
+.brand-alert.nologo {
+    width: 17px;
+    height: 17px;
+    clip-path: none;
+    border-radius: 50%;
+    background: #3b82c4;
+    color: #fff;
+}
+.brand-alert.nologo svg {
+    width: 12px;
+    height: 12px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
 .brand-alert.hidden {
     background: #ef6b5b;
     color: #fff;
