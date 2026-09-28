@@ -398,6 +398,33 @@
             img.style.width = w + 'px'; img.style.height = h + 'px'; img.style.maxWidth = 'none'; img.style.maxHeight = 'none';
         });
     }
+    /* .card leva transform:translateY() (draw(), pra centralizar verticalmente a folha quando ela
+       não está com a capacidade cheia - a maioria das exportações reais) e/ou translateX() (cards
+       "pair" do A3). Combinado com o overflow:hidden do próprio .card (ver ".card" no css), o
+       html2canvas 1.4.1 não erra só o recorte: ele pinta o card INTEIRO em branco (título, foto,
+       códigos, tudo) - bug bem mais grave do que o de .photo abaixo, e que pegava toda folha que não
+       fosse múltiplo exato de 6 (A4) ou 9 (A3) produtos, ou seja, quase toda exportação real. Mesma
+       solução: tira o transform no clone e substitui por posição absoluta equivalente (medida no
+       elemento ORIGINAL, que já reflete o transform ao vivo). */
+    function fitClonedCards(origSheet, clonedSheet) {
+        let cloneCards = [...clonedSheet.querySelectorAll('.card')], sheetRect = origSheet.getBoundingClientRect();
+        [...origSheet.querySelectorAll('.card')].forEach((origCard, i) => {
+            if (getComputedStyle(origCard).transform === 'none') return;
+            let clone = cloneCards[i]; if (!clone) return;
+            let rect = origCard.getBoundingClientRect();
+            /* sem grid (removido junto com o transform), o card viraria "encolhe pro conteúdo" e
+               .photo/.lines (right/left:20px, medidos a partir da LARGURA do card) saem do lugar -
+               trava largura/altura no tamanho visual real, igual já se faz com .photo abaixo. Tira
+               também grid-column/grid-row (um item de grid position:absolute que ainda tem essas
+               propriedades usa a CÉLULA do grid como referência do left/top, não a folha inteira) e a
+               classe "center" (".sheet.a4 .card.center" redefine grid-column com !important e
+               justify-self, inline style sozinho não vence - some a classe em vez de brigar com o
+               !important, já que a posição final já vem pronta do left/top calculados abaixo). */
+            clone.classList.remove('center');
+            clone.style.transform = 'none'; clone.style.gridColumn = 'auto'; clone.style.gridRow = 'auto'; clone.style.position = 'absolute'; clone.style.left = (rect.left - sheetRect.left) + 'px'; clone.style.top = (rect.top - sheetRect.top) + 'px'; clone.style.width = rect.width + 'px'; clone.style.height = rect.height + 'px'; clone.style.margin = '0';
+        });
+        clonedSheet.style.position = 'relative';
+    }
     /* html2canvas recorta transform+overflow:hidden incorretamente. Assa a foto no tamanho visual final
        e substitui zoom/arraste por posicao e dimensoes absolutas equivalentes. */
     const EXPORT_SCALE = 300 / 96;
@@ -459,7 +486,7 @@
                 await yieldExportUi();
                 let canvas, image;
                 try {
-                    canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: EXPORT_SCALE, useCORS: true, logging: false, imageTimeout: 15000, onclone: clonedDoc => { let clonedSheet = clonedDoc.querySelector('.sheet[data-page="' + pageIndex + '"]'); if (!clonedSheet) return; fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); } });
+                    canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: EXPORT_SCALE, useCORS: true, logging: false, imageTimeout: 15000, onclone: clonedDoc => { let clonedSheet = clonedDoc.querySelector('.sheet[data-page="' + pageIndex + '"]'); if (!clonedSheet) return; fitClonedCards(sheet, clonedSheet); fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); } });
                     if (exportCancelled) { let error = Error('Exportação cancelada.'); error.name = 'AbortError'; throw error; }
                     image = await canvasBlob(canvas);
                 } finally {
