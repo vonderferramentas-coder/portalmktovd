@@ -326,26 +326,21 @@
             img.style.width = w + 'px'; img.style.height = h + 'px'; img.style.maxWidth = 'none'; img.style.maxHeight = 'none';
         });
     }
-    /* Fotos: têm arraste/zoom manual (enablePhotoEditing aplica transform:translate()scale() no .photo,
-       que tem overflow:hidden). Duas tentativas anteriores (redimensionar o <img> com left/top; pintar
-       como background-image) ainda saíam erradas às vezes - a foto exportada é buscada de novo pela URL
-       nesse ponto, então qualquer soluço de cache/CORS/timing do html2canvas nesse segundo fetch (que
-       nunca acontece na prévia, que só usa a imagem já carregada) fica impossível de garantir. Em vez de
-       tentar de novo, "assa" a imagem JÁ CARREGADA e correta (a mesma <img> que a prévia mostra, sem
-       buscar nada de novo) num canvas do tamanho exato da caixa, já com o letterbox/centralização do
-       object-fit embutido nos pixels - daí um <img> comum 100%x100% (sem precisar de object-fit, que o
-       html2canvas não suporta) exibe certo, porque a proporção do bitmap já bate com a da caixa. */
+    /* html2canvas recorta transform+overflow:hidden incorretamente. Assa a foto no tamanho visual final
+       e substitui zoom/arraste por posicao e dimensoes absolutas equivalentes. */
     function fitClonedPhotos(origSheet, clonedSheet) {
         let clones = [...clonedSheet.querySelectorAll('.photo img')];
         [...origSheet.querySelectorAll('.photo img')].forEach((origImg, i) => {
-            let img = clones[i], iw = origImg.naturalWidth, ih = origImg.naturalHeight, boxW = Math.round(origImg.offsetWidth), boxH = Math.round(origImg.offsetHeight);
-            if (!img || !iw || !ih || !boxW || !boxH) return;
-            let neverUpscale = getComputedStyle(origImg).objectFit === 'scale-down', scale = Math.min(boxW / iw, boxH / ih, neverUpscale ? 1 : Infinity), w = iw * scale, h = ih * scale;
+            let img = clones[i], photo = origImg.parentElement, card = photo.closest('.card'), photoRect = photo.getBoundingClientRect(), cardRect = card.getBoundingClientRect(), iw = origImg.naturalWidth, ih = origImg.naturalHeight, zoom = photoRect.width / photo.offsetWidth, boxW = Math.round(photoRect.width), boxH = Math.round(photoRect.height);
+            if (!img || !iw || !ih || !boxW || !boxH || !zoom) return;
+            let neverUpscale = getComputedStyle(origImg).objectFit === 'scale-down', scale = Math.min(photo.offsetWidth / iw, photo.offsetHeight / ih, neverUpscale ? 1 : Infinity) * zoom, w = iw * scale, h = ih * scale;
             try {
                 let canvas = document.createElement('canvas'); canvas.width = boxW; canvas.height = boxH;
                 canvas.getContext('2d').drawImage(origImg, (boxW - w) / 2, (boxH - h) / 2, w, h);
                 img.src = canvas.toDataURL();
                 img.style.position = 'absolute'; img.style.inset = '0'; img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'fill';
+                let clonePhoto = img.parentElement;
+                clonePhoto.style.transform = 'none'; clonePhoto.style.left = (photoRect.left - cardRect.left) + 'px'; clonePhoto.style.top = (photoRect.top - cardRect.top) + 'px'; clonePhoto.style.right = 'auto'; clonePhoto.style.bottom = 'auto'; clonePhoto.style.margin = '0'; clonePhoto.style.width = boxW + 'px'; clonePhoto.style.height = boxH + 'px';
             } catch (_) { /* canvas contaminado (CORS) - deixa como o html2canvas renderizar por conta própria em vez de travar a exportação inteira */ }
         });
     }

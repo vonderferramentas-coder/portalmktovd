@@ -1,0 +1,51 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Cartaz export photo regression</title>
+<script src="../vendor/html2canvas.min.js"></script>
+<style>
+  body { margin: 0; }
+  .sheet { position: relative; width: 460px; height: 300px; background: white; }
+  .card { position: absolute; left: 20px; top: 20px; width: 420px; height: 260px; overflow: hidden; }
+  .photo { position: absolute; left: 40px; top: 80px; width: 300px; height: 100px; overflow: hidden; transform: translate(15px, 10px) scale(1.4); }
+  .photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: scale-down; }
+</style>
+<div class="sheet"><div class="card"><div class="photo"><img alt="fixture"></div></div></div>
+<pre id="result">RUNNING</pre>
+<script>
+  const source = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="80"><rect width="160" height="80" fill="#0066ff"/></svg>`;
+  const image = document.querySelector('.photo img');
+  image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
+  function fitClonedPhotos(origSheet, clonedSheet) {
+    let clones = [...clonedSheet.querySelectorAll('.photo img')];
+    [...origSheet.querySelectorAll('.photo img')].forEach((origImg, i) => {
+      let img = clones[i], photo = origImg.parentElement, card = photo.closest('.card'), photoRect = photo.getBoundingClientRect(), cardRect = card.getBoundingClientRect(), iw = origImg.naturalWidth, ih = origImg.naturalHeight, zoom = photoRect.width / photo.offsetWidth, boxW = Math.round(photoRect.width), boxH = Math.round(photoRect.height);
+      if (!img || !iw || !ih || !boxW || !boxH || !zoom) return;
+      let neverUpscale = getComputedStyle(origImg).objectFit === 'scale-down', scale = Math.min(photo.offsetWidth / iw, photo.offsetHeight / ih, neverUpscale ? 1 : Infinity) * zoom, w = iw * scale, h = ih * scale;
+      let canvas = document.createElement('canvas'); canvas.width = boxW; canvas.height = boxH;
+      canvas.getContext('2d').drawImage(origImg, (boxW - w) / 2, (boxH - h) / 2, w, h);
+      img.src = canvas.toDataURL();
+      img.style.position = 'absolute'; img.style.inset = '0'; img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'fill';
+      let clonePhoto = img.parentElement;
+      clonePhoto.style.transform = 'none'; clonePhoto.style.left = (photoRect.left - cardRect.left) + 'px'; clonePhoto.style.top = (photoRect.top - cardRect.top) + 'px'; clonePhoto.style.right = 'auto'; clonePhoto.style.bottom = 'auto'; clonePhoto.style.margin = '0'; clonePhoto.style.width = boxW + 'px'; clonePhoto.style.height = boxH + 'px';
+    });
+  }
+  function blueBounds(canvas) {
+    const { data, width, height } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+    let left = width, top = height, right = -1, bottom = -1;
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      const p = (y * width + x) * 4;
+      if (data[p + 2] > 180 && data[p] < 80 && data[p + 1] < 160) {
+        left = Math.min(left, x); top = Math.min(top, y); right = Math.max(right, x); bottom = Math.max(bottom, y);
+      }
+    }
+    return { left, top, width: right - left + 1, height: bottom - top + 1 };
+  }
+  image.onload = async () => {
+    const sheet = document.querySelector('.sheet');
+    const canvas = await html2canvas(sheet, { scale: 1, logging: false, onclone: doc => fitClonedPhotos(sheet, doc.querySelector('.sheet')) });
+    const actual = blueBounds(canvas), expected = { left: 113, top: 104, width: 224, height: 112 };
+    const ok = Object.keys(expected).every(key => Math.abs(actual[key] - expected[key]) <= 2);
+    document.getElementById('result').textContent = (ok ? 'PASS ' : 'FAIL ') + JSON.stringify({ actual, expected });
+    document.body.dataset.testResult = ok ? 'pass' : 'fail';
+  };
+</script>
