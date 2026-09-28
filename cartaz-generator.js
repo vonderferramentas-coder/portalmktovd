@@ -313,22 +313,38 @@
     function canvasBlob(canvas) { return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(Error('Não foi possível gerar a imagem da página.')), 'image/jpeg', .92)); }
     /* html2canvas 1.4.1 nunca implementou object-fit (fica esticado/cortado ao ignorar a proporção da
        imagem) - por isso a exportação saía diferente da prévia: fotos "cortadas" (.photo img usa
-       object-fit:scale-down) e logos "achatadas" (.sheet-footer/.sheet-logo-card img usam object-fit:contain).
-       Recalcula a caixa "contain" na mão (nunca estoura o box, preserva proporção) usando offsetWidth/
-       offsetHeight do elemento ORIGINAL - não getBoundingClientRect(), que já viria multiplicado pelo
-       zoom/arraste que a pessoa aplicou na foto (ver enablePhotoEditing) e escalaria a imagem em dobro,
-       já que esse transform continua no clone e aplica de novo por cima. */
-    function fitClonedImages(origSheet, clonedSheet, selector, opts) {
-        let clones = [...clonedSheet.querySelectorAll(selector)];
-        [...origSheet.querySelectorAll(selector)].forEach((origImg, i) => {
+       object-fit:scale-down ou contain, varia por card) e logos "achatadas" (.sheet-footer/.sheet-logo-card
+       img usam object-fit:contain).
+       Logos: sem transform nem overflow envolvidos, só redimensiona o <img> mesmo - a centralização já
+       vem do grid place-items:center do pai. */
+    function fitClonedLogos(origSheet, clonedSheet) {
+        let clones = [...clonedSheet.querySelectorAll('.sheet-footer img, .sheet-logo-card img')];
+        [...origSheet.querySelectorAll('.sheet-footer img, .sheet-logo-card img')].forEach((origImg, i) => {
             let img = clones[i], iw = origImg.naturalWidth, ih = origImg.naturalHeight, boxW = origImg.offsetWidth, boxH = origImg.offsetHeight;
             if (!img || !iw || !ih || !boxW || !boxH) return;
-            let scale = Math.min(boxW / iw, boxH / ih, opts.scaleDown ? 1 : Infinity), w = iw * scale, h = ih * scale;
+            let scale = Math.min(boxW / iw, boxH / ih), w = iw * scale, h = ih * scale;
             img.style.width = w + 'px'; img.style.height = h + 'px'; img.style.maxWidth = 'none'; img.style.maxHeight = 'none';
-            if (opts.overlay) { img.style.position = 'absolute'; img.style.inset = 'auto'; img.style.left = ((boxW - w) / 2) + 'px'; img.style.top = ((boxH - h) / 2) + 'px'; }
         });
     }
-    async function exportZip(allBrands, only) { if (!S.pages.length || !window.html2canvas || !window.JSZip) { toast('A exportação não está disponível agora. Recarregue a página e tente novamente.'); return; } let originalBrand = S.brand, originalFormat = S.printFormat, buttons = [$('printMenu'), $('exportMenu')]; buttons.forEach(button => button.disabled = true); try { if (allBrands) { S.brand = ''; S.printFormat = ''; S.only = only || null; draw(); } let preview = $('preview'), sheets = [...preview.querySelectorAll('.sheet')]; if (!sheets.length) throw Error('Nenhuma página para exportar.'); toast('Carregando fotos para exportação…'); await waitForImages(preview); let zip = new JSZip(); for (let index = 0; index < sheets.length; index++) { let sheet = sheets[index], page = S.pages[+sheet.dataset.page], pageNumber = S.pages.filter(item => item.brand === page.brand && item.format === page.format).indexOf(page) + 1; toast('Exportando página ' + (index + 1) + ' de ' + sheets.length + '…'); let canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: 1.5, useCORS: true, logging: false, imageTimeout: 15000, onclone: clonedDoc => { let clonedSheet = clonedDoc.querySelector('.sheet[data-page="' + sheet.dataset.page + '"]'); if (!clonedSheet) return; fitClonedImages(sheet, clonedSheet, '.photo img', { scaleDown: true, overlay: true }); fitClonedImages(sheet, clonedSheet, '.sheet-footer img, .sheet-logo-card img', { scaleDown: false, overlay: false }); } }); let image = await canvasBlob(canvas); canvas.width = 0; canvas.height = 0; let brand = safeName(page.brand); zip.file(page.format + '/' + brand + '/' + brand + '_Página' + pageNumber + '_' + page.format + '.jpg', image); } toast('Compactando o ZIP…'); let blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } }); let link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = only ? 'Cartaz_selecionadas.zip' : allBrands ? 'Cartaz.zip' : 'Cartaz_' + safeName(originalBrand) + '.zip'; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); toast('ZIP exportado com sucesso.'); } catch (error) { console.error(error); toast(error.message || 'Não foi possível exportar o ZIP.'); } finally { if (allBrands) { S.only = null; S.brand = originalBrand; S.printFormat = originalFormat; draw(); } buttons.forEach(button => button.disabled = !S.pages.length); } }
+    /* Fotos: têm arraste/zoom manual (enablePhotoEditing aplica transform:translate()scale() no .photo,
+       que tem overflow:hidden) - redimensionar/reposicionar o <img> com left/top não compôs direito com
+       esse transform no html2canvas (fotos reposicionadas saíam cortadas mesmo com a prévia certa,
+       porque o html2canvas resolve mal transform+overflow:hidden em cima de um filho absoluto). Em vez
+       disso, pinta a foto como background-image (tamanho já calculado, "contido") no próprio .photo e
+       esconde o <img> - quem desloca/escala continua sendo o .photo original, exatamente como já
+       funcionava antes de existir esta função. */
+    function fitClonedPhotos(origSheet, clonedSheet) {
+        let clones = [...clonedSheet.querySelectorAll('.photo img')];
+        [...origSheet.querySelectorAll('.photo img')].forEach((origImg, i) => {
+            let img = clones[i], iw = origImg.naturalWidth, ih = origImg.naturalHeight, boxW = origImg.offsetWidth, boxH = origImg.offsetHeight;
+            if (!img || !iw || !ih || !boxW || !boxH) return;
+            let neverUpscale = getComputedStyle(origImg).objectFit === 'scale-down', scale = Math.min(boxW / iw, boxH / ih, neverUpscale ? 1 : Infinity), w = iw * scale, h = ih * scale;
+            img.style.visibility = 'hidden';
+            let photo = img.parentElement;
+            photo.style.backgroundImage = 'url("' + img.src + '")'; photo.style.backgroundSize = w + 'px ' + h + 'px'; photo.style.backgroundPosition = 'center'; photo.style.backgroundRepeat = 'no-repeat';
+        });
+    }
+    async function exportZip(allBrands, only) { if (!S.pages.length || !window.html2canvas || !window.JSZip) { toast('A exportação não está disponível agora. Recarregue a página e tente novamente.'); return; } let originalBrand = S.brand, originalFormat = S.printFormat, buttons = [$('printMenu'), $('exportMenu')]; buttons.forEach(button => button.disabled = true); try { if (allBrands) { S.brand = ''; S.printFormat = ''; S.only = only || null; draw(); } let preview = $('preview'), sheets = [...preview.querySelectorAll('.sheet')]; if (!sheets.length) throw Error('Nenhuma página para exportar.'); toast('Carregando fotos para exportação…'); await waitForImages(preview); let zip = new JSZip(); for (let index = 0; index < sheets.length; index++) { let sheet = sheets[index], page = S.pages[+sheet.dataset.page], pageNumber = S.pages.filter(item => item.brand === page.brand && item.format === page.format).indexOf(page) + 1; toast('Exportando página ' + (index + 1) + ' de ' + sheets.length + '…'); let canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: 1.5, useCORS: true, logging: false, imageTimeout: 15000, onclone: clonedDoc => { let clonedSheet = clonedDoc.querySelector('.sheet[data-page="' + sheet.dataset.page + '"]'); if (!clonedSheet) return; fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); } }); let image = await canvasBlob(canvas); canvas.width = 0; canvas.height = 0; let brand = safeName(page.brand); zip.file(page.format + '/' + brand + '/' + brand + '_Página' + pageNumber + '_' + page.format + '.jpg', image); } toast('Compactando o ZIP…'); let blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } }); let link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = only ? 'Cartaz_selecionadas.zip' : allBrands ? 'Cartaz.zip' : 'Cartaz_' + safeName(originalBrand) + '.zip'; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); toast('ZIP exportado com sucesso.'); } catch (error) { console.error(error); toast(error.message || 'Não foi possível exportar o ZIP.'); } finally { if (allBrands) { S.only = null; S.brand = originalBrand; S.printFormat = originalFormat; draw(); } buttons.forEach(button => button.disabled = !S.pages.length); } }
     function closeActionMenus() { [['printMenu', 'printMenuList'], ['exportMenu', 'exportMenuList']].forEach(([button, menu]) => { $(menu).hidden = true; $(button).setAttribute('aria-expanded', 'false'); }); }
     function toggleActionMenu(button, menu) { let open = $(menu).hidden; closeActionMenus(); $(menu).hidden = !open; $(button).setAttribute('aria-expanded', String(open)); }
     $('printMenu').onclick = () => toggleActionMenu('printMenu', 'printMenuList');
