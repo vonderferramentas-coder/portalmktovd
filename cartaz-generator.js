@@ -345,7 +345,74 @@
             } catch (_) { /* canvas contaminado (CORS) - deixa como o html2canvas renderizar por conta própria em vez de travar a exportação inteira */ }
         });
     }
-    async function exportZip(allBrands, only) { if (!S.pages.length || !window.html2canvas || !window.JSZip) { toast('A exportação não está disponível agora. Recarregue a página e tente novamente.'); return; } let originalBrand = S.brand, originalFormat = S.printFormat, buttons = [$('printMenu'), $('exportMenu')]; buttons.forEach(button => button.disabled = true); try { if (allBrands) { S.brand = ''; S.printFormat = ''; S.only = only || null; draw(); } let preview = $('preview'), sheets = [...preview.querySelectorAll('.sheet')]; if (!sheets.length) throw Error('Nenhuma página para exportar.'); toast('Carregando fotos para exportação…'); await waitForImages(preview); let zip = new JSZip(); for (let index = 0; index < sheets.length; index++) { let sheet = sheets[index], page = S.pages[+sheet.dataset.page], pageNumber = S.pages.filter(item => item.brand === page.brand && item.format === page.format).indexOf(page) + 1; toast('Exportando página ' + (index + 1) + ' de ' + sheets.length + '…'); let canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: EXPORT_SCALE, useCORS: true, logging: false, imageTimeout: 15000, onclone: clonedDoc => { let clonedSheet = clonedDoc.querySelector('.sheet[data-page="' + sheet.dataset.page + '"]'); if (!clonedSheet) return; fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); } }); let image = await canvasBlob(canvas); canvas.width = 0; canvas.height = 0; let brand = safeName(page.brand); zip.file(page.format + '/' + brand + '/' + brand + '_Página' + pageNumber + '_' + page.format + '.jpg', image); } toast('Compactando o ZIP…'); let blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } }); let link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = only ? 'Cartaz_selecionadas.zip' : allBrands ? 'Cartaz.zip' : 'Cartaz_' + safeName(originalBrand) + '.zip'; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); toast('ZIP exportado com sucesso.'); } catch (error) { console.error(error); toast(error.message || 'Não foi possível exportar o ZIP.'); } finally { if (allBrands) { S.only = null; S.brand = originalBrand; S.printFormat = originalFormat; draw(); } buttons.forEach(button => button.disabled = !S.pages.length); } }
+    let exportCancelled = false;
+    const yieldExportUi = () => new Promise(resolve => setTimeout(resolve, 0));
+    function updateExportProgress(percent, current, total, message) {
+        $('exportProgressBar').value = percent;
+        $('exportProgressPercent').textContent = Math.round(percent) + '%';
+        $('exportProgressCount').textContent = current + ' de ' + total + ' páginas concluídas';
+        $('exportProgressText').textContent = message;
+    }
+    function cancelExport() {
+        if (!$('exportProgressDialog').open || $('exportCancel').disabled || exportCancelled) return;
+        exportCancelled = true;
+        $('exportCancel').disabled = true;
+        $('exportProgressText').textContent = 'Cancelando após concluir a página atual…';
+    }
+    $('exportCancel').onclick = cancelExport;
+    $('exportProgressDialog').addEventListener('cancel', event => { event.preventDefault(); cancelExport(); });
+    async function exportZip(allBrands, only) {
+        if (!S.pages.length || !window.html2canvas || !window.JSZip) { toast('A exportação não está disponível agora. Recarregue a página e tente novamente.'); return; }
+        let originalBrand = S.brand, originalFormat = S.printFormat, buttons = [$('printMenu'), $('exportMenu')], targets = allBrands ? S.pages.filter(page => !only || only.includes(page.brand)) : S.pages.filter(page => page.brand === originalBrand && (!originalFormat || page.format === originalFormat));
+        if (!targets.length) { toast('Nenhuma página para exportar.'); return; }
+        buttons.forEach(button => button.disabled = true);
+        exportCancelled = false; $('exportCancel').disabled = false; updateExportProgress(0, 0, targets.length, 'Preparando exportação em 300 DPI…');
+        if (!$('exportProgressDialog').open) $('exportProgressDialog').showModal();
+        $('work').setAttribute('aria-busy', 'true');
+        try {
+            let preview = $('preview'), zip = new JSZip(), renderKey = '';
+            for (let index = 0; index < targets.length; index++) {
+                if (exportCancelled) { let error = Error('Exportação cancelada.'); error.name = 'AbortError'; throw error; }
+                let page = targets[index], pageIndex = S.pages.indexOf(page), key = page.brand + '|' + page.format;
+                updateExportProgress(index / targets.length * 90, index, targets.length, 'Carregando fotos de ' + (page.brands ? page.brands.join(' + ') : page.brand) + '…');
+                if (renderKey !== key) {
+                    S.brand = page.brand; S.printFormat = page.format; S.only = null; draw(); renderKey = key;
+                    await yieldExportUi(); await waitForImages(preview);
+                }
+                if (exportCancelled) { let error = Error('Exportação cancelada.'); error.name = 'AbortError'; throw error; }
+                let sheet = preview.querySelector('.sheet[data-page="' + pageIndex + '"]');
+                if (!sheet) throw Error('Não foi possível preparar a página ' + (index + 1) + '.');
+                updateExportProgress(index / targets.length * 90, index, targets.length, 'Gerando página ' + (index + 1) + ' de ' + targets.length + ' — ' + page.brand);
+                await yieldExportUi();
+                let canvas, image;
+                try {
+                    canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: EXPORT_SCALE, useCORS: true, logging: false, imageTimeout: 15000, onclone: clonedDoc => { let clonedSheet = clonedDoc.querySelector('.sheet[data-page="' + pageIndex + '"]'); if (!clonedSheet) return; fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); } });
+                    if (exportCancelled) { let error = Error('Exportação cancelada.'); error.name = 'AbortError'; throw error; }
+                    image = await canvasBlob(canvas);
+                } finally {
+                    if (canvas) { canvas.width = 0; canvas.height = 0; }
+                }
+                let pageNumber = S.pages.filter(item => item.brand === page.brand && item.format === page.format).indexOf(page) + 1, brand = safeName(page.brand);
+                zip.file(page.format + '/' + brand + '/' + brand + '_Página' + pageNumber + '_' + page.format + '.jpg', image);
+                updateExportProgress((index + 1) / targets.length * 90, index + 1, targets.length, 'Página ' + (index + 1) + ' de ' + targets.length + ' concluída.');
+                await yieldExportUi();
+            }
+            $('exportCancel').disabled = true;
+            updateExportProgress(90, targets.length, targets.length, 'Preparando o arquivo ZIP para download…');
+            let blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' }, metadata => updateExportProgress(90 + metadata.percent / 10, targets.length, targets.length, 'Preparando o arquivo ZIP para download…'));
+            let link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = only ? 'Cartaz_selecionadas.zip' : allBrands ? 'Cartaz.zip' : 'Cartaz_' + safeName(originalBrand) + '.zip'; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+            updateExportProgress(100, targets.length, targets.length, 'Download iniciado.');
+            await new Promise(resolve => setTimeout(resolve, 350));
+            toast('ZIP exportado com sucesso.');
+        } catch (error) {
+            if (error.name === 'AbortError') toast('Exportação cancelada.'); else { console.error(error); toast(error.message || 'Não foi possível exportar o ZIP.'); }
+        } finally {
+            S.only = null; S.brand = originalBrand; S.printFormat = originalFormat; draw();
+            $('work').removeAttribute('aria-busy');
+            if ($('exportProgressDialog').open) $('exportProgressDialog').close();
+            buttons.forEach(button => button.disabled = !S.pages.length);
+        }
+    }
     function closeActionMenus() { [['printMenu', 'printMenuList'], ['exportMenu', 'exportMenuList']].forEach(([button, menu]) => { $(menu).hidden = true; $(button).setAttribute('aria-expanded', 'false'); }); }
     function toggleActionMenu(button, menu) { let open = $(menu).hidden; closeActionMenus(); $(menu).hidden = !open; $(button).setAttribute('aria-expanded', String(open)); }
     $('printMenu').onclick = () => toggleActionMenu('printMenu', 'printMenuList');

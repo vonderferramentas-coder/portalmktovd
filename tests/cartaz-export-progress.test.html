@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Teste do progresso de exportação</title><link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../cartaz-generator.css"></head>
+<body><main class="cg"><dialog class="cg-dialog export-progress-dialog" id="exportProgressDialog" aria-labelledby="exportProgressTitle"><div class="export-progress-body"><h2 id="exportProgressTitle">Gerando cartazes</h2><p id="exportProgressText" aria-live="polite">Gerando página 13 de 28 — BOSCH</p><progress id="exportProgressBar" max="100" value="39">39%</progress><div class="export-progress-meta"><span id="exportProgressCount">12 de 28 páginas concluídas</span><strong id="exportProgressPercent">39%</strong></div><button type="button" id="exportCancel">Cancelar exportação</button></div></dialog><output id="result" hidden></output></main>
+<script>
+  const dialog = document.getElementById('exportProgressDialog'); dialog.showModal();
+  if (location.hash === '#dark') document.documentElement.dataset.theme = 'dark';
+  const rect = dialog.getBoundingClientRect();
+  const ok = dialog.open
+    && dialog.getAttribute('aria-labelledby') === 'exportProgressTitle'
+    && document.getElementById('exportProgressText').getAttribute('aria-live') === 'polite'
+    && document.getElementById('exportProgressBar').value === 39
+    && document.getElementById('exportCancel').type === 'button'
+    && rect.left >= 0 && rect.right <= innerWidth;
+  document.body.dataset.result = ok ? 'pass' : 'fail';
+  document.getElementById('result').textContent = ok ? 'PASS' : 'FAIL';
+</script></body></html>
