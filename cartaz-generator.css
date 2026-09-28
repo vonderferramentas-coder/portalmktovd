@@ -1403,6 +1403,9 @@ button:disabled {
 @keyframes cardFlash {
     0%, 100% { box-shadow: 0 0 0 0 transparent; } 25% { box-shadow: 0 0 0 7px #ef6b5b; }
 }
+.export-pick-search {
+    margin-bottom: 12px;
+}
 .export-pick-list {
     max-height: 320px;
     overflow: auto;
@@ -1418,6 +1421,9 @@ button:disabled {
     border: 1px solid var(--cg-line);
     border-radius: 7px;
     cursor: pointer;
+}
+.cg-dialog .export-pick-list label[hidden] {
+    display: none;
 }
 .cg-dialog .export-pick-list input {
     width: 18px;
