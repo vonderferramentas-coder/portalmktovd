@@ -40,5 +40,29 @@
     return { pages: next, first: members[0] };
   }
 
-  window.CartazPagination = { paginate, groupBrand, link, unlink };
+  /* Insere manualmente um produto avulso (`group`, um card) numa marca já existente ou cria a marca (`brandKey`
+     ainda sem nenhuma página). Refaz a paginação inteira daquela marca (mesma regra de formato A4/A3, colunas
+     e última linha do import) para o item novo entrar corretamente junto dos demais - nunca cria uma folha
+     avulsa fora dessa regra. `beforeGroup` é o grupo existente diante do qual inserir; sem ele, entra no fim
+     da marca. Marca nova: a página entra na posição alfabética entre as marcas já existentes, igual à ordem
+     que o import usa. */
+  function insertItem(pagesList, brandKey, group, beforeGroup) {
+    let old = pagesList.filter(page => page.brand === brandKey);
+    if (!old.length) {
+      let seen = [], next = pagesList.slice();
+      pagesList.forEach(page => { if (!seen.includes(page.brand)) seen.push(page.brand); });
+      let after = seen.find(name => brandKey.localeCompare(name, 'pt-BR') < 0), at = after ? next.findIndex(page => page.brand === after) : next.length;
+      next.splice(at, 0, ...paginate(brandKey, [group]));
+      return { pages: next, key: brandKey };
+    }
+    let prev = new Map(), groups = [];
+    old.forEach(page => page.items.forEach(item => { prev.set(item.group, item); groups.push(item.group); }));
+    let at = beforeGroup ? groups.indexOf(beforeGroup) : -1;
+    if (at < 0) groups.push(group); else groups.splice(at, 0, group);
+    let first = pagesList.indexOf(old[0]), next = pagesList.filter(page => page.brand !== brandKey);
+    next.splice(first, 0, ...paginate(brandKey, groups, old[0].brands, prev));
+    return { pages: next, key: brandKey };
+  }
+
+  window.CartazPagination = { paginate, groupBrand, link, unlink, insertItem };
 })();

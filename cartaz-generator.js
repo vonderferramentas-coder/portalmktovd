@@ -55,6 +55,62 @@
         let result = CartazPagination.unlink(S.pages, key); if (!result) return;
         snapshot(); S.pages = result.pages; relayout(result.first); toast('Marcas desvinculadas.');
     }
+    /* Adicionar item manualmente: mesmo mecanismo de link/unlink acima - CartazPagination.insertItem() refaz a
+       paginação da marca inteira, então o item novo entra respeitando formato A4/A3, colunas e última linha,
+       nunca como folha avulsa. Funciona antes de importar qualquer planilha (cria a primeira marca) ou depois
+       (entra junto dos itens já importados daquela marca, na posição escolhida). */
+    function brandGroups(brandKey) { return S.pages.filter(page => page.brand === brandKey).flatMap(page => page.items.map(item => item.group)); }
+    function manualBrandPages() { let seen = new Set(), list = []; S.pages.forEach(page => { if (!seen.has(page.brand)) { seen.add(page.brand); list.push(page); } }); return list.sort((a, b) => a.brand.localeCompare(b.brand, 'pt-BR')); }
+    function updateManualItemFields() {
+        let key = $('manualBrandSelect').value, isNew = key === '__new__', page = !isNew && S.pages.find(p => p.brand === key), linked = page && page.brands;
+        $('manualNewBrandField').hidden = !isNew; $('manualMemberField').hidden = !linked;
+        if (linked) $('manualMemberSelect').innerHTML = page.brands.map(name => '<option value="' + e(name) + '">' + e(name) + '</option>').join('');
+        let groups = isNew ? [] : brandGroups(key);
+        $('manualPositionField').hidden = isNew;
+        $('manualPositionSelect').innerHTML = '<option value="">No fim da marca</option>' + groups.map((group, index) => '<option value="' + index + '">Antes de: ' + e(group.title || '(sem título)') + '</option>').join('');
+    }
+    function openManualItemDialog() {
+        let select = $('manualBrandSelect'), pages = manualBrandPages();
+        select.innerHTML = pages.map(page => '<option value="' + e(page.brand) + '">' + e(page.brand) + (page.brands ? ' (vínculo)' : '') + '</option>').join('') + '<option value="__new__">+ Nova marca…</option>';
+        select.value = pages[0] ? pages[0].brand : '__new__'; updateManualItemFields();
+        ['manualNewBrandName', 'manualTitle', 'manualOvd', 'manualCode', 'manualBarcode'].forEach(id => $(id).value = '');
+        $('manualBarcodeStatus').textContent = ''; $('manualBarcodeStatus').dataset.kind = '';
+        $('manualItemDialog').showModal(); $('manualTitle').focus();
+    }
+    $('manualItemBtn').onclick = openManualItemDialog;
+    $('manualBrandSelect').onchange = updateManualItemFields;
+    $('manualBarcode').oninput = () => { /* mesma checagem de addBarcode(), só que aqui o código é opcional: não bloqueia o envio */
+        let digits = $('manualBarcode').value.replace(/\D/g, ''), status = $('manualBarcodeStatus');
+        if (!digits) { status.textContent = ''; status.dataset.kind = ''; return; }
+        let info = gtin(digits);
+        if (!info) { status.textContent = digits.length + ' dígito(s): o código precisa ter 8, 12, 13 ou 14.'; status.dataset.kind = 'bad'; }
+        else if (info.ok) { status.textContent = info.type + ' válido.'; status.dataset.kind = 'ok'; }
+        else { let fix = digits.slice(0, -1), suggestion = ''; for (let d = 0; d < 10; d++) if (gtin(fix + d).ok) { suggestion = fix + d; break; } status.textContent = 'Dígito verificador não confere' + (suggestion ? ': o correto seria ' + suggestion + '.' : '.'); status.dataset.kind = 'bad'; }
+    };
+    ['manualNewBrandName', 'manualTitle', 'manualOvd', 'manualBarcode'].forEach(id => $(id).onkeydown = event => { if (event.key === 'Enter') { event.preventDefault(); $('manualItemSave').click(); } });
+    $('manualItemSave').onclick = () => {
+        let title = t($('manualTitle').value), ovd = t($('manualOvd').value);
+        if (!title) { toast('Informe o título do produto.'); $('manualTitle').focus(); return; }
+        if (!ovd) { toast('Informe o Código OVD do item principal.'); $('manualOvd').focus(); return; }
+        let key = $('manualBrandSelect').value, isNew = key === '__new__', newName = t($('manualNewBrandName').value);
+        if (isNew) {
+            if (!newName) { toast('Informe o nome da nova marca.'); $('manualNewBrandName').focus(); return; }
+            if (S.pages.some(page => page.brand === newName)) { toast('Já existe uma marca com esse nome.'); $('manualNewBrandName').focus(); return; }
+        }
+        let page = !isNew && S.pages.find(p => p.brand === key), linked = page && page.brands, rowBrand = isNew ? newName : (linked ? $('manualMemberSelect').value : key);
+        let principal = $('manualBarcode').value.replace(/\D/g, ''), codes = t($('manualCode').value).split(/[,\n]+/).map(t).filter(Boolean);
+        if (!codes.length) codes = [ovd];
+        let group = { title, principal, rows: codes.map(code => ({ ovd, fg: '', title, code, principal, brand: rowBrand, price: '' })) };
+        let groups = isNew ? [] : brandGroups(key), positionValue = $('manualPositionSelect').value, beforeGroup = positionValue ? groups[+positionValue] : null;
+        let wasEmpty = !S.pages.length;
+        snapshot();
+        let result = CartazPagination.insertItem(S.pages, isNew ? newName : key, group, beforeGroup);
+        S.pages = result.pages; S.linking = false; S.linkSel = [];
+        if (wasEmpty) { $('work').hidden = false; $('printMenu').disabled = false; $('saveGrid').disabled = false; $('exportMenu').disabled = false; }
+        relayout(result.key);
+        $('manualItemDialog').close();
+        toast('Item adicionado à marca "' + result.key + '".');
+    };
     /* rodapé da folha: uma marca = o cartão de logo de sempre; marcas vinculadas = um cartão por marca que tem produto NA página */
     function pageFooter(page, logo) {
         if (!page.brands) return '<div class="sheet-footer" aria-hidden="true">' + (logo ? '<img src="' + e(logo) + '" alt="">' : '') + '</div>';
@@ -307,7 +363,23 @@
     /* clicar no "i" dentro do título do menu não abre/fecha o menu */
     document.querySelectorAll('.cg-fold .cg-tip-btn').forEach(button => button.addEventListener('click', event => event.preventDefault()));
     applyTemplates();
-    $('sheet').onchange = x => x.target.files[0] && load(x.target.files[0]); $('saveGrid').onclick = saveCurrentGrid; loadSavedGrids(); loadBrandAssets(); if ($('codes')) $('codes').onchange = x => map(x.target.files, S.codes, 'codeInfo'); async function waitForImages(root) { await Promise.all([...root.querySelectorAll('img')].map(image => image.complete ? Promise.resolve() : new Promise(resolve => { let done = () => resolve(); image.addEventListener('load', done, { once: true }); image.addEventListener('error', done, { once: true }); setTimeout(done, 15000); }))); }
+    $('sheet').onchange = x => x.target.files[0] && load(x.target.files[0]); $('saveGrid').onclick = saveCurrentGrid; loadSavedGrids(); loadBrandAssets(); if ($('codes')) $('codes').onchange = x => map(x.target.files, S.codes, 'codeInfo'); function settleImage(image) { return image.complete ? Promise.resolve() : new Promise(resolve => { let done = () => resolve(); image.addEventListener('load', done, { once: true }); image.addEventListener('error', done, { once: true }); setTimeout(done, 15000); }); }
+    /* O worker da foto (cloudflare-worker.js, product-image) repassa a imagem em streaming, sem Content-Length -
+       uma conexão instável no meio do download trunca o JPEG, e mesmo assim o navegador pode disparar "load"
+       (largura/altura ficam num marcador bem no início do arquivo, antes dos pixels). decode() detecta de
+       verdade se a imagem decodificou inteira; se falhar, busca a foto de novo (até 2x, com cache-bust) antes
+       de cair no aviso "Foto indisponível" de sempre (mesmo fallback do onerror inline em card()). */
+    async function verifyImage(image) {
+        if (image.hidden || !image.naturalWidth || !image.decode) return;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try { await image.decode(); return; } catch (_) { }
+            if (attempt === 2) break;
+            let url = new URL(image.src, location.href); url.searchParams.set('_retry', Date.now() + '-' + attempt);
+            image.src = url.href; await settleImage(image);
+        }
+        image.hidden = true; if (image.nextElementSibling) image.nextElementSibling.hidden = false;
+    }
+    async function waitForImages(root) { let images = [...root.querySelectorAll('img')]; await Promise.all(images.map(settleImage)); await Promise.all(images.map(verifyImage)); }
     async function printAllBrands(format) { let brand = S.brand; S.brand = ''; S.printFormat = format; draw(); await waitForImages($('preview')); await new Promise(resolve => setTimeout(resolve, 250)); print(); S.brand = brand; S.printFormat = ''; draw(); }
     function safeName(value) { return t(value).replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim() || 'SEM MARCA'; }
     function canvasBlob(canvas) { return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(Error('Não foi possível gerar a imagem da página.')), 'image/jpeg', .92)); }
@@ -332,6 +404,7 @@
     function fitClonedPhotos(origSheet, clonedSheet) {
         let clones = [...clonedSheet.querySelectorAll('.photo img')];
         [...origSheet.querySelectorAll('.photo img')].forEach((origImg, i) => {
+            if (origImg.hidden) return; /* verifyImage() não conseguiu decodificar (foto truncada) e já trocou pelo aviso "Foto indisponível" - não assar a versão quebrada no export */
             let img = clones[i], photo = origImg.parentElement, card = photo.closest('.card'), photoRect = photo.getBoundingClientRect(), cardRect = card.getBoundingClientRect(), iw = origImg.naturalWidth, ih = origImg.naturalHeight, zoom = photoRect.width / photo.offsetWidth, boxW = Math.round(photoRect.width), boxH = Math.round(photoRect.height);
             if (!img || !iw || !ih || !boxW || !boxH || !zoom) return;
             let neverUpscale = getComputedStyle(origImg).objectFit === 'scale-down', scale = Math.min(photo.offsetWidth / iw, photo.offsetHeight / ih, neverUpscale ? 1 : Infinity) * zoom, w = iw * scale, h = ih * scale;

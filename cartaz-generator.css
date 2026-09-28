@@ -938,6 +938,18 @@ button:disabled {
     box-sizing: border-box;
     text-align: center;
 }
+.cg-manual-item-btn {
+    margin-top: 10px;
+    background: var(--cg-btn-bg);
+    color: var(--cg-ink);
+    border: 1px solid var(--cg-line);
+}
+.cg-manual-item-dialog {
+    width: min(460px, calc(100vw - 32px));
+}
+.cg-manual-item-dialog .cg-header-fields {
+    margin-bottom: 4px;
+}
 .cg-tip {
     position: relative;
     flex-shrink: 0;
@@ -1503,16 +1515,34 @@ button:disabled {
     font-size: 13px;
     font-weight: 700;
 }
+.cg-header-fields label[hidden] {
+    display: none;
+}
+.cg-field-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
 .cg-header-fields small {
     font-weight: 400;
     color: var(--cg-muted);
 }
 .cg-header-fields input,
+.cg-header-fields select,
 .cg-header-fields textarea {
     width: 100%;
     box-sizing: border-box;
     font: inherit;
     font-weight: 400;
+}
+.cg-header-fields select {
+    min-height: 42px;
+    border: 1px solid var(--cg-line);
+    border-radius: 7px;
+    padding: 0 11px;
+    background: var(--cg-card);
+    color: var(--cg-ink);
 }
 .cg-header-fields textarea {
     resize: vertical;
