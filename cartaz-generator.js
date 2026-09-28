@@ -327,21 +327,26 @@
         });
     }
     /* Fotos: têm arraste/zoom manual (enablePhotoEditing aplica transform:translate()scale() no .photo,
-       que tem overflow:hidden) - redimensionar/reposicionar o <img> com left/top não compôs direito com
-       esse transform no html2canvas (fotos reposicionadas saíam cortadas mesmo com a prévia certa,
-       porque o html2canvas resolve mal transform+overflow:hidden em cima de um filho absoluto). Em vez
-       disso, pinta a foto como background-image (tamanho já calculado, "contido") no próprio .photo e
-       esconde o <img> - quem desloca/escala continua sendo o .photo original, exatamente como já
-       funcionava antes de existir esta função. */
+       que tem overflow:hidden). Duas tentativas anteriores (redimensionar o <img> com left/top; pintar
+       como background-image) ainda saíam erradas às vezes - a foto exportada é buscada de novo pela URL
+       nesse ponto, então qualquer soluço de cache/CORS/timing do html2canvas nesse segundo fetch (que
+       nunca acontece na prévia, que só usa a imagem já carregada) fica impossível de garantir. Em vez de
+       tentar de novo, "assa" a imagem JÁ CARREGADA e correta (a mesma <img> que a prévia mostra, sem
+       buscar nada de novo) num canvas do tamanho exato da caixa, já com o letterbox/centralização do
+       object-fit embutido nos pixels - daí um <img> comum 100%x100% (sem precisar de object-fit, que o
+       html2canvas não suporta) exibe certo, porque a proporção do bitmap já bate com a da caixa. */
     function fitClonedPhotos(origSheet, clonedSheet) {
         let clones = [...clonedSheet.querySelectorAll('.photo img')];
         [...origSheet.querySelectorAll('.photo img')].forEach((origImg, i) => {
-            let img = clones[i], iw = origImg.naturalWidth, ih = origImg.naturalHeight, boxW = origImg.offsetWidth, boxH = origImg.offsetHeight;
+            let img = clones[i], iw = origImg.naturalWidth, ih = origImg.naturalHeight, boxW = Math.round(origImg.offsetWidth), boxH = Math.round(origImg.offsetHeight);
             if (!img || !iw || !ih || !boxW || !boxH) return;
             let neverUpscale = getComputedStyle(origImg).objectFit === 'scale-down', scale = Math.min(boxW / iw, boxH / ih, neverUpscale ? 1 : Infinity), w = iw * scale, h = ih * scale;
-            img.style.visibility = 'hidden';
-            let photo = img.parentElement;
-            photo.style.backgroundImage = 'url("' + img.src + '")'; photo.style.backgroundSize = w + 'px ' + h + 'px'; photo.style.backgroundPosition = 'center'; photo.style.backgroundRepeat = 'no-repeat';
+            try {
+                let canvas = document.createElement('canvas'); canvas.width = boxW; canvas.height = boxH;
+                canvas.getContext('2d').drawImage(origImg, (boxW - w) / 2, (boxH - h) / 2, w, h);
+                img.src = canvas.toDataURL();
+                img.style.position = 'absolute'; img.style.inset = '0'; img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'fill';
+            } catch (_) { /* canvas contaminado (CORS) - deixa como o html2canvas renderizar por conta própria em vez de travar a exportação inteira */ }
         });
     }
     async function exportZip(allBrands, only) { if (!S.pages.length || !window.html2canvas || !window.JSZip) { toast('A exportação não está disponível agora. Recarregue a página e tente novamente.'); return; } let originalBrand = S.brand, originalFormat = S.printFormat, buttons = [$('printMenu'), $('exportMenu')]; buttons.forEach(button => button.disabled = true); try { if (allBrands) { S.brand = ''; S.printFormat = ''; S.only = only || null; draw(); } let preview = $('preview'), sheets = [...preview.querySelectorAll('.sheet')]; if (!sheets.length) throw Error('Nenhuma página para exportar.'); toast('Carregando fotos para exportação…'); await waitForImages(preview); let zip = new JSZip(); for (let index = 0; index < sheets.length; index++) { let sheet = sheets[index], page = S.pages[+sheet.dataset.page], pageNumber = S.pages.filter(item => item.brand === page.brand && item.format === page.format).indexOf(page) + 1; toast('Exportando página ' + (index + 1) + ' de ' + sheets.length + '…'); let canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: 1.5, useCORS: true, logging: false, imageTimeout: 15000, onclone: clonedDoc => { let clonedSheet = clonedDoc.querySelector('.sheet[data-page="' + sheet.dataset.page + '"]'); if (!clonedSheet) return; fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); } }); let image = await canvasBlob(canvas); canvas.width = 0; canvas.height = 0; let brand = safeName(page.brand); zip.file(page.format + '/' + brand + '/' + brand + '_Página' + pageNumber + '_' + page.format + '.jpg', image); } toast('Compactando o ZIP…'); let blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } }); let link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = only ? 'Cartaz_selecionadas.zip' : allBrands ? 'Cartaz.zip' : 'Cartaz_' + safeName(originalBrand) + '.zip'; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1000); toast('ZIP exportado com sucesso.'); } catch (error) { console.error(error); toast(error.message || 'Não foi possível exportar o ZIP.'); } finally { if (allBrands) { S.only = null; S.brand = originalBrand; S.printFormat = originalFormat; draw(); } buttons.forEach(button => button.disabled = !S.pages.length); } }
