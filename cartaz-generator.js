@@ -328,6 +328,7 @@
     }
     /* html2canvas recorta transform+overflow:hidden incorretamente. Assa a foto no tamanho visual final
        e substitui zoom/arraste por posicao e dimensoes absolutas equivalentes. */
+    const EXPORT_SCALE = 1.5;
     function fitClonedPhotos(origSheet, clonedSheet) {
         let clones = [...clonedSheet.querySelectorAll('.photo img')];
         [...origSheet.querySelectorAll('.photo img')].forEach((origImg, i) => {
@@ -335,8 +336,8 @@
             if (!img || !iw || !ih || !boxW || !boxH || !zoom) return;
             let neverUpscale = getComputedStyle(origImg).objectFit === 'scale-down', scale = Math.min(photo.offsetWidth / iw, photo.offsetHeight / ih, neverUpscale ? 1 : Infinity) * zoom, w = iw * scale, h = ih * scale;
             try {
-                let canvas = document.createElement('canvas'); canvas.width = boxW; canvas.height = boxH;
-                canvas.getContext('2d').drawImage(origImg, (boxW - w) / 2, (boxH - h) / 2, w, h);
+                let canvas = document.createElement('canvas'); canvas.width = Math.round(boxW * EXPORT_SCALE); canvas.height = Math.round(boxH * EXPORT_SCALE);
+                canvas.getContext('2d').drawImage(origImg, (boxW - w) / 2 * EXPORT_SCALE, (boxH - h) / 2 * EXPORT_SCALE, w * EXPORT_SCALE, h * EXPORT_SCALE);
                 img.src = canvas.toDataURL();
                 img.style.position = 'absolute'; img.style.inset = '0'; img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'fill';
                 let clonePhoto = img.parentElement;

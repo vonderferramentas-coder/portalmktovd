@@ -15,14 +15,16 @@
   const source = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="80"><rect width="160" height="80" fill="#0066ff"/></svg>`;
   const image = document.querySelector('.photo img');
   image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
+  const exportScale = 1.5; let bakedResolution;
   function fitClonedPhotos(origSheet, clonedSheet) {
     let clones = [...clonedSheet.querySelectorAll('.photo img')];
     [...origSheet.querySelectorAll('.photo img')].forEach((origImg, i) => {
       let img = clones[i], photo = origImg.parentElement, card = photo.closest('.card'), photoRect = photo.getBoundingClientRect(), cardRect = card.getBoundingClientRect(), iw = origImg.naturalWidth, ih = origImg.naturalHeight, zoom = photoRect.width / photo.offsetWidth, boxW = Math.round(photoRect.width), boxH = Math.round(photoRect.height);
       if (!img || !iw || !ih || !boxW || !boxH || !zoom) return;
       let neverUpscale = getComputedStyle(origImg).objectFit === 'scale-down', scale = Math.min(photo.offsetWidth / iw, photo.offsetHeight / ih, neverUpscale ? 1 : Infinity) * zoom, w = iw * scale, h = ih * scale;
-      let canvas = document.createElement('canvas'); canvas.width = boxW; canvas.height = boxH;
-      canvas.getContext('2d').drawImage(origImg, (boxW - w) / 2, (boxH - h) / 2, w, h);
+      let canvas = document.createElement('canvas'); canvas.width = Math.round(boxW * exportScale); canvas.height = Math.round(boxH * exportScale);
+      bakedResolution = { width: canvas.width, height: canvas.height };
+      canvas.getContext('2d').drawImage(origImg, (boxW - w) / 2 * exportScale, (boxH - h) / 2 * exportScale, w * exportScale, h * exportScale);
       img.src = canvas.toDataURL();
       img.style.position = 'absolute'; img.style.inset = '0'; img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'fill';
       let clonePhoto = img.parentElement;
@@ -42,10 +44,11 @@
   }
   image.onload = async () => {
     const sheet = document.querySelector('.sheet');
-    const canvas = await html2canvas(sheet, { scale: 1, logging: false, onclone: doc => fitClonedPhotos(sheet, doc.querySelector('.sheet')) });
-    const actual = blueBounds(canvas), expected = { left: 113, top: 104, width: 224, height: 112 };
-    const ok = Object.keys(expected).every(key => Math.abs(actual[key] - expected[key]) <= 2);
-    document.getElementById('result').textContent = (ok ? 'PASS ' : 'FAIL ') + JSON.stringify({ actual, expected });
+    const canvas = await html2canvas(sheet, { scale: exportScale, logging: false, onclone: doc => fitClonedPhotos(sheet, doc.querySelector('.sheet')) });
+    const actual = blueBounds(canvas), expected = { left: 170, top: 156, width: 336, height: 168 };
+    const expectedResolution = { width: 630, height: 210 };
+    const ok = Object.keys(expected).every(key => Math.abs(actual[key] - expected[key]) <= 2) && bakedResolution.width === expectedResolution.width && bakedResolution.height === expectedResolution.height;
+    document.getElementById('result').textContent = (ok ? 'PASS ' : 'FAIL ') + JSON.stringify({ actual, expected, bakedResolution, expectedResolution });
     document.body.dataset.testResult = ok ? 'pass' : 'fail';
   };
 </script>
