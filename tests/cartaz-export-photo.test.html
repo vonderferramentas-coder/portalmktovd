@@ -15,7 +15,7 @@
   const source = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="80"><rect width="160" height="80" fill="#0066ff"/></svg>`;
   const image = document.querySelector('.photo img');
   image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
-  const exportScale = 1.5; let bakedResolution;
+  const exportScale = 300 / 96; let bakedResolution;
   function fitClonedPhotos(origSheet, clonedSheet) {
     let clones = [...clonedSheet.querySelectorAll('.photo img')];
     [...origSheet.querySelectorAll('.photo img')].forEach((origImg, i) => {
@@ -45,10 +45,14 @@
   image.onload = async () => {
     const sheet = document.querySelector('.sheet');
     const canvas = await html2canvas(sheet, { scale: exportScale, logging: false, onclone: doc => fitClonedPhotos(sheet, doc.querySelector('.sheet')) });
-    const actual = blueBounds(canvas), expected = { left: 170, top: 156, width: 336, height: 168 };
-    const expectedResolution = { width: 630, height: 210 };
-    const ok = Object.keys(expected).every(key => Math.abs(actual[key] - expected[key]) <= 2) && bakedResolution.width === expectedResolution.width && bakedResolution.height === expectedResolution.height;
-    document.getElementById('result').textContent = (ok ? 'PASS ' : 'FAIL ') + JSON.stringify({ actual, expected, bakedResolution, expectedResolution });
+    const actual = blueBounds(canvas), expected = { left: 353, top: 325, width: 700, height: 350 };
+    const expectedResolution = { width: 1313, height: 438 };
+    const a4 = document.createElement('div'); a4.style.cssText = 'width:794px;height:1123px'; document.body.appendChild(a4);
+    const a4Canvas = await html2canvas(a4, { scale: exportScale, logging: false });
+    const pageResolution = { width: a4Canvas.width, height: a4Canvas.height }, expectedPageResolution = { width: 2481, height: 3509 };
+    a4.remove(); a4Canvas.width = 0; a4Canvas.height = 0;
+    const ok = Object.keys(expected).every(key => Math.abs(actual[key] - expected[key]) <= 2) && bakedResolution.width === expectedResolution.width && bakedResolution.height === expectedResolution.height && pageResolution.width === expectedPageResolution.width && pageResolution.height === expectedPageResolution.height;
+    document.getElementById('result').textContent = (ok ? 'PASS ' : 'FAIL ') + JSON.stringify({ actual, expected, bakedResolution, expectedResolution, pageResolution, expectedPageResolution });
     document.body.dataset.testResult = ok ? 'pass' : 'fail';
   };
 </script>
