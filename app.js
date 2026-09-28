@@ -19,6 +19,8 @@
     const state = { posts: [] };
 
     const $ = id => document.getElementById(id);
+    function notify(message){ let el = $('portalNotice'); if(!el){ el = document.createElement('div'); el.id = 'portalNotice'; el.className = 'portal-notice'; el.setAttribute('role','status'); el.setAttribute('aria-live','polite'); document.body.appendChild(el); } el.textContent = message; el.classList.add('is-visible'); clearTimeout(notify.timer); notify.timer = setTimeout(()=>el.classList.remove('is-visible'), 4200); }
+    const alert = notify;
     const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     // Abre sempre no mês vigente; a navegação continua livre a partir daqui.
     let viewDate = new Date();

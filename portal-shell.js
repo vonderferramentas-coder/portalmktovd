@@ -502,6 +502,7 @@
       // brands: página exclusiva dessas marcas (ids de DEFAULT_BRANDS) — nas demais some do menu
       // e da Início e a própria página é bloqueada; quem aplica é auth-guard.js
       { href:'cartaz-generator.html', label:'Gerador de Cartazes', brands:['grupo-ovd'], icon:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="m8 17 3-4 2 2.5 1.5-2 1.5 3.5"/>' },
+      { href:'barcode-generator.html', label:'Código de Barras', icon:'<path d="M4 5v14M8 5v14M12 5v14M15 5v14M20 5v14"/><path d="M6 5v14" stroke-width="3"/><path d="M17.5 5v14" stroke-width="3"/>' },
       { href:'business-card-generator.html', label:'Gerador de Cartões', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h5M7 14h3M15.5 10.5h2M15.5 14h2"/>' },
       { href:'templates.html', label:'Templates', icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' }
     ] },

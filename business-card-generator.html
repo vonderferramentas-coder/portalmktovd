@@ -37,7 +37,7 @@
           <div><strong>Revisar</strong><small>Ortografia e aprovação</small></div>
         </div><i></i>
         <div class="bc-flow-step" data-step="export" role="button" tabindex="0"><span>4</span>
-          <div><strong>Exportar</strong><small>PDF CMYK com marcas de corte</small></div>
+          <div><strong>Exportar</strong><small>Download dos arquivos dos cartões</small></div>
         </div>
       </nav>
       <section class="bc-import" id="importPanel">
@@ -128,19 +128,25 @@
         <aside class="bc-preview-panel">
           <div class="bc-panel-head">
             <div><span class="bc-eyebrow">Pré-visualização</span>
-              <h2>Frente do cartão</h2>
-            </div><span class="bc-size">90 × 50 mm</span>
+              <h2>Cartão físico</h2>
+            </div><div class="bc-head-tools"><span class="bc-size">90 × 50 mm - Horizontal</span><button class="bc-info-btn" type="button" aria-label="Informações do cartão físico" aria-expanded="false" aria-controls="qrNotePhysical">i</button><div class="bc-qr-note" id="qrNotePhysical" hidden><span>▦</span> <div><strong>QR Code de contato</strong><small>vCard gerado automaticamente com os dados deste cartão</small></div> </div></div>
           </div>
           <div class="bc-canvas-shell">
             <div class="bc-card-viewport"><canvas id="cardCanvas" width="1880" height="1080"></canvas></div>
-            <div class="bc-qr-note"><span>▦</span>
-              <div><strong>QR Code de contato</strong><small>vCard gerado automaticamente com os dados deste
-                  cartão</small></div>
-            </div>
           </div>
           <div class="bc-proof"><span>↗</span>
             <p><strong>Arquivo para gráfica</strong><br>PDF CMYK 600 dpi em folha 104 × 64 mm, com sangra de 3 mm,
               margem branca e marcas de corte pretas.</p>
+          </div>
+          <div id="digitalPreview" hidden>
+            <div class="bc-panel-head bc-digital-head">
+              <div><span class="bc-eyebrow">Pré-visualização</span>
+                <h2>Cartão digital</h2>
+              </div><div class="bc-head-tools"><span class="bc-size">50 × 90 mm - Vertical</span><button class="bc-info-btn" type="button" aria-label="Informações do cartão digital" aria-expanded="false" aria-controls="qrNoteDigital">i</button><div class="bc-qr-note" id="qrNoteDigital" hidden><span>▣</span> <div><strong>Arquivo digital</strong><small>JPG RGB em alta resolução (1184 × 2128 px), com os mesmos dados e QR Code do cartão físico</small></div> </div></div>
+            </div>
+            <div class="bc-canvas-shell bc-digital-shell">
+            <div class="bc-card-viewport"><canvas id="digitalCanvas" width="1184" height="2128"></canvas></div>
+          </div>
           </div>
         </aside>
       </section>
@@ -149,9 +155,7 @@
           <p><strong id="approvedCount">0 de 0 aprovados</strong><small>Somente cartões revisados e aprovados podem ser
               exportados.</small></p>
         </div>
-        <div class="bc-export-actions"><button id="exportCurrent" type="button">PDF deste cartão</button><button
-            id="exportSelected" type="button">PDF dos selecionados</button><button class="bc-primary" id="exportAll"
-            type="button">↓ Exportar lote completo</button></div>
+        <div class="bc-export-actions"><div class="bc-action-menu"><button class="bc-primary" id="exportMenu" type="button" aria-haspopup="menu" aria-expanded="false" disabled><svg class="bc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>Exportar</button><div class="bc-export-submenu" id="exportMenuList" role="menu" hidden><p class="bc-export-hint">Os botões só são habilitados conforme a revisão e a aprovação dos cartões forem concluídas.</p><div class="bc-export-group"><button class="bc-export-group-toggle" type="button" aria-expanded="false">PDF<svg class="bc-icon bc-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div class="bc-export-group-items" hidden><button id="exportCurrent" type="button" role="menuitem"><svg class="bc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>PDF deste cartão</button><button id="exportSelected" type="button" role="menuitem"><svg class="bc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>PDF dos selecionados</button></div></div><div class="bc-export-group" data-fg-only hidden><button class="bc-export-group-toggle" type="button" aria-expanded="false">JPG<svg class="bc-icon bc-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div class="bc-export-group-items" hidden><button id="exportDigitalCurrent" type="button" role="menuitem"><svg class="bc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>JPG deste cartão</button><button id="exportDigitalSelected" type="button" role="menuitem"><svg class="bc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>JPG dos selecionados</button></div></div><div class="bc-export-group" data-fg-only hidden><button class="bc-export-group-toggle" type="button" aria-expanded="false">PDF e JPG<svg class="bc-icon bc-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div class="bc-export-group-items" hidden><button id="exportBothCurrent" type="button" role="menuitem"><svg class="bc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>PDF e JPG deste cartão</button><button id="exportBothSelected" type="button" role="menuitem"><svg class="bc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>PDF e JPG dos selecionados</button></div></div><button class="bc-primary" id="exportAll" type="button" role="menuitem"><svg class="bc-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg>Exportar lote completo</button></div></div></div>
       </section>
       <div class="bc-toast" id="toast" role="status" aria-live="polite" hidden></div>
       <div class="bc-confirm-backdrop" id="returnToImportModal" hidden>
@@ -185,6 +189,7 @@
   <script src="vendor/xlsx.full.min.js"></script>
   <script src="vendor/qrcode-generator.js"></script>
   <script src="business-card-assets.js"></script>
+  <script src="business-card-digital-assets.js"></script>
   <script src="business-card-print-profile.js"></script>
   <script src="business-card-vonder-assets.js"></script>
   <script src="business-card-osten-assets.js"></script>

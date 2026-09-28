@@ -72,3 +72,17 @@ jobs:
             echo '::error::Teste do Conecta FG falhou — ver o corpo da página acima (data-result != "pass").'
             exit 1
           fi
+
+      - name: Gerador de Cartazes — detecção das colunas (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions             --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000             --dump-dom "file://$(pwd)/tests/cartaz-columns.test.html" > /tmp/cartaz-columns-dump.html
+          cat /tmp/cartaz-columns-dump.html
+          grep -q 'data-result="pass"' /tmp/cartaz-columns-dump.html
+
+      - name: Gerador de Cartazes — paginação e vínculo de marcas (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 --dump-dom "file://$(pwd)/tests/cartaz-pagination.test.html" > /tmp/cartaz-pagination-dump.html
+          cat /tmp/cartaz-pagination-dump.html
+          grep -q 'data-result="pass"' /tmp/cartaz-pagination-dump.html

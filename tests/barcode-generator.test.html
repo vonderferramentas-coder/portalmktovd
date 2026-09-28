@@ -1,0 +1,57 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste do Gerador de Código de Barras</title>
+<body data-result="running">RUNNING</body>
+<script src="../barcode-generator.js"></script>
+<script>
+// Roda em Chrome headless: abrir o arquivo e ler document.body.dataset.result (ok | FALHA: ...).
+(async function () {
+  try {
+    const B = window.BarcodeGen, eq = (a, b, m) => { if (a !== b) throw new Error(m + ': ' + a + ' != ' + b); };
+    eq(B.check('789123456789'), 0 + B.check('789123456789'), 'check estável');
+    eq(B.check('400638133393'), 1, 'EAN-13 conhecido 4006381333931');
+    eq(B.check('9638507'), 4, 'EAN-8 conhecido 96385074');
+    eq(B.normalize('4006381333931').code, '4006381333931', '13 válido');
+    eq(!!B.normalize('4006381333932').error, true, '13 inválido'); eq(B.normalize('4006381333932').fix, '4006381333931', 'correção sugerida');
+    eq(B.normalize('400638133393').code, '4006381333931', '12 sem verificador');
+    eq(B.normalize('036000291452').code, '0036000291452', 'UPC-A válido ganha 0');
+    eq(B.normalize(4006381333931).code, '4006381333931', 'número do Excel');
+    eq(B.normalize('9638507').code, '96385074', 'EAN-8 sem verificador');
+    eq(!!B.normalize('123').error, true, 'tamanho inválido');
+    eq(!!B.normalize('  ').empty, true, 'vazio');
+    // planilha: "CÓDIGO" sozinho não é código de barras; título acima do cabeçalho é ignorado
+    const rows = [['Lista'], ['CÓDIGO', 'DESCRIÇÃO', 'CÓD. DE BARRAS'], [11, 'Martelo', 4006381333931], [12, 'Serra', '']];
+    const got = B.fromRows(rows);
+    eq(got.length, 1, 'linha vazia descartada'); eq(got[0].desc, 'Martelo', 'descrição'); eq(got[0].row + ',' + got[0].col, '3,2', 'linha e coluna da célula'); const sh = B.fromRows(rows, { row0: 4, col0: 1 })[0]; eq(sh.row + ',' + sh.col, '7,3', 'deslocamento da faixa'); eq(String(got[0].raw), '4006381333931', 'coluna certa');
+    eq(B.fromRows([['CÓDIGO', 'NOME'], [1, 'x']]), null, 'sem coluna de barras');
+    ['COD BARRAS', 'Código de Barras', 'CODBARRAS', 'EAN', 'GTIN-13'].forEach(h => eq(B.fromRows([[h], ['4006381333931']]).length, 1, 'cabeçalho ' + h));
+    // ITF-14: 14 dígitos válidos passam, dígito errado não; geometria 169 módulos e 14 dígitos
+    const g14 = '1789100010010' + B.check('1789100010010');
+    eq(B.normalize(g14).code, g14, '14 válido'); eq(!!B.normalize(g14.slice(0, 13) + ((+g14[13] + 1) % 10)).error, true, '14 inválido');
+    eq(B.layout(g14).w, 289, 'largura ITF-14 (unidade = meio módulo)'); eq(B.layout(g14).texts.length, 14, 'dígitos ITF-14');
+    eq(B.layout(g14).rects.filter(r => r.y === 8).length, 39, 'barras do símbolo ITF-14');
+    // proporção do Zoner (padrão, altura 50%): ITF-14 ≈ 5,6 : 1 no conteúdo e barra larga = 2,5 × estreita; EAN-13 ≈ 2,2 : 1
+    const it = B.layout(g14), ean = B.layout('4006381333931');
+    eq(Math.round((it.w - 8) / (it.base - 4) * 10) / 10 >= 5.3 && (it.w - 8) / (it.base - 4) <= 5.9, true, 'proporção ITF-14 no padrão Zoner');
+    eq(Math.max(...it.rects.filter(r => r.y === 8).map(r => r.w)) / Math.min(...it.rects.filter(r => r.y === 8).map(r => r.w)), 2.5, 'razão largo:estreito');
+    eq(Math.round(ean.w / ean.h * 10) / 10, 2.2, 'proporção EAN-13 no padrão Zoner (50%)');
+    eq(B.layout(g14, { height: 100 }).h > it.h && B.layout('4006381333931', { height: 100 }).h > ean.h, true, 'altura 100% > 50%');
+    // geometria: 95 módulos de barras no EAN-13, 67 no EAN-8; 1º dígito fora das barras
+    const l13 = B.layout('4006381333931'), l8 = B.layout('96385074');
+    eq(l13.w, 113, 'largura EAN-13'); eq(l8.w, 81, 'largura EAN-8'); eq(l13.texts.length, 13, 'dígitos EAN-13'); eq(l8.texts.length, 8, 'dígitos EAN-8');
+    const wm = B.wmf('4006381333931'), u = new DataView(await wm.arrayBuffer());
+    eq(u.getUint32(0, true), 0x9AC6CDD7, 'chave placeable');
+    let x = 0; for (let i = 0; i < 10; i++) x ^= u.getUint16(i * 2, true); eq(x, u.getUint16(20, true), 'checksum');
+    eq(u.getUint32(22 + 6, true) * 2 + 22, wm.size, 'tamanho declarado = real');
+    const png = await B.png('4006381333931', { mm: 50, dpi: 600 }); eq(png.type, 'image/png', 'PNG');
+    const pb = new DataView(await png.arrayBuffer());
+    eq(pb.getUint32(16) % 113, 0, 'largura em múltiplos inteiros do módulo (barras nítidas)');
+    eq(pb.getUint32(37) === 0x70485973 ? 1 : 0, 1, 'chunk pHYs logo após o IHDR');
+    eq(pb.getUint32(41), Math.round(pb.getUint32(16) / 0.05), 'pixels por metro = largura / 50 mm');
+    eq(pb.getUint8(49), 1, 'unidade = metro');
+    const w50 = new DataView(await B.wmf('4006381333931', { mm: 50 }).arrayBuffer()); eq(w50.getUint16(14, true), Math.round(113 * 20 * 25.4 / 50), 'escala do WMF para 50 mm');
+    const pc = B.fromRows([['CÓDIGO OVD', 'DESCRIÇÃO', 'COD BARRAS'], ['A1', 'Serra', '4006381333931']])[0]; eq(pc.pcode + '|' + pc.desc, 'A1|Serra', 'código do produto vs descrição');
+    document.body.dataset.result = 'ok'; document.body.textContent = 'ok';
+  } catch (e) { document.body.dataset.result = 'FALHA: ' + e.message; document.body.textContent = 'FALHA: ' + e.message; }
+})();
+</script>

@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Gerador de Código de Barras</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="auth.css">
+    <script>document.documentElement.classList.add('auth-pending')</script>
+    <script src="firebase-config.js"></script>
+    <script type="module" src="auth-guard.js"></script>
+    <style>
+        .bc { max-width: 1200px; margin: auto }
+        .bc-in { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin: 24px 0 }
+        .bc-box { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 18px }
+                .bc-head { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 14px }
+        .bc-head h2 { font-size: 17px; margin: 0 }
+        .bc-info { flex-shrink: 0; width: 24px; height: 24px; padding: 0; display: grid; place-items: center; border: 1px solid var(--border-strong); border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer }
+        .bc-info:hover, .bc-info[aria-expanded="true"] { color: var(--text); border-color: var(--text); background: var(--surface-muted) }
+        .bc-info:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+        .bc-tip { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: min(360px, 80vw); padding: 12px 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-md); font-size: 13px; line-height: 1.5; color: var(--muted) }
+        .bc-tip[hidden] { display: none }
+        .bc-tip ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px }
+        .bc-tip strong { color: var(--text); font-weight: 600 }
+        .bc-upload { display: flex; margin: 0; align-items: center; justify-content: center; box-sizing: border-box; height: var(--control-h); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); padding: 0 12px; color: var(--accent-text); font-weight: 700; cursor: pointer }
+        .bc-upload:focus-within { outline: 2px solid var(--accent); outline-offset: 2px }
+        .bc-upload input { position: absolute; width: 1px; height: 1px; opacity: 0 }
+        .bc-manual { display: flex; gap: 8px }
+        .bc-manual input { flex: 1; min-width: 0; height: var(--control-h); padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font: inherit; font-size: 14px }
+        .bc-msg { margin: 10px 0 0; font-size: 13px }
+        .bc-msg.err { color: var(--danger) }
+        .bc-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px }
+        .bc-title { margin-right: auto; min-width: 0 }
+        .bc-title h2 { margin: 0; font-size: 17px }
+        .bc-title h3 { margin: 2px 0 0; font: 500 13px var(--font-body); text-transform: none; letter-spacing: normal; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+        .bc-title h3[hidden] { display: none }
+        .bc-list { display: grid; gap: 8px }
+        .bc-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px }
+        .bc-seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden }
+        .bc-seg button { height: 32px; padding: 0 12px; border: 0; background: var(--card); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer }
+        .bc-seg button + button { border-left: 1px solid var(--border-strong) }
+        .bc-seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent) }
+        .bc-tools [hidden] { display: none }
+        .bc-sorts { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px }
+        .bc-sorts .btn { height: 32px; font-size: 13px }
+        .bc-item.pend { border-color: var(--accent); background: var(--accent-weak) }
+        .bc-hint { margin: 12px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); text-align: center }
+        .bc-tools label { margin: 0; white-space: nowrap; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px }
+        .bc-tools select { height: 32px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font: inherit; font-size: 13px }
+        .bc-row { font-size: 12px; color: var(--muted); line-height: 1.4 }
+        .bc-row b { display: block; font-size: 14px; color: var(--text) }
+        .bc-edit { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap }
+        .bc-edit input { width: 190px; max-width: 100%; height: 30px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font: inherit; font-size: 13px }
+        .bc-resume { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--accent-weak); border: 1px solid var(--accent); border-radius: var(--radius-md); padding: 10px 14px; margin: 0 0 12px; font-size: 13px }
+        .bc-resume[hidden] { display: none }
+        .bc-resume span { margin-right: auto }
+        .bc-menu { position: relative }
+        .bc-menu-list { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 240px; display: grid; gap: 2px; padding: 6px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-md) }
+        .bc-menu-list[hidden] { display: none }
+        .bc-menu-list button { height: 34px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer }
+        .bc-menu-list button:hover:not(:disabled), .bc-menu-list button:focus-visible { background: var(--surface-muted) }
+        .bc-menu-list button:disabled { opacity: .45; cursor: default }
+        .bc-cfgmodal { max-width: 460px }
+        .bc-field { display: grid; gap: 6px; margin: 0 0 16px; font-size: 13px; font-weight: 600; color: var(--text) }
+        .bc-help { font-size: 12px; font-weight: 400; line-height: 1.5; color: var(--muted) }
+        .bc-field input, .bc-field select { height: var(--control-h); padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); font: inherit; font-size: 14px }
+        .bc-note { margin: 0 0 16px; font-size: 13px; line-height: 1.5; color: var(--muted) }
+        .bc-row em { display: block; font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+        .bc-item { display: grid; grid-template-columns: 96px 170px 1fr auto; gap: 14px; align-items: center; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 30px }
+        .bc-item.bad { border-color: var(--danger-border); background: var(--danger-bg) }
+        .bc-thumb { display: block; width: 100%; padding: 0; border: 0; background: #fff; border-radius: 4px; cursor: zoom-in }
+        .bc-thumb:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+        .bc-thumb svg { width: 100%; height: auto; display: block }
+        .bc-view { max-width: 640px }
+        .bc-view .modal-body { background: var(--surface-muted); display: grid; place-items: center }
+        .bc-view .modal-body svg { width: 100%; max-height: 50vh; background: #fff; border-radius: var(--radius-sm); box-shadow: var(--shadow-sm) }
+        .bc-view .modal-header span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px }
+        .bc-backdrop.is-open { display: flex }
+        .bc-item strong { display: block; font-size: 15px; letter-spacing: .04em }
+        .bc-item span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px }
+        .bc-item.bad span { color: var(--danger) }
+        .bc-acts { display: flex; gap: 6px; flex-wrap: wrap }
+        .bc-item .bc-acts .btn { width: 124px; height: 32px; padding: 0 10px; font-size: 13px }
+        .bc-acts .bc-menu-list { min-width: 190px }
+        .bc-empty { padding: 28px; text-align: center; color: var(--muted); border: 1px dashed var(--border-strong); border-radius: var(--radius-md) }
+        @media (max-width: 640px) { .bc-item { grid-template-columns: 1fr } .bc-sorts { margin-left: 0 } .bc-manual { flex-wrap: wrap } }
+    </style>
+</head>
+
+<body>
+    <div class="portal-shell">
+        <aside class="portal-sidebar" id="portalSidebar"></aside>
+        <main class="portal-main bc">
+            <header>
+                <span class="page-kicker">Produção gráfica</span>
+                <h1>Gerador de Código de Barras</h1>
+                <p class="page-subtitle">Envie uma planilha ou digite os números. As imagens saem em PNG de alta resolução ou em WMF (vetorial).</p>
+            </header>
+
+            <section class="bc-in">
+                <div class="bc-box">
+                    <div class="bc-head">
+                        <h2>Por planilha</h2>
+                        <button type="button" class="bc-info" aria-label="Sobre: Por planilha" aria-expanded="false" aria-describedby="tipSheet"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg></button>
+                        <div class="bc-tip" id="tipSheet" role="tooltip" hidden>Envie uma planilha (.xlsx, .xls ou .csv) e o sistema acha sozinho a coluna do código de barras.
+                            <ul>
+                                <li><strong>Qual coluna é lida:</strong> a que tiver no título “Código de Barras”, “Cód. Barras”, “EAN” ou “GTIN”.</li>
+                                <li><strong>“Código” sozinho não vale:</strong> costuma ser o código do produto, não o de barras.</li>
+                                <li><strong>O que acontece:</strong> cada linha vira um código de barras. Os que tiverem erro ficam em “Com problema”, para você corrigir.</li>
+                                <li><strong>Outra planilha:</strong> ao enviar uma nova, você recomeça do zero e a anterior sai da tela.</li>
+                            </ul></div>
+                    </div>
+                    <label class="bc-upload">Selecionar planilha<input id="sheet" type="file" accept=".xlsx,.xls,.csv"></label>
+                </div>
+                <div class="bc-box">
+                    <div class="bc-head">
+                        <h2>Digitar manualmente</h2>
+                        <button type="button" class="bc-info" aria-label="Sobre: Digitar manualmente" aria-expanded="false" aria-describedby="tipManual"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg></button>
+                        <div class="bc-tip" id="tipManual" role="tooltip" hidden>Digite os números para gerar o código de barras na hora, sem planilha.
+                            <ul>
+                                <li><strong>Vários de uma vez:</strong> separe por espaço, vírgula ou quebra de linha.</li>
+                                <li><strong>Tipos aceitos:</strong> EAN-13 (13 dígitos), UPC-A (12), EAN-8 (8) e ITF-14 (14 dígitos, usado nas embalagens sub e master).</li>
+                                <li><strong>Dígito verificador:</strong> no EAN-13 e no EAN-8, se faltar o último dígito, ele é calculado para você. No ITF-14, digite os 14.</li>
+                                <li><strong>Onde aparece:</strong> os números entram na lista atual, junto do que já estiver lá.</li>
+                            </ul></div>
+                    </div>
+                    <form class="bc-manual" id="manual">
+                        <input id="manualCode" inputmode="numeric" autocomplete="off" placeholder="Ex.: 7891234567895" aria-label="Número do código de barras">
+                        <button class="btn" type="submit">Gerar</button>
+                    </form>
+                </div>
+            </section>
+            <p class="bc-msg" id="msg" role="status" hidden></p>
+            <div class="bc-resume" id="resume" hidden>
+                <span id="resumeText"></span>
+                <button class="btn small" type="button" data-r="yes">Retomar</button>
+                <button class="btn ghost small" type="button" data-r="no">Descartar</button>
+            </div>
+
+            <section id="results" hidden>
+                <div class="bc-bar">
+                    <div class="bc-title">
+                        <h2 id="count"></h2>
+                        <h3 id="srcTitle" hidden></h3>
+                    </div>
+                </div>
+                <div class="bc-tools">
+                    <div class="bc-seg" id="filter" role="group" aria-label="Filtrar"></div>
+                    <div class="bc-sorts"><label>Ordenar
+                        <select id="sort">
+                            <option value="orig">Ordem da planilha</option>
+                            <option value="bad">Problemas primeiro</option>
+                            <option value="type">Tipo (EAN-8, EAN-13, ITF-14)</option>
+                            <option value="code">Código (crescente)</option>
+                        </select>
+                    </label>
+                    <label id="typeLabel" hidden>Mostrar <select id="type"></select></label>
+                    <div class="bc-menu">
+                        <button class="btn ghost" id="dl" type="button" aria-haspopup="menu" aria-expanded="false">Baixar <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button>
+                        <div class="bc-menu-list" id="dlMenu" role="menu" hidden>
+                            <button type="button" role="menuitem" id="allPng">Todos em PNG (ZIP)</button>
+                            <button type="button" role="menuitem" id="allWmf">Todos em WMF (ZIP)</button>
+                            <button type="button" role="menuitem" id="report">Relatório da correção (XLSX)</button>
+                        </div>
+                    </div>
+                    <button class="btn ghost" id="cfgBtn" type="button">Configurações</button>
+                    </div>
+                </div>
+                <div class="bc-list" id="list"></div>
+            </section>
+            <div class="bc-empty" id="empty">Nenhum código de barras ainda.</div>
+        </main>
+    </div>
+    <div class="modal-backdrop bc-backdrop" id="view">
+        <div class="modal bc-view" role="dialog" aria-modal="true" aria-labelledby="viewTitle">
+            <div class="modal-header">
+                <div><h2 id="viewTitle"></h2><span id="viewKind"></span></div>
+                <button type="button" class="modal-close" id="viewClose" aria-label="Fechar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+            </div>
+            <div class="modal-body" id="viewBody"></div>
+            <div class="modal-footer" id="viewFoot"></div>
+        </div>
+    </div>
+    <div class="modal-backdrop bc-backdrop" id="cfg">
+        <div class="modal bc-cfgmodal" role="dialog" aria-modal="true" aria-labelledby="cfgTitle">
+            <div class="modal-header">
+                <h2 id="cfgTitle">Configurações</h2>
+                <button type="button" class="modal-close" id="cfgClose" aria-label="Fechar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+            </div>
+            <div class="modal-body">
+                <p class="bc-note">Ajuste aqui como as imagens são exportadas: tamanho, resolução, altura das barras e nome dos arquivos. Vale para PNG e WMF, nos downloads individuais e em ZIP, e fica salvo neste navegador.</p>
+                <label class="bc-field">Largura (mm)
+                    <span class="bc-help">Largura da imagem inteira, com margens. Vale para PNG e WMF.</span>
+                    <input id="widthMm" type="number" min="10" max="500" step="1" value="50">
+                </label>
+                <label class="bc-field">Resolução (DPI)
+                    <span class="bc-help">O PNG guarda o tamanho gravado, então abre na medida certa no CorelDRAW e no Word. A resolução exata pode variar um pouco para manter as barras nítidas.</span>
+                    <input id="dpi" type="number" min="72" max="1200" step="1" value="600">
+                </label>
+                <label class="bc-field">Altura das barras (%)
+                    <span class="bc-help">Porcentagem da altura nominal da norma GS1 (100%). 50% é o padrão do Zoner Barcode Studio, usado pela equipe.</span>
+                    <input id="barH" type="number" min="20" max="100" step="5" value="50">
+                </label>
+                <label class="bc-field">Nome dos arquivos
+                    <span class="bc-help">Como cada arquivo baixado é nomeado. Se o campo escolhido estiver vazio, usa o código de barras.</span>
+                    <select id="nameMode">
+                        <option value="code">Código de barras</option>
+                        <option value="pcode">Código do produto</option>
+                        <option value="desc">Descrição</option>
+                    </select>
+                </label>
+            </div>
+            <div class="modal-footer"><button class="btn" type="button" id="cfgOk">Concluir</button></div>
+        </div>
+    </div>
+    <div class="modal-backdrop bc-backdrop" id="ask">
+        <div class="modal bc-cfgmodal" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askText">
+            <div class="modal-header">
+                <h2 id="askTitle"></h2>
+                <button type="button" class="modal-close" id="askClose" aria-label="Fechar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+            </div>
+            <div class="modal-body"><p class="bc-note" id="askText"></p></div>
+            <div class="modal-footer">
+                <button class="btn ghost" type="button" id="askNo">Cancelar</button>
+                <button class="btn" type="button" id="askYes"></button>
+            </div>
+        </div>
+    </div>
+    <script src="portal-shell.js"></script>
+    <script src="vendor/xlsx.full.min.js"></script>
+    <script src="vendor/jszip.min.js"></script>
+    <script src="barcode-generator.js"></script>
+    <script>
+        const $ = id => document.getElementById(id), B = window.BarcodeGen;
+        const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const kind = c => ({ 8: 'EAN-8', 13: 'EAN-13', 14: 'ITF-14' }[c.length]);
+        const KEY = 'bc-session-v1';
+        // O trabalho é de uma planilha por vez: importar outra recomeça do zero (a anterior não é mantida).
+        // item: { code | error+fix, pending, dup, prob, raw, orig, desc, pcode, note, file, sheet, row, col }
+        //   pending = corrigido, aguardando o teste de leitura ser aprovado
+        //   dup     = (calculado a cada render) o item anterior com o mesmo código
+        //   prob    = problema original da célula, guardado para o relatório
+        let items = [], srcName = '', viewing = null, filter = 'all', typeSel = 'all', editing = new Set(), resume = null; // srcName = arquivo importado
+        const isBad = i => !i.code || !!i.pending || !!i.dup;
+
+        // só erros usam a mensagem; o resumo (total e problemas) já está no título da lista
+        const say = (t, err) => { $('msg').textContent = t; $('msg').hidden = !t; $('msg').classList.toggle('err', !!err) };
+        const save = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000) };
+
+        // ---- tamanho e nome dos arquivos
+        const num = (id, def, lo, hi) => { const v = parseFloat($(id).value); return Math.min(hi, Math.max(lo, isFinite(v) ? v : def)) };
+        const opts = () => ({ mm: num('widthMm', 50, 10, 500), dpi: num('dpi', 600, 72, 1200), height: num('barH', 50, 20, 100) });
+        const make = (code, fmt) => fmt === 'png' ? B.png(code, opts()) : B.wmf(code, opts());
+        const svg = code => B.svg(code, { height: opts().height }); // a prévia segue a altura escolhida
+        const clean = s => String(s).replace(/[\\/:*?"<>|\x00-\x1f]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '').slice(0, 80);
+        function baseName(i) {
+            const m = $('nameMode').value, v = m === 'pcode' ? i.pcode : m === 'desc' ? i.desc : '';
+            return clean(v || '') || 'codigo-de-barras-' + i.code;
+        }
+        // fmt: 'png', 'wmf' ou 'both' (os dois num ZIP: vários downloads seguidos o navegador costuma bloquear)
+        async function download(i, fmt) {
+            const name = baseName(i);
+            if (fmt !== 'both') return save(await make(i.code, fmt), name + '.' + fmt);
+            const z = new JSZip();
+            z.file(name + '.png', await make(i.code, 'png')); z.file(name + '.wmf', await make(i.code, 'wmf'));
+            save(await z.generateAsync({ type: 'blob' }), name + '.zip');
+        }
+
+        // ---- salvar no navegador (localStorage): só o trabalho atual (lista, correções, aprovações) e as opções de exportação
+        function persist() {
+            if (resume) return; // aguardando a decisão de retomar: não sobrescreve o que estava salvo
+            try {
+                if (!items.length) localStorage.removeItem(KEY);
+                else localStorage.setItem(KEY, JSON.stringify({
+                    items: items.map(({ dup, ...r }) => r), src: srcName,
+                    opts: { mm: $('widthMm').value, dpi: $('dpi').value, height: $('barH').value, name: $('nameMode').value }
+                }));
+            } catch (_) { /* navegador bloqueou ou sem espaço: segue sem salvar */ }
+        }
+        try {
+            const s = JSON.parse(localStorage.getItem(KEY));
+            if (s && Array.isArray(s.lists)) { const l = s.lists[s.cur] || s.lists[0]; if (l) { s.items = l.items; s.src = l.name } } // formato de várias listas: fica só a atual
+            if (s && Array.isArray(s.items) && s.items.length) resume = s;
+        } catch (_) { }
+        function restore() {
+            const r = resume, o = r.opts || {};
+            items = r.items; srcName = r.src || ''; resume = null;
+            filter = 'all'; typeSel = 'all'; editing.clear();
+            if (o.mm) $('widthMm').value = o.mm; if (o.dpi) $('dpi').value = o.dpi; if (o.height) $('barH').value = o.height; if (o.name) $('nameMode').value = o.name;
+        }
+        $('resume').onclick = e => {
+            const r = e.target.dataset.r; if (!r) return;
+            if (r === 'yes') restore();
+            else { resume = null; try { localStorage.removeItem(KEY) } catch (_) { } }
+            render();
+        };
+        ['widthMm', 'dpi', 'nameMode'].forEach(id => ['input', 'change'].forEach(ev => $(id).addEventListener(ev, persist)));
+        $('barH').addEventListener('change', render); // muda o desenho: refaz as prévias (e salva)
+
+        // acrescenta itens à lista (repetidos ficam na lista, marcados como problema)
+        function pushItems(rows) {
+            rows.forEach(x => {
+                const n = B.normalize(x.raw);
+                if (n.empty) return;
+                const raw = String(x.raw).trim();
+                items.push({ ...n, raw, orig: raw, prob: n.error || n.note || '', desc: x.desc || '', pcode: x.pcode || '', file: x.file, sheet: x.sheet, row: x.row, col: x.col });
+            });
+            render();
+        }
+        // confirmação na janela do portal (no lugar do confirm() do navegador); resolve true/false
+        let askDone = null;
+        const ask = (title, text, yes) => new Promise(res => {
+            $('askTitle').textContent = title; $('askText').textContent = text; $('askYes').textContent = yes;
+            askDone = res; $('ask').classList.add('is-open'); $('askNo').focus(); // foco no lado seguro: Enter não descarta sem querer
+        });
+        const closeAsk = v => { $('ask').classList.remove('is-open'); const d = askDone; askDone = null; if (d) d(v) };
+        $('askYes').onclick = () => closeAsk(true);
+        $('askNo').onclick = $('askClose').onclick = () => closeAsk(false);
+        $('ask').onclick = e => { if (e.target === $('ask')) closeAsk(false) };
+
+        // números digitados entram na lista atual (retomando antes o trabalho salvo, se houver)
+        function addManual(raws) {
+            if (resume) restore();
+            pushItems(raws.map(raw => ({ raw })));
+        }
+        // importar uma planilha recomeça do zero: descarta a lista atual e o trabalho salvo; pergunta só se houver
+        // problema ou correção em andamento para perder
+        async function importSheet(name, rows) {
+            if ((resume ? resume.items : items).some(i => isBad(i) || i.raw !== i.orig) &&
+                !await ask('Começar do zero?', 'A lista atual e as correções feitas nela serão descartadas. A planilha “' + name + '” será importada no lugar.', 'Começar do zero')) return;
+            resume = null; items = []; srcName = name; filter = 'all'; typeSel = 'all'; editing.clear();
+            pushItems(rows.map(x => ({ ...x, file: name })));
+        }
+
+        function markDups() {
+            const first = new Map();
+            items.forEach(i => {
+                delete i.dup;
+                if (!i.code) return;
+                const f = first.get(i.code);
+                if (f) i.dup = f; else first.set(i.code, i);
+            });
+        }
+        const dupText = i => 'Repetido — mesmo código ' + (i.dup.row ? 'da linha ' + i.dup.row : 'digitado antes') + (i.dup.desc ? ' (' + i.dup.desc + ')' : '') + '. Remova ou corrija';
+
+        // origem na planilha (linha em destaque, célula e aba); itens digitados não têm
+        const where = i => i.row
+            ? '<div class="bc-row"><b>Linha ' + i.row + '</b>' + XLSX.utils.encode_cell({ r: i.row - 1, c: i.col }) + (i.sheet ? '<em title="Aba">' + esc(i.sheet) + '</em>' : '') + '</div>'
+            : '<div class="bc-row">Digitado</div>';
+        const editForm = (i, n) => '<form class="bc-edit" data-edit="' + n + '"><input value="' + esc(i.raw) + '" inputmode="numeric" autocomplete="off" aria-label="Corrigir código de barras"><button class="btn small" type="submit">Aplicar</button>' +
+            (i.fix ? '<button class="btn ghost small" data-fix="' + n + '" type="button">Usar ' + i.fix + '</button>' : '') + (!isBad(i) ? '<button class="btn ghost small" data-cancel="' + n + '" type="button">Cancelar</button>' : '') + '</form>';
+        const sorters = { orig: null, bad: (a, b) => isBad(b) - isBad(a), type: (a, b) => !a.code - !b.code || (a.code ? kind(a.code).localeCompare(kind(b.code), 'pt', { numeric: true }) : 0) || (a.code || '').localeCompare(b.code || ''), code: (a, b) => (a.code || a.raw).localeCompare(b.code || b.raw, 'pt', { numeric: true }) };
+
+        function rowHtml(i, n) {
+            const st = !i.code ? 'err' : i.dup ? 'dup' : i.pending ? 'pend' : 'ok';
+            const changed = i.raw !== i.orig ? '<span>Na planilha: ' + esc(i.orig) + '</span>' : '';
+            const thumb = attr => '<button class="bc-thumb" ' + attr + '="' + n + '" type="button" aria-label="Ampliar código ' + i.code + '">' + svg(i.code) + '</button>';
+            const rm = '<button class="btn ghost small" data-rm="' + n + '" type="button">Remover</button>';
+            // funções: só o estado atual é montado (os outros usariam campos que o item não tem)
+            const info = {
+                err: () => '<strong>' + esc(i.raw) + '</strong><span>' + esc(i.error) + (i.desc ? ' · ' + esc(i.desc) : '') + '</span>',
+                dup: () => '<strong>' + i.code + '</strong><span>' + esc(dupText(i)) + '</span>',
+                pend: () => '<strong>' + i.code + '</strong><span>Corrigido — falta testar a leitura e aprovar</span>',
+                ok: () => '<strong>' + i.code + '</strong><span>' + esc(i.desc || (i.note || kind(i.code))) + (i.desc && i.note ? ' · ' + i.note : '') + '</span>'
+            }[st]();
+            const acts = {
+                err: rm, dup: rm,
+                pend: '<button class="btn small" data-test="' + n + '" type="button">Testar leitura</button>' + rm,
+                ok: '<div class="bc-menu"><button class="btn small" type="button" aria-haspopup="menu" aria-expanded="false">Baixar <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></button>' +
+                    '<div class="bc-menu-list" role="menu" hidden><button type="button" role="menuitem" data-n="' + n + '" data-f="png">PNG</button><button type="button" role="menuitem" data-n="' + n + '" data-f="wmf">WMF</button><button type="button" role="menuitem" data-n="' + n + '" data-f="both">PNG e WMF (ZIP)</button></div></div>' +
+                    '<button class="btn ghost small" data-edit-open="' + n + '" type="button">Editar</button>'
+            }[st];
+            return '<div class="bc-item ' + { err: 'bad', dup: 'bad', pend: 'pend', ok: '' }[st] + '">' + where(i) + (i.code ? thumb(st === 'pend' ? 'data-test' : 'data-view') : '<div></div>') +
+                '<div>' + info + changed + (st !== 'ok' || editing.has(i) ? editForm(i, n) : '') + '</div><div class="bc-acts">' + acts + '</div></div>';
+        }
+
+        function render() {
+            markDups();
+            $('resume').hidden = !resume;
+            if (resume) $('resumeText').textContent = 'Trabalho anterior salvo neste navegador' + (resume.src ? ' (' + resume.src + ')' : '') + ': ' + resume.items.length + (resume.items.length === 1 ? ' código.' : ' códigos.');
+            $('results').hidden = !items.length; $('empty').hidden = !!items.length;
+            const ok = items.filter(i => !isBad(i)).length, bad = items.length - ok;
+            if (!bad && filter === 'bad') filter = 'all';
+            $('srcTitle').hidden = !srcName; $('srcTitle').textContent = srcName; $('srcTitle').title = srcName;
+            $('count').textContent = items.length + (items.length === 1 ? ' código' : ' códigos') + (bad ? ' · ' + bad + ' com problema' : '');
+            $('filter').innerHTML = [['all', 'Todos', items.length], ['bad', 'Com problema', bad], ['ok', 'Válidos', ok]].map(([k, t, c]) =>
+                '<button type="button" data-filter="' + k + '" aria-pressed="' + (filter === k) + '">' + t + ' (' + c + ')</button>').join('');
+            $('allPng').disabled = $('allWmf').disabled = !ok; // o relatório vale mesmo sem nenhum código aprovado
+            // ordenando por tipo, dá para ver só um tipo (EAN-8, EAN-13 ou ITF-14)
+            const byType = $('sort').value === 'type', count = {};
+            items.forEach(i => { if (i.code) count[kind(i.code)] = (count[kind(i.code)] || 0) + 1 });
+            const types = Object.keys(count).sort((x, y) => x.localeCompare(y, 'pt', { numeric: true }));
+            if (!types.includes(typeSel)) typeSel = 'all';
+            $('typeLabel').hidden = !byType;
+            $('type').innerHTML = '<option value="all">Todos os tipos</option>' + types.map(t => '<option value="' + t + '"' + (t === typeSel ? ' selected' : '') + '>' + t + ' (' + count[t] + ')</option>').join('');
+            const view = items.map((i, n) => ({ i, n })).filter(({ i }) => (filter === 'all' || (filter === 'bad') === isBad(i)) && (!byType || typeSel === 'all' || (i.code && kind(i.code) === typeSel)));
+            const by = sorters[$('sort').value];
+            if (by) view.sort((a, b) => by(a.i, b.i));
+            $('list').innerHTML = view.map(({ i, n }) => rowHtml(i, n)).join('') || '<div class="bc-empty">Nenhum código nesta visão.</div>';
+            persist();
+        }
+
+        // aplica um novo valor a um item; ao ficar válido, abre o teste de leitura (fica pendente até aprovar)
+        function apply(n, raw) {
+            const i = items[n], r = B.normalize(raw);
+            delete i.code; delete i.error; delete i.fix; delete i.note; delete i.pending;
+            i.raw = String(raw).trim();
+            if (r.empty) r.error = 'informe o número do código de barras';
+            Object.assign(i, r); editing.delete(i);
+            if (i.code) i.pending = true;
+            render();
+            if (i.code && !i.dup) openModal(i, 'test');
+        }
+
+        const closeView = () => { $('view').classList.remove('is-open'); viewing = null };
+        // mode 'view': prévia com download; 'test': o usuário lê o código na tela e aprova ou volta a editar
+        function openModal(i, mode) {
+            viewing = i;
+            $('viewTitle').textContent = i.code;
+            $('viewKind').textContent = (mode === 'test' ? 'Teste de leitura · ' : '') + kind(i.code) + (i.row ? ' · linha ' + i.row : '');
+            $('viewBody').innerHTML = svg(i.code) + (mode === 'test' ? '<p class="bc-hint">Leia este código com o leitor (ou a câmera do celular) e confira se o número lido é <b>' + i.code + '</b>. Leu certo? Aprove. Não leu ou veio diferente? Edite de novo.</p>' : '');
+            $('viewFoot').innerHTML = mode === 'test'
+                ? '<button class="btn ghost" type="button" data-act="edit">Editar novamente</button><button class="btn" type="button" data-act="approve">Aprovar</button>'
+                : '<button class="btn ghost" type="button" data-vf="wmf">Baixar WMF</button><button class="btn" type="button" data-vf="png">Baixar PNG</button>';
+            $('view').classList.add('is-open');
+            $('viewFoot').lastElementChild.focus();
+        }
+        $('viewClose').onclick = closeView;
+        $('view').onclick = e => {
+            if (e.target === $('view')) return closeView();
+            const { vf, act } = e.target.dataset, i = viewing;
+            if (vf) download(i, vf);
+            if (act === 'approve') { i.pending = false; closeView(); render() }
+            if (act === 'edit') { filter = 'bad'; closeView(); render(); const f = $('list').querySelector('[data-edit="' + items.indexOf(i) + '"] input'); if (f) f.focus() }
+        };
+        // menu Baixar e janela de Configurações
+        const closeMenus = keep => document.querySelectorAll('.bc-menu-list').forEach(m => {
+            if (m.parentNode === keep) return;
+            m.hidden = true; m.parentNode.querySelector('[aria-haspopup]').setAttribute('aria-expanded', 'false');
+        });
+        const setCfg = open => { $('cfg').classList.toggle('is-open', open); if (open) $('widthMm').focus(); else $('cfgBtn').focus() };
+        $('cfgBtn').onclick = () => setCfg(true);
+        $('cfgClose').onclick = $('cfgOk').onclick = () => setCfg(false);
+        $('cfg').onclick = e => { if (e.target === $('cfg')) setCfg(false) };
+        // ícone (i): clicar mostra/oculta a explicação da caixa; clicar fora ou Esc fecha
+        const closeTips = keep => document.querySelectorAll('.bc-tip').forEach(t => {
+            if (t.parentNode === keep) return;
+            t.hidden = true; t.parentNode.querySelector('.bc-info').setAttribute('aria-expanded', 'false');
+        });
+        document.addEventListener('click', e => {
+            const b = e.target.closest('.bc-info'), box = b && b.parentNode;
+            closeTips(box);
+            if (b) { const t = box.querySelector('.bc-tip'); t.hidden = !t.hidden; b.setAttribute('aria-expanded', !t.hidden) }
+        });
+        // clicar num botão com menu abre/fecha o dele e fecha os outros; escolher uma opção ou clicar fora fecha todos
+        document.addEventListener('click', e => {
+            const t = e.target.closest('[aria-haspopup]'), menu = t && t.parentNode;
+            closeMenus(menu);
+            if (t) { const l = menu.querySelector('.bc-menu-list'); l.hidden = !l.hidden; t.setAttribute('aria-expanded', !l.hidden) }
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key !== 'Escape') return;
+            if (askDone) return closeAsk(false);
+            if (viewing) closeView();
+            else if ($('cfg').classList.contains('is-open')) setCfg(false);
+            else { closeMenus(null); closeTips(null) }
+        });
+
+        $('list').onclick = async e => {
+            const b = e.target.closest('button'); if (!b || b.hasAttribute('aria-haspopup')) return;
+            if (b.dataset.view) return openModal(items[+b.dataset.view], 'view');
+            if (b.dataset.test) return openModal(items[+b.dataset.test], 'test');
+            if (b.dataset.filter) { filter = b.dataset.filter; return render() }
+            if (b.dataset.editOpen) { editing.add(items[+b.dataset.editOpen]); render(); return $('list').querySelector('[data-edit="' + b.dataset.editOpen + '"] input').focus() }
+            if (b.dataset.cancel) { editing.delete(items[+b.dataset.cancel]); return render() }
+            if (b.dataset.fix) return apply(+b.dataset.fix, items[+b.dataset.fix].fix);
+            if (b.dataset.rm) { editing.delete(items[+b.dataset.rm]); items.splice(+b.dataset.rm, 1); return render() }
+            if (b.dataset.f) download(items[+b.dataset.n], b.dataset.f);
+        };
+
+        $('list').onsubmit = e => { e.preventDefault(); apply(+e.target.dataset.edit, e.target.querySelector('input').value) };
+        $('filter').onclick = $('list').onclick;
+        $('sort').onchange = render;
+        $('type').onchange = () => { typeSel = $('type').value; render() };
+
+        const listBase = () => clean(srcName.replace(/\.[^.]+$/, '')) || 'codigos-de-barras';
+
+        // ZIP só com os aprovados (repetidos e pendentes ficam de fora); nomes iguais ganham o código no fim
+        async function zip(fmt) {
+            const z = new JSZip(), used = new Set();
+            for (const i of items.filter(i => !isBad(i))) {
+                let name = baseName(i);
+                if (used.has(name.toLowerCase())) name += '_' + i.code;
+                used.add(name.toLowerCase());
+                z.file(name + '.' + fmt, await make(i.code, fmt));
+            }
+            save(await z.generateAsync({ type: 'blob' }), listBase() + '-' + fmt + '.zip');
+        }
+        $('allPng').onclick = () => zip('png'); $('allWmf').onclick = () => zip('wmf');
+
+        // relatório da correção, para devolver à fonte: o que estava na célula, o problema e o valor final
+        $('report').onclick = () => {
+            const status = i => !i.code ? 'Com problema' : i.dup ? 'Repetido' : i.pending ? 'Corrigido, aguardando aprovação' : i.prob ? 'Corrigido e aprovado' : 'Válido';
+            const problem = i => !i.code ? i.error : i.dup ? dupText(i) : i.prob;
+            const rows = [['Arquivo', 'Aba', 'Linha', 'Célula', 'Código do produto', 'Descrição', 'Valor original', 'Problema', 'Valor corrigido', 'Status']]
+                .concat(items.map(i => [i.file || '', i.sheet || '', i.row || '', i.row ? XLSX.utils.encode_cell({ r: i.row - 1, c: i.col }) : '', i.pcode || '', i.desc || '', i.orig, problem(i), i.code && i.code !== i.orig ? i.code : '', status(i)]));
+            const ws = XLSX.utils.aoa_to_sheet(rows), wb = XLSX.utils.book_new();
+            ws['!cols'] = [28, 14, 7, 8, 18, 34, 18, 52, 18, 30].map(wch => ({ wch }));
+            XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
+            save(new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'relatorio-' + listBase() + '.xlsx');
+        };
+
+        $('manual').onsubmit = e => {
+            e.preventDefault();
+            const parts = $('manualCode').value.split(/[\s,;]+/).filter(Boolean);
+            if (!parts.length) return say('Digite o número do código de barras.', true);
+            say('');
+            addManual(parts);
+            $('manualCode').value = '';
+        };
+
+        $('sheet').onchange = async e => {
+            const file = e.target.files[0]; e.target.value = '';
+            if (!file) return;
+            try {
+                const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+                let found = false, list = [], cols = [];
+                for (const name of wb.SheetNames) {
+                    const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: '', blankrows: true });
+                    const ws = wb.Sheets[name], start = XLSX.utils.decode_range(ws['!ref'] || 'A1').s, got = B.fromRows(rows, { row0: start.r, col0: start.c });
+                    if (got) { found = true; list = list.concat(got.map(x => ({ ...x, file: file.name, sheet: wb.SheetNames.length > 1 ? name : '' }))) } else if (rows[0]) cols = cols.concat(rows[0].filter(Boolean));
+                }
+                if (!found) return say('Não encontrei uma coluna “Código de Barras” (ou Cód. Barras, EAN, GTIN)' + (cols.length ? '. Colunas lidas: ' + cols.join(', ') : '') + '.', true);
+                say('');
+                await importSheet(file.name, list);
+            } catch (err) { say('Não consegui ler a planilha: ' + err.message, true) }
+        };
+        render();
+    </script>
+</body>
+
+</html>
