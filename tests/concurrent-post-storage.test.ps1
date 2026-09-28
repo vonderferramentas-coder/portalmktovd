@@ -15,8 +15,8 @@ $expectations = @(
     @{ Name = 'Sincronizador assina alteracoes remotas'; Source = $syncSource; Pattern = '\.subscribeToPosts\s*\(' },
     @{ Name = 'Aplicativo conecta o sincronizador'; Source = $appSource; Pattern = 'CalendarPostSync\.create\s*\(' },
     @{ Name = 'Link de notificacao abre o card apos sincronizar'; Source = $appSource; Pattern = 'renderRemotePostsWhenSafe[\s\S]{0,700}openRequestedPostWhenReady\(\)' },
-    @{ Name = 'Menu acompanha notificacoes em tempo real'; Source = $portalSource; Pattern = 'subscribeNotifications\(renderPortalNotificationCount' },
-    @{ Name = 'Menu inicia o contador de notificacoes'; Source = $portalSource; Pattern = 'renderSidebar\(\);\s*startPortalNotificationCount\(\)' }
+    @{ Name = 'Menu acompanha notificacoes em tempo real'; Source = $portalSource; Pattern = 'subscribeNotifications\s*\(' },
+    @{ Name = 'Menu inicia o contador de notificacoes'; Source = $portalSource; Pattern = 'renderSidebar\(\);\s*startPortalNotificationWatch\(\)' }
 )
 
 $failures = @()
