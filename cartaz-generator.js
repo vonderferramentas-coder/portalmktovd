@@ -398,6 +398,42 @@
             img.style.width = w + 'px'; img.style.height = h + 'px'; img.style.maxWidth = 'none'; img.style.maxHeight = 'none';
         });
     }
+    /* Logo do cabeçalho ("FEIRA GRANDES MARCAS OVD" ou a enviada em Template do cartaz): é
+       background-image num .sheet::after. O html2canvas desenha background-image passando por um canvas
+       intermediário no tamanho em px CSS (250x95) e só depois amplia pela escala de 300 DPI - por isso
+       sai borrada, mesmo a fonte tendo 1600px. <img> ele desenha direto na escala final (por isso
+       fitClonedPhotos/fitClonedLogos acima funcionam). No clone, o ::after já virou um elemento real
+       <html2canvaspseudoelement> com o estilo copiado (o html2canvas faz isso ANTES do onclone - por
+       isso sobrescrever o ::after via <style> não tem efeito nenhum, testado): tira o background dele e
+       põe dentro uma <img> com a logo assada no tamanho final e "contain" calculado à mão - a posição e
+       o tamanho já vêm certos do próprio elemento. Cacheia por imagem+caixa: a mesma logo se repete em
+       toda página exportada. */
+    let headerLogoCache = { key: '', dataUrl: '' };
+    function fitClonedHeaderLogo(origSheet, clonedSheet) {
+        let after = getComputedStyle(origSheet, '::after'), boxW = parseFloat(after.width), boxH = parseFloat(after.height), match = /url\(["']?([^"')]+)["']?\)/.exec(after.backgroundImage);
+        let pseudo = [...clonedSheet.children].reverse().find(el => el.tagName.toLowerCase() === 'html2canvaspseudoelement' && el.style.backgroundImage.includes(match && match[1]));
+        if (!match || !boxW || !boxH || !pseudo) return Promise.resolve();
+        let url = match[1], key = url + '|' + boxW + 'x' + boxH, place = dataUrl => new Promise(done => {
+            let logo = clonedSheet.ownerDocument.createElement('img');
+            logo.style.cssText = 'display:block;width:100%;height:100%;max-width:none;max-height:none;margin:0';
+            pseudo.style.backgroundImage = 'none';
+            logo.onload = logo.onerror = () => done(); logo.src = dataUrl; pseudo.appendChild(logo);
+        });
+        if (headerLogoCache.key === key) return place(headerLogoCache.dataUrl);
+        return new Promise(resolve => {
+            let img = new Image();
+            img.onload = () => {
+                try {
+                    let scale = Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight) * EXPORT_SCALE, w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+                    let canvas = document.createElement('canvas'); canvas.width = Math.round(boxW * EXPORT_SCALE); canvas.height = Math.round(boxH * EXPORT_SCALE);
+                    canvas.getContext('2d').drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+                    headerLogoCache = { key, dataUrl: canvas.toDataURL('image/png') };
+                } catch (_) { resolve(); return; } /* CORS ou outro erro: mantém o ::after padrão, sem travar a exportação */
+                place(headerLogoCache.dataUrl).then(resolve);
+            };
+            img.onerror = () => resolve(); img.src = url;
+        });
+    }
     /* .card leva transform:translateY() (draw(), pra centralizar verticalmente a folha quando ela
        não está com a capacidade cheia - a maioria das exportações reais) e/ou translateX() (cards
        "pair" do A3). Combinado com o overflow:hidden do próprio .card (ver ".card" no css), o
@@ -486,7 +522,7 @@
                 await yieldExportUi();
                 let canvas, image;
                 try {
-                    canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: EXPORT_SCALE, useCORS: true, logging: false, imageTimeout: 15000, onclone: clonedDoc => { let clonedSheet = clonedDoc.querySelector('.sheet[data-page="' + pageIndex + '"]'); if (!clonedSheet) return; fitClonedCards(sheet, clonedSheet); fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); } });
+                    canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: EXPORT_SCALE, useCORS: true, logging: false, imageTimeout: 15000, onclone: async clonedDoc => { let clonedSheet = clonedDoc.querySelector('.sheet[data-page="' + pageIndex + '"]'); if (!clonedSheet) return; fitClonedCards(sheet, clonedSheet); fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); await fitClonedHeaderLogo(sheet, clonedSheet); } });
                     if (exportCancelled) { let error = Error('Exportação cancelada.'); error.name = 'AbortError'; throw error; }
                     image = await canvasBlob(canvas);
                 } finally {
