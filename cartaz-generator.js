@@ -106,7 +106,7 @@
         }
         return '<svg class="ean-svg" viewBox="0 0 ' + width + ' 43" role="img" aria-label="' + info.type + ' ' + info.d + '"><g fill="#000">' + rects + '</g><text x="' + width / 2 + '" y="42" text-anchor="middle" font-family="Arial" font-size="8" letter-spacing="1.1">' + label + '</text></svg>';
     }
-    function card(item, idx, pageIndex, probe = false) { let group = item.group, row = group.rows[0], displayTitle = item.title || title(group), photoState = item.photo || { x: 0, y: 0, scale: 1 }, a3 = S.pages[pageIndex].format === 'A3', url = photoUrl(row.ovd), photo = probe ? '' : (url ? '<img src="' + e(url) + '" alt="' + e(group.title) + '" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>Foto indisponível<br>Cód. ' + e(row.ovd) + '</span>' : '<span>Sem código</span>'), big = item.size === 2,
+    function card(item, idx, pageIndex, probe = false) { let group = item.group, row = group.rows[0], displayTitle = item.title || title(group), photoState = item.photo || { x: 0, y: 0, scale: 1 }, a3 = S.pages[pageIndex].format === 'A3', url = photoUrl(row.ovd), photo = probe ? '' : (url ? '<img src="' + e(url) + '" alt="' + e(group.title) + '" crossorigin="anonymous" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>Foto indisponível<br>Cód. ' + e(row.ovd) + '</span>' : '<span>Sem código</span>'), big = item.size === 2,
     /* renderiza TODAS as variacoes (nao so uma estimativa por caractere de quantas cabem) - quem decide
        o corte real e trimOverflow(), chamado em draw() depois do card estar no DOM, medindo a altura
        verdadeira renderizada (ver comentario la). Isso substitui o corte antecipado via fitRows()/
