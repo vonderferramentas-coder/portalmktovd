@@ -761,6 +761,7 @@
                 filename = (only ? 'Cartaz_selecionadas' : allBrands ? 'Cartaz' : 'Cartaz_' + safeName(originalBrand)) + (format === 'pdf' ? '_PDF' : '') + '.zip';
             }
             let link = document.createElement('a'); link.href = URL.createObjectURL(finalBlob); link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+            window.PortalUsage && window.PortalUsage.track('cartaz-generator', 'export', { quantity: targets.length, dedupeKey: 'cartaz:' + format + ':' + targets.map(page => page.brand + ':' + page.format).join('|') });
             updateExportProgress(100, targets.length, targets.length, 'Download iniciado.');
             await new Promise(resolve => setTimeout(resolve, 350));
             toast((outputs.length === 1 ? (format === 'pdf' ? 'PDF' : 'Arquivo') : 'ZIP') + ' exportado com sucesso.');
