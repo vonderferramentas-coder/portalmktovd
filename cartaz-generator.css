@@ -1586,14 +1586,22 @@ button:disabled {
     color: var(--cg-muted);
     font-size: 12px;
 }
+/* Sem isso, "Abrir"/"Excluir" herdam o fundo cor de marca ativa do reset global de <button>
+   (mesma cor do "Salvar grade") - a troca de cor do .danger sozinha não bastava porque o salmão
+   do modo escuro perde contraste contra um fundo que muda de marca pra marca. */
 .cg-saved-grid button {
     white-space: nowrap;
+    background: var(--cg-btn-bg);
+    color: var(--cg-ink);
+    border: 1px solid var(--cg-line);
 }
 .cg-saved-grid .danger {
     color: #b42318;
+    border-color: #f0b6ac;
 }
 :root[data-theme="dark"] .cg-saved-grid .danger {
     color: #ff8f87;
+    border-color: #5c2e2c;
 }
 .cg-saved-empty {
     margin: 0;
