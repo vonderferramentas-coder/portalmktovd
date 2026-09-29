@@ -142,6 +142,18 @@ O Worker é uma ponte controlada: recebe o pedido, valida parâmetros e domínio
 
 Nenhuma das três teve teste automatizado cobrindo esse comportamento antes — os três arquivos ganharam um comentário `ponytail:` apontando os gêmeos e o histórico de divergência, para quem for alterar uma regra de parsing/cálculo lembrar de replicar nos outros. Não foi criada nenhuma abstração nova para compartilhar código entre os três runtimes (JS de Worker, PHP, PowerShell) — inviável sem introduzir um build step, que este projeto deliberadamente não tem.
 
+### Fotos truncadas na exportação do Gerador de Cartazes (28/09/2026)
+
+`/product-image` repassava a resposta da origem (`app.ovd.com.br`) em streaming, sem `Content-Length` (`new Response(upstream.body, ...)`). Se a conexão com a origem caísse no meio do download — mais provável sob a rajada de pedidos que uma exportação em lote do Gerador de Cartazes gera —, o navegador podia receber um JPEG cortado e mesmo assim disparar `load` (largura/altura de um JPEG ficam num marcador logo no início do arquivo, antes dos dados de pixel completos): o cartaz exportado saía com a foto pela metade, sem nenhum erro visível. `product-image.php` já bufferizava a imagem inteira antes de responder, com `Content-Length` explícito; só o Worker tinha essa lacuna.
+
+Corrigido lendo a resposta inteira (`await upstream.arrayBuffer()`) antes de devolver: uma conexão cortada agora vira exceção, pega pelo `catch` já existente da rota (responde 502 em vez de mandar bytes incompletos), e a resposta sempre sai com `Content-Length` correto. Reforço complementar do lado do cliente, em `cartaz-generator.js`: a espera por imagem carregada passou a chamar também `image.decode()` (que rejeita de verdade em imagem corrompida, mesmo quando `load` disparou), com até 2 novas tentativas antes de cair no aviso "Foto indisponível" de sempre.
+
+**O Worker `ecommerce-fg` precisa ser republicado** (colar o `cloudflare-worker.js` atualizado) para esta correção entrar em uso — sem republicar, `/product-image` continua respondendo em streaming como antes.
+
+| Data | Alteração | Responsável |
+|---|---|---|
+| 28/09/2026 | `/product-image` do Worker `ecommerce-fg` passou a bufferizar a imagem inteira antes de responder (com `Content-Length` explícito) em vez de repassar em streaming — uma conexão cortada no meio agora vira erro 502 em vez de entregar um JPEG truncado que o navegador podia tratar como carregado com sucesso, causando fotos cortadas nos cartazes exportados. Reforço complementar do lado do cliente em `cartaz-generator.js` (`image.decode()` com retry antes do aviso "Foto indisponível"). **Precisa republicar o Worker no Cloudflare.** | Equipe de Marketing / manutenção do portal |
+
 ## 8. Meta e GitHub Actions: painel de seguidores
 
 O dashboard não chama a Meta no navegador, evitando expor o token. Os workflows em `.github/workflows/` executam no GitHub:

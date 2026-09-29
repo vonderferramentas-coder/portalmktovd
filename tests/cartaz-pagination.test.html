@@ -6,7 +6,7 @@
 <script>
 // Roda em Chrome headless: chrome --headless=new --dump-dom file:///.../tests/cartaz-pagination.test.html
 try {
-  const { paginate, link, unlink, groupBrand } = CartazPagination;
+  const { paginate, link, unlink, groupBrand, insertItem } = CartazPagination;
   const eq = (a, b, label) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(label + '\n  esperado: ' + JSON.stringify(b) + '\n  obtido:   ' + JSON.stringify(a)); };
   const groups = (n, brand, codes = 1) => Array.from({ length: n }, (_, i) => ({ title: brand + ' ' + i, rows: Array.from({ length: codes }, () => ({ brand })) }));
   const shape = pagesList => pagesList.map(p => p.format + ':' + p.items.length);
@@ -60,8 +60,29 @@ try {
 
   eq([groupBrand({ rows: [{ brand: '' }, { brand: 'Z' }] }), groupBrand({ rows: [{}] })], ['Z', 'SEM MARCA'], 'groupBrand');
 
+  // Adicionar item manualmente: entra na paginação da marca (mesma regra de formato/coluna), na posição escolhida
+  let baseX = paginate('X', groups(3, 'X'));
+  baseX[0].items[1].title = 'EDITADO';
+  let insEnd = insertItem(baseX, 'X', { title: 'NOVO', rows: [{ brand: 'X' }] });
+  eq(shape(insEnd.pages), ['A4:4'], 'manual no fim: 3+1=4 continua A4');
+  eq(insEnd.pages[0].items.map(i => i.group.title), ['X 0', 'X 1', 'X 2', 'NOVO'], 'novo item entra no fim da marca');
+  eq(insEnd.pages[0].items[1].title, 'EDITADO', 'título editado sobrevive à inserção manual');
+
+  let before = baseX[0].items[2].group; // 'X 2'
+  let insMid = insertItem(baseX, 'X', { title: 'MEIO', rows: [{ brand: 'X' }] }, before);
+  eq(insMid.pages[0].items.map(i => i.group.title), ['X 0', 'X 1', 'MEIO', 'X 2'], 'manual entra antes do item escolhido');
+  eq(insMid.pages[0].items[1].title, 'EDITADO', 'título editado sobrevive quando insere no meio');
+  eq(baseX[0].items.length, 3, 'lista original não é alterada pelo insertItem');
+
+  let baseX6 = paginate('X', groups(6, 'X'));
+  eq(shape(insertItem(baseX6, 'X', { title: 'NOVO7', rows: [{ brand: 'X' }] }).pages), ['A3:7'], 'manual faz 6+1=7 virar A3, como no import');
+
+  let pagesAC = [...paginate('A', groups(2, 'A')), ...paginate('C', groups(2, 'C'))];
+  eq(insertItem(pagesAC, 'B', { title: 'B 0', rows: [{ brand: 'B' }] }).pages.map(p => p.brand), ['A', 'B', 'C'], 'marca nova entra em ordem alfabética entre as existentes');
+  eq(insertItem(pagesAC, 'Z', { title: 'Z 0', rows: [{ brand: 'Z' }] }).pages.map(p => p.brand), ['A', 'C', 'Z'], 'marca nova entra no fim quando é a última em ordem alfabética');
+
   document.body.dataset.result = 'pass';
-  document.body.textContent = 'PASS: formato A4/A3, divisão em folhas, última linha, altura extra, vincular e desvincular';
+  document.body.textContent = 'PASS: formato A4/A3, divisão em folhas, última linha, altura extra, vincular, desvincular e inserir item manual';
 } catch (error) {
   document.body.dataset.result = 'fail';
   document.body.textContent = 'FAIL: ' + error.message;

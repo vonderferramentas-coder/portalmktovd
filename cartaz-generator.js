@@ -55,6 +55,62 @@
         let result = CartazPagination.unlink(S.pages, key); if (!result) return;
         snapshot(); S.pages = result.pages; relayout(result.first); toast('Marcas desvinculadas.');
     }
+    /* Adicionar item manualmente: mesmo mecanismo de link/unlink acima - CartazPagination.insertItem() refaz a
+       paginação da marca inteira, então o item novo entra respeitando formato A4/A3, colunas e última linha,
+       nunca como folha avulsa. Funciona antes de importar qualquer planilha (cria a primeira marca) ou depois
+       (entra junto dos itens já importados daquela marca, na posição escolhida). */
+    function brandGroups(brandKey) { return S.pages.filter(page => page.brand === brandKey).flatMap(page => page.items.map(item => item.group)); }
+    function manualBrandPages() { let seen = new Set(), list = []; S.pages.forEach(page => { if (!seen.has(page.brand)) { seen.add(page.brand); list.push(page); } }); return list.sort((a, b) => a.brand.localeCompare(b.brand, 'pt-BR')); }
+    function updateManualItemFields() {
+        let key = $('manualBrandSelect').value, isNew = key === '__new__', page = !isNew && S.pages.find(p => p.brand === key), linked = page && page.brands;
+        $('manualNewBrandField').hidden = !isNew; $('manualMemberField').hidden = !linked;
+        if (linked) $('manualMemberSelect').innerHTML = page.brands.map(name => '<option value="' + e(name) + '">' + e(name) + '</option>').join('');
+        let groups = isNew ? [] : brandGroups(key);
+        $('manualPositionField').hidden = isNew;
+        $('manualPositionSelect').innerHTML = '<option value="">No fim da marca</option>' + groups.map((group, index) => '<option value="' + index + '">Antes de: ' + e(group.title || '(sem título)') + '</option>').join('');
+    }
+    function openManualItemDialog() {
+        let select = $('manualBrandSelect'), pages = manualBrandPages();
+        select.innerHTML = pages.map(page => '<option value="' + e(page.brand) + '">' + e(page.brand) + (page.brands ? ' (vínculo)' : '') + '</option>').join('') + '<option value="__new__">+ Nova marca…</option>';
+        select.value = pages[0] ? pages[0].brand : '__new__'; updateManualItemFields();
+        ['manualNewBrandName', 'manualTitle', 'manualOvd', 'manualCode', 'manualBarcode'].forEach(id => $(id).value = '');
+        $('manualBarcodeStatus').textContent = ''; $('manualBarcodeStatus').dataset.kind = '';
+        $('manualItemDialog').showModal(); $('manualTitle').focus();
+    }
+    $('manualItemBtn').onclick = openManualItemDialog;
+    $('manualBrandSelect').onchange = updateManualItemFields;
+    $('manualBarcode').oninput = () => { /* mesma checagem de addBarcode(), só que aqui o código é opcional: não bloqueia o envio */
+        let digits = $('manualBarcode').value.replace(/\D/g, ''), status = $('manualBarcodeStatus');
+        if (!digits) { status.textContent = ''; status.dataset.kind = ''; return; }
+        let info = gtin(digits);
+        if (!info) { status.textContent = digits.length + ' dígito(s): o código precisa ter 8, 12, 13 ou 14.'; status.dataset.kind = 'bad'; }
+        else if (info.ok) { status.textContent = info.type + ' válido.'; status.dataset.kind = 'ok'; }
+        else { let fix = digits.slice(0, -1), suggestion = ''; for (let d = 0; d < 10; d++) if (gtin(fix + d).ok) { suggestion = fix + d; break; } status.textContent = 'Dígito verificador não confere' + (suggestion ? ': o correto seria ' + suggestion + '.' : '.'); status.dataset.kind = 'bad'; }
+    };
+    ['manualNewBrandName', 'manualTitle', 'manualOvd', 'manualBarcode'].forEach(id => $(id).onkeydown = event => { if (event.key === 'Enter') { event.preventDefault(); $('manualItemSave').click(); } });
+    $('manualItemSave').onclick = () => {
+        let title = t($('manualTitle').value), ovd = t($('manualOvd').value);
+        if (!title) { toast('Informe o título do produto.'); $('manualTitle').focus(); return; }
+        if (!ovd) { toast('Informe o Código OVD do item principal.'); $('manualOvd').focus(); return; }
+        let key = $('manualBrandSelect').value, isNew = key === '__new__', newName = t($('manualNewBrandName').value);
+        if (isNew) {
+            if (!newName) { toast('Informe o nome da nova marca.'); $('manualNewBrandName').focus(); return; }
+            if (S.pages.some(page => page.brand === newName)) { toast('Já existe uma marca com esse nome.'); $('manualNewBrandName').focus(); return; }
+        }
+        let page = !isNew && S.pages.find(p => p.brand === key), linked = page && page.brands, rowBrand = isNew ? newName : (linked ? $('manualMemberSelect').value : key);
+        let principal = $('manualBarcode').value.replace(/\D/g, ''), codes = t($('manualCode').value).split(/[,\n]+/).map(t).filter(Boolean);
+        if (!codes.length) codes = [ovd];
+        let group = { title, principal, rows: codes.map(code => ({ ovd, fg: '', title, code, principal, brand: rowBrand, price: '' })) };
+        let groups = isNew ? [] : brandGroups(key), positionValue = $('manualPositionSelect').value, beforeGroup = positionValue ? groups[+positionValue] : null;
+        let wasEmpty = !S.pages.length;
+        snapshot();
+        let result = CartazPagination.insertItem(S.pages, isNew ? newName : key, group, beforeGroup);
+        S.pages = result.pages; S.linking = false; S.linkSel = [];
+        if (wasEmpty) { $('work').hidden = false; $('printMenu').disabled = false; $('saveGrid').disabled = false; $('exportMenu').disabled = false; }
+        relayout(result.key);
+        $('manualItemDialog').close();
+        toast('Item adicionado à marca "' + result.key + '".');
+    };
     /* rodapé da folha: uma marca = o cartão de logo de sempre; marcas vinculadas = um cartão por marca que tem produto NA página */
     function pageFooter(page, logo) {
         if (!page.brands) return '<div class="sheet-footer" aria-hidden="true">' + (logo ? '<img src="' + e(logo) + '" alt="">' : '') + '</div>';
@@ -307,7 +363,23 @@
     /* clicar no "i" dentro do título do menu não abre/fecha o menu */
     document.querySelectorAll('.cg-fold .cg-tip-btn').forEach(button => button.addEventListener('click', event => event.preventDefault()));
     applyTemplates();
-    $('sheet').onchange = x => x.target.files[0] && load(x.target.files[0]); $('saveGrid').onclick = saveCurrentGrid; loadSavedGrids(); loadBrandAssets(); if ($('codes')) $('codes').onchange = x => map(x.target.files, S.codes, 'codeInfo'); async function waitForImages(root) { await Promise.all([...root.querySelectorAll('img')].map(image => image.complete ? Promise.resolve() : new Promise(resolve => { let done = () => resolve(); image.addEventListener('load', done, { once: true }); image.addEventListener('error', done, { once: true }); setTimeout(done, 15000); }))); }
+    $('sheet').onchange = x => x.target.files[0] && load(x.target.files[0]); $('saveGrid').onclick = saveCurrentGrid; loadSavedGrids(); loadBrandAssets(); if ($('codes')) $('codes').onchange = x => map(x.target.files, S.codes, 'codeInfo'); function settleImage(image) { return image.complete ? Promise.resolve() : new Promise(resolve => { let done = () => resolve(); image.addEventListener('load', done, { once: true }); image.addEventListener('error', done, { once: true }); setTimeout(done, 15000); }); }
+    /* O worker da foto (cloudflare-worker.js, product-image) repassa a imagem em streaming, sem Content-Length -
+       uma conexão instável no meio do download trunca o JPEG, e mesmo assim o navegador pode disparar "load"
+       (largura/altura ficam num marcador bem no início do arquivo, antes dos pixels). decode() detecta de
+       verdade se a imagem decodificou inteira; se falhar, busca a foto de novo (até 2x, com cache-bust) antes
+       de cair no aviso "Foto indisponível" de sempre (mesmo fallback do onerror inline em card()). */
+    async function verifyImage(image) {
+        if (image.hidden || !image.naturalWidth || !image.decode) return;
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try { await image.decode(); return; } catch (_) { }
+            if (attempt === 2) break;
+            let url = new URL(image.src, location.href); url.searchParams.set('_retry', Date.now() + '-' + attempt);
+            image.src = url.href; await settleImage(image);
+        }
+        image.hidden = true; if (image.nextElementSibling) image.nextElementSibling.hidden = false;
+    }
+    async function waitForImages(root) { let images = [...root.querySelectorAll('img')]; await Promise.all(images.map(settleImage)); await Promise.all(images.map(verifyImage)); }
     async function printAllBrands(format) { let brand = S.brand; S.brand = ''; S.printFormat = format; draw(); await waitForImages($('preview')); await new Promise(resolve => setTimeout(resolve, 250)); print(); S.brand = brand; S.printFormat = ''; draw(); }
     function safeName(value) { return t(value).replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim() || 'SEM MARCA'; }
     function canvasBlob(canvas) { return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(Error('Não foi possível gerar a imagem da página.')), 'image/jpeg', .92)); }
@@ -326,12 +398,76 @@
             img.style.width = w + 'px'; img.style.height = h + 'px'; img.style.maxWidth = 'none'; img.style.maxHeight = 'none';
         });
     }
+    /* Logo do cabeçalho ("FEIRA GRANDES MARCAS OVD" ou a enviada em Template do cartaz): é
+       background-image num .sheet::after. O html2canvas desenha background-image passando por um canvas
+       intermediário no tamanho em px CSS (250x95) e só depois amplia pela escala de 300 DPI - por isso
+       sai borrada, mesmo a fonte tendo 1600px. <img> ele desenha direto na escala final (por isso
+       fitClonedPhotos/fitClonedLogos acima funcionam). No clone, o ::after já virou um elemento real
+       <html2canvaspseudoelement> com o estilo copiado (o html2canvas faz isso ANTES do onclone - por
+       isso sobrescrever o ::after via <style> não tem efeito nenhum, testado): tira o background dele e
+       põe dentro uma <img> com a logo assada no tamanho final e "contain" calculado à mão - a posição e
+       o tamanho já vêm certos do próprio elemento. Cacheia por imagem+caixa: a mesma logo se repete em
+       toda página exportada. */
+    let headerLogoCache = { key: '', dataUrl: '' };
+    function fitClonedHeaderLogo(origSheet, clonedSheet) {
+        let after = getComputedStyle(origSheet, '::after'), boxW = parseFloat(after.width), boxH = parseFloat(after.height), match = /url\(["']?([^"')]+)["']?\)/.exec(after.backgroundImage);
+        let pseudo = [...clonedSheet.children].reverse().find(el => el.tagName.toLowerCase() === 'html2canvaspseudoelement' && el.style.backgroundImage.includes(match && match[1]));
+        if (!match || !boxW || !boxH || !pseudo) return Promise.resolve();
+        let url = match[1], key = url + '|' + boxW + 'x' + boxH, place = dataUrl => new Promise(done => {
+            let logo = clonedSheet.ownerDocument.createElement('img');
+            logo.style.cssText = 'display:block;width:100%;height:100%;max-width:none;max-height:none;margin:0';
+            pseudo.style.backgroundImage = 'none';
+            logo.onload = logo.onerror = () => done(); logo.src = dataUrl; pseudo.appendChild(logo);
+        });
+        if (headerLogoCache.key === key) return place(headerLogoCache.dataUrl);
+        return new Promise(resolve => {
+            let img = new Image();
+            img.onload = () => {
+                try {
+                    let scale = Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight) * EXPORT_SCALE, w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+                    let canvas = document.createElement('canvas'); canvas.width = Math.round(boxW * EXPORT_SCALE); canvas.height = Math.round(boxH * EXPORT_SCALE);
+                    canvas.getContext('2d').drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+                    headerLogoCache = { key, dataUrl: canvas.toDataURL('image/png') };
+                } catch (_) { resolve(); return; } /* CORS ou outro erro: mantém o ::after padrão, sem travar a exportação */
+                place(headerLogoCache.dataUrl).then(resolve);
+            };
+            img.onerror = () => resolve(); img.src = url;
+        });
+    }
+    /* .card leva transform:translateY() (draw(), pra centralizar verticalmente a folha quando ela
+       não está com a capacidade cheia - a maioria das exportações reais) e/ou translateX() (cards
+       "pair" do A3). Combinado com o overflow:hidden do próprio .card (ver ".card" no css), o
+       html2canvas 1.4.1 não erra só o recorte: ele pinta o card INTEIRO em branco (título, foto,
+       códigos, tudo) - bug bem mais grave do que o de .photo abaixo, e que pegava toda folha que não
+       fosse múltiplo exato de 6 (A4) ou 9 (A3) produtos, ou seja, quase toda exportação real. Mesma
+       solução: tira o transform no clone e substitui por posição absoluta equivalente (medida no
+       elemento ORIGINAL, que já reflete o transform ao vivo). */
+    function fitClonedCards(origSheet, clonedSheet) {
+        let cloneCards = [...clonedSheet.querySelectorAll('.card')], sheetRect = origSheet.getBoundingClientRect();
+        [...origSheet.querySelectorAll('.card')].forEach((origCard, i) => {
+            if (getComputedStyle(origCard).transform === 'none') return;
+            let clone = cloneCards[i]; if (!clone) return;
+            let rect = origCard.getBoundingClientRect();
+            /* sem grid (removido junto com o transform), o card viraria "encolhe pro conteúdo" e
+               .photo/.lines (right/left:20px, medidos a partir da LARGURA do card) saem do lugar -
+               trava largura/altura no tamanho visual real, igual já se faz com .photo abaixo. Tira
+               também grid-column/grid-row (um item de grid position:absolute que ainda tem essas
+               propriedades usa a CÉLULA do grid como referência do left/top, não a folha inteira) e a
+               classe "center" (".sheet.a4 .card.center" redefine grid-column com !important e
+               justify-self, inline style sozinho não vence - some a classe em vez de brigar com o
+               !important, já que a posição final já vem pronta do left/top calculados abaixo). */
+            clone.classList.remove('center');
+            clone.style.transform = 'none'; clone.style.gridColumn = 'auto'; clone.style.gridRow = 'auto'; clone.style.position = 'absolute'; clone.style.left = (rect.left - sheetRect.left) + 'px'; clone.style.top = (rect.top - sheetRect.top) + 'px'; clone.style.width = rect.width + 'px'; clone.style.height = rect.height + 'px'; clone.style.margin = '0';
+        });
+        clonedSheet.style.position = 'relative';
+    }
     /* html2canvas recorta transform+overflow:hidden incorretamente. Assa a foto no tamanho visual final
        e substitui zoom/arraste por posicao e dimensoes absolutas equivalentes. */
     const EXPORT_SCALE = 300 / 96;
     function fitClonedPhotos(origSheet, clonedSheet) {
         let clones = [...clonedSheet.querySelectorAll('.photo img')];
         [...origSheet.querySelectorAll('.photo img')].forEach((origImg, i) => {
+            if (origImg.hidden) return; /* verifyImage() não conseguiu decodificar (foto truncada) e já trocou pelo aviso "Foto indisponível" - não assar a versão quebrada no export */
             let img = clones[i], photo = origImg.parentElement, card = photo.closest('.card'), photoRect = photo.getBoundingClientRect(), cardRect = card.getBoundingClientRect(), iw = origImg.naturalWidth, ih = origImg.naturalHeight, zoom = photoRect.width / photo.offsetWidth, boxW = Math.round(photoRect.width), boxH = Math.round(photoRect.height);
             if (!img || !iw || !ih || !boxW || !boxH || !zoom) return;
             let neverUpscale = getComputedStyle(origImg).objectFit === 'scale-down', scale = Math.min(photo.offsetWidth / iw, photo.offsetHeight / ih, neverUpscale ? 1 : Infinity) * zoom, w = iw * scale, h = ih * scale;
@@ -361,8 +497,32 @@
     }
     $('exportCancel').onclick = cancelExport;
     $('exportProgressDialog').addEventListener('cancel', event => { event.preventDefault(); cancelExport(); });
-    async function exportZip(allBrands, only) {
-        if (!S.pages.length || !window.html2canvas || !window.JSZip) { toast('A exportação não está disponível agora. Recarregue a página e tente novamente.'); return; }
+    function blobToDataUrl(blob) { return new Promise((resolve, reject) => { let reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob); }); }
+    /* PDF: reaproveita o mesmo JPEG (já comprimido a .92) usado no JPG, só embutido no PDF sem
+       recodificar - é o jeito mais leve de gerar o PDF sem perder a qualidade de impressão em 300 DPI.
+       Uma marca vira um único PDF (uma página por página do cartaz), agrupado por formato+marca porque
+       a mesma marca pode ter páginas tanto em A3 quanto em A4. */
+    async function buildPdfOutputs(rendered) {
+        let groups = new Map();
+        for (let item of rendered) {
+            let key = item.format + '|' + item.brand;
+            if (!groups.has(key)) groups.set(key, { format: item.format, brand: item.brand, items: [] });
+            groups.get(key).items.push(item);
+        }
+        let outputs = [];
+        for (let group of groups.values()) {
+            let pdf = new window.jspdf.jsPDF({ unit: 'mm', format: group.format.toLowerCase(), compress: true }), size = pdf.internal.pageSize, width = size.getWidth(), height = size.getHeight();
+            for (let i = 0; i < group.items.length; i++) {
+                if (i > 0) pdf.addPage(group.format.toLowerCase());
+                let dataUrl = await blobToDataUrl(group.items[i].blob);
+                pdf.addImage(dataUrl, 'JPEG', 0, 0, width, height, undefined, 'FAST');
+            }
+            outputs.push({ path: group.format + '/' + group.brand + '_' + group.format + '.pdf', blob: pdf.output('blob') });
+        }
+        return outputs;
+    }
+    async function runExport(format, allBrands, only) {
+        if (!S.pages.length || !window.html2canvas || !window.JSZip || (format === 'pdf' && !(window.jspdf && window.jspdf.jsPDF))) { toast('A exportação não está disponível agora. Recarregue a página e tente novamente.'); return; }
         let originalBrand = S.brand, originalFormat = S.printFormat, buttons = [$('printMenu'), $('exportMenu')], targets = allBrands ? S.pages.filter(page => !only || only.includes(page.brand)) : S.pages.filter(page => page.brand === originalBrand && (!originalFormat || page.format === originalFormat));
         if (!targets.length) { toast('Nenhuma página para exportar.'); return; }
         buttons.forEach(button => button.disabled = true);
@@ -370,7 +530,7 @@
         if (!$('exportProgressDialog').open) $('exportProgressDialog').showModal();
         $('work').setAttribute('aria-busy', 'true');
         try {
-            let preview = $('preview'), zip = new JSZip(), renderKey = '';
+            let preview = $('preview'), renderKey = '', rendered = [];
             for (let index = 0; index < targets.length; index++) {
                 if (exportCancelled) { let error = Error('Exportação cancelada.'); error.name = 'AbortError'; throw error; }
                 let page = targets[index], pageIndex = S.pages.indexOf(page), key = page.brand + '|' + page.format;
@@ -386,26 +546,38 @@
                 await yieldExportUi();
                 let canvas, image;
                 try {
-                    canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: EXPORT_SCALE, useCORS: true, logging: false, imageTimeout: 15000, onclone: clonedDoc => { let clonedSheet = clonedDoc.querySelector('.sheet[data-page="' + pageIndex + '"]'); if (!clonedSheet) return; fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); } });
+                    canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: EXPORT_SCALE, useCORS: true, logging: false, imageTimeout: 15000, onclone: async clonedDoc => { let clonedSheet = clonedDoc.querySelector('.sheet[data-page="' + pageIndex + '"]'); if (!clonedSheet) return; fitClonedCards(sheet, clonedSheet); fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); await fitClonedHeaderLogo(sheet, clonedSheet); } });
                     if (exportCancelled) { let error = Error('Exportação cancelada.'); error.name = 'AbortError'; throw error; }
                     image = await canvasBlob(canvas);
                 } finally {
                     if (canvas) { canvas.width = 0; canvas.height = 0; }
                 }
                 let pageNumber = S.pages.filter(item => item.brand === page.brand && item.format === page.format).indexOf(page) + 1, brand = safeName(page.brand);
-                zip.file(page.format + '/' + brand + '/' + brand + '_Página' + pageNumber + '_' + page.format + '.jpg', image);
+                rendered.push({ format: page.format, brand, pageNumber, blob: image });
                 updateExportProgress((index + 1) / targets.length * 90, index + 1, targets.length, 'Página ' + (index + 1) + ' de ' + targets.length + ' concluída.');
                 await yieldExportUi();
             }
             $('exportCancel').disabled = true;
-            updateExportProgress(90, targets.length, targets.length, 'Preparando o arquivo ZIP para download…');
-            let blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' }, metadata => updateExportProgress(90 + metadata.percent / 10, targets.length, targets.length, 'Preparando o arquivo ZIP para download…'));
-            let link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = only ? 'Cartaz_selecionadas.zip' : allBrands ? 'Cartaz.zip' : 'Cartaz_' + safeName(originalBrand) + '.zip'; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+            updateExportProgress(90, targets.length, targets.length, format === 'pdf' ? 'Montando o PDF…' : 'Preparando o arquivo para download…');
+            let outputs = format === 'pdf' ? await buildPdfOutputs(rendered) : rendered.map(item => ({ path: item.format + '/' + item.brand + '/' + item.brand + '_Página' + item.pageNumber + '_' + item.format + '.jpg', blob: item.blob }));
+            let finalBlob, filename;
+            /* Marca única (ou qualquer seleção que resulte em um só arquivo) baixa direto, sem ZIP:
+               o PDF já junta as páginas de uma marca em um único arquivo; o JPG só cai nesse caso
+               quando a marca tem uma única página. */
+            if (outputs.length === 1) {
+                finalBlob = outputs[0].blob; filename = outputs[0].path.split('/').pop();
+            } else {
+                let zip = new JSZip();
+                outputs.forEach(output => zip.file(output.path, output.blob));
+                finalBlob = await zip.generateAsync({ type: 'blob', compression: 'STORE' }, metadata => updateExportProgress(90 + metadata.percent / 10, targets.length, targets.length, 'Preparando o arquivo ZIP para download…'));
+                filename = (only ? 'Cartaz_selecionadas' : allBrands ? 'Cartaz' : 'Cartaz_' + safeName(originalBrand)) + (format === 'pdf' ? '_PDF' : '') + '.zip';
+            }
+            let link = document.createElement('a'); link.href = URL.createObjectURL(finalBlob); link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 5000);
             updateExportProgress(100, targets.length, targets.length, 'Download iniciado.');
             await new Promise(resolve => setTimeout(resolve, 350));
-            toast('ZIP exportado com sucesso.');
+            toast((outputs.length === 1 ? (format === 'pdf' ? 'PDF' : 'Arquivo') : 'ZIP') + ' exportado com sucesso.');
         } catch (error) {
-            if (error.name === 'AbortError') toast('Exportação cancelada.'); else { console.error(error); toast(error.message || 'Não foi possível exportar o ZIP.'); }
+            if (error.name === 'AbortError') toast('Exportação cancelada.'); else { console.error(error); toast(error.message || 'Não foi possível exportar.'); }
         } finally {
             S.only = null; S.brand = originalBrand; S.printFormat = originalFormat; draw();
             $('work').removeAttribute('aria-busy');
@@ -413,18 +585,27 @@
             buttons.forEach(button => button.disabled = !S.pages.length);
         }
     }
-    function closeActionMenus() { [['printMenu', 'printMenuList'], ['exportMenu', 'exportMenuList']].forEach(([button, menu]) => { $(menu).hidden = true; $(button).setAttribute('aria-expanded', 'false'); }); }
+    function closeActionMenus() { [['printMenu', 'printMenuList'], ['exportMenu', 'exportMenuList'], ['exportPdfMenu', 'exportPdfMenuList'], ['exportJpgMenu', 'exportJpgMenuList']].forEach(([button, menu]) => { $(menu).hidden = true; $(button).setAttribute('aria-expanded', 'false'); }); }
     function toggleActionMenu(button, menu) { let open = $(menu).hidden; closeActionMenus(); $(menu).hidden = !open; $(button).setAttribute('aria-expanded', String(open)); }
+    function toggleNestedMenu(button, menu, siblings) { let open = $(menu).hidden; siblings.forEach(([siblingButton, siblingMenu]) => { $(siblingMenu).hidden = true; $(siblingButton).setAttribute('aria-expanded', 'false'); }); $(menu).hidden = !open; $(button).setAttribute('aria-expanded', String(open)); }
     $('printMenu').onclick = () => toggleActionMenu('printMenu', 'printMenuList');
     $('exportMenu').onclick = () => toggleActionMenu('exportMenu', 'exportMenuList');
     $('printBrand').onclick = () => { closeActionMenus(); print(); };
     [...$('printMenuList').querySelectorAll('[data-print-format]')].forEach(button => button.onclick = () => { closeActionMenus(); printAllBrands(button.dataset.printFormat); });
-    $('exportBrand').onclick = () => { closeActionMenus(); exportZip(false); };
-    $('exportAll').onclick = () => { closeActionMenus(); exportZip(true); };
-    /* Exportar marcas selecionadas: escolhe por marca (grupo vinculado = uma entrada); a ordem do ZIP segue a das páginas. */
-    $('exportPick').onclick = () => { closeActionMenus(); let keys = [...new Set(S.pages.map(page => page.brand))]; $('exportPickList').innerHTML = keys.map(key => { let page = S.pages.find(item => item.brand === key); return '<label><input type="checkbox" value="' + e(key) + '"' + (key === S.brand ? ' checked' : '') + '>' + e(page.brands ? page.brands.join(' + ') : key) + '</label>'; }).join(''); $('exportPickDialog').showModal(); };
-    $('exportPickAll').onclick = () => { let boxes = [...$('exportPickList').querySelectorAll('input')], all = boxes.every(box => box.checked); boxes.forEach(box => box.checked = !all); $('exportPickAll').textContent = all ? 'Marcar todas' : 'Desmarcar todas'; };
-    $('exportPickGo').onclick = () => { let only = [...$('exportPickList').querySelectorAll('input:checked')].map(box => box.value); if (!only.length) { toast('Marque ao menos uma marca.'); return; } $('exportPickDialog').close(); exportZip(true, only); };
+    $('exportPdfMenu').onclick = event => { event.stopPropagation(); toggleNestedMenu('exportPdfMenu', 'exportPdfMenuList', [['exportJpgMenu', 'exportJpgMenuList']]); };
+    $('exportJpgMenu').onclick = event => { event.stopPropagation(); toggleNestedMenu('exportJpgMenu', 'exportJpgMenuList', [['exportPdfMenu', 'exportPdfMenuList']]); };
+    $('exportPdfBrand').onclick = () => { closeActionMenus(); runExport('pdf', false); };
+    $('exportPdfAll').onclick = () => { closeActionMenus(); runExport('pdf', true); };
+    $('exportJpgBrand').onclick = () => { closeActionMenus(); runExport('jpg', false); };
+    $('exportJpgAll').onclick = () => { closeActionMenus(); runExport('jpg', true); };
+    /* Exportar marcas selecionadas: escolhe por marca (grupo vinculado = uma entrada); a ordem do arquivo segue a das páginas. */
+    let normalizeSearch = text => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(), pendingExportFormat = 'jpg';
+    function openExportPick(format) { pendingExportFormat = format; closeActionMenus(); let keys = [...new Set(S.pages.map(page => page.brand))]; $('exportPickList').innerHTML = keys.map(key => { let page = S.pages.find(item => item.brand === key); return '<label><input type="checkbox" value="' + e(key) + '">' + e(page.brands ? page.brands.join(' + ') : key) + '</label>'; }).join(''); $('exportPickSearch').value = ''; $('exportPickAll').textContent = 'Marcar todas'; $('exportPickDialog').showModal(); $('exportPickSearch').focus(); }
+    $('exportPdfPick').onclick = () => openExportPick('pdf');
+    $('exportJpgPick').onclick = () => openExportPick('jpg');
+    $('exportPickSearch').oninput = () => { let q = normalizeSearch($('exportPickSearch').value); [...$('exportPickList').querySelectorAll('label')].forEach(label => { label.hidden = q && !normalizeSearch(label.textContent).includes(q); }); };
+    $('exportPickAll').onclick = () => { let boxes = [...$('exportPickList').querySelectorAll('label:not([hidden]) input')], all = boxes.every(box => box.checked); boxes.forEach(box => box.checked = !all); $('exportPickAll').textContent = all ? 'Marcar todas' : 'Desmarcar todas'; };
+    $('exportPickGo').onclick = () => { let only = [...$('exportPickList').querySelectorAll('input:checked')].map(box => box.value); if (!only.length) { toast('Marque ao menos uma marca.'); return; } $('exportPickDialog').close(); runExport(pendingExportFormat, true, only); };
     document.addEventListener('click', event => { if (!event.target.closest('.action-menu')) closeActionMenus(); });
     document.addEventListener('pointerdown', event => { if (!event.target.closest('.card .photo')) document.querySelectorAll('.photo.photo-editing').forEach(photo => photo.classList.remove('photo-editing')); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeActionMenus(); });

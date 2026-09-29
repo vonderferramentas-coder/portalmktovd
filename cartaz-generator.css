@@ -938,6 +938,18 @@ button:disabled {
     box-sizing: border-box;
     text-align: center;
 }
+.cg-manual-item-btn {
+    margin-top: 10px;
+    background: var(--cg-btn-bg);
+    color: var(--cg-ink);
+    border: 1px solid var(--cg-line);
+}
+.cg-manual-item-dialog {
+    width: min(460px, calc(100vw - 32px));
+}
+.cg-manual-item-dialog .cg-header-fields {
+    margin-bottom: 4px;
+}
 .cg-tip {
     position: relative;
     flex-shrink: 0;
@@ -1391,6 +1403,9 @@ button:disabled {
 @keyframes cardFlash {
     0%, 100% { box-shadow: 0 0 0 0 transparent; } 25% { box-shadow: 0 0 0 7px #ef6b5b; }
 }
+.export-pick-search {
+    margin-bottom: 12px;
+}
 .export-pick-list {
     max-height: 320px;
     overflow: auto;
@@ -1406,6 +1421,9 @@ button:disabled {
     border: 1px solid var(--cg-line);
     border-radius: 7px;
     cursor: pointer;
+}
+.cg-dialog .export-pick-list label[hidden] {
+    display: none;
 }
 .cg-dialog .export-pick-list input {
     width: 18px;
@@ -1503,16 +1521,34 @@ button:disabled {
     font-size: 13px;
     font-weight: 700;
 }
+.cg-header-fields label[hidden] {
+    display: none;
+}
+.cg-field-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
 .cg-header-fields small {
     font-weight: 400;
     color: var(--cg-muted);
 }
 .cg-header-fields input,
+.cg-header-fields select,
 .cg-header-fields textarea {
     width: 100%;
     box-sizing: border-box;
     font: inherit;
     font-weight: 400;
+}
+.cg-header-fields select {
+    min-height: 42px;
+    border: 1px solid var(--cg-line);
+    border-radius: 7px;
+    padding: 0 11px;
+    background: var(--cg-card);
+    color: var(--cg-ink);
 }
 .cg-header-fields textarea {
     resize: vertical;
@@ -1633,6 +1669,21 @@ button:disabled {
     background: var(--cg-btn-bg);
     color: var(--cg-ink);
     border: 1px solid var(--cg-line);
+}
+.print-submenu .action-menu {
+    position: relative;
+}
+.print-submenu .action-menu > button[aria-haspopup] {
+    justify-content: space-between;
+}
+.print-submenu .action-menu > button[aria-haspopup]::after {
+    content: '›';
+    margin-left: 8px;
+}
+.print-submenu .print-submenu {
+    top: 0;
+    right: calc(100% + 8px);
+    left: auto;
 }
 /* Layout final: cabeçalho e marca ocupam o topo; a grade começa na área livre abaixo. */
 .sheet-heading {
