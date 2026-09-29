@@ -1222,14 +1222,6 @@ button:disabled {
 .cg-template-actions button {
     padding: 9px 12px;
 }
-.cg-templates button.secondary {
-    background: var(--cg-btn-bg);
-    color: var(--cg-ink);
-    border: 1px solid var(--cg-line);
-}
-.cg-template-actions [hidden] {
-    display: none;
-}
 /* Lista de Páginas: cabeçalho com menu ⋯ e contagem de itens por marca */
 .pages-head {
     display: flex;
@@ -1496,6 +1488,185 @@ button:disabled {
 .cg-fold[open] > summary .cg-fold-chevron {
     transform: rotate(180deg);
 }
+.cg-template-sets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-start;
+}
+.cg-template-card {
+    position: relative;
+    flex: 0 0 168px;
+    border: 1px solid var(--cg-line);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: default;
+}
+.cg-template-card.vigente {
+    /* mesma cor fixa do badge (não var(--cg-accent), que muda com a marca ativa) */
+    border-color: #1fae5e;
+}
+.cg-template-add {
+    aspect-ratio: 1 / 1.414;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: none;
+    border: 1px dashed var(--cg-dash);
+    color: var(--cg-muted);
+    font: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+}
+.cg-template-add:hover {
+    border-color: var(--cg-ink);
+    color: var(--cg-ink);
+}
+.cg-template-add-icon {
+    font-size: 30px;
+    font-weight: 400;
+    line-height: 1;
+}
+/* Capa na proporção da folha (1 : 1,414), com o fundo do template e a logo centralizada por
+   cima - uma mini-prévia do cartaz, no mesmo espírito dos cards de marketplace de
+   templates.html (capa + véu + nome sobreposto, botão de ação circular no canto). */
+.cg-template-mini-cover {
+    position: relative;
+    aspect-ratio: 1 / 1.414;
+    background: #003e55 url("cartaz-template-final.jpg") center / cover no-repeat;
+}
+.cg-template-mini-logo {
+    position: absolute;
+    inset: 14% 18%;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+/* Cor fixa (não var(--cg-accent)/--accent-ink): essas variáveis mudam com a marca ativa (ver
+   applyColorTheme em portal-shell.js) e algumas marcas resolvem num tom acinzentado - texto e
+   fundo quase iguais, badge ilegível. Um badge de status precisa ler igual em qualquer marca. */
+.cg-template-mini-badge {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    background: #1fae5e;
+    color: #fff;
+}
+.cg-template-edit-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .5);
+    color: #fff;
+    cursor: pointer;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+}
+.cg-template-edit-btn:hover {
+    background: rgba(0, 0, 0, .7);
+}
+.cg-template-edit-btn svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+/* Nome por cima da capa (não mais uma barra abaixo dela): véu degradê pra legibilidade e texto
+   maior, alinhado à esquerda - mesmo padrão do .tpl-card-scrim/.tpl-card-name de templates.html. */
+.cg-template-mini-scrim {
+    position: absolute;
+    inset: 0;
+    padding: 15px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: flex-end;
+    background: linear-gradient(180deg, transparent 45%, rgba(0, 0, 0, .8) 100%);
+    color: #fff;
+    text-align: left;
+    /* cobre o card inteiro (inset:0) por cima do badge e do lápis no HTML - sem isso, mesmo
+       transparente ali em cima, ele intercepta o clique e o lápis não abre o modal. Nada aqui
+       dentro é clicável (só o nome), então repassar o clique pro que está embaixo é seguro. */
+    pointer-events: none;
+}
+.cg-template-mini-name {
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.2;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+    overflow-wrap: anywhere;
+}
+/* Modal de edição (#templateModalBody): nome + "vigente" no topo, os 3 grupos de sempre
+   (fundo, logo, texto) lado a lado - o modal tem largura de sobra, sem precisar empilhar. */
+#templateModalBody {
+    display: grid;
+    gap: 18px;
+}
+.cg-template-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+.cg-template-name-input {
+    min-width: 0;
+    flex: 1 1 220px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 8px 11px;
+    border-radius: var(--radius-sm);
+}
+.cg-template-active {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.cg-template-active:has(input:checked) {
+    color: var(--accent-ink);
+}
+.cg-template-active:has(input:disabled) {
+    cursor: default;
+}
+#templateModalBody .cg-template-groups {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+}
+@media(max-width:760px) {
+    #templateModalBody .cg-template-groups {
+        grid-template-columns: 1fr;
+    }
+}
 .cg-template-groups {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1553,6 +1724,40 @@ button:disabled {
 .cg-header-fields textarea {
     resize: vertical;
     min-height: 56px;
+}
+.cg-header-colors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.cg-header-colors label {
+    flex: 1 1 100px;
+}
+.cg-header-fields input[type="color"] {
+    height: 38px;
+    padding: 2px;
+    border: 1px solid var(--cg-line);
+    border-radius: 7px;
+    background: var(--cg-card);
+    cursor: pointer;
+}
+/* Botão de fechar (X) do modal: --muted por si só some contra o fundo do cabeçalho no escuro
+   (mesma causa-raiz do badge/botão Excluir corrigidos antes - contraste bom demais na teoria,
+   ruim na prática nesse cabeçalho específico), então força --text no escuro pra esse modal. */
+:root[data-theme="dark"] #templateModalBackdrop .modal-close {
+    color: var(--text);
+}
+:root[data-theme="dark"] #templateModalBackdrop .modal-close:hover {
+    background: var(--surface-muted);
+}
+/* Sem isso o ícone (um <svg width="15" height="15"> só com o atributo HTML, sem CSS próprio)
+   colapsava pra width:0 dentro deste modal - o botão ficava clicável e com a cor certa, só que
+   invisível. Força o tamanho por CSS em vez de depender do atributo, igual ao lápis do card
+   (.cg-template-edit-btn svg) que nunca teve esse problema. */
+#templateModalBackdrop .modal-close svg {
+    width: 15px;
+    height: 15px;
+    flex: none;
 }
 @media(max-width:1100px) {
     .cg-template-groups {
