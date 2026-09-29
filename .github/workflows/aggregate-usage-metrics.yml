@@ -5,13 +5,14 @@ on:
   workflow_dispatch:
 jobs:
   aggregate:
+    # Agendamentos e consolidação são exclusivamente de produção. A coleta HML foi
+    # validada separadamente; nenhuma execução desta rotina pode escrever fora da main.
+    if: github.ref_name == 'main'
     runs-on: ubuntu-latest
     steps:
       - name: Consolidar no Firestore
         env:
-          # Este workflow é publicado agora apenas na branch HML. Sem este segredo, ele
-          # para sem gravar nada — nunca pode cair por engano na credencial de produção.
-          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY_HML }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
         run: |
           if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then echo '::warning::FIREBASE_SERVICE_ACCOUNT_KEY não configurado.'; exit 0; fi
           pip install --quiet firebase-admin
