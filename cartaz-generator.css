@@ -100,6 +100,41 @@ button:disabled {
     grid-template-columns: 280px 1fr;
     gap: 18px;
 }
+/* max-height travado (inline, via syncPagesHeight() no JS) na altura atual da caixa de prévia ao
+   lado - a prévia sempre aparece inteira (sem limite próprio); só a lista de marcas (#list) rola
+   dentro desse limite; cabeçalho, status e a barra de vínculo continuam sempre visíveis. */
+.pages {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.pages-head,
+.pages-status,
+.pages .link-bar {
+    flex: none;
+}
+.pages #list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--cg-dash) transparent;
+}
+.pages #list::-webkit-scrollbar {
+    width: 8px;
+}
+.pages #list::-webkit-scrollbar-track {
+    background: transparent;
+}
+.pages #list::-webkit-scrollbar-thumb {
+    background: var(--cg-dash);
+    border-radius: 4px;
+}
+.pages #list::-webkit-scrollbar-thumb:hover {
+    background: var(--cg-muted);
+}
 .pages button {
     display: block;
     width: 100%;
@@ -727,7 +762,7 @@ button:disabled {
 }
 .brand-entry {
     display: flex;
-    gap: 6px;
+    gap: 10px;
     align-items: stretch;
     min-width: 0;
 }
@@ -1456,6 +1491,10 @@ button:disabled {
     cursor: pointer;
     list-style: none;
     border-radius: 6px;
+    /* mesma altura mínima do botão "i" (.cg-tip-btn, 26px) - sem isso, um summary sem tooltip
+       (Biblioteca) fica mais baixo que um com tooltip (Template do cartaz), e as duas caixas
+       fechadas por padrão não batem em altura. */
+    min-height: 26px;
 }
 .cg-fold > summary::-webkit-details-marker {
     display: none;
