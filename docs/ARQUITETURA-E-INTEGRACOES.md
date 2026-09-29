@@ -631,6 +631,12 @@ Até aqui não havia nenhum backup do Firestore de produção (`mkt-ovd`) além 
 
 ## 19. Capacidade e cotas à medida que mais marcas entram na coleta automática
 
+## 20. Métricas de efetividade da plataforma
+
+`usage-analytics.js` registra somente entregas concluídas no Firestore: exportações do Editor de Posts, Cartazes e Cartões, salvamento/cópia no Conecta FG e downloads dos scripts do Photoshop. Não registra conteúdo, arquivos, cliques genéricos nem tempo de tela. Usuários ativos só criam seus próprios eventos; só administradores leem eventos individuais. O workflow `aggregate-usage-metrics.yml` consolida dados por dia/marca/ferramenta/perfil em `usageDaily` de hora em hora e remove eventos com mais de 90 dias. Ele só executa na branch `main` e usa `FIREBASE_SERVICE_ACCOUNT_KEY`; outras branches não gravam métricas agregadas. Admin lê indicadores e detalhe individual; Gestão lê apenas os resumos. O dashboard `usage-dashboard.html` consulta exclusivamente os resumos, mantendo a visualização leve.
+
+O lançador `Abrir Calendario.cmd` também inicia o servidor HTTP padrão do Python local e abre `http://localhost:8080/` em vez de `file://`. Chrome bloqueia módulos ES em arquivos locais por CORS; o servidor local elimina essa limitação e, como `localhost` não é host de produção, `firebase-config.js` direciona automaticamente para `mkt-ovd-hml`.
+
 Cada marca nova conectada à coleta automática (seguidores/posts do Instagram/Facebook, hoje VONDER e Ferramentas Gerais) soma no mesmo projeto Firebase (`mkt-ovd`, plano Spark) e na mesma fila de publicação do GitHub Actions. Revisado com dado real em 15/09/2026, para não escalar decisões nesta área por suposição.
 
 **GitHub Actions não é o gargalo.** O repositório é público — minutos de CI são ilimitados e gratuitos, independentemente de quantas marcas/execuções existirem. "Volume de GitHub Actions" não é, por si só, uma restrição de custo.

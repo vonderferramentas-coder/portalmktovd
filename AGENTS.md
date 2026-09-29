@@ -42,3 +42,11 @@ Em correções, trate a causa-raiz, não só o sintoma. Verifique todos os chama
 - Ao adotar uma simplificação deliberada com limitação real (por exemplo, lock global, varredura O(n²) ou heurística ingênua), registre `ponytail:` em comentário, indicando a limitação e o caminho de evolução.
 
 Não simplifique a compreensão do problema, validação de entradas em fronteiras de confiança, prevenção de perda de dados, segurança, acessibilidade, calibração com hardware real nem requisitos explícitos. Lógica não trivial deve deixar uma verificação executável mínima (um teste pequeno ou demonstração com `assert`); one-liners triviais não precisam de teste.
+
+### Depuração enxuta
+
+Validar renderizando de verdade (Chrome headless) continua obrigatório para mudanças de canvas/cor/layout, mas a investigação de um bug segue o mesmo ponytail: pare no primeiro nível que resolver.
+
+- Limite ~2 rodadas de screenshot por bug. Se a causa raiz não aparecer nessas tentativas, aplique o fix mais seguro disponível (de preferência espelhando um padrão que já funciona em outro lugar do mesmo código) e siga em frente, em vez de continuar escalando a investigação (introspecção de CSSOM, bissecção de stylesheet, etc.) até esgotar a dúvida.
+- Não monte um harness de teste novo para validar um caminho de código que já foi exercitado por um teste anterior na mesma tarefa (ex.: reabrir o mesmo modal/fluxo já testado) - revisão de código basta nesses casos.
+- Para reler código já visitado na mesma sessão, prefira grep num trecho específico a reler o arquivo inteiro em blocos grandes.

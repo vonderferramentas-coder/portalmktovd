@@ -296,7 +296,19 @@
         $('preview').innerHTML = selectedPages.map(page => { let pageIndex = S.pages.indexOf(page), cells = page.items.map((item, index) => card(item, index, pageIndex)), logo = logoUrl(page.brand), filled = page.items.length; for (let i = filled; i < page.capacity; i++) cells.push('<div class="placeholder" aria-hidden="true"></div>'); return '<div class="sheet ' + page.format.toLowerCase() + (S.templates[page.format] ? ' custom-bg' : '') + (S.logo ? ' custom-logo' : '') + '" data-page="' + pageIndex + '">' + pageFooter(page, logo) + '<span class="sheet-page-number" aria-hidden="true">' + (pageIndex + 1) + '</span><div class="sheet-heading" aria-hidden="true">' + headerHtml() + '</div>' + cells.join('') + '</div>'; }).join('');
         [...$('preview').querySelectorAll('.sheet')].forEach(sheet => { let page = S.pages[+sheet.dataset.page]; sheet.querySelectorAll('.card').forEach(trimOverflow); sheet.querySelectorAll('.card:not(.big)').forEach(centerPhoto); if (page.items.length < page.capacity) { let cards = [...sheet.querySelectorAll('.card')], style = getComputedStyle(sheet), top = parseFloat(style.paddingTop), bottom = sheet.clientHeight - parseFloat(style.paddingBottom), contentHeight = Math.max(...cards.map(card => card.offsetTop + card.offsetHeight)) - top, offset = Math.max(0, (bottom - top - contentHeight) / 2); cards.forEach(card => card.style.transform = (card.classList.contains('pair') ? 'translateX(calc(50% + 9px)) ' : '') + 'translateY(' + offset + 'px)') } sheet.querySelectorAll('.card .photo').forEach(enablePhotoEditing); });
         fitHeaders(); pages(); updateDashboard(); let printSize = document.getElementById('printPageSize') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'printPageSize' })); printSize.textContent = '@media print { @page { size: ' + (selectedPages[0].format === 'A3' ? 'A3 portrait' : 'A4 portrait') + '; margin: 0 } }'
-    } function chooseBrandLogo(brand) { let options=logoCandidates(brand), dialog=$('brandLogoDialog'), list=$('brandLogoOptions'), upload=$('brandLogoUpload'), save=$('brandLogoSave'), saved=S.brandLogos[brand], pending=(saved&&(saved.startsWith('data:')||options.some(a=>a.file===saved)))?saved:(options[0]?.file||''); $('brandLogoDialogTitle').textContent='Logo · '+brand; list.replaceChildren(); upload.value=''; const select=(button,value)=>{pending=value;list.querySelectorAll('.brand-logo-option').forEach(item=>{item.classList.toggle('selected',item===button);item.setAttribute('aria-pressed',item===button)});save.disabled=!pending}; const add=(src,title,value)=>{let button=document.createElement('button'),image=document.createElement('img');button.type='button';button.className='brand-logo-option';button.title=title;image.src=src;image.alt=title;button.append(image);button.onclick=()=>select(button,value);list.append(button);if(value===pending)select(button,value);return button}; options.forEach(asset=>{let button=add('',asset.name,asset.file),image=button.querySelector('img');brandLogoDataUri(asset.file,uri=>image.src=uri);}); if(pending.startsWith('data:'))add(pending,'Logo enviada',pending); save.disabled=!pending; upload.onchange=()=>{let file=upload.files[0]; if(!file) return; if(!['image/svg+xml','image/png'].includes(file.type)||file.size>700000){upload.value='';toast('Envie um SVG ou PNG de até 700 KB.');return} let reader=new FileReader; reader.onload=()=>select(add(reader.result,file.name,reader.result),reader.result); reader.readAsDataURL(file)}; save.onclick=()=>{snapshot();S.brandLogos[brand]=pending;dialog.close();draw();toast(pending.startsWith('data:')?'Logo enviada para '+brand+'. Salve a grade para compartilhá-la.':'Logo atualizada para '+brand+'.')}; dialog.showModal(); } /* Template de fundo por formato: imagem única (fundo + cabeçalho) redimensionada no envio.
+        syncPagesHeight();
+    }
+    /* Trava o max-height da caixa de marcas (aside .pages) na altura atual da caixa de prévia ao
+       lado - a prévia muda de tamanho conforme a marca/formato selecionado, então isso não dá pra
+       fixar só em CSS. max-height (não height) pra não forçar a lista a crescer além do que
+       precisa quando ela é mais curta que a prévia. */
+    function syncPagesHeight() {
+        let previewBox = $('preview').closest('.box'), pagesBox = document.querySelector('.pages');
+        if (!previewBox || !pagesBox) return;
+        pagesBox.style.maxHeight = previewBox.offsetHeight + 'px';
+    }
+    window.addEventListener('resize', () => $('preview').closest('.box') && syncPagesHeight());
+    function chooseBrandLogo(brand) { let options=logoCandidates(brand), dialog=$('brandLogoDialog'), list=$('brandLogoOptions'), upload=$('brandLogoUpload'), save=$('brandLogoSave'), saved=S.brandLogos[brand], pending=(saved&&(saved.startsWith('data:')||options.some(a=>a.file===saved)))?saved:(options[0]?.file||''); $('brandLogoDialogTitle').textContent='Logo · '+brand; list.replaceChildren(); upload.value=''; const select=(button,value)=>{pending=value;list.querySelectorAll('.brand-logo-option').forEach(item=>{item.classList.toggle('selected',item===button);item.setAttribute('aria-pressed',item===button)});save.disabled=!pending}; const add=(src,title,value)=>{let button=document.createElement('button'),image=document.createElement('img');button.type='button';button.className='brand-logo-option';button.title=title;image.src=src;image.alt=title;button.append(image);button.onclick=()=>select(button,value);list.append(button);if(value===pending)select(button,value);return button}; options.forEach(asset=>{let button=add('',asset.name,asset.file),image=button.querySelector('img');brandLogoDataUri(asset.file,uri=>image.src=uri);}); if(pending.startsWith('data:'))add(pending,'Logo enviada',pending); save.disabled=!pending; upload.onchange=()=>{let file=upload.files[0]; if(!file) return; if(!['image/svg+xml','image/png'].includes(file.type)||file.size>700000){upload.value='';toast('Envie um SVG ou PNG de até 700 KB.');return} let reader=new FileReader; reader.onload=()=>select(add(reader.result,file.name,reader.result),reader.result); reader.readAsDataURL(file)}; save.onclick=()=>{snapshot();S.brandLogos[brand]=pending;dialog.close();draw();toast(pending.startsWith('data:')?'Logo enviada para '+brand+'. Salve a grade para compartilhá-la.':'Logo atualizada para '+brand+'.')}; dialog.showModal(); } /* Template de fundo por formato: imagem única (fundo + cabeçalho) redimensionada no envio.
        Compartilhado entre máquinas: cada peça (template A4, A3, logo e texto do cabeçalho) é um registro do portalStore (Firestore),
        lido ao abrir a página; o localStorage segue como cache (abre na hora e funciona sem rede).
        ponytail: um registro do Firestore aceita ~1 MB, então as imagens são recomprimidas até caberem em SHARED_MAX;
@@ -305,50 +317,124 @@
     S.templates = { A4: '', A3: '' }; S.templateNames = { A4: '', A3: '' };
     ['A4', 'A3'].forEach(format => { try { let saved = JSON.parse(localStorage.getItem(TPL_KEY + format) || 'null'); if (saved?.url) { S.templates[format] = saved.url; S.templateNames[format] = saved.name || 'Template enviado'; } } catch (_) { } });
     /* Logo e texto do cabeçalho (o fundo é o template A4/A3 acima); mesmas regras de armazenamento local */
-    const LOGO_KEY = 'cartaz-logo-v1', HEADER_KEY = 'cartaz-header-v1', HEADER_DEFAULT = { title: 'VITRINE DIGITAL DE OFERTAS', sub: 'AS MELHORES OPORTUNIDADES\nNA PALMA DA SUA MÃO!' };
+    const LOGO_KEY = 'cartaz-logo-v1', HEADER_KEY = 'cartaz-header-v1', HEADER_DEFAULT = { title: 'VITRINE DIGITAL DE OFERTAS', sub: 'AS MELHORES OPORTUNIDADES\nNA PALMA DA SUA MÃO!', stripe: '#fdc300', titleColor: '#00445c', subColor: '#fdc300' };
     S.logo = ''; S.logoName = ''; S.header = { ...HEADER_DEFAULT };
     try { let saved = JSON.parse(localStorage.getItem(LOGO_KEY) || 'null'); if (saved?.url) { S.logo = saved.url; S.logoName = saved.name || 'Logo enviada'; } } catch (_) { }
-    try { let saved = JSON.parse(localStorage.getItem(HEADER_KEY) || 'null'); if (saved) S.header = { title: t(saved.title) || HEADER_DEFAULT.title, sub: saved.sub ?? HEADER_DEFAULT.sub }; } catch (_) { }
+    try { let saved = JSON.parse(localStorage.getItem(HEADER_KEY) || 'null'); if (saved) S.header = { title: t(saved.title) || HEADER_DEFAULT.title, sub: saved.sub ?? HEADER_DEFAULT.sub, stripe: saved.stripe || HEADER_DEFAULT.stripe, titleColor: saved.titleColor || HEADER_DEFAULT.titleColor, subColor: saved.subColor || HEADER_DEFAULT.subColor }; } catch (_) { }
+    /* Vários templates nomeados (cards) em S.templateSets; o "vigente" (S.activeTemplate) é espelhado em
+       S.templates/S.logo/S.header acima, que continuam sendo o que draw()/applyTemplates() realmente
+       leem - trocar o vigente ou editar o card vigente atualiza esse espelho; editar um card que não é
+       o vigente só grava nele, sem afetar a prévia/exportação até ele virar vigente. "feira" é o
+       template único que já existia antes desta tela; por isso nasce com o que já foi carregado acima
+       (linhas anteriores) e loadShared() migra, uma única vez, o que já estava nas chaves antigas (sem
+       prefixo de template) pra dentro dele, em vez de perder o que já estava no ar. */
+    const TEMPLATE_SET_DEFS = [{ id: 'feira', name: 'Feira Grandes Marcas' }, { id: 'liveshop', name: 'Live Shop' }];
+    const PENCIL_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+    const CUSTOM_IDS_KEY = 'custom-ids';
+    let customTemplateIds = []; try { customTemplateIds = JSON.parse(localStorage.getItem(TPL_KEY + CUSTOM_IDS_KEY) || '[]'); } catch (_) { customTemplateIds = []; }
+    function defaultTemplateName(tid) { let def = TEMPLATE_SET_DEFS.find(def => def.id === tid); return def ? def.name : 'Novo template'; }
+    function blankTemplateSet(tid) { return { name: defaultTemplateName(tid), A4: '', A3: '', A4Name: '', A3Name: '', logo: '', logoName: '', header: { ...HEADER_DEFAULT } }; }
+    function allTemplateDefs() { return TEMPLATE_SET_DEFS.concat(customTemplateIds.map(id => ({ id, name: templateName(id) }))); }
+    S.activeTemplate = localStorage.getItem(TPL_KEY + 'active') || 'feira';
+    S.templateSets = {}; TEMPLATE_SET_DEFS.forEach(def => S.templateSets[def.id] = blankTemplateSet(def.id));
+    customTemplateIds.forEach(id => S.templateSets[id] = blankTemplateSet(id));
+    if (!S.templateSets[S.activeTemplate]) S.activeTemplate = 'feira';
+    Object.assign(S.templateSets[S.activeTemplate], { A4: S.templates.A4, A3: S.templates.A3, A4Name: S.templateNames.A4, A3Name: S.templateNames.A3, logo: S.logo, logoName: S.logoName, header: S.header });
+    function templateName(tid) { return S.templateSets[tid].name; }
+    function headerIsDefaultValue(header) { return header.title === HEADER_DEFAULT.title && header.sub === HEADER_DEFAULT.sub && header.stripe === HEADER_DEFAULT.stripe && header.titleColor === HEADER_DEFAULT.titleColor && header.subColor === HEADER_DEFAULT.subColor; }
     function headerHtml() { return '<strong>' + e(S.header.title || HEADER_DEFAULT.title) + '</strong><span>' + e(S.header.sub).replace(/\n/g, '<br>') + '</span>'; }
-    function headerIsDefault() { return S.header.title === HEADER_DEFAULT.title && S.header.sub === HEADER_DEFAULT.sub; }
-    function applyTemplates() {
-        let style = document.getElementById('templateStyle') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'templateStyle' }));
-        style.textContent = ['A4', 'A3'].filter(format => S.templates[format]).map(format => '.sheet.' + format.toLowerCase() + '.custom-bg{background-image:url("' + S.templates[format] + '")}').join('\n') + (S.logo ? '\n.sheet.custom-logo::after{background-image:url("' + S.logo + '")}' : '');
-        document.querySelectorAll('.cg-template-slot[data-format]').forEach(slot => { let format = slot.dataset.format, url = S.templates[format]; slot.querySelector('.cg-template-thumb').style.backgroundImage = url ? 'url("' + url + '")' : ''; slot.querySelector('.cg-template-name').textContent = url ? S.templateNames[format] : 'Padrão do portal'; slot.querySelector('[data-template-reset]').hidden = !url; });
-        $('logoSlot').querySelector('.cg-logo-thumb').style.backgroundImage = S.logo ? 'url("' + S.logo + '")' : ''; $('logoSlot').querySelector('.cg-template-name').textContent = S.logo ? S.logoName : 'Padrão do portal'; $('logoReset').hidden = !S.logo;
-        if (document.activeElement !== $('headerTitle')) $('headerTitle').value = S.header.title; if (document.activeElement !== $('headerSub')) $('headerSub').value = S.header.sub; $('headerReset').hidden = headerIsDefault();
-        if (S.pages.length) draw();
+    /* Card fechado: mini-prévia do cartaz (fundo + logo centralizada, proporção da folha) com o nome
+       sobreposto num degradê, badge "Vigente" e o lápis - mesmo espírito do card de marketplace em
+       templates.html (capa + véu + nome, botão circular no canto). A edição de verdade acontece no
+       modal (#templateModalBackdrop), aberto pelo lápis - ver openTemplateModal(). */
+    function templateMiniHtml(def) {
+        let set = S.templateSets[def.id], vigente = S.activeTemplate === def.id, cover = set.A4 || set.A3;
+        return '<div class="cg-template-card' + (vigente ? ' vigente' : '') + '" data-template-set="' + def.id + '">'
+            + '<div class="cg-template-mini-cover"' + (cover ? ' style="background-image:url(\'' + cover + '\')"' : '') + '>'
+            + (set.logo ? '<div class="cg-template-mini-logo" style="background-image:url(\'' + set.logo + '\')"></div>' : '')
+            + (vigente ? '<span class="cg-template-mini-badge">Vigente</span>' : '')
+            + '<button type="button" class="cg-template-edit-btn" data-template-edit aria-label="Editar ' + e(set.name) + '" title="Editar template">' + PENCIL_ICON + '</button>'
+            + '<div class="cg-template-mini-scrim"><div class="cg-template-mini-name">' + e(set.name) + '</div></div>'
+            + '</div></div>';
     }
-    /* grava a peça no portalStore (tira o registro quando value é null); o texto do cabeçalho espera 0,8 s parado para não gravar a cada tecla */
-    function queueShared(part, value) {
-        clearTimeout(sharedTimers[part]);
-        sharedTimers[part] = setTimeout(async () => {
-            try {
-                let key = SHARED_KEY + part; if (!value) { await SyncBackend.remove(key); sharedVersion[part] = 0; return; }
-                let result = await SyncBackend.put(key, value, sharedVersion[part] || 0);
-                if (result.conflict) result = await SyncBackend.put(key, value, result.server.updated_at); /* a última edição vence */
-                sharedVersion[part] = result.updated_at || 0;
-            } catch (_) { toast('Aplicado neste navegador, mas não foi possível compartilhar com as outras máquinas.'); }
-        }, part === 'header' ? 800 : 0);
+    function templateIdOf(el) { return el.closest('[data-template-set]').dataset.templateSet; }
+    function renderTemplateCards() {
+        $('templateSets').innerHTML = allTemplateDefs().map(templateMiniHtml).join('') + '<button type="button" class="cg-template-card cg-template-add" id="templateAddBtn" aria-label="Criar novo template"><span class="cg-template-add-icon">+</span><span>Novo template</span></button>';
+        $('templateSets').querySelectorAll('[data-template-edit]').forEach(button => button.onclick = () => openTemplateModal(templateIdOf(button)));
+        $('templateAddBtn').onclick = createTemplate;
     }
-    /* Ao abrir: o que está no portalStore vale e atualiza o cache local. Na primeira vez deste navegador, o que já estava só no localStorage sobe para o portalStore (uma vez;
-       depois disso, "sem registro no portalStore" significa que alguém restaurou o padrão e o cache local é limpo). */
-    async function loadShared() {
-        try {
-            let seeded = localStorage.getItem(SHARED_SEEDED) === '1', local = { A4: S.templates.A4 && { name: S.templateNames.A4, url: S.templates.A4 }, A3: S.templates.A3 && { name: S.templateNames.A3, url: S.templates.A3 }, logo: S.logo && { name: S.logoName, url: S.logo }, header: headerIsDefault() ? null : S.header };
-            for (let part of ['A4', 'A3', 'logo', 'header']) {
-                let record = await SyncBackend.get(SHARED_KEY + part), value = record.v; sharedVersion[part] = record.updated_at || 0;
-                if (!value) { if (!seeded && local[part]) queueShared(part, local[part]); else if (seeded && local[part]) { if (part === 'A4' || part === 'A3') { S.templates[part] = ''; S.templateNames[part] = ''; } else if (part === 'logo') { S.logo = ''; S.logoName = ''; } else S.header = { ...HEADER_DEFAULT }; } continue; }
-                if (part === 'A4' || part === 'A3') { S.templates[part] = value.url; S.templateNames[part] = value.name || 'Template enviado'; }
-                else if (part === 'logo') { S.logo = value.url; S.logoName = value.name || 'Logo enviada'; }
-                else S.header = { title: t(value.title) || HEADER_DEFAULT.title, sub: value.sub ?? HEADER_DEFAULT.sub };
-            }
-            try { localStorage.setItem(SHARED_SEEDED, '1'); ['A4', 'A3'].forEach(format => localStorage.removeItem(TPL_KEY + format)); localStorage.removeItem(LOGO_KEY); localStorage.removeItem(HEADER_KEY); ['A4', 'A3'].forEach(format => S.templates[format] && localStorage.setItem(TPL_KEY + format, JSON.stringify({ name: S.templateNames[format], url: S.templates[format] }))); S.logo && localStorage.setItem(LOGO_KEY, JSON.stringify({ name: S.logoName, url: S.logo })); headerIsDefault() || localStorage.setItem(HEADER_KEY, JSON.stringify(S.header)); } catch (_) { }
-            applyTemplates();
-        } catch (_) { /* sem rede/login: segue com o cache local */ }
+    function createTemplate() {
+        let id = 'custom-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        S.templateSets[id] = blankTemplateSet(id);
+        openTemplateModal(id, true);
     }
-    function saveTemplate(format) { queueShared(format, S.templates[format] ? { name: S.templateNames[format], url: S.templates[format] } : null); try { S.templates[format] ? localStorage.setItem(TPL_KEY + format, JSON.stringify({ name: S.templateNames[format], url: S.templates[format] })) : localStorage.removeItem(TPL_KEY + format); } catch (_) { toast('Template aplicado, mas o navegador não teve espaço para guardá-lo: vale só até fechar esta aba.'); } }
-    function setTemplate(format, file) {
+    function templateSlotHtml(format, set) {
+        let url = set[format];
+        return '<div class="cg-template-slot" data-format="' + format + '"><div class="cg-template-thumb" style="' + (url ? 'background-image:url(\'' + url + '\')' : '') + '" aria-hidden="true"></div><div class="cg-template-info"><strong>' + format + '</strong><span class="cg-template-name">' + (url ? e(set[format + 'Name']) : 'Padrão do portal') + '</span><div class="cg-template-actions"><label class="upload">Enviar fundo ' + format + '<input type="file" accept="image/png,image/jpeg,image/webp" data-template-file="' + format + '"></label></div></div></div>';
+    }
+    function logoSlotHtml(set) {
+        return '<div class="cg-template-slot" data-logo-slot><div class="cg-logo-thumb" style="' + (set.logo ? 'background-image:url(\'' + set.logo + '\')' : '') + '" aria-hidden="true"></div><div class="cg-template-info"><strong>Logo do cabeçalho</strong><span class="cg-template-name">' + (set.logo ? e(set.logoName) : 'Padrão do portal') + '</span><div class="cg-template-actions"><label class="upload">Enviar logo<input type="file" accept="image/png,image/webp,image/jpeg,image/svg+xml" data-logo-file></label></div></div></div>';
+    }
+    function headerFieldsHtml(header) {
+        return '<div class="cg-header-fields"><label>Título<input type="text" maxlength="60" autocomplete="off" data-header-title value="' + e(header.title) + '"></label><label>Subtítulo <small>(cada linha do campo vira uma linha no cartaz)</small><textarea rows="2" maxlength="120" data-header-sub>' + e(header.sub) + '</textarea></label><div class="cg-header-colors"><label>Cor da faixa<input type="color" data-header-stripe value="' + header.stripe + '"></label><label>Cor do título<input type="color" data-header-title-color value="' + header.titleColor + '"></label><label>Cor do subtítulo<input type="color" data-header-sub-color value="' + header.subColor + '"></label></div></div>';
+    }
+    /* Modal de edição: um rascunho (modalDraft) recebe todas as mudanças - upload, restaurar, nome,
+       texto e "vigente" - e só é gravado de verdade (saveTemplatePiece + espelho na prévia) quando o
+       usuário clica Salvar; Cancelar/X descartam o rascunho sem tocar em S.templateSets. */
+    let modalDraft = null;
+    function templateModalBodyHtml(d) {
+        let vigenteAgora = S.activeTemplate === d.tid;
+        return '<div class="cg-template-modal-head"><input type="text" class="cg-template-name-input" maxlength="40" autocomplete="off" id="tmName" value="' + e(d.name) + '">'
+            + '<label class="cg-template-active"><input type="checkbox" id="tmActive"' + (d.active ? ' checked' : '') + (vigenteAgora ? ' disabled' : '') + '>' + (vigenteAgora ? 'Este é o template vigente' : 'Usar como vigente na prévia e exportação') + '</label></div>'
+            + '<div class="cg-template-groups">'
+            + '<div class="cg-template-group"><h3>Fundo</h3><div class="cg-template-slots">' + templateSlotHtml('A4', d) + templateSlotHtml('A3', d) + '</div></div>'
+            + '<div class="cg-template-group"><h3>Logo</h3>' + logoSlotHtml(d) + '</div>'
+            + '<div class="cg-template-group"><h3>Texto do cabeçalho</h3>' + headerFieldsHtml(d.header) + '</div>'
+            + '</div>';
+    }
+    function renderTemplateModalBody() {
+        $('templateModalBody').innerHTML = templateModalBodyHtml(modalDraft);
+        let body = $('templateModalBody');
+        body.querySelector('#tmName').oninput = event => { modalDraft.name = event.target.value; };
+        body.querySelector('#tmActive').onchange = event => { modalDraft.active = event.target.checked; };
+        body.querySelectorAll('[data-template-file]').forEach(input => input.onchange = () => { let file = input.files[0], format = input.dataset.templateFile; input.value = ''; processTemplateFile(format, file, result => { modalDraft[format] = result.url; modalDraft[format + 'Name'] = result.name; renderTemplateModalBody(); }); });
+        body.querySelector('[data-logo-file]').onchange = event => { let file = event.target.files[0]; event.target.value = ''; processLogoFile(file, result => { modalDraft.logo = result.url; modalDraft.logoName = result.name; renderTemplateModalBody(); }); };
+        body.querySelector('[data-header-title]').oninput = event => { modalDraft.header.title = event.target.value; };
+        body.querySelector('[data-header-sub]').oninput = event => { modalDraft.header.sub = event.target.value; };
+        body.querySelector('[data-header-stripe]').oninput = event => { modalDraft.header.stripe = event.target.value; };
+        body.querySelector('[data-header-title-color]').oninput = event => { modalDraft.header.titleColor = event.target.value; };
+        body.querySelector('[data-header-sub-color]').oninput = event => { modalDraft.header.subColor = event.target.value; };
+    }
+    function openTemplateModal(tid, isNew) {
+        let set = S.templateSets[tid];
+        modalDraft = { tid, isNew: !!isNew, name: set.name, A4: set.A4, A3: set.A3, A4Name: set.A4Name, A3Name: set.A3Name, logo: set.logo, logoName: set.logoName, header: { ...set.header }, active: S.activeTemplate === tid };
+        $('templateModalTitle').textContent = isNew ? 'Novo template' : 'Editar ' + set.name;
+        renderTemplateModalBody();
+        $('templateModalBackdrop').style.display = 'flex';
+    }
+    /* Fechar sem salvar um template recém-criado (via "+ Novo template") descarta o rascunho por
+       completo - ele só passa a existir de verdade (card na galeria, sincronizado com o portalStore)
+       depois de "Salvar" (ver saveTemplateModal, que zera isNew antes de chamar closeTemplateModal). */
+    function closeTemplateModal() {
+        if (modalDraft && modalDraft.isNew) delete S.templateSets[modalDraft.tid];
+        $('templateModalBackdrop').style.display = 'none'; modalDraft = null;
+    }
+    function saveTemplateModal() {
+        let d = modalDraft, tid = d.tid, set = S.templateSets[tid];
+        if (d.isNew) { d.isNew = false; customTemplateIds.push(tid); try { localStorage.setItem(TPL_KEY + CUSTOM_IDS_KEY, JSON.stringify(customTemplateIds)); } catch (_) { } queueShared(CUSTOM_IDS_KEY, customTemplateIds); }
+        set.name = t(d.name) || defaultTemplateName(tid); queueShared(tid + '-name', set.name === defaultTemplateName(tid) ? null : set.name);
+        set.A4 = d.A4; set.A4Name = d.A4Name; saveTemplatePiece(tid, 'A4', d.A4 ? { name: d.A4Name, url: d.A4 } : null);
+        set.A3 = d.A3; set.A3Name = d.A3Name; saveTemplatePiece(tid, 'A3', d.A3 ? { name: d.A3Name, url: d.A3 } : null);
+        set.logo = d.logo; set.logoName = d.logoName; saveTemplatePiece(tid, 'logo', d.logo ? { name: d.logoName, url: d.logo } : null);
+        set.header = d.header; saveTemplatePiece(tid, 'header', headerIsDefaultValue(d.header) ? null : d.header);
+        let switching = d.active && S.activeTemplate !== tid;
+        closeTemplateModal();
+        if (switching) setActiveTemplate(tid); else { applyTemplates(); toast('Template salvo.'); }
+    }
+    /* Processa o arquivo (valida, redimensiona/comprime) e devolve {url,name} pro chamador decidir o
+       que fazer - não mexe em S.templateSets nem no portalStore, pra poder ser usado tanto num rascunho
+       do modal quanto (se algum dia precisar) fora dele, sem duplicar a lógica de compressão. */
+    function processTemplateFile(format, file, onDone) {
         if (!file) return; if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { toast('Envie uma imagem JPG, PNG ou WebP.'); return; }
         let source = URL.createObjectURL(file), image = new Image;
         image.onload = () => {
@@ -359,26 +445,108 @@
             let encode = (w, quality) => { canvas.width = w; canvas.height = Math.round(w * image.naturalHeight / image.naturalWidth); ctx.fillStyle = '#003e55'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(image, 0, 0, canvas.width, canvas.height); return canvas.toDataURL('image/jpeg', quality); }, url = encode(width, .92);
             for (let quality of [.85, .78, .7, .62]) if (url.length > SHARED_MAX) url = encode(width, quality);
             while (url.length > SHARED_MAX && width > 800) { width = Math.round(width * .85); url = encode(width, .62); }
-            S.templates[format] = url; S.templateNames[format] = file.name; saveTemplate(format); applyTemplates(); toast('Template ' + format + ' aplicado.');
+            onDone({ url, name: file.name });
         };
         image.onerror = () => { URL.revokeObjectURL(source); toast('Não foi possível ler esta imagem.'); }; image.src = source;
     }
-    document.querySelectorAll('[data-template-file]').forEach(input => input.onchange = () => { setTemplate(input.dataset.templateFile, input.files[0]); input.value = ''; });
-    document.querySelectorAll('[data-template-reset]').forEach(button => button.onclick = () => { let format = button.dataset.templateReset; S.templates[format] = ''; S.templateNames[format] = ''; saveTemplate(format); applyTemplates(); toast('Template ' + format + ' removido: voltou ao padrão.'); });
-    function saveLocal(key, value) { queueShared(key === LOGO_KEY ? 'logo' : 'header', value); try { value ? localStorage.setItem(key, JSON.stringify(value)) : localStorage.removeItem(key); } catch (_) { toast('Aplicado, mas o navegador não teve espaço para guardar: vale só até fechar esta aba.'); } }
-    function setLogo(file) {
+    function processLogoFile(file, onDone) {
         if (!file) return; if (!/^image\/(png|jpeg|webp|svg\+xml)$/.test(file.type)) { toast('Envie a logo em PNG, JPG, WebP ou SVG.'); return; }
-        let done = url => { S.logo = url; S.logoName = file.name; saveLocal(LOGO_KEY, { name: file.name, url }); applyTemplates(); toast('Logo do cabeçalho aplicada.'); };
+        let done = url => onDone({ url, name: file.name });
         if (file.type === 'image/svg+xml') { if (file.size > 700000) { toast('O SVG da logo deve ter até 700 KB.'); return; } let reader = new FileReader; reader.onload = () => done(reader.result); reader.readAsDataURL(file); return; }
         let source = URL.createObjectURL(file), image = new Image;
         image.onload = () => { URL.revokeObjectURL(source); let width = Math.min(image.naturalWidth, 800), canvas = document.createElement('canvas'), url, draw = () => { canvas.width = width; canvas.height = Math.round(width * image.naturalHeight / image.naturalWidth); canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); url = canvas.toDataURL('image/png'); }; draw(); while (url.length > SHARED_MAX && width > 200) { width = Math.round(width * .75); draw(); } done(url); };
         image.onerror = () => { URL.revokeObjectURL(source); toast('Não foi possível ler esta imagem.'); }; image.src = source;
     }
-    $('logoFile').onchange = () => { setLogo($('logoFile').files[0]); $('logoFile').value = ''; };
-    $('logoReset').onclick = () => { S.logo = ''; S.logoName = ''; saveLocal(LOGO_KEY, null); applyTemplates(); toast('Logo removida: voltou ao padrão.'); };
-    let editHeader = () => { S.header = { title: $('headerTitle').value, sub: $('headerSub').value }; saveLocal(HEADER_KEY, headerIsDefault() ? null : S.header); $('headerReset').hidden = headerIsDefault(); document.querySelectorAll('.sheet-heading').forEach(heading => heading.innerHTML = headerHtml()); fitHeaders(); };
-    $('headerTitle').oninput = $('headerSub').oninput = editHeader;
-    $('headerReset').onclick = () => { S.header = { ...HEADER_DEFAULT }; saveLocal(HEADER_KEY, null); applyTemplates(); toast('Texto do cabeçalho restaurado.'); };
+    function applyTemplates() {
+        let style = document.getElementById('templateStyle') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'templateStyle' }));
+        let header = S.header || HEADER_DEFAULT;
+        style.textContent = ['A4', 'A3'].filter(format => S.templates[format]).map(format => '.sheet.' + format.toLowerCase() + '.custom-bg{background-image:url("' + S.templates[format] + '")}').join('\n')
+            + (S.logo ? '\n.sheet.custom-logo::after{background-image:url("' + S.logo + '")}' : '')
+            + '\n.sheet-heading{color:' + (header.subColor || HEADER_DEFAULT.subColor) + '}.sheet-heading strong{background:' + (header.stripe || HEADER_DEFAULT.stripe) + ';color:' + (header.titleColor || HEADER_DEFAULT.titleColor) + '}';
+        renderTemplateCards();
+        if (S.pages.length) draw();
+    }
+    /* grava a peça no portalStore (tira o registro quando value é null); o texto do cabeçalho espera 0,8 s
+       parado para não gravar a cada tecla. part agora é "<template>-<peça>" (ex.: "feira-A4") ou "active". */
+    function queueShared(part, value) {
+        clearTimeout(sharedTimers[part]);
+        sharedTimers[part] = setTimeout(async () => {
+            try {
+                let key = SHARED_KEY + part; if (!value) { await SyncBackend.remove(key); sharedVersion[part] = 0; return; }
+                let result = await SyncBackend.put(key, value, sharedVersion[part] || 0);
+                if (result.conflict) result = await SyncBackend.put(key, value, result.server.updated_at); /* a última edição vence */
+                sharedVersion[part] = result.updated_at || 0;
+            } catch (_) { toast('Aplicado neste navegador, mas não foi possível compartilhar com as outras máquinas.'); }
+        }, part.endsWith('-header') || part.endsWith('-name') ? 800 : 0);
+    }
+    /* Espelha a peça salva em S.templates/S.logo/S.header (o que draw()/CSS realmente leem) quando o
+       template editado é o vigente, e mantém o cache local (mesmas chaves de antes) só para ele - é o
+       único que precisa abrir na hora sem depender da rede. */
+    function mirrorActive(tid, piece, value) {
+        if (tid !== S.activeTemplate) return;
+        if (piece === 'A4' || piece === 'A3') { S.templates[piece] = value?.url || ''; S.templateNames[piece] = value?.name || ''; }
+        else if (piece === 'logo') { S.logo = value?.url || ''; S.logoName = value?.name || ''; }
+        else S.header = value || { ...HEADER_DEFAULT };
+    }
+    function saveTemplatePiece(tid, piece, value) {
+        queueShared(tid + '-' + piece, value);
+        mirrorActive(tid, piece, value);
+        if (tid === S.activeTemplate) {
+            let key = piece === 'A4' || piece === 'A3' ? TPL_KEY + piece : piece === 'logo' ? LOGO_KEY : HEADER_KEY;
+            try { value ? localStorage.setItem(key, JSON.stringify(value)) : localStorage.removeItem(key); } catch (_) { toast('Aplicado, mas o navegador não teve espaço para guardar: vale só até fechar esta aba.'); }
+        }
+    }
+    /* Ao abrir: o que está no portalStore vale e atualiza o cache local. Na 1a vez deste navegador para
+       cada template, o que já estava só no localStorage sobe pro portalStore (uma vez; depois disso, "sem
+       registro" quer dizer que alguém restaurou o padrão nessa máquina/template, e o cache local
+       correspondente é limpo). "feira" também herda, só na 1a carga de qualquer máquina, o que já estava
+       nas chaves antigas (sem prefixo de template) do sistema de template único anterior - sem isso, um
+       navegador sem cache local perderia de vista o template que já estava no ar. */
+    async function loadShared() {
+        try {
+            let activeRecord = await SyncBackend.get(SHARED_KEY + 'active');
+            if (activeRecord.v && S.templateSets[activeRecord.v]) S.activeTemplate = activeRecord.v;
+            sharedVersion.active = activeRecord.updated_at || 0;
+            let customRecord = await SyncBackend.get(SHARED_KEY + CUSTOM_IDS_KEY);
+            if (Array.isArray(customRecord.v)) { customTemplateIds = customRecord.v; customTemplateIds.forEach(id => { if (!S.templateSets[id]) S.templateSets[id] = blankTemplateSet(id); }); try { localStorage.setItem(TPL_KEY + CUSTOM_IDS_KEY, JSON.stringify(customTemplateIds)); } catch (_) { } }
+            sharedVersion[CUSTOM_IDS_KEY] = customRecord.updated_at || 0;
+            for (let def of allTemplateDefs()) {
+                let tid = def.id, set = S.templateSets[tid], seededKey = SHARED_SEEDED + '-' + tid, seeded = localStorage.getItem(seededKey) === '1',
+                    local = { A4: set.A4 && { name: set.A4Name, url: set.A4 }, A3: set.A3 && { name: set.A3Name, url: set.A3 }, logo: set.logo && { name: set.logoName, url: set.logo }, header: headerIsDefaultValue(set.header) ? null : set.header, name: set.name !== defaultTemplateName(tid) ? set.name : null };
+                for (let part of ['A4', 'A3', 'logo', 'header', 'name']) {
+                    let record = await SyncBackend.get(SHARED_KEY + tid + '-' + part), value = record.v; sharedVersion[tid + '-' + part] = record.updated_at || 0;
+                    if (!value && tid === 'feira' && !seeded && part !== 'name') { let legacy = await SyncBackend.get(SHARED_KEY + part); if (legacy.v) { value = legacy.v; queueShared(tid + '-' + part, value); } }
+                    if (!value) { if (!seeded && local[part]) queueShared(tid + '-' + part, local[part]); else if (seeded && local[part]) { if (part === 'A4' || part === 'A3') { set[part] = ''; set[part + 'Name'] = ''; } else if (part === 'logo') { set.logo = ''; set.logoName = ''; } else if (part === 'name') set.name = defaultTemplateName(tid); else set.header = { ...HEADER_DEFAULT }; } continue; }
+                    if (part === 'A4' || part === 'A3') { set[part] = value.url; set[part + 'Name'] = value.name || 'Template enviado'; }
+                    else if (part === 'logo') { set.logo = value.url; set.logoName = value.name || 'Logo enviada'; }
+                    else if (part === 'name') set.name = value;
+                    else set.header = { title: t(value.title) || HEADER_DEFAULT.title, sub: value.sub ?? HEADER_DEFAULT.sub, stripe: value.stripe || HEADER_DEFAULT.stripe, titleColor: value.titleColor || HEADER_DEFAULT.titleColor, subColor: value.subColor || HEADER_DEFAULT.subColor };
+                }
+                try { localStorage.setItem(seededKey, '1'); } catch (_) { }
+            }
+            let active = S.templateSets[S.activeTemplate];
+            S.templates = { A4: active.A4, A3: active.A3 }; S.templateNames = { A4: active.A4Name, A3: active.A3Name }; S.logo = active.logo; S.logoName = active.logoName; S.header = active.header;
+            try {
+                localStorage.setItem(TPL_KEY + 'active', S.activeTemplate);
+                ['A4', 'A3'].forEach(format => localStorage.removeItem(TPL_KEY + format)); localStorage.removeItem(LOGO_KEY); localStorage.removeItem(HEADER_KEY);
+                active.A4 && localStorage.setItem(TPL_KEY + 'A4', JSON.stringify({ name: active.A4Name, url: active.A4 })); active.A3 && localStorage.setItem(TPL_KEY + 'A3', JSON.stringify({ name: active.A3Name, url: active.A3 }));
+                active.logo && localStorage.setItem(LOGO_KEY, JSON.stringify({ name: active.logoName, url: active.logo })); headerIsDefaultValue(active.header) || localStorage.setItem(HEADER_KEY, JSON.stringify(active.header));
+            } catch (_) { }
+            applyTemplates();
+        } catch (_) { /* sem rede/login: segue com o cache local */ }
+    }
+    function setActiveTemplate(tid) {
+        if (tid === S.activeTemplate || !S.templateSets[tid]) return;
+        S.activeTemplate = tid; let set = S.templateSets[tid];
+        S.templates = { A4: set.A4, A3: set.A3 }; S.templateNames = { A4: set.A4Name, A3: set.A3Name }; S.logo = set.logo; S.logoName = set.logoName; S.header = set.header;
+        try { localStorage.setItem(TPL_KEY + 'active', tid); } catch (_) { }
+        queueShared('active', tid);
+        applyTemplates(); toast('"' + templateName(tid) + '" agora é o template vigente na prévia e na exportação.');
+    }
+    $('templateModalClose').onclick = $('templateModalCancel').onclick = closeTemplateModal;
+    $('templateModalSave').onclick = saveTemplateModal;
+    $('templateModalBackdrop').addEventListener('click', event => { if (event.target.id === 'templateModalBackdrop') closeTemplateModal(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && $('templateModalBackdrop').style.display === 'flex') closeTemplateModal(); });
     loadShared();
     /* clicar no "i" dentro do título do menu não abre/fecha o menu */
     document.querySelectorAll('.cg-fold .cg-tip-btn').forEach(button => button.addEventListener('click', event => event.preventDefault()));
@@ -593,6 +761,7 @@
                 filename = (only ? 'Cartaz_selecionadas' : allBrands ? 'Cartaz' : 'Cartaz_' + safeName(originalBrand)) + (format === 'pdf' ? '_PDF' : '') + '.zip';
             }
             let link = document.createElement('a'); link.href = URL.createObjectURL(finalBlob); link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+            window.PortalUsage && window.PortalUsage.track('cartaz-generator', 'export', { quantity: targets.length, dedupeKey: 'cartaz:' + format + ':' + targets.map(page => page.brand + ':' + page.format).join('|') });
             updateExportProgress(100, targets.length, targets.length, 'Download iniciado.');
             await new Promise(resolve => setTimeout(resolve, 350));
             toast((outputs.length === 1 ? (format === 'pdf' ? 'PDF' : 'Arquivo') : 'ZIP') + ' exportado com sucesso.');

@@ -1,0 +1,44 @@
+name: Consolidar métricas de uso
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+jobs:
+  aggregate:
+    # Agendamentos e consolidação são exclusivamente de produção. A coleta HML foi
+    # validada separadamente; nenhuma execução desta rotina pode escrever fora da main.
+    if: github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consolidar no Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then echo '::warning::FIREBASE_SERVICE_ACCOUNT_KEY não configurado.'; exit 0; fi
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os
+          from collections import defaultdict
+          from datetime import datetime, timedelta, timezone
+          from zoneinfo import ZoneInfo
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+          app=firebase_admin.initialize_app(credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY'])))
+          db=firestore.client(app); now=datetime.now(timezone.utc); start=now-timedelta(days=2); tz=ZoneInfo('America/Sao_Paulo')
+          users={doc.id:(doc.to_dict() or {}).get('role','user') for doc in db.collection('users').stream()}
+          groups=defaultdict(lambda:{'quantity':0,'users':set()})
+          for doc in db.collection('usageEvents').where('createdAt','>=',start).stream():
+              item=doc.to_dict() or {}; created=item.get('createdAt')
+              if not created: continue
+              date=created.astimezone(tz).date().isoformat(); role=users.get(item.get('actorUid'),'user')
+              key=(date,item.get('brandId',''),item.get('tool',''),role); groups[key]['quantity']+=int(item.get('quantity',1)); groups[key]['users'].add(item.get('actorUid'))
+          batch=db.batch()
+          for (date,brand,tool,role),value in groups.items():
+              ident='__'.join([date,brand or 'global',tool,role]).replace('/','_')
+              batch.set(db.collection('usageDaily').document(ident),{'date':date,'brandId':brand,'tool':tool,'role':role,'quantity':value['quantity'],'uniqueUsers':len(value['users']),'updatedAt':firestore.SERVER_TIMESTAMP})
+          batch.commit() if groups else None
+          cutoff=now-timedelta(days=90); old=db.collection('usageEvents').where('createdAt','<',cutoff).stream(); batch=db.batch(); count=0
+          for doc in old: batch.delete(doc.reference); count+=1
+          batch.commit() if count else None
+          print('Resumos atualizados:',len(groups),'eventos removidos:',count)
+          PY

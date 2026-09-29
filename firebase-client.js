@@ -301,11 +301,29 @@ export async function updateOwnProfile(patch) {
   await updateDoc(doc(db, 'users', context.user.uid), patch);
 }
 
+// Métricas operacionais são best-effort: uma falha de rede ou de permissão nunca pode
+// atrasar uma exportação, um salvamento ou qualquer outra entrega do usuário.
+export async function recordUsageEvent(payload) {
+  const context = await currentContext();
+  const event = payload && typeof payload === 'object' ? payload : {};
+  const tool = String(event.tool || '').slice(0, 80);
+  const action = String(event.action || '').slice(0, 80);
+  if (!tool || !action) return;
+  await addDoc(collection(db, 'usageEvents'), {
+    actorUid: context.user.uid,
+    tool,
+    action,
+    brandId: String(event.brandId || '').slice(0, 80),
+    quantity: Math.max(1, Math.min(10000, Number(event.quantity) || 1)),
+    createdAt: serverTimestamp()
+  });
+}
+
 export { app, auth, db, profileFor, audit };
 
 window.PortalFirebase = {
   readPortalStore, writePortalStore, deletePortalStore, ensurePostsStore, writePost, deletePost, subscribeToPosts,
   subscribeNotifications, markNotificationRead, currentContext, logout, requestPasswordReset,
-  updateOwnProfile, audit
+  updateOwnProfile, recordUsageEvent, audit
 };
 window.dispatchEvent(new Event('portal-firebase-ready'));

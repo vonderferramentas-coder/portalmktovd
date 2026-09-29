@@ -518,7 +518,8 @@
       // auth-guard.js/admin-users.js) até um administrador marcá-la em Usuários e acessos >
       // Permissões por perfil — deixou de ser um bloqueio fixo de código (ver histórico) porque
       // agora é o próprio admin quem decide, por perfil, se ela fica visível ou não
-      { href:'admin-users.html', label:'Usuários e acessos', icon:'<path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6Z"/>', defaultHidden:true }
+      { href:'admin-users.html', label:'Usuários e acessos', icon:'<path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6Z"/>', defaultHidden:true },
+      { href:'usage-dashboard.html', label:'Efetividade da plataforma', icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 16v-3M12 16V8M17 16v-5"/>', defaultHidden:true }
     ] }
   ];
   // fonte única da lista de páginas do menu (achatando os grupos acima), pra Usuários e acessos

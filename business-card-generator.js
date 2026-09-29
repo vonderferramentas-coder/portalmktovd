@@ -1959,6 +1959,7 @@
       files.push({ name: name + ".jpg", data: new Uint8Array(await blob.arrayBuffer()) });
     }
     triggerBlob(makeZip(files), zipFileName(records, safeFile(brand.name) + "-pdf-e-jpg-" + label + "-" + records.length + (records.length === 1 ? "-cartao" : "-cartoes")));
+    window.PortalUsage && window.PortalUsage.track('business-card-generator', 'pdf_export', { quantity: records.length, dedupeKey: 'cards:' + records.map(function (record) { return record.id || record.name; }).join('|') });
     toast("ZIP com PDF e JPG gerado com sucesso.");
   }
 
@@ -2437,7 +2438,8 @@
       files.push({ name: name + ".pdf", data: new Uint8Array(recordDoc.output("arraybuffer")) });
     }
     var zip = makeZip(files);
-    triggerBlob(zip, zipFileName(records, safeFile(brand.name) + "-" + label + "-" + records.length + "-cartoes"));
+      triggerBlob(zip, zipFileName(records, safeFile(brand.name) + "-" + label + "-" + records.length + "-cartoes"));
+    window.PortalUsage && window.PortalUsage.track('business-card-generator', 'pdf_export', { quantity: records.length, dedupeKey: 'cards:' + records.map(function (record) { return record.id || record.name; }).join('|') });
     toast("ZIP com " + records.length + " PDFs gerado com sucesso.");
   }
 

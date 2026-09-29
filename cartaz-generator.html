@@ -50,45 +50,13 @@
                 <summary>
                     <h2>Template do cartaz</h2>
                     <span class="cg-tip"><button type="button" class="cg-tip-btn" aria-label="Como funciona o template" aria-describedby="templateTip">i</button>
-                        <span class="cg-tip-text" id="templateTip" role="tooltip"><strong>Template por evento</strong><span class="cg-tip-p"><b>Fundo:</b> um arquivo para A4 e outro para A3 (JPG, PNG ou WebP) com a proporção da folha, 1 : 1,414. Ex.: 1654 × 2339 px (A4) e 1754 × 2481 px (A3).</span><span class="cg-tip-p"><b>Logo:</b> a imagem do canto superior direito (PNG com fundo transparente, SVG ou WebP), igual em A4 e A3.</span><span class="cg-tip-p"><b>Texto do cabeçalho:</b> o título e o subtítulo da faixa do topo.</span><span class="cg-tip-p">Cada item volta ao padrão do portal com “Restaurar”. Template, logo e texto do cabeçalho ficam salvos para todos que usam o portal (não dependem da grade salva). Imagens muito pesadas são comprimidas para caber.</span></span></span>
+                        <span class="cg-tip-text" id="templateTip" role="tooltip"><strong>Template por evento</strong><span class="cg-tip-p"><b>Fundo:</b> um arquivo para A4 e outro para A3 (JPG, PNG ou WebP) com a proporção da folha, 1 : 1,414. Ex.: 1654 × 2339 px (A4) e 1754 × 2481 px (A3).</span><span class="cg-tip-p"><b>Logo:</b> a imagem do canto superior direito (PNG com fundo transparente, SVG ou WebP), igual em A4 e A3.</span><span class="cg-tip-p"><b>Texto do cabeçalho:</b> o título e o subtítulo da faixa do topo, com cores próprias para a faixa e para cada fonte.</span><span class="cg-tip-p">Cada card abaixo é um template independente; marque "Usar como vigente" no card que deve aparecer na prévia e na exportação. Use o card "+" para criar um novo do zero. Os templates ficam salvos para todos que usam o portal (não dependem da grade salva). Imagens muito pesadas são comprimidas para caber.</span></span></span>
                     <svg class="cg-fold-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                 </summary>
-                <div class="cg-template-groups">
-                    <div class="cg-template-group">
-                        <h3>Fundo</h3>
-                        <div class="cg-template-slots">
-                            <div class="cg-template-slot" data-format="A4">
-                                <div class="cg-template-thumb" aria-hidden="true"></div>
-                                <div class="cg-template-info"><strong>A4</strong><span class="cg-template-name">Padrão do portal</span>
-                                    <div class="cg-template-actions"><label class="upload">Enviar fundo A4<input type="file" accept="image/png,image/jpeg,image/webp" data-template-file="A4"></label><button type="button" class="secondary" data-template-reset="A4" hidden>Restaurar</button></div></div>
-                            </div>
-                            <div class="cg-template-slot" data-format="A3">
-                                <div class="cg-template-thumb" aria-hidden="true"></div>
-                                <div class="cg-template-info"><strong>A3</strong><span class="cg-template-name">Padrão do portal</span>
-                                    <div class="cg-template-actions"><label class="upload">Enviar fundo A3<input type="file" accept="image/png,image/jpeg,image/webp" data-template-file="A3"></label><button type="button" class="secondary" data-template-reset="A3" hidden>Restaurar</button></div></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="cg-template-group">
-                        <h3>Logo</h3>
-                        <div class="cg-template-slot" id="logoSlot">
-                            <div class="cg-logo-thumb" aria-hidden="true"></div>
-                            <div class="cg-template-info"><strong>Logo do cabeçalho</strong><span class="cg-template-name">Padrão do portal</span>
-                                <div class="cg-template-actions"><label class="upload">Enviar logo<input type="file" accept="image/png,image/webp,image/jpeg,image/svg+xml" id="logoFile"></label><button type="button" class="secondary" id="logoReset" hidden>Restaurar</button></div></div>
-                        </div>
-                    </div>
-                    <div class="cg-template-group">
-                        <h3>Texto do cabeçalho</h3>
-                        <div class="cg-header-fields">
-                            <label>Título<input type="text" id="headerTitle" maxlength="60" autocomplete="off"></label>
-                            <label>Subtítulo <small>(cada linha do campo vira uma linha no cartaz)</small><textarea id="headerSub" rows="2" maxlength="120"></textarea></label>
-                            <div class="cg-template-actions"><button type="button" class="secondary" id="headerReset" hidden>Restaurar texto padrão</button></div>
-                        </div>
-                    </div>
-                </div>
+                <div class="cg-template-sets" id="templateSets"></div>
             </details>
             <details class="box cg-fold cg-library" id="gridLibrary">
-                <summary><span><span class="k">Biblioteca</span><h2>Planilhas salvas</h2></span><svg class="cg-fold-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+                <summary><span><h2>Planilhas salvas</h2></span><svg class="cg-fold-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
                 <p class="cg-library-desc">Abra uma grade compartilhada para continuar editando os cartazes.</p><div id="savedGrids" class="cg-saved-grids" aria-live="polite"></div>
             </details>
             <section class="work" id="work" hidden>
@@ -116,9 +84,11 @@
             <dialog class="cg-dialog" id="brandLogoDialog" aria-labelledby="brandLogoDialogTitle"><form method="dialog"><button value="cancel" class="cg-dialog-close" aria-label="Fechar">&times;</button><h2 id="brandLogoDialogTitle">Escolher logo</h2><p>Escolha a versão que será usada nos cartazes desta marca.</p><div class="brand-logo-options" id="brandLogoOptions"></div><label class="upload brand-logo-upload">Enviar logo (SVG ou PNG)<input id="brandLogoUpload" type="file" accept="image/svg+xml,image/png"></label><div class="cg-dialog-actions"><button value="cancel">Cancelar</button><button type="button" id="brandLogoSave" autofocus>Salvar</button></div></form></dialog>
             <div id="toast" class="toast" hidden></div>
             <dialog class="cg-dialog export-progress-dialog" id="exportProgressDialog" aria-labelledby="exportProgressTitle"><div class="export-progress-body"><h2 id="exportProgressTitle">Gerando cartazes</h2><p id="exportProgressText" aria-live="polite">Preparando exportação…</p><progress id="exportProgressBar" max="100" value="0">0%</progress><div class="export-progress-meta"><span id="exportProgressCount">0 páginas concluídas</span><strong id="exportProgressPercent">0%</strong></div><button type="button" id="exportCancel">Cancelar exportação</button></div></dialog>
+            <div class="modal-backdrop" id="templateModalBackdrop" aria-hidden="true"><section class="modal modal--wide" role="dialog" aria-modal="true" aria-labelledby="templateModalTitle"><div class="modal-header"><div class="modal-header-title"><h2 id="templateModalTitle">Editar template</h2></div><div class="modal-header-actions"><button type="button" class="modal-close" id="templateModalClose" aria-label="Fechar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div></div><div class="modal-body" id="templateModalBody"></div><div class="modal-footer"><button type="button" class="btn ghost" id="templateModalCancel">Cancelar</button><button type="button" class="btn" id="templateModalSave">Salvar</button></div></section></div>
         </main>
     </div>
     <script src="portal-shell.js"></script>
+    <script src="usage-analytics.js"></script>
     <script src="vendor/xlsx.full.min.js"></script>
     <script src="vendor/html2canvas.min.js"></script>
     <script src="vendor/jszip.min.js"></script>

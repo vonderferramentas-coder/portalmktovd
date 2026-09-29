@@ -49,6 +49,27 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Eventos são criados pelo navegador do próprio colaborador somente após uma entrega
+    // concluída. Ele nunca pode ler, editar ou excluir o histórico. Os resumos são produzidos
+    // pelo GitHub Actions/Admin SDK; Gestão recebe só os agregados, Admin também o detalhe.
+    match /usageEvents/{eventId} {
+      allow create: if activeUser()
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['actorUid', 'tool', 'action', 'brandId', 'quantity', 'createdAt'])
+        && request.resource.data.tool is string
+        && request.resource.data.action is string
+        && request.resource.data.brandId is string
+        && request.resource.data.quantity is number
+        && request.resource.data.quantity >= 1 && request.resource.data.quantity <= 10000;
+      allow read: if admin();
+      allow update, delete: if false;
+    }
+
+    match /usageDaily/{summaryId} {
+      allow read: if activeUser() && (currentUser().role == 'admin' || currentUser().role == 'gestao');
+      allow write: if false;
+    }
+
     match /portalStore/{recordId} {
       allow read: if activeUser();
       allow write: if activeUser() && (admin() || (!isControlDoc(recordId) && !isCollectedDataDoc(recordId)));

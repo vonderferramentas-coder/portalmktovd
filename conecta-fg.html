@@ -500,6 +500,7 @@
   </div>
   <script src="sync-backend.js"></script>
   <script src="portal-shell.js"></script>
+  <script src="usage-analytics.js"></script>
   <script src="catalog-provider.js"></script>
   <script src="conecta-fg.js"></script>
   <script>
@@ -1031,6 +1032,7 @@
           currentPostVersion = result.updated_at || currentPostVersion;
           currentCreatedAt = createdAt;
           await saveIndex({ id, title: model.title, createdAt, updatedAt: now, productCount: products.length });
+          window.PortalUsage && window.PortalUsage.track('conecta-fg', 'post_saved', { dedupeKey: 'conecta-save:' + id });
           $('saveStatus').textContent = 'Post salvo';
           $('work').hidden = true;
           $('library').hidden = false;
@@ -1350,6 +1352,7 @@
       $('copyCode').addEventListener('click', async () => {
         const btn = $('copyCode');
         try { await navigator.clipboard.writeText($('code').value); } catch { $('code').select(); }
+        window.PortalUsage && window.PortalUsage.track('conecta-fg', 'code_copied', { dedupeKey: 'conecta-copy:' + (currentPostId || $('title').value) });
         btn.classList.add('is-copied');
         btn.setAttribute('aria-label', 'Código copiado');
         clearTimeout(btn._copyTimer);
