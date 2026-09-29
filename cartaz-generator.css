@@ -1670,6 +1670,21 @@ button:disabled {
     color: var(--cg-ink);
     border: 1px solid var(--cg-line);
 }
+.print-submenu .action-menu {
+    position: relative;
+}
+.print-submenu .action-menu > button[aria-haspopup] {
+    justify-content: space-between;
+}
+.print-submenu .action-menu > button[aria-haspopup]::after {
+    content: '›';
+    margin-left: 8px;
+}
+.print-submenu .print-submenu {
+    top: 0;
+    right: calc(100% + 8px);
+    left: auto;
+}
 /* Layout final: cabeçalho e marca ocupam o topo; a grade começa na área livre abaixo. */
 .sheet-heading {
     position: absolute;

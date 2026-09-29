@@ -497,8 +497,32 @@
     }
     $('exportCancel').onclick = cancelExport;
     $('exportProgressDialog').addEventListener('cancel', event => { event.preventDefault(); cancelExport(); });
-    async function exportZip(allBrands, only) {
-        if (!S.pages.length || !window.html2canvas || !window.JSZip) { toast('A exportação não está disponível agora. Recarregue a página e tente novamente.'); return; }
+    function blobToDataUrl(blob) { return new Promise((resolve, reject) => { let reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob); }); }
+    /* PDF: reaproveita o mesmo JPEG (já comprimido a .92) usado no JPG, só embutido no PDF sem
+       recodificar - é o jeito mais leve de gerar o PDF sem perder a qualidade de impressão em 300 DPI.
+       Uma marca vira um único PDF (uma página por página do cartaz), agrupado por formato+marca porque
+       a mesma marca pode ter páginas tanto em A3 quanto em A4. */
+    async function buildPdfOutputs(rendered) {
+        let groups = new Map();
+        for (let item of rendered) {
+            let key = item.format + '|' + item.brand;
+            if (!groups.has(key)) groups.set(key, { format: item.format, brand: item.brand, items: [] });
+            groups.get(key).items.push(item);
+        }
+        let outputs = [];
+        for (let group of groups.values()) {
+            let pdf = new window.jspdf.jsPDF({ unit: 'mm', format: group.format.toLowerCase(), compress: true }), size = pdf.internal.pageSize, width = size.getWidth(), height = size.getHeight();
+            for (let i = 0; i < group.items.length; i++) {
+                if (i > 0) pdf.addPage(group.format.toLowerCase());
+                let dataUrl = await blobToDataUrl(group.items[i].blob);
+                pdf.addImage(dataUrl, 'JPEG', 0, 0, width, height, undefined, 'FAST');
+            }
+            outputs.push({ path: group.format + '/' + group.brand + '_' + group.format + '.pdf', blob: pdf.output('blob') });
+        }
+        return outputs;
+    }
+    async function runExport(format, allBrands, only) {
+        if (!S.pages.length || !window.html2canvas || !window.JSZip || (format === 'pdf' && !(window.jspdf && window.jspdf.jsPDF))) { toast('A exportação não está disponível agora. Recarregue a página e tente novamente.'); return; }
         let originalBrand = S.brand, originalFormat = S.printFormat, buttons = [$('printMenu'), $('exportMenu')], targets = allBrands ? S.pages.filter(page => !only || only.includes(page.brand)) : S.pages.filter(page => page.brand === originalBrand && (!originalFormat || page.format === originalFormat));
         if (!targets.length) { toast('Nenhuma página para exportar.'); return; }
         buttons.forEach(button => button.disabled = true);
@@ -506,7 +530,7 @@
         if (!$('exportProgressDialog').open) $('exportProgressDialog').showModal();
         $('work').setAttribute('aria-busy', 'true');
         try {
-            let preview = $('preview'), zip = new JSZip(), renderKey = '';
+            let preview = $('preview'), renderKey = '', rendered = [];
             for (let index = 0; index < targets.length; index++) {
                 if (exportCancelled) { let error = Error('Exportação cancelada.'); error.name = 'AbortError'; throw error; }
                 let page = targets[index], pageIndex = S.pages.indexOf(page), key = page.brand + '|' + page.format;
@@ -529,19 +553,31 @@
                     if (canvas) { canvas.width = 0; canvas.height = 0; }
                 }
                 let pageNumber = S.pages.filter(item => item.brand === page.brand && item.format === page.format).indexOf(page) + 1, brand = safeName(page.brand);
-                zip.file(page.format + '/' + brand + '/' + brand + '_Página' + pageNumber + '_' + page.format + '.jpg', image);
+                rendered.push({ format: page.format, brand, pageNumber, blob: image });
                 updateExportProgress((index + 1) / targets.length * 90, index + 1, targets.length, 'Página ' + (index + 1) + ' de ' + targets.length + ' concluída.');
                 await yieldExportUi();
             }
             $('exportCancel').disabled = true;
-            updateExportProgress(90, targets.length, targets.length, 'Preparando o arquivo ZIP para download…');
-            let blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' }, metadata => updateExportProgress(90 + metadata.percent / 10, targets.length, targets.length, 'Preparando o arquivo ZIP para download…'));
-            let link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = only ? 'Cartaz_selecionadas.zip' : allBrands ? 'Cartaz.zip' : 'Cartaz_' + safeName(originalBrand) + '.zip'; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+            updateExportProgress(90, targets.length, targets.length, format === 'pdf' ? 'Montando o PDF…' : 'Preparando o arquivo para download…');
+            let outputs = format === 'pdf' ? await buildPdfOutputs(rendered) : rendered.map(item => ({ path: item.format + '/' + item.brand + '/' + item.brand + '_Página' + item.pageNumber + '_' + item.format + '.jpg', blob: item.blob }));
+            let finalBlob, filename;
+            /* Marca única (ou qualquer seleção que resulte em um só arquivo) baixa direto, sem ZIP:
+               o PDF já junta as páginas de uma marca em um único arquivo; o JPG só cai nesse caso
+               quando a marca tem uma única página. */
+            if (outputs.length === 1) {
+                finalBlob = outputs[0].blob; filename = outputs[0].path.split('/').pop();
+            } else {
+                let zip = new JSZip();
+                outputs.forEach(output => zip.file(output.path, output.blob));
+                finalBlob = await zip.generateAsync({ type: 'blob', compression: 'STORE' }, metadata => updateExportProgress(90 + metadata.percent / 10, targets.length, targets.length, 'Preparando o arquivo ZIP para download…'));
+                filename = (only ? 'Cartaz_selecionadas' : allBrands ? 'Cartaz' : 'Cartaz_' + safeName(originalBrand)) + (format === 'pdf' ? '_PDF' : '') + '.zip';
+            }
+            let link = document.createElement('a'); link.href = URL.createObjectURL(finalBlob); link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 5000);
             updateExportProgress(100, targets.length, targets.length, 'Download iniciado.');
             await new Promise(resolve => setTimeout(resolve, 350));
-            toast('ZIP exportado com sucesso.');
+            toast((outputs.length === 1 ? (format === 'pdf' ? 'PDF' : 'Arquivo') : 'ZIP') + ' exportado com sucesso.');
         } catch (error) {
-            if (error.name === 'AbortError') toast('Exportação cancelada.'); else { console.error(error); toast(error.message || 'Não foi possível exportar o ZIP.'); }
+            if (error.name === 'AbortError') toast('Exportação cancelada.'); else { console.error(error); toast(error.message || 'Não foi possível exportar.'); }
         } finally {
             S.only = null; S.brand = originalBrand; S.printFormat = originalFormat; draw();
             $('work').removeAttribute('aria-busy');
@@ -549,20 +585,27 @@
             buttons.forEach(button => button.disabled = !S.pages.length);
         }
     }
-    function closeActionMenus() { [['printMenu', 'printMenuList'], ['exportMenu', 'exportMenuList']].forEach(([button, menu]) => { $(menu).hidden = true; $(button).setAttribute('aria-expanded', 'false'); }); }
+    function closeActionMenus() { [['printMenu', 'printMenuList'], ['exportMenu', 'exportMenuList'], ['exportPdfMenu', 'exportPdfMenuList'], ['exportJpgMenu', 'exportJpgMenuList']].forEach(([button, menu]) => { $(menu).hidden = true; $(button).setAttribute('aria-expanded', 'false'); }); }
     function toggleActionMenu(button, menu) { let open = $(menu).hidden; closeActionMenus(); $(menu).hidden = !open; $(button).setAttribute('aria-expanded', String(open)); }
+    function toggleNestedMenu(button, menu, siblings) { let open = $(menu).hidden; siblings.forEach(([siblingButton, siblingMenu]) => { $(siblingMenu).hidden = true; $(siblingButton).setAttribute('aria-expanded', 'false'); }); $(menu).hidden = !open; $(button).setAttribute('aria-expanded', String(open)); }
     $('printMenu').onclick = () => toggleActionMenu('printMenu', 'printMenuList');
     $('exportMenu').onclick = () => toggleActionMenu('exportMenu', 'exportMenuList');
     $('printBrand').onclick = () => { closeActionMenus(); print(); };
     [...$('printMenuList').querySelectorAll('[data-print-format]')].forEach(button => button.onclick = () => { closeActionMenus(); printAllBrands(button.dataset.printFormat); });
-    $('exportBrand').onclick = () => { closeActionMenus(); exportZip(false); };
-    $('exportAll').onclick = () => { closeActionMenus(); exportZip(true); };
-    /* Exportar marcas selecionadas: escolhe por marca (grupo vinculado = uma entrada); a ordem do ZIP segue a das páginas. */
-    let normalizeSearch = text => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-    $('exportPick').onclick = () => { closeActionMenus(); let keys = [...new Set(S.pages.map(page => page.brand))]; $('exportPickList').innerHTML = keys.map(key => { let page = S.pages.find(item => item.brand === key); return '<label><input type="checkbox" value="' + e(key) + '">' + e(page.brands ? page.brands.join(' + ') : key) + '</label>'; }).join(''); $('exportPickSearch').value = ''; $('exportPickAll').textContent = 'Marcar todas'; $('exportPickDialog').showModal(); $('exportPickSearch').focus(); };
+    $('exportPdfMenu').onclick = event => { event.stopPropagation(); toggleNestedMenu('exportPdfMenu', 'exportPdfMenuList', [['exportJpgMenu', 'exportJpgMenuList']]); };
+    $('exportJpgMenu').onclick = event => { event.stopPropagation(); toggleNestedMenu('exportJpgMenu', 'exportJpgMenuList', [['exportPdfMenu', 'exportPdfMenuList']]); };
+    $('exportPdfBrand').onclick = () => { closeActionMenus(); runExport('pdf', false); };
+    $('exportPdfAll').onclick = () => { closeActionMenus(); runExport('pdf', true); };
+    $('exportJpgBrand').onclick = () => { closeActionMenus(); runExport('jpg', false); };
+    $('exportJpgAll').onclick = () => { closeActionMenus(); runExport('jpg', true); };
+    /* Exportar marcas selecionadas: escolhe por marca (grupo vinculado = uma entrada); a ordem do arquivo segue a das páginas. */
+    let normalizeSearch = text => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(), pendingExportFormat = 'jpg';
+    function openExportPick(format) { pendingExportFormat = format; closeActionMenus(); let keys = [...new Set(S.pages.map(page => page.brand))]; $('exportPickList').innerHTML = keys.map(key => { let page = S.pages.find(item => item.brand === key); return '<label><input type="checkbox" value="' + e(key) + '">' + e(page.brands ? page.brands.join(' + ') : key) + '</label>'; }).join(''); $('exportPickSearch').value = ''; $('exportPickAll').textContent = 'Marcar todas'; $('exportPickDialog').showModal(); $('exportPickSearch').focus(); }
+    $('exportPdfPick').onclick = () => openExportPick('pdf');
+    $('exportJpgPick').onclick = () => openExportPick('jpg');
     $('exportPickSearch').oninput = () => { let q = normalizeSearch($('exportPickSearch').value); [...$('exportPickList').querySelectorAll('label')].forEach(label => { label.hidden = q && !normalizeSearch(label.textContent).includes(q); }); };
     $('exportPickAll').onclick = () => { let boxes = [...$('exportPickList').querySelectorAll('label:not([hidden]) input')], all = boxes.every(box => box.checked); boxes.forEach(box => box.checked = !all); $('exportPickAll').textContent = all ? 'Marcar todas' : 'Desmarcar todas'; };
-    $('exportPickGo').onclick = () => { let only = [...$('exportPickList').querySelectorAll('input:checked')].map(box => box.value); if (!only.length) { toast('Marque ao menos uma marca.'); return; } $('exportPickDialog').close(); exportZip(true, only); };
+    $('exportPickGo').onclick = () => { let only = [...$('exportPickList').querySelectorAll('input:checked')].map(box => box.value); if (!only.length) { toast('Marque ao menos uma marca.'); return; } $('exportPickDialog').close(); runExport(pendingExportFormat, true, only); };
     document.addEventListener('click', event => { if (!event.target.closest('.action-menu')) closeActionMenus(); });
     document.addEventListener('pointerdown', event => { if (!event.target.closest('.card .photo')) document.querySelectorAll('.photo.photo-editing').forEach(photo => photo.classList.remove('photo-editing')); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeActionMenus(); });
