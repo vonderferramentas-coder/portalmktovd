@@ -33581,7 +33581,7 @@
     {
       "date": "2026-09-14",
       "followers": {
-        "Instagram": 618929
+        "Instagram": 618713
       },
       "source": "reconstruido",
       "insights": {
@@ -33791,6 +33791,14 @@
         "Instagram": 633458,
         "Facebook": 46487,
         "YouTube": 41200
+      },
+      "insights": {
+        "Instagram": {
+          "follows": 1938,
+          "unfollows": 226,
+          "net": 1712,
+          "reach": 209024
+        }
       }
     },
     {
@@ -33807,7 +33815,7 @@
       }
     }
   ],
-  "updatedAt": "2026-09-29T10:49:04Z",
+  "updatedAt": "2026-09-29T17:01:19Z",
   "platforms": {
     "Instagram": {
       "accountId": "17841403154695997",
