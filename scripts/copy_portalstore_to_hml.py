@@ -1,6 +1,6 @@
 # Copia uma cópia pontual (não contínua) de documentos de leitura pública/agregada do Firestore
-# de produção (mkt-ovd) para o Firestore de testes (mkt-ovd-hml) — só pra o painel de Redes
-# Sociais e a Central de Inteligência não ficarem vazios ao testar no HML. Usado por
+# de produção (mkt-ovd) para o Firestore de testes (mkt-ovd-hml) — só pra os painéis de Redes
+# Sociais, Central de Inteligência e Efetividade não ficarem vazios ao testar no HML. Usado por
 # copiar-dados-prd-para-hml.yml, disparado manualmente (workflow_dispatch), nunca agendado: HML
 # não precisa de dado ao vivo, só de uma amostra pra testar a interface.
 #
@@ -12,6 +12,7 @@
 import json
 import os
 import sys
+from datetime import date, timedelta
 
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -50,6 +51,17 @@ def _copy_doc(source_db, target_db, doc_id):
     return data
 
 
+def _copy_usage_daily(source_db, target_db):
+    # O painel só consulta até 90 dias; trazemos apenas agregados, nunca usageEvents
+    # (que contém actorUid e permanece exclusivamente em produção).
+    cutoff = (date.today() - timedelta(days=89)).isoformat()
+    copied = 0
+    for snapshot in source_db.collection('usageDaily').where('date', '>=', cutoff).stream():
+        target_db.collection('usageDaily').document(snapshot.id).set(snapshot.to_dict())
+        copied += 1
+    print(f'Métricas de efetividade: {copied} resumo(s) diário(s) copiado(s) desde {cutoff}.')
+
+
 def copy_all(prod_key_json, hml_key_json):
     prod_db = _client(prod_key_json, 'prod-source')
     hml_db = _client(hml_key_json, 'hml-target')
@@ -66,6 +78,8 @@ def copy_all(prod_key_json, hml_key_json):
         chunk_count = ((first.get('v') or {}).get('chunkCount')) or 1
         for index in range(2, chunk_count + 1):
             _copy_doc(prod_db, hml_db, f'{base_id}__{index}')
+
+    _copy_usage_daily(prod_db, hml_db)
 
 
 if __name__ == '__main__':

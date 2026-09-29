@@ -1,8 +1,8 @@
-name: Copiar dados de Redes Sociais/Trends para o HML
+name: Copiar dados agregados para o HML
 
 # Só workflow_dispatch: cópia pontual sob demanda, não agendada. HML não precisa de dado ao
 # vivo (ver docs/ARQUITETURA-E-INTEGRACOES.md, seção 17) — só de uma amostra pra testar a
-# interface do painel de Redes Sociais e da Central de Inteligência sem ficar vazia.
+# interface dos painéis de Redes Sociais, Inteligência e Efetividade sem ficar vazia.
 on:
   workflow_dispatch:
 
@@ -16,7 +16,7 @@ jobs:
       - name: Baixar o site
         uses: actions/checkout@v4
 
-      - name: Copiar documentos de produção para o HML
+      - name: Copiar dados agregados de produção para o HML
         env:
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
           FIREBASE_SERVICE_ACCOUNT_KEY_HML: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY_HML }}
