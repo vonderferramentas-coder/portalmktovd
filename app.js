@@ -1,5 +1,5 @@
     // ============================================================
-    // ISOLAMENTO POR MARCA — portal-shell.js (carregado antes deste arquivo) já resolveu qual
+    // ISOLAMENTO POR MARCA - portal-shell.js (carregado antes deste arquivo) já resolveu qual
     // marca está ativa e expôs o sufixo em window.PortalBrand.suffix ('' para a marca padrão,
     // '__{brandId}' para qualquer outra). Todas as chaves de localStorage e de api.php usadas
     // neste arquivo levam esse sufixo, pra cada marca ter seu próprio calendário isolado.
@@ -45,24 +45,24 @@
     const filters = { editorias: [], places: [], types: [], statuses: [], collab: 'any' };
     // produtos selecionados no modal de criar/editar postagem: [{code,name}, ...]
     let selectedProducts = [];
-    // texto exato ("Pauta: ...") da última pauta sugerida inserida no campo de conteúdo — se
+    // texto exato ("Pauta: ...") da última pauta sugerida inserida no campo de conteúdo - se
     // ainda estiver lá quando o usuário escolhe outra pauta, ela é substituída em vez de duplicada
     // (ver renderContentSuggestions()); zerado ao remover produto ou limpar o conteúdo
     let lastInsertedPautaBlock = null;
     // índice em selectedProducts pendente de remoção enquanto o modal de confirmação
-    // (#removeProductConfirmBackdrop) está aberto — ver openRemoveProductConfirm()
+    // (#removeProductConfirmBackdrop) está aberto - ver openRemoveProductConfirm()
     let pendingProductRemovalIdx = null;
-    // catálogo mestre de produtos (data/catalog-vonder.json, via CatalogProvider) — carregado
+    // catálogo mestre de produtos (data/catalog-vonder.json, via CatalogProvider) - carregado
     // à parte do catálogo manual em APP_SETTINGS.catalog; os dois alimentam productCandidates()
     let masterCatalog = [];
     // imagens de referência anexadas no modal de criar/editar postagem (campo "Referências
-    // salvas em:"): [{id,name,width,height,dataUrl}, ...] — refletem na pré-visualização do
+    // salvas em:"): [{id,name,width,height,dataUrl}, ...] - refletem na pré-visualização do
     // briefing e são embutidas no .docx exportado
     let editingReferenceImages = [];
     let guidedPostStep = 1;
 
     // ============================================================
-    // HELPERS DE COR E EXIBIÇÃO — cores de tags/status, ícones de rede,
+    // HELPERS DE COR E EXIBIÇÃO - cores de tags/status, ícones de rede,
     // normalização de texto e montagem de URL de imagem de produto
     // ============================================================
     const TAG_PALETTE = ['#7c3aed','#0284c7','#16a34a','#b45309','#dc2626','#db2777','#0d9488','#4f46e5','#65a30d','#ea580c'];
@@ -82,7 +82,7 @@
       if(n && n.color) return n.color;
       return tagColor(name, (APP_SETTINGS.networks||[]).map(x=>x.name));
     }
-    // ícones coloridos oficiais (arquivos em icons/) — usados quando o nome da rede bate com um
+    // ícones coloridos oficiais (arquivos em icons/) - usados quando o nome da rede bate com um
     // preset conhecido, ou quando a rede tem um ícone explícito (preset escolhido ou SVG customizado
     // enviado em Configurações → Redes)
     const PRESET_ICONS = {
@@ -127,13 +127,13 @@
       trigger.title = 'Escolher ícone da rede';
       trigger.setAttribute('aria-haspopup', 'true');
       trigger.setAttribute('aria-expanded', 'false');
-      if(current && current.type==='custom' && current.dataUrl) trigger.innerHTML = `<img src="${current.dataUrl}" alt="ícone personalizado" />`;
+      if(current && current.type==='custom' && current.dataUrl) trigger.innerHTML = `<img src="${escapeHtml(current.dataUrl)}" alt="ícone personalizado" />`;
       else if(current && current.type==='preset' && PRESET_ICONS[current.key]) trigger.innerHTML = `<img src="${PRESET_ICONS[current.key]}" alt="${current.key}" />`;
       else trigger.innerHTML = '<span class="icon-picker-none">–</span>';
 
       // o popover é ancorado ao <body> (não fica dentro de `container`) porque o gatilho costuma
       // estar dentro de uma linha de rede com overflow:hidden (truque do cantos arredondados) ou
-      // de um painel de Configurações com scroll — um popover position:absolute preso ali dentro
+      // de um painel de Configurações com scroll - um popover position:absolute preso ali dentro
       // seria cortado. Fica desanexado do body exceto enquanto estiver aberto.
       const popover = document.createElement('div');
       popover.className = 'icon-picker-popover';
@@ -193,7 +193,7 @@
       const isCustom = !!(current && current.type==='custom' && current.dataUrl);
       const uploadBtn = document.createElement('label');
       uploadBtn.className = 'icon-picker-upload-btn' + (isCustom ? ' selected' : '');
-      uploadBtn.innerHTML = `${isCustom ? `<img src="${current.dataUrl}" alt="ícone personalizado" class="icon-picker-upload-preview" />` : UI_ICONS.upload(15)}<span>${isCustom ? 'Trocar arquivo personalizado' : 'Subir arquivo personalizado'}</span>`;
+      uploadBtn.innerHTML = `${isCustom ? `<img src="${escapeHtml(current.dataUrl)}" alt="ícone personalizado" class="icon-picker-upload-preview" />` : UI_ICONS.upload(15)}<span>${isCustom ? 'Trocar arquivo personalizado' : 'Subir arquivo personalizado'}</span>`;
       const fileInput = document.createElement('input');
       fileInput.type = 'file';
       fileInput.accept = '.svg,image/svg+xml';
@@ -223,15 +223,15 @@
       container.appendChild(trigger);
       container.appendChild(popover);
     }
-    // nome curto da rede (ex: "IG"), usado em exibições compactas — cai para o nome completo se não houver
+    // nome curto da rede (ex: "IG"), usado em exibições compactas - cai para o nome completo se não houver
     function networkShortName(name){
       const n = (APP_SETTINGS.networks||[]).find(x=>x.name===name);
       return (n && n.shortName) || name || '';
     }
 
     // normaliza rede(s)/tipo(s)/formato(s) de uma postagem numa lista de { channel, types, places }.
-    // Usa post.channels quando presente — postagens geradas a partir do agendamento de uma
-    // editoria cobrem várias redes de uma vez, cada uma com seus próprios tipos e formatos — e
+    // Usa post.channels quando presente - postagens geradas a partir do agendamento de uma
+    // editoria cobrem várias redes de uma vez, cada uma com seus próprios tipos e formatos - e
     // cai para uma lista de um item só a partir dos campos legados (channel/place/type) usados
     // pelas postagens criadas manualmente pelo modal (uma rede por postagem).
     function postChannelEntries(p){
@@ -239,14 +239,14 @@
       if(!p.channel) return [];
       return [{ channel: p.channel, types: [p.type||'Static'], places: Array.isArray(p.place)?p.place.slice():[p.place].filter(Boolean) }];
     }
-    // texto legível com o detalhe completo de redes/formatos/tipos de uma postagem — usado em tooltips
+    // texto legível com o detalhe completo de redes/formatos/tipos de uma postagem - usado em tooltips
     function postChannelsDetailText(p){
       return postChannelEntries(p).map(c=>{
         const typesLabel = (c.types||[]).map(t=> t==='Video'?'Vídeo':'Estático').join('/');
         return `${networkShortName(c.channel)}: ${(c.places||[]).join(', ')}${typesLabel?` (${typesLabel})`:''}`;
       }).join(' · ');
     }
-    // true se as redes da postagem têm tipos/formatos diferentes entre si — só acontece em cards
+    // true se as redes da postagem têm tipos/formatos diferentes entre si - só acontece em cards
     // vindos do agendamento de uma editoria (cada rede pode ter sua própria combinação). Nesse
     // caso o modal simples (um Tipo + um conjunto de Formatos para a postagem toda) não consegue
     // representar a distribuição, então Formato/Tipo/Redes ficam travados na edição.
@@ -276,14 +276,14 @@
       const digits = String(code||'').replace(/\D/g,'');
       if(!digits) return '';
       // O host de imagens estáticas da Vonder bloqueia embeds <img> de outros sites
-      // (proteção contra hotlink além de um simples check de Referer — só "no-referrer"
+      // (proteção contra hotlink além de um simples check de Referer - só "no-referrer"
       // não bastou). Por isso passamos por um proxy público que busca a imagem no servidor.
       const origin = `www.vonder.com.br/estatico/vonder/temp/320_${digits}.jpg`;
       return `https://images.weserv.nl/?url=${encodeURIComponent(origin)}`;
     }
 
     // ============================================================
-    // PRODUTOS SELECIONADOS NO MODAL — chips de produto escolhidos
+    // PRODUTOS SELECIONADOS NO MODAL - chips de produto escolhidos
     // para a postagem em criação/edição
     // ============================================================
     function hideProductSuggestions(){
@@ -298,8 +298,8 @@
     }
 
     // postagem com todos os campos essenciais preenchidos? Usado pelo ícone de completo/pendência
-    // ao lado do contador de cada dia. Título, Produto(s) — ou marcada como "sem produto", pra
-    // institucionais/anúncios — Onde salvar a arte e Conteúdo da publicação contam; Imagem de
+    // ao lado do contador de cada dia. Título, Produto(s) - ou marcada como "sem produto", pra
+    // institucionais/anúncios - Onde salvar a arte e Conteúdo da publicação contam; Imagem de
     // referência e Referências ficam de fora por serem materiais de apoio opcionais, não algo
     // que toda postagem precisa ter.
     function isPostComplete(post){
@@ -323,14 +323,14 @@
       wrap.querySelectorAll('.pc-remove').forEach(bt=> bt.addEventListener('click', ()=>{
         const i = parseInt(bt.dataset.idx,10);
         // se já tem conteúdo escrito, remover o produto também apaga esse conteúdo (as pautas e a
-        // legenda geradas eram sobre ele) — por ser destrutivo, passa por confirmação antes
+        // legenda geradas eram sobre ele) - por ser destrutivo, passa por confirmação antes
         if(($('mNotes').value||'').trim()){ openRemoveProductConfirm(i); return; }
         removeSelectedProduct(i);
       }));
       refreshModalDynamic();
     }
 
-    // remove o produto pelo índice e reseta pautas/legenda em uso — chamada direto quando não há
+    // remove o produto pelo índice e reseta pautas/legenda em uso - chamada direto quando não há
     // conteúdo a perder, ou depois de confirmar em openRemoveProductConfirm()
     function removeSelectedProduct(idx, clearContent){
       selectedProducts.splice(idx,1);
@@ -360,7 +360,7 @@
     }
 
     // ============================================================
-    // LIMPAR CONTEÚDO — botão que zera o campo Texto (legenda/pautas usadas) de propósito, sem
+    // LIMPAR CONTEÚDO - botão que zera o campo Texto (legenda/pautas usadas) de propósito, sem
     // depender de remover produto pra isso
     // ============================================================
     function wireClearContentBtn(){
@@ -376,7 +376,7 @@
     }
 
     // ============================================================
-    // SUGESTÃO DE TÍTULO — gera propostas de título a partir do(s)
+    // SUGESTÃO DE TÍTULO - gera propostas de título a partir do(s)
     // produto(s), editoria(s) e rede(s) escolhidos no modal
     // ============================================================
     // encurta um nome de catálogo como "Adesivo instantâneo cianoacrilato, 7,5 g, blister, VONDER"
@@ -432,7 +432,7 @@
       const editorias = Array.from(document.querySelectorAll('.mEditoria:checked')).map(e=>e.value);
 
       const candidates = [];
-      // candidato com destaque real do catálogo (quando o produto selecionado tem esse dado) —
+      // candidato com destaque real do catálogo (quando o produto selecionado tem esse dado) -
       // entra primeiro na lista pra concorrer com prioridade contra os templates genéricos
       const details = primarySelectedProductDetails();
       if(details && details.destaques){
@@ -460,7 +460,7 @@
     }
 
     // ============================================================
-    // SUGESTÕES DE CONTEÚDO — 3 pautas com estrutura recomendada,
+    // SUGESTÕES DE CONTEÚDO - 3 pautas com estrutura recomendada,
     // de acordo com a(s) editoria(s) marcada(s) no modal
     // ============================================================
     // frase do produto para entrar nas sugestões ("o <produto>"); cai para um termo
@@ -471,7 +471,7 @@
       return names.length ? joinProductNames(names) : 'produto';
     }
 
-    // cada editoria tem exatamente 3 pautas fixas — manchetes/ideias já prontas pra virar o
+    // cada editoria tem exatamente 3 pautas fixas - manchetes/ideias já prontas pra virar o
     // ponto de partida do post (não uma instrução de como montá-lo), pensadas pro objetivo
     // específico daquela editoria
     // specsPreview: junta 1-3 pares "Rótulo: valor" da ficha técnica pra caber numa pauta curta
@@ -481,17 +481,17 @@
     function pickRandom(list){ return list[Math.floor(Math.random()*list.length)]; }
 
     // ============================================================
-    // GANCHOS DE COPY — cada dado real do produto (destaque/aplicação/embalagem/specs) pode virar
+    // GANCHOS DE COPY - cada dado real do produto (destaque/aplicação/embalagem/specs) pode virar
     // conteúdo de vários jeitos (pergunta, curiosidade, contraste, prova técnica) em vez de sempre
     // virar "Rótulo: valor" cru. hookFor() sorteia uma dessas formas a cada chamada, então clicar
     // em "gerar outras opções" também varia a abordagem, não só o texto de fundo.
     // ============================================================
     const HOOK_FORMULAS = {
       destaque: [
-        (p,text) => `Você sabia? ${text} — e é por isso que o ${p} se destaca.`,
+        (p,text) => `Você sabia? ${text} - e é por isso que o ${p} se destaca.`,
         (p,text) => `O detalhe que faz diferença no ${p}: ${text}`,
         (p,text) => `Por dentro do ${p}: ${text}`,
-        (p,text) => `${p} tem um diferencial que passa despercebido — ${text}`
+        (p,text) => `${p} tem um diferencial que passa despercebido - ${text}`
       ],
       aplicacao: [
         (p,text) => `Pra que serve o ${p}, na prática? ${text}`,
@@ -502,12 +502,12 @@
       embalagem: [
         (p,text) => `Tudo o que acompanha o ${p}, numa caixa só: ${text}`,
         (p,text) => `Antes de comprar o ${p}, veja o que vem junto: ${text}`,
-        (p,text) => `${p} completo, sem pegadinha — vem com: ${text}`,
+        (p,text) => `${p} completo, sem pegadinha - vem com: ${text}`,
         (p,text) => `Desembalando o ${p}: ${text}`
       ],
       specs: [
         (p,text) => `Os números por trás do ${p}: ${text}`,
-        (p,text) => `${p} em ficha técnica — o que pesa na hora de escolher: ${text}`,
+        (p,text) => `${p} em ficha técnica - o que pesa na hora de escolher: ${text}`,
         (p,text) => `Compare antes de decidir: o ${p} traz ${text}`,
         (p,text) => `Especificações que fazem diferença no ${p}: ${text}`
       ]
@@ -519,11 +519,11 @@
       return pickRandom(HOOK_FORMULAS[kind])(p, text);
     }
 
-    // cada template abaixo recebe (p, d) — p é a frase do produto (sempre disponível) e d são os
+    // cada template abaixo recebe (p, d) - p é a frase do produto (sempre disponível) e d são os
     // dados ricos do catálogo mestre (destaques/aplicações/ficha técnica), ou null quando o
     // produto não veio do catálogo mestre (cadastro manual) ou não tem esse campo preenchido.
     // Nesse caso a função cai pro texto genérico original.
-    // toda função abaixo referencia ${p} (nunca um texto fixo igual pra qualquer produto) — com
+    // toda função abaixo referencia ${p} (nunca um texto fixo igual pra qualquer produto) - com
     // dado real do catálogo mestre disponível, prioriza um campo diferente por posição (embalagem,
     // ficha técnica, aplicações...) pra que produtos diferentes gerem pautas de fato diferentes, e
     // usa hookFor() pra variar a abordagem em vez de só despejar "Rótulo: valor"
@@ -534,7 +534,7 @@
         (p,d) => hookFor('aplicacao', p, d && d.aplicacoes) || `Perguntas frequentes: como usar e conservar o ${p} corretamente`
       ],
       'Destaques': [
-        (p,d) => hookFor('specs', p, d && specsPreview(d.qualificacaoTecnica)) || `Os mais vendidos da semana — e por que os profissionais confiam no ${p}`,
+        (p,d) => hookFor('specs', p, d && specsPreview(d.qualificacaoTecnica)) || `Os mais vendidos da semana - e por que os profissionais confiam no ${p}`,
         p => `${p}: qual versão combina com a sua necessidade`,
         (p,d) => hookFor('destaque', p, d && firstSentence(d.destaques,110)) || `Bastidores da qualidade: como o ${p} é testado antes de chegar até você`
       ],
@@ -555,11 +555,11 @@
       ],
       'Personalizado': [
         p => `[Defina aqui] o tema específico desta campanha personalizada com o ${p}`,
-        p => `Conteúdo alinhado a uma data ou ação comercial específica para o ${p} — descreva o motivo aqui`,
-        p => `Colaboração ou parceria com conteúdo sob medida envolvendo o ${p} — descreva o parceiro/contexto aqui`
+        p => `Conteúdo alinhado a uma data ou ação comercial específica para o ${p} - descreva o motivo aqui`,
+        p => `Colaboração ou parceria com conteúdo sob medida envolvendo o ${p} - descreva o parceiro/contexto aqui`
       ],
       // pautas ligadas à data comemorativa em uso (ver pendingCommemorativeOccasion, setado ao
-      // confirmar a criação de postagem a partir do clique no texto da data no card do dia) —
+      // confirmar a criação de postagem a partir do clique no texto da data no card do dia) -
       // sem uma ocasião específica em mãos, cai num texto genérico
       'Datas comemorativas': [
         p => `${pendingCommemorativeOccasion || 'A data comemorativa'}: uma ideia de conteúdo pra aproveitar a data com o ${p}`,
@@ -569,7 +569,7 @@
     };
 
     // monta até 3 sugestões combinando as editorias marcadas em rodízio (1ª de cada editoria,
-    // depois a 2ª de cada...) — assim o bloco mostra sempre 3 opções, tanto com uma única
+    // depois a 2ª de cada...) - assim o bloco mostra sempre 3 opções, tanto com uma única
     // editoria marcada (as 3 dela) quanto com várias (uma de cada, até completar 3)
     function pickContentSuggestions(){
       const editorias = Array.from(document.querySelectorAll('.mEditoria:checked')).map(e=>e.value);
@@ -591,7 +591,7 @@
 
     // cache das 3 pautas atualmente exibidas + a "assinatura" do contexto (produto+editorias)
     // que as gerou. Sem isso, todo re-render (ex.: o que já acontece a cada tecla digitada em
-    // Texto, via refreshModalDynamic) chamaria pickContentSuggestions() de novo — e como os
+    // Texto, via refreshModalDynamic) chamaria pickContentSuggestions() de novo - e como os
     // ganchos de copy são sorteados (hookFor), as 3 pautas trocariam de texto sozinhas sem o
     // usuário pedir, e o selo "Em uso" nunca bateria com o que społo foi inserido. Só regenera
     // quando o produto/editoria muda de verdade (produto removido conta: reseta as pautas, como
@@ -610,7 +610,7 @@
       if(forceRegenerate || key !== currentContentSuggestionsKey){
         currentContentSuggestions = pickContentSuggestions();
         currentContentSuggestionsKey = key;
-        // contexto mudou (produto/editoria) ou pediu pautas novas — as 3 pautas em uso antes já
+        // contexto mudou (produto/editoria) ou pediu pautas novas - as 3 pautas em uso antes já
         // não correspondem a nenhuma das novas, então a próxima "Usar no conteúdo" deve inserir,
         // não tentar substituir um texto que não existe mais nessas sugestões
         lastInsertedPautaBlock = null;
@@ -619,7 +619,7 @@
       const suggestions = currentContentSuggestions;
       if(suggestions.length===0){ box.innerHTML = `<div class="cs-empty">Selecione uma editoria em Categorização para ver sugestões de pauta.</div>`; return; }
       // botão "gerar outras opções" pra sortear novos ganchos de copy sobre os mesmos dados
-      // reais do produto (ver hookFor/HOOK_FORMULAS) — mesma ideia do shuffle de título
+      // reais do produto (ver hookFor/HOOK_FORMULAS) - mesma ideia do shuffle de título
       box.innerHTML = `<div class="ts-header" style="margin-bottom:8px"><span class="ts-icon">${UI_ICONS.idea(13)}</span><span>Pautas sugeridas</span><button type="button" class="ts-shuffle" id="csShuffle" title="Gerar outras opções">${UI_ICONS.shuffle(13)}</button></div>` +
         `<div class="cs-list">${suggestions.map((s,idx)=>{
           const inUse = lastInsertedPautaBlock === `Pauta: ${s.pauta}`;
@@ -654,11 +654,11 @@
       return `${items.slice(0,-1).join(', ')} e ${items[items.length-1]}`;
     }
 
-    // texto puro (sem HTML) da pré-visualização atual do briefing — atualizado a cada
+    // texto puro (sem HTML) da pré-visualização atual do briefing - atualizado a cada
     // renderBriefingPreview(), é o que o botão de copiar manda pra área de transferência
     let currentBriefingText = '';
 
-    // monta uma linha rotulada (label em destaque + valor) da pré-visualização do briefing —
+    // monta uma linha rotulada (label em destaque + valor) da pré-visualização do briefing -
     // `truncate` deixa o valor em uma linha só com reticências (bom pra links/caminhos longos,
     // que são o que mais "engorda" o bloco visualmente); o valor completo fica no title (tooltip)
     function bpRow(label, value, truncate){
@@ -666,7 +666,7 @@
     }
 
     // mesma linha rotulada de um link/local salvo, mas com o valor virando hyperlink de verdade
-    // (abre em nova aba) — usado em Salvar em, Referências salvas em e Imagem
+    // (abre em nova aba) - usado em Salvar em, Referências salvas em e Imagem
     function bpLinkRow(label, value){
       const href = resolveLinkHref(value);
       const valueHtml = href
@@ -676,13 +676,13 @@
     }
 
     // mesma linha rotulada, mas com o valor em lista (um item por linha) em vez de texto corrido
-    // — usado em Produto(s), pra ficar fácil de ler quando há mais de um produto na postagem
+    // - usado em Produto(s), pra ficar fácil de ler quando há mais de um produto na postagem
     function bpListRow(label, items){
       const li = items.map(item=> `<li>${escapeHtml(item)}</li>`).join('');
       return `<div class="bp-row"><span class="bp-row-label">${escapeHtml(label)}</span><ul class="bp-row-list">${li}</ul></div>`;
     }
 
-    // mesma linha rotulada, mas com o valor em miniaturas de imagem — usado nas imagens de
+    // mesma linha rotulada, mas com o valor em miniaturas de imagem - usado nas imagens de
     // referência anexadas em "Referências salvas em:" (refletem no briefing e são exportadas
     // junto no .docx)
     function bpImagesRow(label, images){
@@ -690,14 +690,14 @@
       return `<div class="bp-row"><span class="bp-row-label">${escapeHtml(label)}</span><div class="bp-row-images">${thumbs}</div></div>`;
     }
 
-    // linha divisória entre o cabeçalho (título + campos) e o Conteúdo — feita de caracteres de
+    // linha divisória entre o cabeçalho (título + campos) e o Conteúdo - feita de caracteres de
     // texto reais (não só uma borda CSS), pra ir junto tanto ao copiar pelo botão quanto ao
     // selecionar o texto na mão e colar em outro editor
     const BRIEFING_SEPARATOR = '─'.repeat(32);
 
     // monta as linhas de texto puro do briefing de uma postagem, na ordem: Título, Publicação
     // prevista para, Formatos, Salvar em, Referências salvas em, Produto(s), Imagem, Observações
-    // e Conteúdo — compartilhada entre a pré-visualização ao vivo do modal (a partir dos campos
+    // e Conteúdo - compartilhada entre a pré-visualização ao vivo do modal (a partir dos campos
     // do formulário) e a exportação de briefing (a partir de um post já salvo)
     function buildBriefingPlainLines({ title, dateLabel, formatsText, hasFormats, artsLink, referencesLink, productItems, imageLink, imageNotes, referenceImages, content }){
       referenceImages = referenceImages || [];
@@ -723,7 +723,7 @@
     }
 
     // campos do briefing (título, formatos, links, produto(s), imagem, observações e conteúdo)
-    // de uma postagem já salva em state.posts — usado na exportação em lote (hoje em .docx);
+    // de uma postagem já salva em state.posts - usado na exportação em lote (hoje em .docx);
     // no mesmo formato de objeto que buildBriefingPlainLines já espera da pré-visualização ao vivo
     function computePostBriefingFields(post){
       const title = (post.title||'').trim();
@@ -745,12 +745,12 @@
       };
     }
 
-    // pré-visualização do texto do briefing, abaixo de Conteúdo da publicação — consolida
+    // pré-visualização do texto do briefing, abaixo de Conteúdo da publicação - consolida
     // título, data prevista, formatos (com dimensões), links de onde salvar arte/referências,
     // produto(s), imagem de referência e o próprio conteúdo da publicação. A versão em texto
     // puro (currentBriefingText, usada pelo botão de copiar) segue a ordem: Título, Publicação
     // prevista para, Formatos, Salvar em, Referências salvas em, Produto, Imagem, Observações e
-    // Conteúdo — mas a exibição visual é montada à parte, em linhas rotuladas mais fáceis de
+    // Conteúdo - mas a exibição visual é montada à parte, em linhas rotuladas mais fáceis de
     // escanear que um parágrafo corrido, com o Conteúdo destacado num bloco próprio no fim.
     // Não inclui "Briefing salvo em" porque esse campo indica onde o PRÓPRIO briefing fica,
     // não é conteúdo do briefing em si.
@@ -773,7 +773,7 @@
       // um item de texto por produto ("código – nome completo"), sem código quando o produto não tem um
       const productItems = selectedProducts.map(p=> [p.code, p.name].filter(Boolean).join(' – '));
 
-      // texto puro pro botão de copiar — uma frase natural por campo, na mesma ordem da exibição
+      // texto puro pro botão de copiar - uma frase natural por campo, na mesma ordem da exibição
       const plainLines = buildBriefingPlainLines({ title, dateLabel, formatsText, hasFormats: checkedPlaces.length>0, artsLink, referencesLink, productItems, imageLink, imageNotes, referenceImages: editingReferenceImages, content });
       currentBriefingText = plainLines.join('\n');
 
@@ -805,7 +805,7 @@
       el.innerHTML = html;
     }
 
-    // copia texto para a área de transferência — tenta a Clipboard API moderna e cai para o
+    // copia texto para a área de transferência - tenta a Clipboard API moderna e cai para o
     // truque do textarea temporário + execCommand quando ela não está disponível (comum em
     // páginas abertas como arquivo local, fora de um contexto seguro/https)
     function copyTextToClipboard(text){
@@ -878,7 +878,7 @@
     }
 
     // resultados que começam pelo termo buscado (no nome ou em algum código, OVD ou FG) vêm antes
-    // dos que só contêm o termo em outro ponto — ex.: buscar "aspirador" mostra "Aspirador de
+    // dos que só contêm o termo em outro ponto - ex.: buscar "aspirador" mostra "Aspirador de
     // pó..." antes de "Escova para aspirador"
     function productMatchRank(item, q, qCode){
       const name = normalizeStr(item.name||'');
@@ -889,7 +889,7 @@
     }
 
     // ============================================================
-    // DADOS RICOS DO PRODUTO (destaques/aplicações/ficha técnica) — vindos do catálogo mestre,
+    // DADOS RICOS DO PRODUTO (destaques/aplicações/ficha técnica) - vindos do catálogo mestre,
     // pra alimentar sugestões de título/pauta e o gerador de legenda com informação real em vez
     // de texto genérico. Produtos cadastrados manualmente em Configurações não têm esses campos
     // (só code/name), então as funções abaixo sempre toleram retorno vazio/nulo.
@@ -907,7 +907,7 @@
       return null;
     }
     // recorta a 1ª frase de um texto até maxLen chars, cortando em espaço (nunca no meio de
-    // uma palavra) — usado pra caber destaques longos em título/pauta sem virar um parágrafo
+    // uma palavra) - usado pra caber destaques longos em título/pauta sem virar um parágrafo
     function firstSentence(text, maxLen){
       let cut = String(text||'').trim().split(/[.!?]\s/)[0] || '';
       cut = cut.trim();
@@ -919,7 +919,7 @@
       return cut;
     }
     // "Tipo: X | Cor: Y | ..." -> [{label:'Tipo',value:'X'}, ...]. Descarta "Aplicação Comercial"
-    // e "Destaques Comercial" — na planilha de origem esses dois "specs" só repetem o mesmo texto
+    // e "Destaques Comercial" - na planilha de origem esses dois "specs" só repetem o mesmo texto
     // já usado nas pautas de aplicações/destaques, então tirá-los daqui evita pautas redundantes
     // e deixa a ficha técnica com specs de fato técnicas (voltagem, peso, dimensões...)
     const TECH_SPEC_LABELS_TO_SKIP = new Set(['aplicacao comercial','destaques comercial']);
@@ -961,10 +961,10 @@
     }
 
     // ============================================================
-    // ÍCONES SVG — redes sociais e formatos (Feed/Story)
+    // ÍCONES SVG - redes sociais e formatos (Feed/Story)
     // ============================================================
     // no estilo "app icon" (círculo colorido + glifo branco), igual aos ícones de arquivo em
-    // icons/*.svg — usados só para redes sem preset de arquivo (Blog, Email, redes customizadas)
+    // icons/*.svg - usados só para redes sem preset de arquivo (Blog, Email, redes customizadas)
     const ICONS = {
       Blog: `<svg width="14" height="14" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="16" fill="#ef4444"/><path d="M9 12h14M9 16h10M9 20h7" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>`,
       Email: `<svg width="14" height="14" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="16" fill="#374151"/><rect x="7" y="10" width="18" height="13" rx="2" stroke="white" stroke-width="1.6" fill="none"/><path d="M8 11.5l8 6 8-6" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`
@@ -987,7 +987,7 @@
     function formatIcon(name){ return FORMAT_ICONS[name] || GENERIC_FORMAT_ICON; }
 
     // ============================================================
-    // ÍCONES DE INTERFACE — substitui emojis/glifos de texto (✕ ✏️ ✨ 🔄 📅 📋 ⋮ ⠿ ↩ ↪ ‹ › ▾)
+    // ÍCONES DE INTERFACE - substitui emojis/glifos de texto (✕ ✏️ ✨ 🔄 📅 📋 ⋮ ⠿ ↩ ↪ ‹ › ▾)
     // por contornos SVG (estilo Feather/Lucide: stroke=currentColor, herda cor e tamanho do
     // elemento pai). Cada helper aceita um tamanho opcional (padrão 14px).
     // ============================================================
@@ -1022,7 +1022,7 @@
     }
 
     // ============================================================
-    // ORDEM DAS POSTAGENS DENTRO DE UM MESMO DIA — cada post carrega
+    // ORDEM DAS POSTAGENS DENTRO DE UM MESMO DIA - cada post carrega
     // um campo `order` (inteiro, por data). Isso permite ao usuário
     // reordenar manualmente as postagens de um dia por drag-and-drop,
     // e essa ordem é respeitada em toda leitura sequencial do calendário
@@ -1087,7 +1087,7 @@
     function todayStr(){ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
     // ============================================================
-    // DATAS COMEMORATIVAS — feriados nacionais + datas comerciais de referência para
+    // DATAS COMEMORATIVAS - feriados nacionais + datas comerciais de referência para
     // planejamento de conteúdo, exibidas ao lado do número do dia na grade do mês. Datas fixas
     // (mesmo dia todo ano) ficam num dicionário "MM-DD"; datas móveis (baseadas na Páscoa, ou no
     // "enésimo dia da semana do mês", como Dia das Mães/Pais e Black Friday) são calculadas em
@@ -1095,21 +1095,70 @@
     // não é trivial de refazer a cada célula do calendário.
     // ============================================================
     const FIXED_COMMEMORATIVE_DATES = {
-      '01-01': 'Ano Novo',
-      '03-08': 'Dia Internacional da Mulher',
-      '03-15': 'Dia do Consumidor',
-      '04-21': 'Tiradentes',
-      '05-01': 'Dia do Trabalhador',
-      '06-12': 'Dia dos Namorados',
-      '09-07': 'Independência do Brasil',
-      '09-15': 'Dia do Cliente',
-      '10-12': 'Dia das Crianças / N. Sra. Aparecida',
-      '11-02': 'Finados',
-      '11-15': 'Proclamação da República',
-      '11-20': 'Dia da Consciência Negra',
-      '12-25': 'Natal'
+      '01-01': ['Confraternização Universal'],
+      '03-06': ['Data Magna de Pernambuco'],
+      '03-08': ['Dia Internacional da Mulher'],
+      '03-15': ['Dia Mundial do Consumidor'],
+      '03-19': ['Dia do Carpinteiro e Marceneiro'],
+      '03-20': ['Início do Outono'],
+      '03-22': ['Dia Mundial da Água'],
+      '03-25': ['Data Magna do Ceará'],
+      '04-05': ['Emancipação de Novo Hamburgo'],
+      '04-21': ['Tiradentes', 'Dia do Metalúrgico'],
+      '04-22': ['Descobrimento do Brasil'],
+      '04-23': ['Dia do Serralheiro'],
+      '05-01': ['Dia do Trabalho'],
+      '05-11': ['Aniversário de Aparecida de Goiânia'],
+      '05-18': ['Dia do Vidraceiro'],
+      '05-25': ['Dia da Indústria e do Trabalhador Rural'],
+      '06-05': ['Dia Mundial do Meio Ambiente'],
+      '06-12': ['Dia dos Namorados'],
+      '06-13': ['Dia de Santo Antônio'],
+      '06-15': ['Aniversário de Itajaí'],
+      '06-20': ['Dia do Revendedor'],
+      '06-21': ['Início do Inverno'],
+      '06-24': ['Dia de São João'],
+      '07-02': ['Independência da Bahia'],
+      '07-04': ['Dia Internacional do Cooperativismo'],
+      '07-09': ['Revolução Constitucionalista', 'Fundação de Cabo de Santo Agostinho'],
+      '07-16': ['Dia de N. Sra. do Carmo', 'Dia do Comerciante'],
+      '07-26': ['Dia de N. Sra. Sant’Ana'],
+      '07-28': ['Dia do Agricultor'],
+      '08-15': ['Dia de N. Sra. do Desterro'],
+      '08-17': ['Aniversário de Barbalha'],
+      '09-07': ['Independência do Brasil'],
+      '09-08': ['Dia de N. Sra. da Luz dos Pinhais'],
+      '09-15': ['Dia do Cliente'],
+      '09-19': ['Dia do Comprador'],
+      '09-20': ['Revolução Farroupilha'],
+      '09-23': ['Dia do Soldador'],
+      '09-27': ['Dia do Encanador'],
+      '09-30': ['Dia da Secretária'],
+      '10-01': ['Dia do Vendedor'],
+      '10-12': ['Dia de Nossa Sra. Aparecida', 'Dia das Crianças'],
+      '10-15': ['Aniversário VONDER'],
+      '10-17': ['Dia do Eletricista'],
+      '10-18': ['Dia do Pintor'],
+      '10-26': ['Dia do Trabalhador da Construção Civil'],
+      '10-30': ['Dia do Balconista e Comerciário'],
+      '10-31': ['Dia Municipal da Reforma Protestante e Ação de Graças'],
+      '11-02': ['Finados'],
+      '11-14': ['Emancipação de Aparecida de Goiânia'],
+      '11-15': ['Proclamação da República'],
+      '11-20': ['Dia Nacional de Zumbi e da Consciência Negra'],
+      '11-27': ['Dia do Técnico e Engenheiro de Segurança no Trabalho'],
+      '12-08': ['Dia de N. Sra. da Imaculada Conceição'],
+      '12-11': ['Dia do Engenheiro'],
+      '12-13': ['Dia do Pedreiro'],
+      '12-15': ['Dia do Jardineiro', 'Dia do Arquiteto e Urbanista'],
+      '12-20': ['Dia do Mecânico'],
+      '12-21': ['Início do Verão'],
+      '12-25': ['Natal']
     };
-    // data da Páscoa (algoritmo de Gauss/computus gregoriano) — base de todos os feriados móveis
+    // início da Primavera (horário de Brasília) é o único marco sazonal que oscila entre 22 e 23/09
+    // ponytail: só 2026/2027 conferidos; demais anos assumem 22/09 - revisar ao incluir novos anos
+    const SPRING_START_DAY = { 2027: 23 };
+    // data da Páscoa (algoritmo de Gauss/computus gregoriano) - base de todos os feriados móveis
     function easterDate(year){
       const a = year % 19, b = Math.floor(year/100), c = year % 100;
       const d = Math.floor(b/4), e = b % 4, f = Math.floor((b+8)/25);
@@ -1121,14 +1170,14 @@
       return new Date(year, month-1, day);
     }
     function addDays(date, days){ const d = new Date(date); d.setDate(d.getDate()+days); return d; }
-    // enésima ocorrência de um dia da semana (0=Dom...6=Sáb) num mês — usado pra Dia das Mães
+    // enésima ocorrência de um dia da semana (0=Dom...6=Sáb) num mês - usado pra Dia das Mães
     // (2º domingo de maio) e Dia dos Pais (2º domingo de agosto)
     function nthWeekdayOfMonth(year, month, weekday, n){
       const first = new Date(year, month, 1);
       const offset = (weekday - first.getDay() + 7) % 7;
       return new Date(year, month, 1 + offset + (n-1)*7);
     }
-    // última ocorrência de um dia da semana num mês — usado pra Black Friday (última 6ª de novembro)
+    // última ocorrência de um dia da semana num mês - usado pra Black Friday (última 6ª de novembro)
     function lastWeekdayOfMonth(year, month, weekday){
       const last = new Date(year, month+1, 0);
       const offset = (last.getDay() - weekday + 7) % 7;
@@ -1141,8 +1190,10 @@
       const easter = easterDate(year);
       const map = {};
       map[ymd(addDays(easter,-47))] = 'Carnaval';
-      map[ymd(addDays(easter,-2))] = 'Sexta-feira Santa';
+      map[ymd(addDays(easter,-2))] = 'Paixão de Cristo';
       map[ymd(easter)] = 'Páscoa';
+      map[ymd(addDays(easter,39))] = 'Ascensão do Senhor';
+      map[`${year}-09-${SPRING_START_DAY[year]||22}`] = 'Início da Primavera';
       map[ymd(addDays(easter,60))] = 'Corpus Christi';
       map[ymd(nthWeekdayOfMonth(year,4,0,2))] = 'Dia das Mães'; // maio, domingo
       map[ymd(nthWeekdayOfMonth(year,7,0,2))] = 'Dia dos Pais'; // agosto, domingo
@@ -1153,12 +1204,11 @@
       return map;
     }
     // nome(s) da(s) data(s) comemorativa(s) em "YYYY-MM-DD" (fixas/móveis + personalizadas
-    // cadastradas em Configurações), unidos por " · " quando mais de uma cair no mesmo dia —
+    // cadastradas em Configurações), unidos por " · " quando mais de uma cair no mesmo dia -
     // ou null se o dia não corresponder a nenhuma
     function commemorativeDateName(dateStr){
       const names = [];
-      const fixed = FIXED_COMMEMORATIVE_DATES[dateStr.slice(5)];
-      if(fixed) names.push(fixed);
+      names.push(...(FIXED_COMMEMORATIVE_DATES[dateStr.slice(5)] || []));
       const year = Number(dateStr.slice(0,4));
       const movable = movableCommemorativeDates(year)[dateStr];
       if(movable) names.push(movable);
@@ -1170,26 +1220,26 @@
     }
 
     // ============================================================
-    // CLIQUE NO TEXTO DE DATA COMEMORATIVA — pergunta (num modal com a identidade da
+    // CLIQUE NO TEXTO DE DATA COMEMORATIVA - pergunta (num modal com a identidade da
     // plataforma, não um confirm() nativo) se o usuário quer criar uma postagem específica pra
     // aquela data; ao confirmar, abre "Criar postagem" já com título, data e (se a marca tiver
     // uma editoria de datas comemorativas) a categorização pré-preenchidos
     // ============================================================
     let pendingCommemorativeDate = null; // { dateStr, holidayName } enquanto o modal de confirmação está aberto
-    // nome da data comemorativa em uso — lido pelas sugestões de conteúdo (CONTENT_SUGGESTIONS_BY_EDITORIA
+    // nome da data comemorativa em uso - lido pelas sugestões de conteúdo (CONTENT_SUGGESTIONS_BY_EDITORIA
     // ['Datas comemorativas']) enquanto o modal de postagem estiver aberto vindo deste fluxo
     let pendingCommemorativeOccasion = null;
-    // acha a editoria de datas comemorativas da marca ativa, se existir — por nome normalizado
+    // acha a editoria de datas comemorativas da marca ativa, se existir - por nome normalizado
     // (sem acento/maiúsculas) pra cobrir tanto "Datas comemorativas" quanto pequenas variações
     function commemorativeEditoria(){
       const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
       return (APP_SETTINGS.editorias||[]).find(e=> norm(e.name).includes('comemorat'));
     }
     // Marcas cuja editoria "Datas comemorativas" tem preset próprio no Editor de Posts (ver
-    // post-editor-osten-datas-comemorativas.js / post-editor-dismatal-datas-comemorativas.js —
+    // post-editor-osten-datas-comemorativas.js / post-editor-dismatal-datas-comemorativas.js -
     // arquivos e presets totalmente independentes entre si, sem nenhuma referência cruzada). O
     // modal de escolha (openCommemorativeEditorChoice) aparece pra qualquer marca ao clicar numa
-    // data comemorativa, mas só essas marcas conseguem de fato "Abrir editor de posts" — as
+    // data comemorativa, mas só essas marcas conseguem de fato "Abrir editor de posts" - as
     // demais têm essa opção desabilitada, com aviso, porque não há template pra levá-las lá; só
     // resta seguir com o briefing manual.
     function brandHasCommemorativeEditorShortcut(){ return BRAND_SUFFIX==='__osten-ferragens' || BRAND_SUFFIX==='__dismatal' || BRAND_SUFFIX==='__dwt'; }
@@ -1214,7 +1264,7 @@
       } else {
         titleEl.textContent='Criar postagem para esta data?';
         messageEl.textContent=`“${holidayName}” (${dateLabel})`;
-        noteEl.textContent='Esta marca ainda não tem um template institucional pré-definido para Datas comemorativas — o card é criado para você seguir com o briefing personalizado.';
+        noteEl.textContent='Esta marca ainda não tem um template institucional pré-definido para Datas comemorativas - o card é criado para você seguir com o briefing personalizado.';
         noteEl.hidden=false;
         briefingBtn.textContent='Criar postagem';
       }
@@ -1263,7 +1313,7 @@
     // ensureCommemorativeCard só agenda a gravação no servidor (setTimeout 0); navegar pro Editor de
     // Posts logo em seguida corria contra essa gravação e quase sempre vencia, perdendo o card criado
     // pelo atalho (nunca chegava a existir no Firestore). Espera o postSync.flush() confirmar antes de
-    // sair da página — mesma garantia que o salvamento normal (sem sair da tela) já tinha.
+    // sair da página - mesma garantia que o salvamento normal (sem sair da tela) já tinha.
     async function openCommemorativeEditorDirect(){
       if(!pendingCommemorativeDate || !brandHasCommemorativeEditorShortcut()) return;
       const { dateStr,holidayName }=pendingCommemorativeDate;
@@ -1289,11 +1339,11 @@
     }
 
     // ============================================================
-    // CALENDÁRIO MENSAL — monta as células (4 a 6 semanas, conforme
+    // CALENDÁRIO MENSAL - monta as células (4 a 6 semanas, conforme
     // o necessário) do mês exibido e liga o drag-and-drop de
     // postagens entre os dias
     // ============================================================
-    // clique no número do dia/contador (abre o popup do dia) + soltar uma postagem arrastada —
+    // clique no número do dia/contador (abre o popup do dia) + soltar uma postagem arrastada -
     // comportamento de uma célula de dia, compartilhado entre a grade mensal (buildCalendar) e as
     // colunas da visão semanal (buildWeekView), pra não duplicar a lógica de drag&drop entre as duas.
     function attachDayCellInteractions(cell, dateStr){
@@ -1302,13 +1352,13 @@
         el.title = 'Ver todas as postagens deste dia';
         el.addEventListener('click', (ev)=>{ ev.stopPropagation(); openDayPosts(dateStr); });
       });
-      // clicar no nome da data comemorativa oferece criar uma postagem específica pra ela —
+      // clicar no nome da data comemorativa oferece criar uma postagem específica pra ela -
       // pára a propagação pro mesmo motivo que .date/.day-count acima (senão também abriria
       // "Postagens do dia")
       const holidayEl = cell.querySelector('.holiday-name');
       if(holidayEl) holidayEl.addEventListener('click', (ev)=>{ ev.stopPropagation(); const holidayName=commemorativeDateName(dateStr); openCommemorativeEditorChoice(dateStr,holidayName); });
       // clicar em qualquer área do card do dia (fora de um post específico, que já abre a edição
-      // dele) também abre "Postagens do dia" — mesmo destino do clique na data/contador acima.
+      // dele) também abre "Postagens do dia" - mesmo destino do clique na data/contador acima.
       // Cards de postagem, o badge "+N" e o "+ Adicionar postagem" já param a propagação nos
       // próprios cliques, então não disparam este handler também.
       cell.style.cursor = 'pointer';
@@ -1359,7 +1409,7 @@
 
     function buildCalendar(){
       const grid = $('grid');
-      // guarda a altura atual de cada célula (por data) antes de destruir o grid — usado por
+      // guarda a altura atual de cada célula (por data) antes de destruir o grid - usado por
       // render() pra animar suavemente a troca de altura das linhas quando um card muda de dia,
       // em vez do corte seco de uma célula que encolhe/cresce instantaneamente
       const oldHeights = new Map();
@@ -1371,7 +1421,7 @@
       const total = new Date(YEAR, MONTH + 1, 0).getDate();
       const tStr = todayStr();
       // visão Quinzena reaproveita esta mesma grade (#grid), mas só desenha as semanas que
-      // realmente têm algum dia da metade do mês selecionada (1–15 ou 16–fim) — as semanas
+      // realmente têm algum dia da metade do mês selecionada (1–15 ou 16–fim) - as semanas
       // inteiramente da outra quinzena somem da grade, em vez de aparecer como linha de células
       // vazias (só sobra a folga necessária pra alinhar a primeira/última semana ao dia da semana,
       // igual à visão mensal já faz nas bordas do mês)
@@ -1394,7 +1444,7 @@
           const holidayHtml = holidayName ? `<span class="holiday-name" title="Clique para criar uma postagem para &quot;${escapeHtml(holidayName)}&quot;">${escapeHtml(holidayName)}</span>` : '';
           cell.innerHTML = `<div class="day-head"><span class="date">${dayIndex}</span>${holidayHtml}<span class="day-count-wrap"><span class="day-status-icon" style="display:none"></span><span class="day-count"></span></span></div><div class="posts"></div>`;
           // clicar no número do dia ou no contador (0/3, 1/3...) abre o popup com todas as
-          // postagens daquela data — igual ao badge "+N", mas funciona mesmo com 0, 1, 2 ou 3
+          // postagens daquela data - igual ao badge "+N", mas funciona mesmo com 0, 1, 2 ou 3
           // postagens (quando não há badge "+N" porque tudo já cabe na célula)
           attachDayCellInteractions(cell, dateStr);
         } else {
@@ -1414,7 +1464,7 @@
       return d;
     }
 
-    // quinzena (metade do mês) que contém `date`: dia 1–15 ou dia 16–fim do mês — convenção
+    // quinzena (metade do mês) que contém `date`: dia 1–15 ou dia 16–fim do mês - convenção
     // fixa alinhada ao calendário (igual "1ª/2ª quinzena" do uso comum), não uma janela rolante
     // de 14 dias a partir de qualquer data. Usada tanto pela visão Quinzena quanto pelo preset
     // "Quinzenal" do modal de exportação de briefing.
@@ -1436,9 +1486,9 @@
     }
 
     // ============================================================
-    // VISÃO SEMANAL — 7 colunas (Dom→Sáb) com as postagens só daquela semana, cada uma com um
+    // VISÃO SEMANAL - 7 colunas (Dom→Sáb) com as postagens só daquela semana, cada uma com um
     // "+ Adicionar postagem" no rodapé pra criar já com a data daquele dia preenchida. Diferente
-    // do mês, aqui não há limite de cards por coluna (ver render()) — a coluna cresce.
+    // do mês, aqui não há limite de cards por coluna (ver render()) - a coluna cresce.
     // ============================================================
     function buildWeekView(){
       const grid = $('weekGrid'); if(!grid) return;
@@ -1462,14 +1512,14 @@
     }
 
     // ============================================================
-    // POPOVER DE SELEÇÃO RÁPIDA DE MÊS DENTRO DO ANO — clicar no
+    // POPOVER DE SELEÇÃO RÁPIDA DE MÊS DENTRO DO ANO - clicar no
     // rótulo do mês abre uma grade com os 12 meses do ano exibido,
     // permitindo pular direto para qualquer mês sem clicar em "‹ ›"
     // repetidamente. Enquanto aberto, o próprio rótulo mostra só o
     // ano e as setas ‹ › do cabeçalho passam a navegar por ano.
     // ============================================================
     const MONTH_ABBR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    // ano exibido no popover — pode ser navegado (via ‹ ›) independente do calendário até um mês ser escolhido
+    // ano exibido no popover - pode ser navegado (via ‹ ›) independente do calendário até um mês ser escolhido
     let pickerYear = viewDate.getFullYear();
 
     // rótulo padrão ("Agosto 2026"), usado quando o popover está fechado
@@ -1544,7 +1594,7 @@
     }
 
     // ============================================================
-    // FILTRAGEM — aplica a aba de canal ativa e os filtros do modal
+    // FILTRAGEM - aplica a aba de canal ativa e os filtros do modal
     // de Filtros sobre a lista completa de postagens
     // ============================================================
     function getFilteredPosts(){
@@ -1555,12 +1605,12 @@
           const eds = Array.isArray(p.editoria)?p.editoria:[p.editoria].filter(Boolean);
           if(!eds.some(e=> filters.editorias.includes(e))) return false;
         }
-        // formatos (Feed/Story) — considera os formatos de todas as redes da postagem
+        // formatos (Feed/Story) - considera os formatos de todas as redes da postagem
         if(filters.places && filters.places.length>0){
           const pls = postChannelEntries(p).flatMap(c=>c.places||[]);
           if(!pls.some(z=> filters.places.includes(z))) return false;
         }
-        // tipo (Estático/Vídeo) — considera os tipos de todas as redes da postagem
+        // tipo (Estático/Vídeo) - considera os tipos de todas as redes da postagem
         if(filters.types && filters.types.length>0){
           const tys = postChannelEntries(p).flatMap(c=>c.types||['Static']);
           if(!tys.some(t=> filters.types.includes(t))) return false;
@@ -1575,10 +1625,10 @@
     }
 
     // ============================================================
-    // AÇÕES RÁPIDAS DO CARD — duplicar e excluir uma postagem,
+    // AÇÕES RÁPIDAS DO CARD - duplicar e excluir uma postagem,
     // acessadas pelo menu "⋮" de cada card
     // ============================================================
-    // menu "⋮" flutuante único, reaproveitado por todos os cards — se cada card criasse o seu
+    // menu "⋮" flutuante único, reaproveitado por todos os cards - se cada card criasse o seu
     // próprio menu como filho, o "overflow:hidden" do card (usado para arredondar os cantos)
     // cortaria o menu (foi o que causava só "Duplicar" aparecer e "Excluir" ficar cortado fora
     // da área visível). Por isso ele fica fixo em document.body e é reposicionado a cada abertura.
@@ -1592,12 +1642,12 @@
       document.body.appendChild(cardMenuEl);
       return cardMenuEl;
     }
-    // fecha o menu "⋮" aberto — chamado ao abrir outro menu, ao clicar fora ou ao rolar a página
+    // fecha o menu "⋮" aberto - chamado ao abrir outro menu, ao clicar fora ou ao rolar a página
     function closeAllCardMenus(){ if(cardMenuEl) cardMenuEl.classList.remove('open'); }
     document.addEventListener('click', closeAllCardMenus);
     window.addEventListener('scroll', closeAllCardMenus, true);
 
-    // liga o clique de um botão "⋮" já existente à postagem de id `idSource` — string fixa (cards,
+    // liga o clique de um botão "⋮" já existente à postagem de id `idSource` - string fixa (cards,
     // recriados a cada render, então o listener nunca é reaproveitado) ou função que devolve o id
     // atual (botão fixo do modal de edição, ligado uma única vez no início e reaproveitado a cada
     // postagem editada, então precisa ler `editingId` no momento do clique, não travar num valor)
@@ -1620,7 +1670,7 @@
       });
     }
 
-    // monta o botão "⋮" de um card — usado tanto na grade do calendário quanto na lista, onde
+    // monta o botão "⋮" de um card - usado tanto na grade do calendário quanto na lista, onde
     // cada card é recriado do zero a cada render (então religar o clique não acumula listeners)
     function buildCardMenu(p, btnClass){
       const btn = document.createElement('button');
@@ -1694,7 +1744,7 @@
       pushUndo({ type:'delete', posts:[removed] }); redoStack = [];
       if(isEditing && editingId===id){ closeModal(); closeEditState(); }
     }
-    // apaga de uma vez todas as postagens do mês atualmente visível no calendário — "resetar o
+    // apaga de uma vez todas as postagens do mês atualmente visível no calendário - "resetar o
     // mês do zero". Ignora os filtros ativos (apaga tudo do mês, filtrado ou não, pra realmente
     // começar do zero) e pode ser desfeito com Ctrl+Z logo em seguida, como qualquer exclusão
     function resetMonth(){
@@ -1714,7 +1764,7 @@
     }
 
     // ============================================================
-    // RENDERIZAÇÃO DE CARDS — cria os elementos visuais de uma
+    // RENDERIZAÇÃO DE CARDS - cria os elementos visuais de uma
     // postagem, tanto na grade mensal quanto na visão em lista
     // ============================================================
     // cria o elemento do card de postagem (evento) usado na grade do calendário
@@ -1826,12 +1876,12 @@
     }
 
     // ============================================================
-    // RENDERIZAÇÃO PRINCIPAL — alterna entre Mês/Lista e desenha
+    // RENDERIZAÇÃO PRINCIPAL - alterna entre Mês/Lista e desenha
     // as postagens filtradas nas células, badges e resumo da IA
     // ============================================================
     // alterna a visão ativa entre "month" (grade), "biweek" (grade, só a quinzena), "week"
-    // (colunas da semana) e "list" (lista). "month" e "biweek" reaproveitam a mesma #grid — só
-    // muda o intervalo de dias desenhado em buildCalendar() — por isso ela é reconstruída aqui
+    // (colunas da semana) e "list" (lista). "month" e "biweek" reaproveitam a mesma #grid - só
+    // muda o intervalo de dias desenhado em buildCalendar() - por isso ela é reconstruída aqui
     // sempre que uma dessas duas vira a visão ativa (a grade pode estar com o conteúdo da outra)
     function setView(v){
       currentView = v;
@@ -1865,7 +1915,7 @@
         : DAY_STATUS_PENDING_SVG;
     }
     function render(){
-      // visão semanal: reconstrói as 7 colunas da semana visível (viewDate) toda vez — é
+      // visão semanal: reconstrói as 7 colunas da semana visível (viewDate) toda vez - é
       // barato (só 7 células) e mantém render() como o único ponto que precisa saber disso,
       // em vez de espalhar "if currentView==='week'" pelas dezenas de chamadas de
       // buildCalendar()+render() que já existem no app inteiro
@@ -1889,7 +1939,7 @@
         const more = list.length>maxVisible ? list.length-maxVisible : 0;
         let mb = cell.querySelector('.more-badge');
         if(more>0){
-          // o badge é criado uma vez por célula e reaproveitado entre renders — o clique
+          // o badge é criado uma vez por célula e reaproveitado entre renders - o clique
           // abre o popup com todas as postagens do dia (a grade só mostra até `maxVisible`)
           if(!mb){ mb = document.createElement('div'); mb.className='more-badge'; mb.title='Ver todas as postagens deste dia'; mb.addEventListener('click', (ev)=>{ ev.stopPropagation(); openDayPosts(date); }); cell.appendChild(mb); }
           mb.textContent = `+${more}`;
@@ -1922,11 +1972,11 @@
         if(badge){
           badge.className = `day-count ${total < TARGET ? 'low':'ok'}`;
           badge.textContent = `${total}/${TARGET}`;
-          badge.title = (total < TARGET ? `Sugestão: meta ${TARGET} posts/dia. Atualmente ${total}. Collab não conta.` : 'Meta diária atingida') + ' — clique para ver todas as postagens do dia';
+          badge.title = (total < TARGET ? `Sugestão: meta ${TARGET} posts/dia. Atualmente ${total}. Collab não conta.` : 'Meta diária atingida') + ' - clique para ver todas as postagens do dia';
         }
       });
 
-      // contagem no topo da toolbar — só o total de postagens do mês (inclui collab, ao
+      // contagem no topo da toolbar - só o total de postagens do mês (inclui collab, ao
       // contrário do badge por dia acima, que é uma métrica de meta diária). Clicar nela
       // abre o resumo do mês (renderMonthSummary), quebrado por Tipo/Editoria/Redes sociais
       const summaryEl = $('aiSummary');
@@ -1938,13 +1988,13 @@
       if(currentView==='list') renderListView();
       // mantém os popups de "postagens do dia" e "resumo do mês" em dia com qualquer mudança
       // (edição, exclusão, duplicação, arrastar...), já que praticamente toda ação de estado
-      // passa por aqui — cada função só faz algo se o respectivo modal estiver aberto
+      // passa por aqui - cada função só faz algo se o respectivo modal estiver aberto
       renderDayPostsList();
       renderMonthSummary();
 
       // se buildCalendar() capturou alturas antes de reconstruir o grid, anima a troca (FLIP):
       // fixa a célula na altura antiga, força reflow, e solta pra altura nova já com a transição
-      // de "height" definida em .day — assim a linha da semana cresce/encolhe suavemente em vez
+      // de "height" definida em .day - assim a linha da semana cresce/encolhe suavemente em vez
       // de saltar direto pro tamanho final quando um card muda de dia
       if(pendingRowHeights){
         const old = pendingRowHeights; pendingRowHeights = null;
@@ -1968,7 +2018,7 @@
     }
 
     // ============================================================
-    // POPUP "POSTAGENS DO DIA" — abre ao clicar no badge "+N" da célula,
+    // POPUP "POSTAGENS DO DIA" - abre ao clicar no badge "+N" da célula,
     // quando o dia tem mais cards do que cabem nela (grade mostra só 3)
     // ============================================================
     let openDayPostsDate = null; // data (YYYY-MM-DD) do popup aberto, ou null se fechado
@@ -1983,7 +2033,7 @@
       const container = $('dayPostsList'); if(!container) return;
       const list = sortByOrder(getFilteredPosts().filter(p=>p.date===openDayPostsDate));
       // dia sem postagens (ou que ficou sem nenhuma, filtrada/apagada, enquanto o modal estava
-      // aberto) mostra uma mensagem em vez de fechar sozinho — o modal abre pra qualquer
+      // aberto) mostra uma mensagem em vez de fechar sozinho - o modal abre pra qualquer
       // quantidade de postagens, incluindo zero
       container.innerHTML = list.length>0
         ? ''
@@ -1995,12 +2045,12 @@
     }
 
     // ============================================================
-    // RESUMO DO MÊS — dropdown pequeno, ancorado logo abaixo do botão
+    // RESUMO DO MÊS - dropdown pequeno, ancorado logo abaixo do botão
     // de contagem de postagens da toolbar, quebrando o total do mês
     // por Tipo, Editoria ou Redes sociais, conforme o botão selecionado
     // ============================================================
     let monthSummaryOpen = false;
-    let monthSummaryGroupBy = 'type'; // 'type' | 'editoria' | 'rede' — persiste entre aberturas
+    let monthSummaryGroupBy = 'type'; // 'type' | 'editoria' | 'rede' - persiste entre aberturas
     function openMonthSummary(){
       monthSummaryOpen = true;
       renderMonthSummary();
@@ -2050,7 +2100,7 @@
     }
 
     // ============================================================
-    // BUSCA DE POSTAGENS — painel ancorado na lupa do cabeçalho, ao lado de "Configurações".
+    // BUSCA DE POSTAGENS - painel ancorado na lupa do cabeçalho, ao lado de "Configurações".
     // Filtra state.posts inteiro (não só o mês visível no calendário) por título, produto ou
     // observações, pra achar uma postagem antiga sem precisar navegar mês a mês. Clicar num
     // resultado abre a postagem direto no modal de edição.
@@ -2097,10 +2147,10 @@
     }
 
     // ============================================================
-    // MODAL DE CRIAR/EDITAR POSTAGEM — abrir, fechar e salvar
+    // MODAL DE CRIAR/EDITAR POSTAGEM - abrir, fechar e salvar
     // (uma postagem por rede selecionada é criada ao salvar)
     // ============================================================
-    // mostra/esconde o aviso sobre a distribuição atual da postagem — Redes, Formato e Tipo
+    // mostra/esconde o aviso sobre a distribuição atual da postagem - Redes, Formato e Tipo
     // continuam sempre editáveis (mesmo numa postagem vinda do agendamento de uma editoria, que
     // por padrão pode ter uma combinação diferente de tipo/formato por rede); o aviso só avisa
     // que, ao salvar, o Formato/Tipo escolhidos abaixo passam a valer para todas as redes
@@ -2152,7 +2202,7 @@
       $('mImageLink').value=''; $('mImageNotes').value='';
       if($('mNoProduct')) $('mNoProduct').checked = false;
       document.querySelectorAll('.mNet').forEach(n=>n.checked=false); document.querySelectorAll('.mEditoria').forEach(e=>e.checked=false);
-      // formato depende da(s) rede(s) escolhida(s) — sem rede marcada, não há formato para pré-selecionar
+      // formato depende da(s) rede(s) escolhida(s) - sem rede marcada, não há formato para pré-selecionar
       renderModalFormatsUI();
       document.querySelector('input[name="mType"][value="Static"]').checked = true;
       selectedProducts = [];
@@ -2161,7 +2211,7 @@
       renderReferenceImages();
       hideProductSuggestions();
       setModalMultiChannelState(false, null);
-      // postagem nova ainda não existe — não há o que duplicar/excluir
+      // postagem nova ainda não existe - não há o que duplicar/excluir
       if($('modalMenuBtn')) $('modalMenuBtn').style.display = 'none';
       renderIntelValidation(null);
       updateCommemorativePostTypeUI();
@@ -2172,7 +2222,7 @@
       $('modalBackdrop').style.display = 'none';
       pendingCommemorativeOccasion = null;
       // veio do modal "Aplicar editoria ao mês": ele continua aberto por baixo (nunca foi
-      // fechado), então só precisa reaparecer — ressincroniza a linha com o que foi editado
+      // fechado), então só precisa reaparecer - ressincroniza a linha com o que foi editado
       // no card antes de redesenhar a lista
       if(modalOpenedFromApplyEditoria){
         modalOpenedFromApplyEditoria = false;
@@ -2193,7 +2243,7 @@
       const place = [...new Set(Array.from(document.querySelectorAll('input[name="mPlace"]:checked')).map(n=>n.value))];
       const type = document.querySelector('input[name="mType"]:checked').value;
       // o status e o collab não têm mais controle próprio neste modal (mudança de status/collab
-      // agora é feita pela edição em lote, com várias postagens selecionadas) — postagem nova
+      // agora é feita pela edição em lote, com várias postagens selecionadas) - postagem nova
       // recebe o primeiro status configurado e collab desligado; ao editar, ambos são preservados
       const defaultStatus = (APP_SETTINGS.statuses[0] && APP_SETTINGS.statuses[0].name) || 'Rascunho';
       const status = $('mStatus') ? $('mStatus').value : defaultStatus;
@@ -2226,7 +2276,7 @@
         post.commemorativePostType = commemorativePostType || '';
         post.referenceImages = editingReferenceImages.slice();
         post.editoria = editorias; post.products = products; delete post.productCode; delete post.productName;
-        // redes, formato e tipo são sempre reconstruídos a partir do que está marcado no modal —
+        // redes, formato e tipo são sempre reconstruídos a partir do que está marcado no modal -
         // mesmo numa postagem vinda do agendamento de uma editoria (que por padrão pode ter uma
         // combinação diferente de tipo/formato por rede), o Formato/Tipo escolhidos aqui passam
         // a valer para todas as redes marcadas, sobrescrevendo essa combinação por rede
@@ -2245,7 +2295,7 @@
         return;
       }
 
-      // uma postagem só, mesmo com várias redes marcadas — a distribuição fica em post.channels
+      // uma postagem só, mesmo com várias redes marcadas - a distribuição fica em post.channels
       // e aparece resumida no card ("N redes", "N formatos")
       const p = {
         id: generateId(), title, date, channel: nets[0], place: place.slice(), type,
@@ -2314,12 +2364,12 @@
     }
 
     // ============================================================
-    // CONFIGURAÇÕES DA APLICAÇÃO — redes, editorias, formatos,
+    // CONFIGURAÇÕES DA APLICAÇÃO - redes, editorias, formatos,
     // status, catálogo de produtos e metas (persistidas no localStorage)
     // ============================================================
     const BRAND_COLORS = { Instagram:'#E4405F', Facebook:'#1877F2', LinkedIn:'#0A66C2', TikTok:'#010101', Blog:'#ef4444', Email:'#374151' };
     const BRAND_SHORT_NAMES = { Instagram:'IG', LinkedIn:'LI', TikTok:'TT', Blog:'BL', Email:'EM' };
-    // formatos padrão por rede — cada rede tem seu próprio conjunto (ex: Reels só existe no Instagram),
+    // formatos padrão por rede - cada rede tem seu próprio conjunto (ex: Reels só existe no Instagram),
     // cada formato com as dimensões (px) e extensões de arquivo aceitas
     const NETWORK_DEFAULT_FORMATS = {
       Instagram: [
@@ -2340,7 +2390,7 @@
       Blog: [{ name:'Post', width:1200, height:630, extensions:['JPG','PNG'] }],
       Email: [{ name:'Email', width:600, height:800, extensions:['JPG','PNG'] }]
     };
-    // Estas editorias são universais — toda marca tem as três, mas cada marca recebe
+    // Estas editorias são universais - toda marca tem as três, mas cada marca recebe
     // sua própria cópia independente (objetos distintos, nunca a mesma referência): editar,
     // renomear ou remover a de uma marca não tem nenhuma correlação com as outras.
     const UNIVERSAL_DEFAULT_EDITORIAS = [
@@ -2348,7 +2398,7 @@
       { name:'Personalizado', color:'#64748b' },
       { name:'Datas comemorativas', color:'#db2777' }
     ];
-    // demais editorias exclusivas de cada marca — diferente das redes/formatos (infraestrutura
+    // demais editorias exclusivas de cada marca - diferente das redes/formatos (infraestrutura
     // compartilhada), a categorização de conteúdo é definida por marca: a lista abaixo de
     // cada uma só existe pra ela mesma. Uma marca sem entrada aqui começa só com as universais
     // acima, até a equipe cadastrar as próprias em Configurações → Editorias.
@@ -2369,7 +2419,7 @@
       { name:'Datas comemorativas', color:'#db2777' }
     ];
     // "Datas comemorativas" da Dismatal é uma entrada própria, sem nenhum vínculo com as
-    // editorias de mesmo nome da FG/Osten Ferragens acima — cada marca tem seu objeto
+    // editorias de mesmo nome da FG/Osten Ferragens acima - cada marca tem seu objeto
     // independente, então renomear/editar a de uma marca nunca afeta as outras
     const DISMATAL_DEFAULT_EDITORIAS = [
       { name:'Datas comemorativas', color:'#db2777' }
@@ -2386,7 +2436,7 @@
     };
     const DEFAULT_SETTINGS = {
       TARGET: 3,
-      // meta semanal de vídeos (0 = sem meta definida) — informativa, editada em Configurações > Metas
+      // meta semanal de vídeos (0 = sem meta definida) - informativa, editada em Configurações > Metas
       videoWeeklyTarget: 2,
       networks: [
         { name:'Instagram', shortName:'IG', color:'#E4405F', formats: NETWORK_DEFAULT_FORMATS.Instagram.map(f=>Object.assign({},f)) },
@@ -2411,7 +2461,7 @@
       ],
       catalog: [],
       // datas comemorativas personalizadas (ex: aniversário da empresa, um evento específico)
-      // — somam-se às datas comemorativas fixas/móveis calculadas em commemorativeDateName()
+      // - somam-se às datas comemorativas fixas/móveis calculadas em commemorativeDateName()
       customDates: []
     };
     let APP_SETTINGS = Object.assign({}, DEFAULT_SETTINGS);
@@ -2426,10 +2476,10 @@
     function loadSettings(){
       const raw = localStorage.getItem(LS_SETTINGS_KEY);
       // rastreia se alguma migração abaixo realmente mudou algo em relação ao que já estava
-      // salvo — se sim, no fim da função persiste e sincroniza o resultado (ver saveSettings()
+      // salvo - se sim, no fim da função persiste e sincroniza o resultado (ver saveSettings()
       // no fim). Sem isso, essas migrações só valiam para a sessão atual: nunca eram gravadas de
       // volta no localStorage nem enviadas pro servidor, então uma editoria/rede padrão nova só
-      // aparecia enquanto o app.js rodava — outra página que lê a config direto do localStorage,
+      // aparecia enquanto o app.js rodava - outra página que lê a config direto do localStorage,
       // como o Editor de Posts, ou outro computador puxando do servidor, continuava vendo a
       // versão antiga e incompleta para sempre.
       let migrated = !raw;
@@ -2448,7 +2498,7 @@
           DEFAULT_SETTINGS.editorias.forEach(def=>{ if(!APP_SETTINGS.editorias.some(e=>sameDefaultEditoria(e,def))) APP_SETTINGS.editorias.push(Object.assign({},def)); });
           if(APP_SETTINGS.editorias.length!==before) migrated = true; }
         // limpa editorias da VONDER que vazaram pra outras marcas (de quando o padrão acima
-        // ainda era compartilhado por todas) — preserva, porém, qualquer nome que também faça
+        // ainda era compartilhado por todas) - preserva, porém, qualquer nome que também faça
         // parte da lista padrão da própria marca (ex: FG também tem "Destaques"/"Lançamentos",
         // que não são leftover nesse caso, são editorias legítimas da FG)
         if(BRAND_SUFFIX!==''){
@@ -2457,7 +2507,7 @@
           APP_SETTINGS.editorias = APP_SETTINGS.editorias.filter(e=> ownDefaultNames.has(e.name) || !VONDER_DEFAULT_EDITORIAS.some(def=>def.name===e.name));
           if(APP_SETTINGS.editorias.length!==before) migrated = true;
         }
-        // mesma lógica pras redes padrão (ex: Facebook) — acrescenta as que faltam por nome,
+        // mesma lógica pras redes padrão (ex: Facebook) - acrescenta as que faltam por nome,
         // sem mexer nas redes que o usuário já tinha configurado
         if(!APP_SETTINGS.networks) APP_SETTINGS.networks = [];
         { const before = APP_SETTINGS.networks.length;
@@ -2480,7 +2530,7 @@
       // usa os formatos padrão da rede se conhecida, senão reaproveita a antiga lista global "places", senão "Feed"
       const legacyPlaces = Array.isArray(APP_SETTINGS.places) && APP_SETTINGS.places.length ? APP_SETTINGS.places.map(p=>({name:p})) : null;
       APP_SETTINGS.networks.forEach((n,i)=>{
-        // nome curto (ex: "IG"), usado em exibições compactas — usa o padrão conhecido, senão as 2 primeiras letras
+        // nome curto (ex: "IG"), usado em exibições compactas - usa o padrão conhecido, senão as 2 primeiras letras
         if(!n.shortName) n.shortName = BRAND_SHORT_NAMES[n.name] || n.name.slice(0,2).toUpperCase();
         if(!Array.isArray(n.formats) || n.formats.length===0){
           const defaults = NETWORK_DEFAULT_FORMATS[n.name];
@@ -2505,7 +2555,7 @@
       });
       delete APP_SETTINGS.places;
       // migra o formato antigo de editorias (string simples) para {name, schedule?} e garante
-      // que cada uma tenha cor própria — as antigas recebem a mesma cor por índice da paleta
+      // que cada uma tenha cor própria - as antigas recebem a mesma cor por índice da paleta
       // que já exibiam antes, então nada muda visualmente para quem já usava
       APP_SETTINGS.editorias = (APP_SETTINGS.editorias||[]).map(e=> typeof e === 'string' ? { name:e } : e);
       APP_SETTINGS.editorias.forEach((e,i)=>{ if(!e.color) e.color = TAG_PALETTE[i % TAG_PALETTE.length]; });
@@ -2521,7 +2571,7 @@
         }
       });
       // migra o agendamento único antigo (uma config valendo pra qualquer mês) para o novo
-      // modelo por mês — cada mês passa a ter sua própria configuração (ver monthKeyFromDate/
+      // modelo por mês - cada mês passa a ter sua própria configuração (ver monthKeyFromDate/
       // scheduleByMonth), sem um "padrão" perene. O agendamento que já existia vira a config do
       // mês atual; dali em diante o usuário ajusta cada mês individualmente pelo navegador de
       // mês do editor de agendamento.
@@ -2530,24 +2580,24 @@
         delete e.schedule;
       });
       // alguma migração acima acrescentou/corrigiu algo que ainda não estava salvo (ou este
-      // navegador nunca tinha salvo nada) — grava e sincroniza agora, pra essa versão completa
+      // navegador nunca tinha salvo nada) - grava e sincroniza agora, pra essa versão completa
       // valer para qualquer página/computador que ler essa configuração a partir de agora
       if(migrated) saveSettings();
     }
 
     // ============================================================
-    // SINCRONIZAÇÃO COM O SERVIDOR (api.php + banco SQLite) — o localStorage
+    // SINCRONIZAÇÃO COM O SERVIDOR (api.php + banco SQLite) - o localStorage
     // continua sendo gravado normalmente (cache local/offline), mas quando a página
     // é servida por HTTP (não aberta como arquivo local) o servidor passa a ser a
     // fonte da verdade: ao abrir, busca posts/settings do banco; a cada save, envia
     // a versão mais nova pro servidor; e a cada X segundos busca de novo, pra pegar
     // alterações feitas por outras pessoas da equipe. Se o servidor não responder
     // (api.php ausente, sem PHP configurado, offline...), o app degrada de volta pro
-    // comportamento antigo, só com localStorage — nada quebra.
+    // comportamento antigo, só com localStorage - nada quebra.
     // ============================================================
     const SYNC_ENABLED = location.protocol !== 'file:';
     // updated_at (timestamp do servidor) da última versão de posts/settings que este
-    // navegador conhece — enviado a cada save como "expected_updated_at": se alguém
+    // navegador conhece - enviado a cada save como "expected_updated_at": se alguém
     // salvou por cima nesse meio tempo, o servidor recusa (409) em vez de aceitar
     // e sobrescrever silenciosamente o trabalho da outra pessoa
     const syncVersions = { [API_POSTS_KEY]: 0, [API_SETTINGS_KEY]: 0 };
@@ -2557,7 +2607,7 @@
       el.textContent = text;
       el.className = 'sync-status' + (kind ? ' '+kind : '');
     }
-    // true se algum modal estiver aberto — usado pra não recarregar dados do servidor
+    // true se algum modal estiver aberto - usado pra não recarregar dados do servidor
     // (e redesenhar a tela) enquanto a pessoa está no meio de uma edição
     function anyModalOpen(){
       return ['modalBackdrop','settingsBackdrop','filtersBackdrop','applyEditoriaBackdrop'].some(id=>{
@@ -2606,7 +2656,7 @@
       return { conflict:false };
     }
     // getValue pendente de cada chave, guardado à parte do timer pra poder ser disparado na
-    // hora (flushPendingSyncPushes) sem depender do setTimeout original — ver mais abaixo
+    // hora (flushPendingSyncPushes) sem depender do setTimeout original - ver mais abaixo
     const pendingSyncGetters = {};
     async function runScheduledPush(key){
       syncPushTimers[key] = null;
@@ -2619,7 +2669,7 @@
         if(result.conflict){
           // outra pessoa salvou primeiro: adota a versão do servidor em vez de sobrescrever.
           // server.v===null significa "nada salvo no servidor ainda" (chave vazia/nunca
-          // gravada) — nesse caso NÃO apaga os dados locais (senão uma corrida com o servidor
+          // gravada) - nesse caso NÃO apaga os dados locais (senão uma corrida com o servidor
           // vazio zeraria o calendário à toa); só adota a versão e reagenda o envio, pra essa
           // cópia local acabar subindo pro servidor no próximo ciclo
           if(result.server.v === null){
@@ -2633,7 +2683,7 @@
             if(!anyModalOpen()){ renderAllDynamicUI(); buildCalendar(); render(); }
             setSyncStatus('Atualizado com mudanças de outra pessoa', 'warn');
             if(window.PortalSyncConflict) PortalSyncConflict.show({ context:key===API_POSTS_KEY?'posts':'settings' });
-            else alert('Outra pessoa salvou uma alteração enquanto você editava. Os dados foram atualizados com a versão mais recente do servidor — se sua última ação não aparecer, refaça-a.');
+            else alert('Outra pessoa salvou uma alteração enquanto você editava. Os dados foram atualizados com a versão mais recente do servidor - se sua última ação não aparecer, refaça-a.');
           }
         } else {
           setSyncStatus('Sincronizado com o servidor', 'ok');
@@ -2652,10 +2702,10 @@
       syncPushTimers[key] = setTimeout(()=> runScheduledPush(key), 700);
     }
     // Sem isto, um card criado e a pessoa trocando de página/fechando a aba menos de 700ms
-    // depois nunca chegava a sair do navegador dela — ficava só no localStorage local, e o
+    // depois nunca chegava a sair do navegador dela - ficava só no localStorage local, e o
     // resto da equipe nunca via a mudança (foi exatamente o que aconteceu: um card criado
     // "sumiu" pra quem não era o autor). visibilitychange dispara assim que a aba é escondida
-    // (troca de página dentro do próprio portal incluída, por ser um site multi-página) —
+    // (troca de página dentro do próprio portal incluída, por ser um site multi-página) -
     // mais cedo e mais confiável que beforeunload, que alguns navegadores mobile nem chegam a
     // disparar. pagehide cobre o restante (fechar a aba/janela diretamente).
     function flushPendingSyncPushes(){
@@ -2683,15 +2733,15 @@
         if(changed && !anyModalOpen()){ renderAllDynamicUI(); buildCalendar(); render(); }
         if(changed || showIdleStatus) setSyncStatus('Sincronizado em tempo real', 'ok');
       }catch(e){
-        setSyncStatus('Sem conexão com o servidor — usando cópia local', 'warn');
+        setSyncStatus('Sem conexão com o servidor - usando cópia local', 'warn');
       }
     }
 
     // ============================================================
-    // CENTRAL DE INTELIGÊNCIA (consulta) — o calendário só LÊ o aprendizado (DNA) já gerado
+    // CENTRAL DE INTELIGÊNCIA (consulta) - o calendário só LÊ o aprendizado (DNA) já gerado
     // por editoria; quem treina a IA é a tela intelligence-center.html. intelligence-data.js
     // (carregado antes deste arquivo) resolve sozinho o isolamento por marca e concentra toda
-    // a lógica de análise (IntelStore.generateDNA/validatePost) — aqui só usamos o resultado
+    // a lógica de análise (IntelStore.generateDNA/validatePost) - aqui só usamos o resultado
     // pra sugerir conteúdo (renderIntelSuggestBox) e validar o rascunho atual (wireIntelValidation).
     // ============================================================
     let INTEL = (typeof IntelStore !== 'undefined') ? IntelStore.readLocal() : { editorias:{} };
@@ -2704,10 +2754,10 @@
           IntelStore.writeLocal(INTEL);
           if($('modalBackdrop').style.display === 'flex') renderIntelSuggestBox();
         }
-      }catch(e){ /* offline — segue com a última cópia local conhecida */ }
+      }catch(e){ /* offline - segue com a última cópia local conhecida */ }
     }
 
-    // editoria(s) marcada(s) no modal que já têm DNA gerado pela Central de Inteligência —
+    // editoria(s) marcada(s) no modal que já têm DNA gerado pela Central de Inteligência -
     // usa a primeira (na ordem em que aparecem nos checkboxes) como referência para sugestões
     // e validação, já que combinar o DNA de várias editorias ao mesmo tempo não faria sentido
     function selectedEditoriasWithDna(){
@@ -2736,7 +2786,7 @@
       ].filter(Boolean).join('\n');
       box.style.display = 'flex';
       box.innerHTML = `
-        <div class="intel-modal-box-title">${UI_ICONS.idea(13)} Direcionamento da IA — Central de Inteligência${names.length>1?` <span style="font-weight:400;text-transform:none">(baseado em "${escapeHtml(editoriaName)}")</span>`:''}</div>
+        <div class="intel-modal-box-title">${UI_ICONS.idea(13)} Direcionamento da IA - Central de Inteligência${names.length>1?` <span style="font-weight:400;text-transform:none">(baseado em "${escapeHtml(editoriaName)}")</span>`:''}</div>
         <ul class="intel-rule-list">
           ${objective ? `<li><b>Objetivo:</b> ${escapeHtml(objective)}</li>` : ''}
           ${structureText ? `<li><b>Estrutura:</b> ${escapeHtml(structureText)}</li>` : ''}
@@ -2793,7 +2843,7 @@
     }
 
     // ============================================================
-    // GERADOR DE LEGENDA — monta um rascunho de texto do post combinando os dados reais do
+    // GERADOR DE LEGENDA - monta um rascunho de texto do post combinando os dados reais do
     // produto (destaques/aplicações/ficha técnica, do catálogo mestre) com o gancho e o CTA do
     // DNA de estilo da editoria selecionada (Central de Inteligência), quando disponível.
     // ============================================================
@@ -2806,7 +2856,7 @@
 
       const lines = [];
       // abertura: gancho do DNA da editoria quando houver; senão, um gancho de curiosidade sobre
-      // o destaque real do produto (ver HOOK_FORMULAS) — nunca cai num "Apresentamos o X." seco
+      // o destaque real do produto (ver HOOK_FORMULAS) - nunca cai num "Apresentamos o X." seco
       if(dna && dna.hooks[0]){
         lines.push(dna.hooks[0]);
         if(details.destaques) lines.push(firstSentence(details.destaques, 200));
@@ -2825,7 +2875,7 @@
       btn.addEventListener('click', ()=>{
         if(selectedProducts.length===0){ alert('Selecione um produto do catálogo antes de gerar a legenda.'); return; }
         const draft = generateCaptionDraft();
-        if(!draft){ alert('O produto selecionado não tem dados de destaques/aplicações no catálogo — gere a legenda manualmente ou escolha outro produto.'); return; }
+        if(!draft){ alert('O produto selecionado não tem dados de destaques/aplicações no catálogo - gere a legenda manualmente ou escolha outro produto.'); return; }
         const notes = $('mNotes');
         if(notes.value.trim() && !confirm('Isso substitui o texto atual do campo. Continuar?')) return;
         notes.value = draft;
@@ -2833,7 +2883,7 @@
       });
     }
 
-    // nomes das editorias como lista de strings — usado onde é preciso comparar/colorir por nome
+    // nomes das editorias como lista de strings - usado onde é preciso comparar/colorir por nome
     function editoriaNames(){ return APP_SETTINGS.editorias.map(e=>e.name); }
     // cor da editoria pelo nome; para nomes fora do cadastro (ex: posts antigos de uma
     // editoria removida) mantém o fallback por índice da paleta
@@ -2844,17 +2894,17 @@
     }
 
     // ============================================================
-    // FORMATOS POR REDE — cada rede social tem seu próprio conjunto de formatos
+    // FORMATOS POR REDE - cada rede social tem seu próprio conjunto de formatos
     // (ex: Instagram = Feed/Stories/Reels, LinkedIn = Post), cada um com
     // largura, altura (px) e extensões de arquivo aceitas.
     // ============================================================
-    // união (sem duplicar nomes) de todos os formatos de todas as redes — usado em Filtros e Edição em Lote
+    // união (sem duplicar nomes) de todos os formatos de todas as redes - usado em Filtros e Edição em Lote
     function allFormatNames(){
       const out = [];
       APP_SETTINGS.networks.forEach(n=> (n.formats||[]).forEach(f=>{ if(!out.includes(f.name)) out.push(f.name); }));
       return out;
     }
-    // união dos formatos disponíveis para um conjunto de redes selecionadas — usado no modal de criar/editar postagem
+    // união dos formatos disponíveis para um conjunto de redes selecionadas - usado no modal de criar/editar postagem
     function formatsForNetworks(networkNames){
       const out = [];
       (networkNames||[]).forEach(nn=>{
@@ -2865,7 +2915,7 @@
     }
 
     // ============================================================
-    // UI DINÂMICA GERADA A PARTIR DAS CONFIGURAÇÕES — reconstrói
+    // UI DINÂMICA GERADA A PARTIR DAS CONFIGURAÇÕES - reconstrói
     // abas, listas de opções e o painel de Configurações sempre
     // que uma rede/editoria/formato/status/produto muda
     // ============================================================
@@ -2873,7 +2923,7 @@
       const tabs = $('tabs'); tabs.innerHTML = '';
       const allBtn = document.createElement('button'); allBtn.className='btn ghost'; allBtn.dataset.tab='All'; allBtn.id='tabAll'; allBtn.textContent='Todas'; tabs.appendChild(allBtn);
       APP_SETTINGS.networks.forEach(n=>{ const b = document.createElement('button'); b.className='btn ghost icon-only'; b.dataset.tab = n.name; b.title = n.name; b.setAttribute('aria-label', n.name); b.innerHTML = networkIcon(n.name) + '<span class="tab-remove" aria-hidden="true">&times;</span>'; tabs.appendChild(b); });
-      // liga o clique de cada aba — "Todas" limpa a seleção; cada rede alterna dentro/fora de
+      // liga o clique de cada aba - "Todas" limpa a seleção; cada rede alterna dentro/fora de
       // activeTabs, permitindo selecionar várias redes ao mesmo tempo (seleção múltipla)
       tabs.querySelectorAll('button').forEach(b=>{
         b.addEventListener('click', ()=>{
@@ -2887,7 +2937,7 @@
     }
 
     // aplica as classes visuais (.ghost por botão + .all-active no container) de acordo com o
-    // activeTabs atual — chamada após clique e após reconstruir a lista de abas
+    // activeTabs atual - chamada após clique e após reconstruir a lista de abas
     function updateTabsActiveUI(){
       const tabs = $('tabs'); if(!tabs) return;
       const allSelected = activeTabs.length===0;
@@ -2901,25 +2951,25 @@
     // nome da rede cujo sub-dropdown de formatos está aberto em Configurações (persiste entre
     // re-renders, já que qualquer alteração nas configurações reconstrói a lista inteira)
     let openNetworkFormats = null;
-    // nome da rede cujos campos (nome/nome curto/ícone) estão em modo de edição — mesma lógica de persistência
+    // nome da rede cujos campos (nome/nome curto/ícone) estão em modo de edição - mesma lógica de persistência
     let editingNetworkName = null;
-    // nome da editoria atualmente em modo de edição inline na tela de Configurações (ou null) —
+    // nome da editoria atualmente em modo de edição inline na tela de Configurações (ou null) -
     // sempre igual a openEditoriaSchedule: nome/cor e dias fixos/formatos abrem e fecham juntos,
     // pelo mesmo ícone de lápis (ou clicando no chip de dias fixos/redes, quando há um)
     let editingEditoriaName = null;
     // nome da editoria cujo painel de "dias fixos e formatos" está aberto para edição (ou null)
     let openEditoriaSchedule = null;
-    // mês ("YYYY-MM") que o navegador acima da lista de editorias está exibindo — um só, vale
+    // mês ("YYYY-MM") que o navegador acima da lista de editorias está exibindo - um só, vale
     // pra todas as editorias ao mesmo tempo (chip da linha e painel de edição, quando aberto),
     // ver renderEditoriasUI/editoriasMonthKey. Só null antes da 1ª renderização.
     let editoriasMonthKey = null;
 
     // ============================================================
-    // POPOVER DE MESES do navegador acima da lista de editorias — mesmo componente visual do
+    // POPOVER DE MESES do navegador acima da lista de editorias - mesmo componente visual do
     // seletor de mês/ano do calendário principal (classes .month-year-picker/.myp-months/
     // .myp-month, ver openMonthYearPicker() lá em cima), mas construído em JS e fixo em
     // document.body (em vez de position:absolute dentro do painel): #secEditorias fica dentro
-    // de .settings-content, que tem overflow-y:auto — um popover position:absolute ali seria
+    // de .settings-content, que tem overflow-y:auto - um popover position:absolute ali seria
     // cortado assim que passasse da altura visível, o mesmo problema que o menu "⋮" de cada
     // editoria (getEditoriaMenuEl) e o popover de marca do portal-shell.js já resolvem do
     // mesmo jeito.
@@ -2930,11 +2980,11 @@
       if(editoriasMonthPickerEl) return editoriasMonthPickerEl;
       editoriasMonthPickerEl = document.createElement('div');
       editoriasMonthPickerEl.className = 'month-year-picker';
-      // .month-year-picker nasceu pra uso fora de modal (z-index:40) — dentro do modal de
+      // .month-year-picker nasceu pra uso fora de modal (z-index:40) - dentro do modal de
       // Configurações (.modal-backdrop, z-index:60) precisa de um z-index mais alto pra não
       // ficar atrás dele, daí o mesmo valor do .event-menu (menu "⋮" de cada editoria). A
       // classe original também traz left:50%+transform:translateX(-50%) (centralização via
-      // .month-label-wrap com position:relative) — aqui o left em px já é calculado manualmente
+      // .month-label-wrap com position:relative) - aqui o left em px já é calculado manualmente
       // a cada abertura (ver openEditoriasMonthPicker), então o transform precisa ser zerado,
       // senão os dois mecanismos de centralização somam e o popover sai 50% da própria largura
       // deslocado pra esquerda do que deveria.
@@ -2977,7 +3027,7 @@
       const trigger = $('editoriasMonthLabel');
       const rect = trigger.getBoundingClientRect();
       popover.style.top = `${rect.bottom + 6}px`;
-      popover.style.left = `${Math.max(4, rect.left + rect.width/2 - 120)}px`; // 240px de largura (mesma da .month-year-picker) — centraliza sob o botão
+      popover.style.left = `${Math.max(4, rect.left + rect.width/2 - 120)}px`; // 240px de largura (mesma da .month-year-picker) - centraliza sob o botão
       popover.classList.add('open');
       trigger.setAttribute('aria-expanded', 'true');
       $('editoriasMonthLabelText').textContent = editoriasPickerYear;
@@ -2993,14 +3043,14 @@
       if(editoriasMonthPickerEl && editoriasMonthPickerEl.classList.contains('open')) closeEditoriasMonthPicker();
       else openEditoriasMonthPicker();
     }
-    // navega o ano exibido no popover — chamado pelas setas ‹ › do navegador enquanto ele estiver aberto
+    // navega o ano exibido no popover - chamado pelas setas ‹ › do navegador enquanto ele estiver aberto
     function stepEditoriasPickerYear(delta){
       editoriasPickerYear += delta;
       $('editoriasMonthLabelText').textContent = editoriasPickerYear;
       renderEditoriasMonthPicker();
     }
 
-    // abre (ou fecha, se já aberto) o modo de edição completo de uma editoria — nome/cor e dias
+    // abre (ou fecha, se já aberto) o modo de edição completo de uma editoria - nome/cor e dias
     // fixos/redes juntos, sempre pelo mesmo gatilho: o ícone de lápis ou o chip de agendamento
     function toggleEditoriaEdit(name){
       const isOpen = editingEditoriaName === name && openEditoriaSchedule === name;
@@ -3012,12 +3062,12 @@
     let newEditoriaScheduleEditor = null;
 
     function renderNetsUI(){
-      // checkboxes de rede dentro do modal de criar/editar postagem — mudar a rede também
+      // checkboxes de rede dentro do modal de criar/editar postagem - mudar a rede também
       // atualiza as opções de Formato disponíveis (cada rede tem seu próprio conjunto)
       const c = $('netsContainer'); if(c){ c.innerHTML = ''; APP_SETTINGS.networks.forEach(n=>{ const lbl = document.createElement('label'); lbl.className = 'chip-net'; lbl.title = n.name; lbl.innerHTML = `<input type="checkbox" class="mNet" value="${escapeHtml(n.name)}" aria-label="${escapeHtml(n.name)}" />${networkIcon(n.name)}`; c.appendChild(lbl); lbl.querySelector('input').addEventListener('change', ()=>{ renderModalFormatsUI(); refreshModalDynamic(); }); }); }
       renderModalFormatsUI();
 
-      // lista de redes cadastradas na tela de Configurações — cada uma com um sub-dropdown
+      // lista de redes cadastradas na tela de Configurações - cada uma com um sub-dropdown
       // para gerenciar seus próprios formatos (nome, largura, altura e extensões aceitas)
       const list = $('netsList');
       if(list){
@@ -3087,7 +3137,7 @@
             row.classList.toggle('editing');
           });
 
-          // edita o nome da rede — como o nome é usado como referência em postagens (post.channel) e
+          // edita o nome da rede - como o nome é usado como referência em postagens (post.channel) e
           // agendamentos de editoria, renomear atualiza essas referências também
           const nameInput = row.querySelector('.net-edit-name');
           nameInput.addEventListener('change', ()=>{
@@ -3113,7 +3163,7 @@
           });
           shortInput.addEventListener('keydown', ev=>{ if(ev.key==='Enter') shortInput.blur(); });
 
-          // ícone da rede: preset colorido ou SVG customizado enviado pelo usuário — quando não há
+          // ícone da rede: preset colorido ou SVG customizado enviado pelo usuário - quando não há
           // ícone explícito mas o nome bate com um preset (ex: "Instagram"), mostra esse preset já
           // selecionado no seletor, já que é o que de fato aparece na linha (via networkIcon)
           const autoKey = normalizeIconKey(n.name);
@@ -3144,7 +3194,7 @@
     ];
     const WEEKDAY_ABBR = WEEKDAYS_PT.map(day=>day.short);
 
-    // chave "YYYY-MM" usada em editoria.scheduleByMonth — cada mês guarda seu próprio
+    // chave "YYYY-MM" usada em editoria.scheduleByMonth - cada mês guarda seu próprio
     // agendamento fixo (dias da semana + redes), sem um "padrão" valendo pra sempre: uma
     // editoria pode publicar aos sábados em agosto e às terças em setembro, por exemplo
     function monthKeyFromDate(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
@@ -3157,10 +3207,10 @@
     // Constrói, dentro de `container`, o editor de agendamento de uma editoria: dias fixos da
     // semana + redes/tipos/formatos em que ela publica. Permite marcar várias redes, várias
     // tipos por rede e vários formatos por tipo. Reutilizado tanto no formulário de nova
-    // editoria quanto na edição inline de uma editoria já cadastrada — cada chamada monta sua
+    // editoria quanto na edição inline de uma editoria já cadastrada - cada chamada monta sua
     // própria árvore de elementos, então várias instâncias podem coexistir na mesma tela.
     // Retorna { getValue() } que lê a seleção atual e devolve { weekdays, channels } (ou null
-    // se não houver dias ou nenhuma rede totalmente configurada — tipo e formato marcados).
+    // se não houver dias ou nenhuma rede totalmente configurada - tipo e formato marcados).
     function buildScheduleEditor(container, schedule){
       const weekdays = (schedule && schedule.weekdays) || [];
       const cfgByChannel = {};
@@ -3169,12 +3219,12 @@
       container.innerHTML = `
         <div>
           <label>Datas de publicação</label>
-          <div style="font-size:11.5px;color:var(--muted);margin:-2px 0 4px">Opcional — dias fixos da semana em que essa editoria publica neste mês (ex: sempre sábado). Cada mês tem sua própria configuração; use "Aplicar" para gerar os cards dele.</div>
+          <div style="font-size:11.5px;color:var(--muted);margin:-2px 0 4px">Opcional - dias fixos da semana em que essa editoria publica neste mês (ex: sempre sábado). Cada mês tem sua própria configuração; use "Aplicar" para gerar os cards dele.</div>
           <div class="sched-weekdays"></div>
         </div>
         <div>
           <label>Redes, tipos e formatos</label>
-          <div style="font-size:11.5px;color:var(--muted);margin:-2px 0 4px">Marque quantas redes forem necessárias — cada uma pode ter vários tipos, e cada tipo, vários formatos.</div>
+          <div style="font-size:11.5px;color:var(--muted);margin:-2px 0 4px">Marque quantas redes forem necessárias - cada uma pode ter vários tipos, e cada tipo, vários formatos.</div>
           <div class="sched-nets"></div>
           <div class="sched-net-configs" style="display:flex;flex-direction:column;gap:8px;margin-top:6px"></div>
         </div>`;
@@ -3253,7 +3303,7 @@
           return { weekdays: weekdaysOut, channels };
         },
         // true quando há alguma seleção (dia da semana e/ou rede marcada) que ainda não forma
-        // um agendamento válido — diferencia "esqueceu de completar" de "desmarcou tudo de
+        // um agendamento válido - diferencia "esqueceu de completar" de "desmarcou tudo de
         // propósito pra remover o agendamento deste mês", que também faz getValue() retornar null
         isIncomplete(){
           const hasWeekday = wd.querySelectorAll('.sched-weekday:checked').length>0;
@@ -3266,7 +3316,7 @@
       };
     }
 
-    // menu flutuante "⋮" de cada editoria (por enquanto só "Remover editoria") — mesmo padrão
+    // menu flutuante "⋮" de cada editoria (por enquanto só "Remover editoria") - mesmo padrão
     // do menu de postagem (getCardMenuEl/closeAllCardMenus): um único elemento reaproveitado,
     // fixo em document.body e reposicionado a cada abertura, pra não ser cortado pelo
     // overflow:hidden do .net-row. Tira "Remover" de um X sempre exposto na linha (fácil de
@@ -3288,24 +3338,24 @@
       const c = $('editoriasContainer'); if(c){ c.innerHTML=''; APP_SETTINGS.editorias.forEach(e=>{ const lbl=document.createElement('label'); lbl.className='chip'; lbl.innerHTML = `<input type="checkbox" class="mEditoria" value="${escapeHtml(e.name)}" /> <span class="dot" style="background:${editoriaColor(e.name)}"></span>${escapeHtml(e.name)}`; c.appendChild(lbl); lbl.querySelector('input').addEventListener('change', refreshModalDynamic); }); }
       const fc = $('filterEditoriasContainer'); if(fc){ fc.innerHTML=''; APP_SETTINGS.editorias.forEach(e=>{ const lbl=document.createElement('label'); lbl.className='chip'; lbl.innerHTML = `<input type="checkbox" class="fEditoria" value="${escapeHtml(e.name)}"/> <span class="dot" style="background:${editoriaColor(e.name)}"></span>${escapeHtml(e.name)}`; fc.appendChild(lbl); }); }
 
-      // dias fixos + redes/tipos/formatos do formulário de nova editoria — monta o editor
+      // dias fixos + redes/tipos/formatos do formulário de nova editoria - monta o editor
       // reutilizável e guarda o handle para o botão "Adicionar editoria" ler ao salvar
       const newSchedFields = $('newEditoriaScheduleFields');
       if(newSchedFields) newEditoriaScheduleEditor = buildScheduleEditor(newSchedFields, null);
 
-      // navegador de mês compartilhado, acima da lista — um só mês vale pra todas as editorias
+      // navegador de mês compartilhado, acima da lista - um só mês vale pra todas as editorias
       // ao mesmo tempo (ver editoriasMonthKey). Começa no mês que o calendário está exibindo;
       // dali em diante só muda pelas próprias setas ou pelo popover de meses (ligados uma única
-      // vez, fora daqui, junto dos outros botões estáticos da tela — não recriados a cada render)
+      // vez, fora daqui, junto dos outros botões estáticos da tela - não recriados a cada render)
       if(!editoriasMonthKey) editoriasMonthKey = monthKeyFromDate(viewDate);
       const monthLabelEl = $('editoriasMonthLabelText');
       if(monthLabelEl) monthLabelEl.textContent = monthLabelFromKey(editoriasMonthKey);
 
-      // lista de editorias cadastradas — mesmo padrão visual/de edição das redes: modo de
+      // lista de editorias cadastradas - mesmo padrão visual/de edição das redes: modo de
       // visualização (bolinha colorida + nome) e, pelo lápis, modo de edição inline com
       // seletor de cor e renomear (o renome cascateia para as postagens existentes). O
       // agendamento (dias fixos + redes/tipos/formatos) abre num painel expansível à parte,
-      // no mesmo padrão dos formatos de cada rede em "secRedes" — sempre referente ao mês
+      // no mesmo padrão dos formatos de cada rede em "secRedes" - sempre referente ao mês
       // selecionado no navegador acima da lista.
       const list = $('editoriasList');
       if(list){
@@ -3314,7 +3364,7 @@
           const row = document.createElement('div');
           row.className = 'net-row';
           // o chip da linha colapsada mostra o agendamento do mês selecionado no navegador
-          // acima da lista — cada mês tem sua própria config (ver scheduleByMonth)
+          // acima da lista - cada mês tem sua própria config (ver scheduleByMonth)
           const currentSchedule = (e.scheduleByMonth||{})[editoriasMonthKey];
           const hasCurrentSchedule = currentSchedule && (currentSchedule.channels||[]).length>0;
           const scheduleLabel = hasCurrentSchedule ? currentSchedule.weekdays.slice().sort().map(d=>WEEKDAY_ABBR[d]).join(', ') : '';
@@ -3329,7 +3379,7 @@
                 <input type="color" class="ed-edit-color" value="${e.color||'#F6BE00'}" title="Cor da editoria" style="flex-shrink:0" />
                 <input type="text" class="ed-edit-name" value="${escapeHtml(e.name)}" title="Nome da editoria" style="flex:2;min-width:110px" />
               </div>` +
-            (hasCurrentSchedule ? `<button type="button" class="chip ed-schedule-chip" style="font-size:11px" title="Repete em dias fixos neste mês — clique para ver/editar mês a mês">${UI_ICONS.calendar(12)} ${escapeHtml(scheduleLabel)} · ${escapeHtml(channelsLabel)}</button>` : '') +
+            (hasCurrentSchedule ? `<button type="button" class="chip ed-schedule-chip" style="font-size:11px" title="Repete em dias fixos neste mês - clique para ver/editar mês a mês">${UI_ICONS.calendar(12)} ${escapeHtml(scheduleLabel)} · ${escapeHtml(channelsLabel)}</button>` : '') +
             `<button type="button" class="btn ghost small ed-edit-toggle" aria-label="Editar editoria" title="Editar nome, cor e agendamento mês a mês">${UI_ICONS.edit(13)}</button>
               <button type="button" class="btn ghost small ed-more-btn" aria-label="Mais ações" title="Mais ações">${UI_ICONS.moreVertical(13)}</button>
             </div>
@@ -3345,20 +3395,20 @@
           if(openEditoriaSchedule === e.name) row.classList.add('open');
 
           // o painel sempre mostra/edita o mês selecionado no navegador acima da lista
-          // (editoriasMonthKey) — não tem navegação própria
+          // (editoriasMonthKey) - não tem navegação própria
           let schedEditor = null;
           if(openEditoriaSchedule === e.name){
             schedEditor = buildScheduleEditor(row.querySelector('.ed-schedule-editor'), (e.scheduleByMonth||{})[editoriasMonthKey] || null);
           }
 
           // salva o agendamento editado (do mês selecionado no navegador acima) e fecha a
-          // edição (nome/cor + dias fixos/formatos, que abrem e fecham juntos) — se nada ficou
+          // edição (nome/cor + dias fixos/formatos, que abrem e fecham juntos) - se nada ficou
           // totalmente configurado (dia + rede + tipo + formato), remove o agendamento desse
           // mês específico em vez de salvar algo incompleto (os outros meses não são afetados)
           const saveBtn = row.querySelector('.ed-schedule-save');
           if(saveBtn) saveBtn.addEventListener('click', ()=>{
             const value = schedEditor ? schedEditor.getValue() : null;
-            if(!value && schedEditor && schedEditor.isIncomplete()){ openScheduleWarning('Selecione ao menos um dia da semana e uma rede com tipo e formato definidos antes de salvar — ou desmarque tudo para remover o agendamento deste mês.'); return; }
+            if(!value && schedEditor && schedEditor.isIncomplete()){ openScheduleWarning('Selecione ao menos um dia da semana e uma rede com tipo e formato definidos antes de salvar - ou desmarque tudo para remover o agendamento deste mês.'); return; }
             e.scheduleByMonth = e.scheduleByMonth || {};
             if(value) e.scheduleByMonth[editoriasMonthKey] = value; else delete e.scheduleByMonth[editoriasMonthKey];
             openEditoriaSchedule = null;
@@ -3368,7 +3418,7 @@
 
           // "Aplicar a este mês": salva a config do mês selecionado no navegador acima da lista
           // e abre o modal com a lista de datas geradas por ela, pra revisar produto a produto
-          // antes de efetivar (ver openApplyEditoriaModal) — não fecha o painel, útil pra
+          // antes de efetivar (ver openApplyEditoriaModal) - não fecha o painel, útil pra
           // configurar vários meses em sequência (navegar, aplicar, navegar, aplicar)
           const applyBtn = row.querySelector('.ed-schedule-apply');
           if(applyBtn) applyBtn.addEventListener('click', ()=>{
@@ -3382,7 +3432,7 @@
           });
 
           // ícone de lápis: abre/fecha a edição completa da editoria (nome, cor e agendamento
-          // mês a mês) — mesmo gatilho do chip de agendamento, quando ele existe
+          // mês a mês) - mesmo gatilho do chip de agendamento, quando ele existe
           row.querySelector('.ed-edit-toggle').addEventListener('click', ()=> toggleEditoriaEdit(e.name));
           const schedChip = row.querySelector('.ed-schedule-chip');
           if(schedChip) schedChip.addEventListener('click', ()=> toggleEditoriaEdit(e.name));
@@ -3390,7 +3440,7 @@
           // edita a cor da editoria
           row.querySelector('.ed-edit-color').addEventListener('change', (ev)=>{ e.color = ev.target.value; saveSettings(); renderAllDynamicUI(); render(); });
 
-          // edita o nome — como o nome é referenciado nas postagens (post.editoria) e nos
+          // edita o nome - como o nome é referenciado nas postagens (post.editoria) e nos
           // filtros ativos, renomear atualiza essas referências também
           const nameInput = row.querySelector('.ed-edit-name');
           nameInput.addEventListener('change', ()=>{
@@ -3407,7 +3457,7 @@
           });
           nameInput.addEventListener('keydown', ev=>{ if(ev.key==='Enter') nameInput.blur(); });
 
-          // botão "⋮": só a ação de remover a editoria inteira — "Aplicar" agora mora dentro do
+          // botão "⋮": só a ação de remover a editoria inteira - "Aplicar" agora mora dentro do
           // próprio painel de agendamento, junto do navegador de mês (ver ed-schedule-apply
           // acima), já que passou a ser uma ação por mês em vez de "o mês vigente"
           const moreBtn = row.querySelector('.ed-more-btn');
@@ -3424,7 +3474,7 @@
               if(!confirm(`Remover a editoria "${e.name}"? As postagens já criadas com ela não são apagadas, só deixam de ter essa categoria disponível pra reatribuir. Essa ação não pode ser desfeita com Ctrl+Z.`)) return;
               APP_SETTINGS.editorias = APP_SETTINGS.editorias.filter(x=>x.name!==e.name); saveSettings(); renderAllDynamicUI();
             };
-            // linhas de editoria são baixas (~44px) — o menu abrindo pra baixo, colado no botão,
+            // linhas de editoria são baixas (~44px) - o menu abrindo pra baixo, colado no botão,
             // muitas vezes invade visualmente a linha seguinte (cobre o "⋮"/lápis dela, parecendo
             // "deslocado" da linha que na verdade o abriu). Se não sobrar espaço até a próxima
             // linha (ou até o fim da janela, na última linha), abre pra cima em vez de para baixo
@@ -3442,12 +3492,12 @@
     }
 
     // ============================================================
-    // MODAL "APLICAR EDITORIA AO MÊS" — revisão data a data (ativar/desativar + produto(s))
+    // MODAL "APLICAR EDITORIA AO MÊS" - revisão data a data (ativar/desativar + produto(s))
     // do agendamento fixo de uma editoria antes de gerar os cards. Aberto a partir do botão
     // "Aplicar a este mês" em Configurações → Editorias (ver renderEditoriasUI acima).
     // ============================================================
     let applyEditoriaState = null; // { editoriaName, year, month, rows:[{dateStr, active, products, postId}] }
-    // true enquanto o modal de postagem estiver aberto a partir de uma linha deste modal — mostra
+    // true enquanto o modal de postagem estiver aberto a partir de uma linha deste modal - mostra
     // o botão "‹ Voltar" no cabeçalho e, ao fechar, ressincroniza a linha com o card editado
     let modalOpenedFromApplyEditoria = false;
 
@@ -3489,7 +3539,7 @@
       applyEditoriaState = null;
     }
 
-    // aviso de agendamento incompleto (ver saveBtn em renderEditoriasUI) — modal simples da
+    // aviso de agendamento incompleto (ver saveBtn em renderEditoriasUI) - modal simples da
     // própria aplicação em vez de alert() nativo do navegador, pra manter a identidade visual
     function openScheduleWarning(message){
       $('scheduleWarningMessage').textContent = message;
@@ -3507,7 +3557,7 @@
     }
 
     // garante que a linha tenha um card real (cria com os produtos já preenchidos na linha, se
-    // ainda não existir um) — chamado pelo botão "Editar card", pra sempre abrir uma postagem
+    // ainda não existir um) - chamado pelo botão "Editar card", pra sempre abrir uma postagem
     // de verdade em vez de um formulário "solto"
     function ensurePostForRow(row){
       if(row.postId && state.posts.some(p=>p.id===row.postId)) return;
@@ -3532,13 +3582,13 @@
       row.postId = p.id;
     }
 
-    // monta a lista de datas do modal — reconstruída inteira a cada chamada (mesmo padrão das
+    // monta a lista de datas do modal - reconstruída inteira a cada chamada (mesmo padrão das
     // outras listas do app), preservando o que já estiver em applyEditoriaState.rows
     function renderApplyEditoriaModal(){
       if(!applyEditoriaState) return;
       const { editoriaName, year, month, rows } = applyEditoriaState;
       const monthLabel = monthLabelFromKey(monthKeyFromDate(new Date(year, month, 1)));
-      $('applyEditoriaTitle').textContent = `Aplicar "${editoriaName}" — ${monthLabel}`;
+      $('applyEditoriaTitle').textContent = `Aplicar "${editoriaName}" - ${monthLabel}`;
       const list = $('applyEditoriaList'); if(!list) return;
       list.innerHTML = '';
       rows.forEach(row=>{
@@ -3609,7 +3659,7 @@
         input.addEventListener('blur', ()=> setTimeout(hideSugg, 150));
 
         // "Editar card": garante que a data já tenha um card real e abre o modal de postagem
-        // por cima deste (sem fechá-lo) — ao fechar o modal de postagem, esta lista reaparece
+        // por cima deste (sem fechá-lo) - ao fechar o modal de postagem, esta lista reaparece
         // automaticamente por baixo, já ressincronizada com o que foi editado lá
         item.querySelector('.ae-edit-card').addEventListener('click', ()=>{
           ensurePostForRow(row);
@@ -3621,7 +3671,7 @@
     }
 
     // efetiva a aplicação: cria (ou atualiza, se já existir) um card por data marcada como
-    // ativa, com o(s) produto(s) preenchidos naquela linha — mesma lógica de distribuição por
+    // ativa, com o(s) produto(s) preenchidos naquela linha - mesma lógica de distribuição por
     // rede/tipo/formato do agendamento usada em ensurePostForRow
     function confirmApplyEditoriaModal(){
       if(!applyEditoriaState) return;
@@ -3644,7 +3694,7 @@
         if(existing){
           updatedBefore.push({ id: existing.id, title: existing.title, channel: existing.channel, place: existing.place, type: existing.type, channels: existing.channels, products: existing.products });
           // só troca o título pelo novo produto se ele ainda for o auto-gerado (== nome da
-          // editoria) — um título já digitado manualmente pela pessoa nunca é sobrescrito aqui
+          // editoria) - um título já digitado manualmente pela pessoa nunca é sobrescrito aqui
           if(existing.title === editoriaName) existing.title = titleForEditoriaRow(row, editoriaName);
           existing.channel = primary.channel; existing.place = primary.places.slice(); existing.type = primary.types[0] || 'Static';
           existing.channels = channelsSnapshot.map(c=>Object.assign({},c));
@@ -3680,13 +3730,13 @@
     // preenche o filtro de Formato (união de todos os formatos de todas as redes) e o filtro de Tipo (fixo)
     function renderPlacesUI(){
       const fc = $('filterPlacesContainer'); if(fc){ fc.innerHTML=''; allFormatNames().forEach(p=>{ const lbl=document.createElement('label'); lbl.className='chip'; lbl.innerHTML=`<input type="checkbox" class="fPlace" value="${escapeHtml(p)}"/>${formatIcon(p)} ${escapeHtml(p)}`; fc.appendChild(lbl); }); }
-      // tipos (Estático/Vídeo) são fixos — só preenche o container de filtro
+      // tipos (Estático/Vídeo) são fixos - só preenche o container de filtro
       const ft = $('filterTypesContainer'); if(ft){ ft.innerHTML=''; ['Static','Video'].forEach(ti=>{ const lbl = document.createElement('label'); lbl.className='chip'; lbl.innerHTML = `<input type="checkbox" class="fType" value="${ti}"/>${TYPE_ICONS[ti]} ${ti==='Static'?'Estático':'Vídeo'}`; ft.appendChild(lbl); }); }
     }
 
-    // preenche o Formato do modal de criar/editar postagem, com base na(s) rede(s) marcada(s) —
-    // separado num grupo por rede social (cada rede tem seu próprio conjunto — ex: Reels só
-    // aparece se Instagram estiver marcado — e a mesma rede pode ter um formato de mesmo nome
+    // preenche o Formato do modal de criar/editar postagem, com base na(s) rede(s) marcada(s) -
+    // separado num grupo por rede social (cada rede tem seu próprio conjunto - ex: Reels só
+    // aparece se Instagram estiver marcado - e a mesma rede pode ter um formato de mesmo nome
     // que outra com dimensões diferentes, então cada grupo mostra os formatos da SUA rede, sem
     // deduplicar entre grupos como formatsForNetworks faz para outros usos). Cada chip de formato
     // exibe as dimensões em pixels como subtexto abaixo do nome.
@@ -3735,7 +3785,7 @@
       list.querySelectorAll('button[data-catalog]').forEach(bt=> bt.addEventListener('click', ()=>{ const v=bt.dataset.catalog; APP_SETTINGS.catalog = (APP_SETTINGS.catalog||[]).filter(x=>x.code!==v); saveSettings(); renderCatalogUI(); }));
     }
 
-    // datas comemorativas personalizadas (ex: aniversário da empresa, um evento específico) —
+    // datas comemorativas personalizadas (ex: aniversário da empresa, um evento específico) -
     // "todo ano" repete pelo dia/mês (ignora o ano cadastrado); sem marcar, vale só para a data exata
     function renderCustomDatesUI(){
       const list = $('customDatesList'); if(!list) return;
@@ -3760,12 +3810,12 @@
     }
 
     // todas as datas comemorativas (fixas + móveis + personalizadas) já reconhecidas pelo
-    // calendário num ano específico, em ordem cronológica — cada entrada agrupa os nomes de
+    // calendário num ano específico, em ordem cronológica - cada entrada agrupa os nomes de
     // todas as datas que caem naquele mesmo dia (ex: um evento cadastrado no mesmo dia de um feriado)
     function allCommemorativeDatesForYear(year){
       const byDate = {};
       const add = (dateStr, name)=>{ (byDate[dateStr] = byDate[dateStr] || []).push(name); };
-      Object.keys(FIXED_COMMEMORATIVE_DATES).forEach(mmdd=> add(`${year}-${mmdd}`, FIXED_COMMEMORATIVE_DATES[mmdd]));
+      Object.keys(FIXED_COMMEMORATIVE_DATES).forEach(mmdd=> FIXED_COMMEMORATIVE_DATES[mmdd].forEach(n=> add(`${year}-${mmdd}`, n)));
       const movable = movableCommemorativeDates(year);
       Object.keys(movable).forEach(dateStr=> add(dateStr, movable[dateStr]));
       (APP_SETTINGS.customDates||[]).forEach(c=>{
@@ -3775,7 +3825,7 @@
       return Object.keys(byDate).sort().map(dateStr=> ({ dateStr, names: byDate[dateStr] }));
     }
 
-    // ano atualmente selecionado no filtro de "Todas as datas cadastradas" — inicia no ano
+    // ano atualmente selecionado no filtro de "Todas as datas cadastradas" - inicia no ano
     // do mês exibido no calendário, pra já abrir mostrando o ano relevante
     let commemorativeListYear = null;
     function renderCommemorativeDatesYearList(){
@@ -3820,11 +3870,11 @@
     function renderAllDynamicUI(){ renderTabs(); renderNetsUI(); renderEditoriasUI(); renderPlacesUI(); renderStatusUI(); renderCatalogUI(); renderCustomDatesUI(); renderCommemorativeDatesYearList(); }
 
     // ============================================================
-    // MODAL DE CONFIGURAÇÕES — abrir, fechar e salvar a meta
+    // MODAL DE CONFIGURAÇÕES - abrir, fechar e salvar a meta
     // ============================================================
     // fecha qualquer popover de seletor de ícone de rede que tenha ficado aberto/preso no <body>
     // (ex: usuário clica em "Subir arquivo personalizado", cancela o diálogo do sistema sem
-    // clicar em mais nada, e sai da tela — nada mais dispara o fechamento) — sem isso, o popover
+    // clicar em mais nada, e sai da tela - nada mais dispara o fechamento) - sem isso, o popover
     // fica ali flutuando e reaparece "já aberto" na mesma posição da próxima vez que Configurações abrir
     function closeAllIconPickers(){
       document.querySelectorAll('.icon-picker-popover').forEach(el=>{ if(el.parentNode) el.parentNode.removeChild(el); });
@@ -3836,7 +3886,7 @@
       $('sTarget').value = TARGET;
       $('sVideoWeeklyTarget').value = APP_SETTINGS.videoWeeklyTarget;
       // o navegador de mês de Editorias sempre abre sincronizado com o mês que o calendário
-      // está exibindo no momento (viewDate) — nunca com o mês de uma sessão anterior do
+      // está exibindo no momento (viewDate) - nunca com o mês de uma sessão anterior do
       // modal, nem com o mês atual do relógio; dali em diante (com o modal já aberto) o
       // usuário pode navegar livremente pelas próprias setas, ver editoriasMonthKey
       editoriasMonthKey = monthKeyFromDate(viewDate);
@@ -3855,7 +3905,7 @@
     }
 
     // ============================================================
-    // EDIÇÃO DE POSTAGEM EXISTENTE — abre o modal já preenchido
+    // EDIÇÃO DE POSTAGEM EXISTENTE - abre o modal já preenchido
     // com os dados do post clicado no calendário/lista
     // ============================================================
     function openEditModal(id){
@@ -3881,7 +3931,7 @@
       const entries = postChannelEntries(post);
       const heterogeneous = isHeterogeneousChannels(entries);
       const entryChannels = entries.map(c=>c.channel);
-      // marca todas as redes da postagem — sempre editáveis, mesmo quando a distribuição é
+      // marca todas as redes da postagem - sempre editáveis, mesmo quando a distribuição é
       // heterogênea (tipo/formato diferentes por rede, o que só vem do agendamento de uma
       // editoria); nesse caso o aviso abaixo só explica que salvar aqui unifica a distribuição
       document.querySelectorAll('.mNet').forEach(n=>{ n.checked = entryChannels.includes(n.value); });
@@ -3903,7 +3953,7 @@
       hideProductSuggestions();
       // troca o título do modal para indicar o modo edição
       document.querySelector('#modalBackdrop .modal h2').textContent = 'Editar postagem';
-      // habilita o "⋮" (duplicar/excluir) — só faz sentido para uma postagem que já existe
+      // habilita o "⋮" (duplicar/excluir) - só faz sentido para uma postagem que já existe
       if($('modalMenuBtn')) $('modalMenuBtn').style.display = 'flex';
       // os formatos/tipo foram marcados direto pela propriedade .checked acima (não dispara
       // "change"), então a pré-visualização e as sugestões de título só ficam em dia com um
@@ -3943,7 +3993,7 @@
     }
 
     // ============================================================
-    // DESFAZER / REFAZER — pilhas de ações e suas inversas.
+    // DESFAZER / REFAZER - pilhas de ações e suas inversas.
     // Cada ação guarda o suficiente para ser revertida: 'move' guarda
     // origem/destino, 'create'/'delete' guardam os posts envolvidos,
     // 'edit'/'edit-multi' guardam o estado anterior do(s) post(s).
@@ -4083,7 +4133,7 @@
     }
 
     // escapa caracteres especiais de HTML para evitar quebra de layout/XSS ao injetar texto do usuário
-    function escapeHtml(s){ return String(s||'').replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+    function escapeHtml(s){ return String(s||'').replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
     // ============================================================
     // LIGAÇÃO DOS BOTÕES E CAMPOS PRINCIPAIS DA TOOLBAR/MODAIS
@@ -4094,7 +4144,7 @@
     $('saveSettings').addEventListener('click', saveSettingsHandler);
     $('cancelModal').addEventListener('click', closeModal);
     $('saveModal').addEventListener('click', saveModal);
-    // as setas ‹ › navegam mês (padrão) ou ano (quando o popover de mês está aberto) — o
+    // as setas ‹ › navegam mês (padrão) ou ano (quando o popover de mês está aberto) - o
     // stopPropagation() no caso do popover aberto é necessário: sem ele, o clique borbulha até
     // o document.addEventListener('click', closeMonthYearPicker) logo abaixo e fecha o popover
     // no mesmo clique em que o ano acabou de mudar, antes do usuário conseguir ver o resultado
@@ -4170,7 +4220,7 @@
     if($('mArtsLink')) $('mArtsLink').addEventListener('input', refreshModalDynamic);
     if($('mReferencesLink')) $('mReferencesLink').addEventListener('input', refreshModalDynamic);
     // ============================================================
-    // IMAGENS DE REFERÊNCIA (campo "Referências salvas em:") — upload local, redimensionado e
+    // IMAGENS DE REFERÊNCIA (campo "Referências salvas em:") - upload local, redimensionado e
     // recomprimido em JPEG no próprio navegador (canvas), pra não inflar demais o payload
     // sincronizado com o servidor (state.posts inteiro vai num único JSON a cada salvamento).
     // As miniaturas refletem na pré-visualização do briefing (bpImagesRow) e são embutidas de
@@ -4210,7 +4260,7 @@
         const files = Array.from(ev.target.files||[]).filter(f=> f.type.startsWith('image/'));
         for(const file of files){
           try{ editingReferenceImages.push(await readImageFileCompressed(file)); }
-          catch(e){ /* arquivo ilegível como imagem — ignora e segue com os demais */ }
+          catch(e){ /* arquivo ilegível como imagem - ignora e segue com os demais */ }
         }
         ev.target.value = '';
         renderReferenceImages();
@@ -4226,7 +4276,7 @@
     if($('mImageLink')) $('mImageLink').addEventListener('input', refreshModalDynamic);
     if($('mImageNotes')) $('mImageNotes').addEventListener('input', refreshModalDynamic);
     if($('mNotes')) $('mNotes').addEventListener('input', refreshModalDynamic);
-    // botão de copiar o texto da pré-visualização do briefing — feedback visual rápido (✓) no
+    // botão de copiar o texto da pré-visualização do briefing - feedback visual rápido (✓) no
     // próprio ícone, sem precisar de alert/toast
     if($('mCopyBriefingBtn')) $('mCopyBriefingBtn').addEventListener('click', ()=>{
       const btn = $('mCopyBriefingBtn');
@@ -4258,20 +4308,20 @@
 
 
     // ============================================================
-    // EXPORTAÇÃO DE BRIEFING EM .DOCX — junta o briefing de todas as postagens num único
+    // EXPORTAÇÃO DE BRIEFING EM .DOCX - junta o briefing de todas as postagens num único
     // Word, agrupado por data (ordem cronológica, uma página por data) e, dentro de cada data,
     // na mesma ordem manual do calendário. Sem nenhuma lib externa: um .docx é só um zip com
-    // XMLs dentro (OOXML WordprocessingML) — o empacotador de zip abaixo é o mesmo escrito à
+    // XMLs dentro (OOXML WordprocessingML) - o empacotador de zip abaixo é o mesmo escrito à
     // mão que o Editor de Posts usa pro pacote Feed+Story (post-editor.js/makeZip), só que
     // como cópia independente aqui (cada arquivo do projeto é autocontido, sem módulo
-    // compartilhado — mesmo padrão do resto do app).
+    // compartilhado - mesmo padrão do resto do app).
     // ============================================================
     const DOCX_CRC_TABLE = (()=>{ const t=[]; for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xedb88320^(c>>>1)):(c>>>1); t[n]=c>>>0; } return t; })();
     function docxZipCrc(bytes){ let crc=0xffffffff; for(let i=0;i<bytes.length;i++) crc=DOCX_CRC_TABLE[(crc^bytes[i])&255]^(crc>>>8); return (crc^0xffffffff)>>>0; }
     function docxZipHeader(size){ const bytes=new Uint8Array(size), view=new DataView(bytes.buffer); return { bytes, u16:(o,v)=>view.setUint16(o,v,true), u32:(o,v)=>view.setUint32(o,v>>>0,true) }; }
     function docxZipDate(){ const d=new Date(), year=Math.max(1980,d.getFullYear()); return { time:(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1), date:((year-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate() }; }
     // monta um .zip "stored" (sem compressão, mais simples e suficiente pro tamanho de um
-    // briefing em texto) a partir de {name, data:Uint8Array}[] — mesma mecânica de central
+    // briefing em texto) a partir de {name, data:Uint8Array}[] - mesma mecânica de central
     // directory/end-of-central-directory de post-editor.js/makeZip
     function makeStoredZip(files, mimeType){
       const encoder = new TextEncoder(), stamp = docxZipDate(), locals=[], centrals=[];
@@ -4312,7 +4362,7 @@
       if(/^[a-zA-Z]:[\\/]/.test(v)) return 'file:///' + v.replace(/\\/g,'/');
       return 'https://' + v.replace(/^\/+/, '');
     }
-    // fonte padrão do documento inteiro: Calibri 11pt (w:sz em meios-ponto, 22 = 11pt) — todo
+    // fonte padrão do documento inteiro: Calibri 11pt (w:sz em meios-ponto, 22 = 11pt) - todo
     // docxRun/docxHyperlinkRun usa este mesmo tamanho, exceto onde explicitamente sobrescrito
     const DOCX_RFONTS = '<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/>';
     // um <w:r> (run) com o texto formatado; quebras de linha internas viram <w:br/>, não parágrafos novos
@@ -4328,7 +4378,7 @@
       return `<w:r><w:rPr>${props.join('')}</w:rPr>${body}</w:r>`;
     }
     // próximo r:id livre da lista de relacionamentos do document.xml (compartilhada entre
-    // hyperlinks e imagens embutidas de uma mesma exportação — precisa ser único no arquivo)
+    // hyperlinks e imagens embutidas de uma mesma exportação - precisa ser único no arquivo)
     function nextDocxRelId(assets){ return 'rId' + (assets.rels.length + 1); }
     // um <w:hyperlink> (link ou local salvo, ex: "Salvar em", "Referências salvas em", "Imagem")
     // com a aparência padrão de link do Word (azul sublinhado); registra o relacionamento
@@ -4382,7 +4432,7 @@
     function docxParagraph(runsXml, pPrExtraXml){
       return `<w:p>${pPrExtraXml?`<w:pPr>${pPrExtraXml}</w:pPr>`:''}${runsXml}</w:p>`;
     }
-    // parágrafo vazio com só uma linha fina embaixo — a versão em Word do BRIEFING_SEPARATOR
+    // parágrafo vazio com só uma linha fina embaixo - a versão em Word do BRIEFING_SEPARATOR
     function docxRuleParagraph(){
       return `<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="C9C9C9"/></w:pBdr><w:spacing w:after="200"/></w:pPr></w:p>`;
     }
@@ -4392,7 +4442,7 @@
       const pPr = (pageBreakBefore?'<w:pageBreakBefore/>':'') + '<w:pBdr><w:bottom w:val="double" w:sz="6" w:space="4" w:color="1A1A1A"/></w:pBdr><w:spacing w:after="220"/>';
       return docxParagraph(docxRun(dateLabel.toUpperCase(), { bold:true }), pPr);
     }
-    // parágrafos de uma postagem — mesmos campos e ordem de buildBriefingPlainLines (Título,
+    // parágrafos de uma postagem - mesmos campos e ordem de buildBriefingPlainLines (Título,
     // Publicação prevista para, Formatos, Salvar em, Referências salvas em, Produto(s),
     // Imagem, Observações e Conteúdo), só que como XML do Word em vez de texto puro. `assets`
     // acumula os relacionamentos (hyperlinks/imagens) e a mídia embutida de toda a exportação.
@@ -4404,7 +4454,7 @@
       let xml = '';
       if(f.title){
         // linha divisória embutida no próprio parágrafo do título (borda inferior), em vez de
-        // um parágrafo vazio separado — evita pular uma linha em branco entre título e metadados
+        // um parágrafo vazio separado - evita pular uma linha em branco entre título e metadados
         const titleBorder = hasMeta ? '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="4" w:color="C9C9C9"/></w:pBdr>' : '';
         xml += docxParagraph(docxRun(f.title.toUpperCase(), { bold:true, underline:true, highlight:'yellow' }), titleBorder + '<w:spacing w:after="120"/>');
       }
@@ -4442,7 +4492,7 @@
         `<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1417" w:right="1417" w:bottom="1417" w:left="1417" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>`+
         `</w:body></w:document>`;
     }
-    // Relationships do word/document.xml — um por hyperlink (externo) ou imagem embutida
+    // Relationships do word/document.xml - um por hyperlink (externo) ou imagem embutida
     function docxDocumentRelsXml(rels){
       const items = rels.map(r=>{
         const type = r.type==='hyperlink'
@@ -4494,7 +4544,7 @@
       assets.media.forEach(m=> files.push({ name:'word/'+m.name, data: m.data }));
       return makeStoredZip(files, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     }
-    // baixa um Blob binário (usado pelo .docx — download() só serve pra texto puro/CSV)
+    // baixa um Blob binário (usado pelo .docx - download() só serve pra texto puro/CSV)
     function downloadBlob(name, blob){
       const a = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -4503,7 +4553,7 @@
       setTimeout(()=> URL.revokeObjectURL(url), 1200);
     }
     // gera e baixa o .docx só com as postagens cuja data (YYYY-MM-DD) cai entre startStr e endStr,
-    // inclusive nos dois extremos — chamado pelo botão "Exportar .docx" do modal de período
+    // inclusive nos dois extremos - chamado pelo botão "Exportar .docx" do modal de período
     function exportBriefingForRange(startStr, endStr){
       const posts = state.posts.filter(p=> p.date && p.date>=startStr && p.date<=endStr);
       if(!posts.length){ alert('Nenhuma postagem no período selecionado.'); return; }
@@ -4522,15 +4572,15 @@
     }
 
     // ============================================================
-    // MODAL "EXPORTAR BRIEFING" — escolhe o período antes de gerar o .docx. Os presets
+    // MODAL "EXPORTAR BRIEFING" - escolhe o período antes de gerar o .docx. Os presets
     // (Semanal/Quinzenal/Mensal/Bimestral/Trimestral/Semestral/Anual) só preenchem De/Até como
-    // ponto de partida — quem de fato decide o que entra no arquivo são os dois campos de data,
+    // ponto de partida - quem de fato decide o que entra no arquivo são os dois campos de data,
     // que continuam livres pra edição manual depois de qualquer preset.
     // ============================================================
     // intervalo [Date,Date] de um preset, ancorado no mês/ano de `anchor` (a visão aberta no
     // calendário no momento); bimestre/trimestre/semestre/ano seguem blocos fixos de calendário
     // (jan-fev, mar-abr... / jan-mar, abr-jun... / jan-jun, jul-dez / jan-dez), não uma janela
-    // rolante a partir de `anchor` — é como "1º bimestre"/"2º trimestre" são entendidos no dia a dia
+    // rolante a partir de `anchor` - é como "1º bimestre"/"2º trimestre" são entendidos no dia a dia
     function periodPresetRange(preset, anchor){
       const y = anchor.getFullYear(), m = anchor.getMonth();
       switch(preset){
@@ -4550,7 +4600,7 @@
       updateExportPeriodSummary();
     }
     const EXPORT_PERIOD_PRESETS = ['week','biweek','month','bimonth','quarter','semester','year'];
-    // descobre se o intervalo De/Até atual corresponde exatamente a algum preset — usando a
+    // descobre se o intervalo De/Até atual corresponde exatamente a algum preset - usando a
     // própria data De como âncora (não viewDate), pra funcionar com qualquer mês/ano digitado à
     // mão, não só o que estava visível no calendário quando o modal abriu. Sem correspondência
     // exata, o período é "Personalizado".
@@ -4569,7 +4619,7 @@
       select.value = preset;
     }
     // feedback ao vivo abaixo dos campos de data: quantas postagens caem no período escolhido,
-    // pra dar pra conferir antes de baixar (e avisar se a ordem das datas ficou invertida) —
+    // pra dar pra conferir antes de baixar (e avisar se a ordem das datas ficou invertida) -
     // também mantém o dropdown de período em sincronia com as datas atuais
     function updateExportPeriodSummary(){
       const el = $('exportPeriodSummary'); if(!el) return;
@@ -4578,7 +4628,7 @@
       if(!startStr || !endStr){ el.textContent = ''; return; }
       if(startStr > endStr){ el.textContent = 'A data final precisa ser igual ou depois da inicial.'; return; }
       const count = state.posts.filter(p=> p.date && p.date>=startStr && p.date<=endStr).length;
-      el.textContent = `${formatDatePt(startStr)} até ${formatDatePt(endStr)} — ${count} postage${count===1?'m':'ns'} no período`;
+      el.textContent = `${formatDatePt(startStr)} até ${formatDatePt(endStr)} - ${count} postage${count===1?'m':'ns'} no período`;
     }
     // preset já selecionado ao abrir o modal: acompanha a visão do calendário aberta no momento
     // (mês, quinzena ou semana); Lista (ou qualquer outra) cai no mensal, o padrão mais comum
@@ -4646,10 +4696,10 @@
     function closeFilters(){ $('filtersBackdrop').style.display = 'none'; }
 
     // fechamento padrão de qualquer modal: pelo botão "X" ou clicando fora da caixa (no backdrop).
-    // `closeBtnSelector` é opcional — só é preciso quando o modal tem mais de um botão com a
+    // `closeBtnSelector` é opcional - só é preciso quando o modal tem mais de um botão com a
     // classe ".modal-close" (caso do modal de postagem, que também tem o "⋮" de mais ações);
     // sem ele, cai no primeiro ".modal-close" encontrado, como nos demais modais.
-    // `closeOnBackdropClick` (padrão true) desliga o fechamento por clique fora — usado no modal
+    // `closeOnBackdropClick` (padrão true) desliga o fechamento por clique fora - usado no modal
     // de criar/editar postagem, onde um clique acidental fora da caixa vinha fechando o modal e
     // descartando o que a pessoa já tinha preenchido; ali só o "X" (ou "‹ Voltar") fecha.
     function wireModalDismiss(backdropId, closeFn, closeBtnSelector, closeOnBackdropClick){
@@ -4660,7 +4710,7 @@
       if(closeBtn) closeBtn.addEventListener('click', closeFn);
     }
     wireModalDismiss('modalBackdrop', closeModal, '#modalCloseBtn', false);
-    // botão "⋮" do modal de edição — fixo, ligado uma única vez; lê editingId no momento do
+    // botão "⋮" do modal de edição - fixo, ligado uma única vez; lê editingId no momento do
     // clique (por isso o getter), já que o mesmo botão é reaproveitado a cada postagem editada
     if($('modalMenuBtn')) wireCardMenuButton($('modalMenuBtn'), () => editingId);
     wireIntelValidation();
@@ -4671,7 +4721,7 @@
     wireModalDismiss('settingsBackdrop', closeSettings);
     wireModalDismiss('filtersBackdrop', closeFilters);
     wireModalDismiss('cardActionConfirmBackdrop', closeCardActionConfirm, '#cardActionConfirmCloseBtn');
-    // modal "Aplicar editoria ao mês" — o "‹" do cabeçalho e o "X" fazem a mesma coisa (fecham
+    // modal "Aplicar editoria ao mês" - o "‹" do cabeçalho e o "X" fazem a mesma coisa (fecham
     // este modal e revelam a lista de editorias, que continua aberta por baixo, em Configurações);
     // o "‹" existe separado só pra deixar explícito que é "voltar", não "cancelar sem salvar"
     wireModalDismiss('applyEditoriaBackdrop', closeApplyEditoriaModal, '#applyEditoriaCloseBtn');
@@ -4684,7 +4734,7 @@
 if($('ostenCommemorativeCreateBriefing')) $('ostenCommemorativeCreateBriefing').addEventListener('click', createCommemorativeBriefingFromChoice);
 if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEventListener('click', openCommemorativeEditorDirect);
     // "‹ Voltar" do modal de postagem: só aparece quando ele foi aberto a partir de uma linha do
-    // modal "Aplicar editoria" (ver renderApplyEditoriaModal) — fechar aqui também revela essa
+    // modal "Aplicar editoria" (ver renderApplyEditoriaModal) - fechar aqui também revela essa
     // lista de volta, igual ao "X", mas com o rótulo certo pra esse contexto
     if($('modalBackBtn')) $('modalBackBtn').addEventListener('click', closeModal);
     wireModalDismiss('exportBriefingBackdrop', closeExportBriefingModal);
@@ -4710,14 +4760,14 @@ if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEvent
       closeExportBriefingModal();
     });
     wireModalDismiss('dayPostsBackdrop', closeDayPosts, '#dayPostsCloseBtn');
-    // botão "+" do modal "Postagens do dia" — cria uma postagem nova já com a data do dia aberto
+    // botão "+" do modal "Postagens do dia" - cria uma postagem nova já com a data do dia aberto
     if($('dayPostsAddBtn')) $('dayPostsAddBtn').addEventListener('click', ()=>{
       const dateStr = openDayPostsDate;
       closeDayPosts();
       closeEditState();
       openModal(dateStr);
     });
-    // menu lateral do modal de Configurações — clicar numa categoria mostra o painel correspondente à direita
+    // menu lateral do modal de Configurações - clicar numa categoria mostra o painel correspondente à direita
     document.querySelectorAll('.settings-nav-btn').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         document.querySelectorAll('.settings-nav-btn').forEach(b=> b.classList.remove('active'));
@@ -4815,7 +4865,7 @@ if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEvent
     // carrega configurações e postagens persistidas
     loadSettings();
     renderAllDynamicUI();
-    // catálogo mestre de produtos, pro autocomplete de Produto(s) — ver productCandidates()
+    // catálogo mestre de produtos, pro autocomplete de Produto(s) - ver productCandidates()
     if(typeof CatalogProvider!=='undefined'){
       CatalogProvider.load('vonder').then(result=>{ masterCatalog = result.items||[]; });
     }
@@ -4857,7 +4907,7 @@ if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEvent
       saveSettings(); renderAllDynamicUI();
       closeNewEditoriaForm();
     });
-    // navegador de mês compartilhado acima da lista de editorias — ligado uma única vez (os
+    // navegador de mês compartilhado acima da lista de editorias - ligado uma única vez (os
     // elementos são estáticos, não recriados a cada renderEditoriasUI); só troca
     // editoriasMonthKey e manda re-renderizar, pra refletir em todas as editorias de uma vez
     // (chip + painel aberto). Com o popover de meses aberto, as mesmas setas trocam de ano
@@ -4879,15 +4929,15 @@ if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEvent
     loadState();
     if(SYNC_ENABLED) postSync = createPostSync();
     // monta o calendário e, se ainda não houver nenhuma postagem, cria exemplos de demonstração
-    // (só no modo local/offline — num calendário sincronizado com o servidor não faz sentido
+    // (só no modo local/offline - num calendário sincronizado com o servidor não faz sentido
     // criar posts de exemplo pra toda a equipe; espera o syncPull() trazer os dados reais)
     buildCalendar();
     // exemplos de demonstração só fazem sentido pra marca padrão (a base de dados que já
-    // existia antes do portal) — uma marca nova criada pelo usuário deve começar zerada
+    // existia antes do portal) - uma marca nova criada pelo usuário deve começar zerada
     if(!SYNC_ENABLED && state.posts.length===0 && BRAND_SUFFIX===''){
       state.posts.push({ id: generateId(), title: 'Campanha: Lançamento Comunidade', date: '2026-08-18', channel: 'Instagram', color:'#E4405F', status:'Aprovado', editoria:['Lançamentos'], place:'Feed', type:'Static' });
       state.posts.push({ id: generateId(), title: 'Blog: Anúncio oficial', date: '2026-08-20', channel: 'Blog', color:'#06b6d4', status:'Em produção', editoria:['Informativo'], place:'Feed', type:'Static' });
-      state.posts.push({ id: generateId(), title: 'Postagem de teste — Social', date: '2026-08-19', channel: 'LinkedIn', color:'#f97316', status:'Rascunho', editoria:['Destaques'], place:'Feed', type:'Video' });
+      state.posts.push({ id: generateId(), title: 'Postagem de teste - Social', date: '2026-08-19', channel: 'LinkedIn', color:'#f97316', status:'Rascunho', editoria:['Destaques'], place:'Feed', type:'Video' });
       saveState();
     }
     const tbAll = document.querySelector('#tabs button[data-tab="All"]'); if(tbAll) tbAll.classList.remove('ghost');
@@ -4904,7 +4954,7 @@ if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEvent
       postSync.start();
       syncPull();
       setInterval(()=> syncPull(), 20000);
-      // mesma cadência pra Central de Inteligência (só leitura aqui — quem treina é intelligence-center.html)
+      // mesma cadência pra Central de Inteligência (só leitura aqui - quem treina é intelligence-center.html)
       refreshIntel();
       setInterval(()=> refreshIntel(), 20000);
     } else {
