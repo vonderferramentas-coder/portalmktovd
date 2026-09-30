@@ -7,7 +7,7 @@
 <script>
 // Roda em Chrome headless: chrome --headless=new --dump-dom file:///.../tests/cartaz-validator.test.html
 try {
-  const { check, apply } = CartazValidator;
+  const { check, apply, key } = CartazValidator;
   const eq = (a, b, label) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(label + '\n  esperado: ' + JSON.stringify(b) + '\n  obtido:   ' + JSON.stringify(a)); };
   // aplica todas as correções automáticas de um título e devolve o texto final
   // (em rodadas: uma correção pode mudar o texto que outra procurava, ex.: "19 MM X 5" -> a unidade muda antes do x)
@@ -62,6 +62,10 @@ try {
   eq(kinds('DISCO DE CORTE', { codes: 3 }), ['concordancia'], 'singular com 3 códigos');
   eq(kinds('DISCOS DE CORTE', { codes: 3 }), [], 'plural com 3 códigos');
   eq(kinds('DISCO DE CORTE', { codes: 1 }), [], 'singular com 1 código');
+  const acceptedIssue = check('FITA ISOLANTE', { codes: 2 })[0], acceptedKey = key('FITA ISOLANTE', acceptedIssue);
+  eq(key('FITA ISOLANTE', acceptedIssue), acceptedKey, 'confirmação identifica o mesmo aviso');
+  eq(check('FITA ISOLANTE', { codes: 2 }).filter(issue => ![acceptedKey].includes(key('FITA ISOLANTE', issue))).length, 0, 'aviso confirmado sai das pendências');
+  eq(key('FITA ISOLANTE AZUL', acceptedIssue) === acceptedKey, false, 'editar o título invalida a confirmação antiga');
   eq(kinds('ÓCULOS DE PROTEÇÃO', { codes: 1 }), [], 'óculos é sempre plural');
   eq(fixed('FITAS ISOLANTE'), 'FITAS ISOLANTES', 'substantivo plural + adjetivo singular');
   eq(fixed('FITA ISOLANTES'), 'FITA ISOLANTE', 'substantivo singular + adjetivo plural');

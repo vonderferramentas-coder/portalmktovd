@@ -160,5 +160,8 @@
     return { title: next, titleHtml: html };
   }
 
-  window.CartazValidator = { check, apply };
+  // Identifica a observação no estado exato do título. Se o texto mudar, uma confirmação antiga não a esconde.
+  const key = (text, issue) => JSON.stringify([String(text || ''), issue.kind, issue.level, issue.message, issue.find ?? '', issue.replace ?? '', issue.italic || '']);
+
+  window.CartazValidator = { check, apply, key };
 })();

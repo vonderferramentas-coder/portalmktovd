@@ -815,7 +815,7 @@
     function validatorFindings() {
         let out = [];
         S.pages.forEach((page, pi) => page.items.forEach((item, ii) => {
-            let issues = CartazValidator.check(cardText(item), { codes: item.group.rows.length, html: item.titleHtml });
+            let text = cardText(item), accepted = item.acceptedTextIssues || [], issues = CartazValidator.check(text, { codes: item.group.rows.length, html: item.titleHtml }).filter(issue => !accepted.includes(CartazValidator.key(text, issue)));
             if (issues.length) out.push({ pi, ii, page, text: cardText(item), issues });
         }));
         return out;
@@ -823,6 +823,7 @@
     function applyIssue(item, issue) {
         let result = CartazValidator.apply(cardText(item), item.titleHtml, issue);
         item.title = result.title; if (result.titleHtml) item.titleHtml = result.titleHtml; else delete item.titleHtml;
+        delete item.acceptedTextIssues;
     }
     const canFix = issue => issue.replace != null || !!issue.italic;
     const validatorSteps = () => validatorFindings().flatMap(f => f.issues.map(issue => ({ f, issue })));
@@ -868,7 +869,10 @@
         $('vbarMsg').textContent = issue.message;
         $('vbarDiff').hidden = !diff; $('vbarHint').hidden = !!diff;
         if (diff) { $('vbarFrom').textContent = diff.from; $('vbarTo').textContent = diff.italic ? diff.to + ' (itálico)' : diff.to; $('vbarTo').classList.toggle('italic', !!diff.italic); }
-        $('vbarFix').disabled = !canFix(issue); review.done = false;
+        let fixable = canFix(issue), fix = $('vbarFix'), next = $('vbarNext');
+        fix.hidden = !fixable; fix.style.display = fixable ? '' : 'none'; fix.disabled = !fixable; fix.classList.toggle('cg-vbar-primary', fixable);
+        $('vbarNextLabel').textContent = issue.level === 'aviso' ? 'Manter assim · Próximo' : 'Pular por enquanto';
+        next.classList.toggle('cg-vbar-primary', !fixable); review.done = false;
         if (S.brand !== f.page.brand) relayout(f.page.brand);
         flashTitle(f.pi, f.ii);
     }
@@ -884,8 +888,9 @@
         review.done = true;
         $('vbarCount').textContent = left ? 'Corrigido · restam ' + left : 'Tudo corrigido!';
         $('vbarBadge').textContent = 'Corrigido'; $('vbarBadge').className = 'cg-validator-badge ok';
-        $('vbarMsg').textContent = 'Correção aplicada no título. Use Avançar para ir à próxima observação.';
-        $('vbarDiff').hidden = !diff; $('vbarHint').hidden = true; $('vbarFix').disabled = true;
+        $('vbarMsg').textContent = 'Correção aplicada no título. Siga para a próxima observação.';
+        $('vbarDiff').hidden = !diff; $('vbarHint').hidden = true; $('vbarFix').hidden = false; $('vbarFix').style.display = ''; $('vbarFix').disabled = true; $('vbarFix').classList.remove('cg-vbar-primary');
+        $('vbarNextLabel').textContent = left ? 'Próxima observação' : 'Concluir revisão'; $('vbarNext').classList.add('cg-vbar-primary');
         flashTitle(step.f.pi, step.f.ii);
     }
     function startReview(index) { review = { index }; $('validatorDialog').open && $('validatorDialog').close(); focusStep(); }
@@ -907,8 +912,15 @@
         }
         draw(); renderValidator(); toast(fixed + ' correção(ões) aplicada(s). Use Desfazer se quiser voltar.');
     };
-    // depois de corrigir, a observação some da lista: o mesmo índice já aponta para a próxima, então Avançar não soma 1
-    $('vbarNext').onclick = () => { if (!review.done) review.index++; focusStep(); };
+    // Corrigir ou confirmar um aviso o remove da lista; o mesmo índice passa a apontar para a próxima observação.
+    $('vbarNext').onclick = () => {
+        if (review.done) { focusStep(); return; }
+        let step = validatorSteps()[review.index]; if (!step) return;
+        if (step.issue.level !== 'aviso') { review.index++; focusStep(); return; }
+        snapshot(); let item = S.pages[step.f.pi].items[step.f.ii], accepted = item.acceptedTextIssues || [];
+        item.acceptedTextIssues = [...new Set([...accepted, CartazValidator.key(cardText(item), step.issue)])];
+        updateDashboard(); focusStep();
+    };
     $('vbarPrev').onclick = () => { review.index--; focusStep(); };
     $('vbarClose').onclick = closeReview;
     $('validatorFilters').onclick = event => { let button = event.target.closest('[data-filter]'); if (button) { validatorFilter = button.dataset.filter; renderValidator(); } };
