@@ -3,6 +3,7 @@
 <title>Teste do validador de textos do Gerador de Cartazes</title>
 <body data-result="running">RUNNING</body>
 <script src="../cartaz-validator.js"></script>
+<script src="../cartaz-title-format.js"></script>
 <script>
 // Roda em Chrome headless: chrome --headless=new --dump-dom file:///.../tests/cartaz-validator.test.html
 try {
@@ -74,6 +75,13 @@ try {
   const accent = check('AGUA')[0];
   eq(apply('AGUA', '<b>AGUA</b>', accent), { title: 'ÁGUA', titleHtml: '<b>ÁGUA</b>' }, 'mantém <b>');
   eq(apply('AGUA', undefined, accent), { title: 'ÁGUA', titleHtml: undefined }, 'sem formatação');
+
+  // titleHtml que vem de fora (grade compartilhada) só pode sair com <b>/<i>/<u>
+  const { clean } = CartazTitleFormat;
+  eq(clean('<b>ok</b> <i>x</i>'), '<b>ok</b> <i>x</i>', 'formatação permitida se mantém');
+  eq(clean('<img src=x onerror=alert(1)><b>ok</b>'), '<b>ok</b>', 'tag e atributos perigosos somem');
+  eq(clean('<scr' + 'ipt>alert(1)</scr' + 'ipt><u>a</u>').includes('<script'), false, 'script vira texto');
+  eq(clean('<b onclick="x()">a</b>'), '<b>a</b>', 'atributos são descartados');
 
   // título correto não gera observação
   eq(kinds('ROMPEDOR STANLEY FATMAX BRANCO', { codes: 1 }), [], 'título limpo');

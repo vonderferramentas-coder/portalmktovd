@@ -23,7 +23,9 @@
     const html = walk(root);
     return tagged ? html : '';
   }
-  window.CartazTitleFormat = { sanitize };
+  // HTML vindo de fora (grade salva/compartilhada no Firestore): reconstrói só com <b>/<i>/<u>. O <template> é inerte, nada executa ao interpretar.
+  function clean(html) { const box = document.createElement('template'); box.innerHTML = html; return sanitize(box.content) || esc(box.content.textContent); }
+  window.CartazTitleFormat = { sanitize, clean };
 
   const ICONS = {
     bold: '<path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/>',
