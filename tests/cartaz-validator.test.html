@@ -1,0 +1,85 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste do validador de textos do Gerador de Cartazes</title>
+<body data-result="running">RUNNING</body>
+<script src="../cartaz-validator.js"></script>
+<script>
+// Roda em Chrome headless: chrome --headless=new --dump-dom file:///.../tests/cartaz-validator.test.html
+try {
+  const { check, apply } = CartazValidator;
+  const eq = (a, b, label) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(label + '\n  esperado: ' + JSON.stringify(b) + '\n  obtido:   ' + JSON.stringify(a)); };
+  // aplica todas as correções automáticas de um título e devolve o texto final
+  // (em rodadas: uma correção pode mudar o texto que outra procurava, ex.: "19 MM X 5" -> a unidade muda antes do x)
+  const fixed = (text, ctx) => {
+    let title = text, html;
+    for (let pass = 0; pass < 5; pass++) {
+      const before = title;
+      for (const issue of check(title, ctx)) if (issue.replace != null) ({ title, titleHtml: html } = apply(title, html, issue));
+      if (title === before) break;
+    }
+    return title;
+  };
+  const kinds = (text, ctx) => check(text, ctx).map(issue => issue.kind).sort();
+
+  // acentos e cedilha (casos vindos da revisão dos cartazes A3)
+  eq(fixed('CACULA'), 'CAÇULA', 'caçula');
+  eq(fixed('AGUA SANITARIA'), 'ÁGUA SANITARIA', 'água');
+  eq(fixed('Aluminio'), 'Alumínio', 'mantém a caixa');
+  eq(fixed('LUMINARIA LED'), 'LUMINÁRIA LED', 'luminária');
+  eq(fixed('CORANTE LIQUIDO'), 'CORANTE LÍQUIDO', 'líquido');
+  eq(fixed('CAÃ§ULA'), 'CAçULA', 'caractere corrompido');
+
+  // hífen
+  eq(fixed('LANÇA CHAMAS'), 'LANÇA-CHAMAS', 'lança-chamas');
+
+  // unidades de medida
+  eq(fixed('ATENUADOR DE RUIDO 20 DB, 3M'), 'ATENUADOR DE RUIDO 20 dB, 3M', 'dB minúsculo/maiúsculo');
+  eq(fixed('FITA 19 MM X 5 M'), 'FITA 19 mm x 5 m', 'mm, x e m');
+  eq(fixed('FITA 20MM'), 'FITA 20 mm', 'espaço entre número e unidade');
+  eq(fixed('BROCA 1.5 MM'), 'BROCA 1,5 mm', 'vírgula decimal');
+  eq(fixed('CABO 5 MTS'), 'CABO 5 m', 'mts -> m');
+  eq(fixed('DISCO 4 POL'), 'DISCO 4"', 'polegada por extenso');
+  eq(fixed('CHAVE 6" X 3/4"'), 'CHAVE 6" x 3/4"', 'x minúsculo entre medidas');
+  eq(fixed('CHAVE 6 " '), 'CHAVE 6"', 'sinal de polegada colado (e espaço final removido)');
+  eq(fixed('DESCONTO 20 %'), 'DESCONTO 20%', '% colado');
+  eq(kinds('FITA ISOLANTE, 3M'), [], 'marca 3M não é unidade');
+  eq(kinds('BROCA DE 2 A 4 mm'), [], '"a" (preposição) não é ampere');
+  eq(kinds('LIXADEIRA 850 W 127 V'), [], 'W e V já corretos');
+  eq(kinds('BROCA SDS PLUS 12 mm x 200 mm'), [], 'medida correta não gera aviso');
+
+  // pontuação
+  eq(fixed('PARAFUSO  SEXTAVADO'), 'PARAFUSO SEXTAVADO', 'espaço duplo');
+  eq(fixed('PARAFUSO ,SEXTAVADO'), 'PARAFUSO, SEXTAVADO', 'espaço antes da vírgula (e falta depois dela)');
+  eq(fixed('FITA,ISOLANTE'), 'FITA, ISOLANTE', 'espaço depois da vírgula');
+
+  // palavra em duplicidade (não avisa preposição comum)
+  eq(kinds('SILICONE ACETICO SILICONE'), ['duplicidade', 'acento'].sort(), 'duplicidade');
+  eq(kinds('BROCA PARA MADEIRA PARA METAL'), [], '"para" repetido é normal');
+
+  // concordância
+  eq(kinds('DISCOS DE CORTE', { codes: 1 }), ['concordancia'], 'plural com 1 código');
+  eq(kinds('DISCO DE CORTE', { codes: 3 }), ['concordancia'], 'singular com 3 códigos');
+  eq(kinds('DISCOS DE CORTE', { codes: 3 }), [], 'plural com 3 códigos');
+  eq(kinds('DISCO DE CORTE', { codes: 1 }), [], 'singular com 1 código');
+  eq(kinds('ÓCULOS DE PROTEÇÃO', { codes: 1 }), [], 'óculos é sempre plural');
+  eq(fixed('FITAS ISOLANTE'), 'FITAS ISOLANTES', 'substantivo plural + adjetivo singular');
+  eq(fixed('FITA ISOLANTES'), 'FITA ISOLANTE', 'substantivo singular + adjetivo plural');
+
+  // itálico em termo estrangeiro (some quando já está em itálico)
+  eq(kinds('PARA DRYWALL, BRANCO'), ['italico'], 'drywall');
+  eq(kinds('PARA DRYWALL, BRANCO', { html: 'PARA <i>DRYWALL</i>, BRANCO' }), [], 'já em itálico');
+  eq(apply('PARA DRYWALL, BRANCO', undefined, check('PARA DRYWALL, BRANCO')[0]).titleHtml, 'PARA <i>DRYWALL</i>, BRANCO', 'aplica itálico');
+
+  // aplicar correção mantém a formatação existente
+  const accent = check('AGUA')[0];
+  eq(apply('AGUA', '<b>AGUA</b>', accent), { title: 'ÁGUA', titleHtml: '<b>ÁGUA</b>' }, 'mantém <b>');
+  eq(apply('AGUA', undefined, accent), { title: 'ÁGUA', titleHtml: undefined }, 'sem formatação');
+
+  // título correto não gera observação
+  eq(kinds('ROMPEDOR STANLEY FATMAX BRANCO', { codes: 1 }), [], 'título limpo');
+
+  document.body.dataset.result = 'pass'; document.body.textContent = 'PASS';
+} catch (error) {
+  document.body.dataset.result = 'fail'; document.body.textContent = 'FAIL: ' + error.message;
+}
+</script>
