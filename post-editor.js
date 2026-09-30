@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 // Tema (claro/escuro) e cor de destaque já vêm aplicados pelo portal-shell.js (primeiro
-// script da página, com acesso à marca ativa e ao tema Personalizado) — nada a fazer aqui.
+// script da página, com acesso à marca ativa e ao tema Personalizado) - nada a fazer aqui.
 var $=function(s){return document.querySelector(s)}, $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
 var canvases={feed:$('#feedCanvas'),story:$('#storyCanvas')};
 var templates={
@@ -20,7 +20,7 @@ var INCOMING_COMM=(function(){
 })();
 var catalog=[],selectedProduct=null,catalogFocus=0,catalogLoading=true;
 // ============================================================
-// EDITORIAS — mesma fonte usada em Configurações → Editorias no Calendário (app.js), lida
+// EDITORIAS - mesma fonte usada em Configurações → Editorias no Calendário (app.js), lida
 // direto da mesma chave de localStorage (cada marca tem sua própria lista, ver BRAND_SUFFIX).
 // Cada editoria só é selecionável aqui se tiver um preset registrado em EDITORIA_PRESETS;
 // as demais aparecem desabilitadas ("Em breve") até ganharem composição própria.
@@ -29,7 +29,7 @@ var BRAND_SUFFIX=(window.PortalBrand&&window.PortalBrand.suffix)||'';
 var CALENDAR_SETTINGS_KEY='calendar_settings_v1'+BRAND_SUFFIX;
 // mapeia o sufixo de marca (ver app.js/portal-shell.js) pro "slug" do catálogo correspondente
 // em data/catalog-{slug}.json (ver catalog-provider.js). Uma marca sem entrada aqui cai no
-// próprio sufixo sem "__" como slug — se o arquivo ainda não existir, CatalogProvider.load()
+// próprio sufixo sem "__" como slug - se o arquivo ainda não existir, CatalogProvider.load()
 // resolve pra lista vazia (mesmo estado de "sem catálogo" que já existia antes)
 var CATALOG_SLUG_BY_BRAND_SUFFIX={ '':'vonder', '__ferramentas-gerais':'fg', '__dismatal':'dismatal' };
 var CATALOG_SLUG=CATALOG_SLUG_BY_BRAND_SUFFIX[BRAND_SUFFIX]||BRAND_SUFFIX.replace(/^__/,'');
@@ -37,7 +37,7 @@ var CATALOG_SLUG=CATALOG_SLUG_BY_BRAND_SUFFIX[BRAND_SUFFIX]||BRAND_SUFFIX.replac
 // de fotos (app.ovd.com.br), então usam o mesmo proxy de fotos por código que a VONDER. Se
 // algum dia ganharem catálogo de código próprio (outro fornecedor de foto), tira a marca daqui.
 var CATALOG_PHOTO_SLUG=({ fg:'vonder', dismatal:'vonder' })[CATALOG_SLUG]||CATALOG_SLUG;
-// editorias são exclusivas de cada marca (ver app.js, EDITORIAS_BY_BRAND) — este fallback só
+// editorias são exclusivas de cada marca (ver app.js, EDITORIAS_BY_BRAND) - este fallback só
 // entra quando a marca ainda não tem configurações salvas. Trend e Personalizado são
 // universais (toda marca tem as duas, cada uma com sua própria cópia independente); as
 // demais só existem pra marca listada, e uma marca sem entrada aqui cai só nas universais
@@ -60,7 +60,7 @@ function readEditoriaList(){
 }
 var EDITORIAS=readEditoriaList();
 // a lista acima só reflete o que já estava salvo NESTE navegador (pode estar desatualizada,
-// já que esta página nunca chamou o servidor até agora) — assim que o SyncBackend
+// já que esta página nunca chamou o servidor até agora) - assim que o SyncBackend
 // responder, atualiza a lista e o cache local, e redesenha a grade se ainda estiver visível
 var SYNC_ENABLED=location.protocol!=='file:';
 function refreshEditoriasFromServer(){
@@ -74,7 +74,7 @@ function refreshEditoriasFromServer(){
   renderEditoriaGrid()
  }).catch(function(){})
 }
-// preset visual de cada editoria (selo do feed/story + cor do rodapé) — exclusivo por marca:
+// preset visual de cada editoria (selo do feed/story + cor do rodapé) - exclusivo por marca:
 // cada marca tem seu próprio catálogo de editorias, então uma editoria "Destaques" da VONDER
 // não tem nada a ver com uma "Destaques" da Ferramentas Gerais, mesmo com o mesmo nome. Por
 // isso o registro é indexado primeiro por BRAND_SUFFIX e só depois por nome da editoria.
@@ -98,33 +98,33 @@ function normalizeText(value){return String(value||'').normalize('NFD').replace(
 function normalizeCode(value){return String(value||'').replace(/\D/g,'')}
 // tamanho pedido ao proxy de fotos para as miniaturas de pré-visualização (grade de busca,
 // resumo do produto selecionado etc. nunca passam de ~58px na tela, então isso evita baixar
-// a foto original — que pode ter vários MB — só para exibi-la minúscula)
+// a foto original - que pode ter vários MB - só para exibi-la minúscula)
 var CATALOG_THUMB_WIDTH=160;
 // tamanho pedido pra foto usada de fato na arte (recorte do produto). O maior lado desenhado
 // nunca passa de ~1920px (Story) e o zoom do produto vai até 135%, então 1600px de origem já
-// cobre com folga — mas é uma fração do tamanho da foto original (que pode ter 4000px+),
+// cobre com folga - mas é uma fração do tamanho da foto original (que pode ter 4000px+),
 // então o recorte fica pronto bem mais rápido sem perda de qualidade perceptível.
 var CATALOG_PRODUCT_WIDTH=1600;
 function productImageUrl(code,width){var digits=normalizeCode(code);if(!digits)return'';return'product-image.php?code='+encodeURIComponent(digits)+'&v=4'+(width?'&w='+width:'')}
 function localProductImageUrl(code,width){var digits=normalizeCode(code);if(!digits)return'';return'http://127.0.0.1:8765/product-image?code='+encodeURIComponent(digits)+'&v=4'+(width?'&w='+width:'')}
 // mesmo proxy CORS público usado pelo coletor de ofertas FG (ver cloudflare-worker.js), com uma
-// rota extra pra foto de produto — funciona em qualquer origem (GitHub Pages incluído) sem
+// rota extra pra foto de produto - funciona em qualquer origem (GitHub Pages incluído) sem
 // depender do auxiliar local nem de PHP no host. Não reduz o tamanho da foto (sem 'w'), então só
 // entra pro recorte automático (CATALOG_PRODUCT_WIDTH), nunca pras miniaturas do catálogo.
 function workerProductImageUrl(code){var digits=normalizeCode(code);if(!digits)return'';return'https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code='+encodeURIComponent(digits)}
 // o helper local (rodado pelo "Abrir Calendario.cmd") só é tentado quando o portal está aberto
-// pela pasta (file://) ou em localhost — NUNCA num site publicado (GitHub/Cloudflare Pages): ali
+// pela pasta (file://) ou em localhost - NUNCA num site publicado (GitHub/Cloudflare Pages): ali
 // tentar 127.0.0.1 faria o Chrome pedir "Acessar outros dispositivos na sua rede local", e o
 // portal não deve tocar a máquina do usuário. (Até 21/09/2026 ele era o último fallback em
 // qualquer host, e o Chrome pedia essa permissão.)
 function itemImageUrls(item,width){
  var codes=catalogCodes(item),code=codes[0]&&codes[0].code,direct=(item&&(item.imageUrl||item.image||item.photo))||'',urls=[];
  // O worker (CORS público, funciona em qualquer origem) é a fonte principal do recorte
- // automático — só entra aqui pra essa largura porque ele não redimensiona (ver
+ // automático - só entra aqui pra essa largura porque ele não redimensiona (ver
  // workerProductImageUrl). Em file:// o PHP da pasta não é executado. O helper local devolve
  // a foto com CORS; quando há servidor web, o PHP continua sendo a próxima opção. A URL direta
  // (foto em tamanho real, sem redimensionar) fica como último fallback pra quando nenhum proxy
- // responder — e nunca será desenhada se contaminar o canvas.
+ // responder - e nunca será desenhada se contaminar o canvas.
  if(CATALOG_PHOTO_SLUG==='vonder'&&code){
   if(width===CATALOG_PRODUCT_WIDTH)urls.push(workerProductImageUrl(code));
   if(location.protocol==='file:')urls.push(localProductImageUrl(code,width));else urls.push(productImageUrl(code,width));
@@ -134,7 +134,7 @@ function itemImageUrls(item,width){
  return urls.filter(function(url,index){return url&&urls.indexOf(url)===index})
 }
 function itemThumbnailUrls(item){return(item&&item.thumbnail)?[item.thumbnail]:itemImageUrls(item,CATALOG_THUMB_WIDTH)}
-// tenta cada URL da lista em sequência quando a anterior falhar (onerror) — usado pelas
+// tenta cada URL da lista em sequência quando a anterior falhar (onerror) - usado pelas
 // miniaturas do catálogo pra cair pra foto original quando a miniatura do proxy não responde
 // (ex.: página aberta por um servidor estático que não executa o PHP do proxy nem tem o
 // helper local rodando)
@@ -151,7 +151,7 @@ function catalogCodes(item){
  if(!out.length&&item&&item.code)out.push({code:item.code,label:item.variant||''});return out
 }
 // Código que vai pra arte. Na FERRAMENTAS GERAIS é o do e-commerce da FG (codeFG, 7 dígitos), não o
-// código Vonder do catálogo — esse continua saindo de catalogCodes() porque é ele que busca a foto no
+// código Vonder do catálogo - esse continua saindo de catalogCodes() porque é ele que busca a foto no
 // proxy (CATALOG_PHOTO_SLUG mapeia fg → vonder). Os 49 produtos sem codeFG caem no código do catálogo.
 function editorCodes(item){
  if(CATALOG_SLUG==='fg'&&item&&item.codeFG)return[{code:String(item.codeFG),label:item.variant||''}];
@@ -169,7 +169,7 @@ function setFlow(mode){
  if(mode==='choose'){renderCatalogResults();setTimeout(function(){$('#catalogSearch').focus()},20)}
 }
 // navegação entre etapas iniciada pelo usuário (clique nos passos do topo ou nos botões
-// "Trocar") — sair da etapa "Editar e baixar" pede confirmação, porque a composição em tela
+// "Trocar") - sair da etapa "Editar e baixar" pede confirmação, porque a composição em tela
 // nunca é salva automaticamente; indo pra frente (ou entre editoria/produto) não há nada a perder
 function goToStep(mode){
  if(mode===currentFlowMode)return;
@@ -209,7 +209,7 @@ function chooseEditoria(editoria){
  $('#commemorativeFields').hidden=!isCommemorative;if($('#eventPrefixField'))$('#eventPrefixField').hidden=!!preset.singleCommemorativeText;if($('#eventTitleSizeField')){$('#eventTitleSizeField').hidden=!preset.titleSizeControl;if(preset.titleSizeControl){['Feed','Story'].forEach(function(format){var input=$('#eventTitleSize'+format),output=$('#eventTitleSize'+format+'Out');if(input)input.value=100;if(output)output.value='100%'})}}$('#selectedProductSummary').hidden=isCommemorative;$('#productNameLabel').textContent=isCommemorative?(preset.singleCommemorativeText?'Texto da data comemorativa':'Título da data comemorativa'):'Nome completo';
  $('#detailsSectionTitle').textContent=isCommemorative?'Data comemorativa':'Produto';$('#detailsSectionHint').textContent=isCommemorative?(preset.singleCommemorativeText?'Data, mês e texto editáveis':'Data, mês e título editáveis'):'Dados preenchidos pelo catálogo, mas editáveis';var imageHint=$('#imageSectionHint');if(imageHint)imageHint.textContent=usesCutout?'Envie a cena e, se tiver, o produto recortado':'A imagem oficial do produto é carregada junto com a oferta';
  // Editorias com skipProductChooser (ex: Datas comemorativas) nunca passam pela etapa "Escolher
- // produto" — o passo 2 do topo e o "Tamanho do destaque" (que só se aplica ao destaque de
+ // produto" - o passo 2 do topo e o "Tamanho do destaque" (que só se aplica ao destaque de
  // produto/logo movível, inexistente nesse preset) somem do fluxo pra essa editoria.
  $('[data-flow-step="choose"]').hidden=!!preset.skipProductChooser;$('#flowSepChoose').hidden=!!preset.skipProductChooser;
  $('#flowStepEditNumber').textContent=preset.skipProductChooser?'2':'3';
@@ -246,16 +246,16 @@ function chooseCatalogProduct(item){
  selectBrandLogo(normalizeBrandVariant(item.brandVariant)||(/vonder\s*plus/i.test(item.name||'')?'Vonder_plus':'VONDER'));
  state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};var thumbUrls=itemThumbnailUrls(item);setProductFilePreview(thumbUrls[0],'Carregada automaticamente · clique para alterar',thumbUrls.slice(1));showEditor(item,false);drawAll();
  var bgUrl=itemBackgroundUrl(item);if(bgUrl){$('#backgroundFileName').textContent='Foto de aplicação do catálogo';loadImage(bgUrl).then(function(im){if(selectedProduct!==item)return;
-  if(!im.exportSafe){$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Essa foto de aplicação não pode ser usada automaticamente (o servidor de origem não libera para exportação) — envie manualmente abaixo',false);return}
+  if(!im.exportSafe){$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Essa foto de aplicação não pode ser usada automaticamente (o servidor de origem não libera para exportação) - envie manualmente abaixo',false);return}
   state.background=trimBackgroundMargins(im);state.bgZoom.feed=1;state.bgZoom.story=1;$('#backgroundZoomFeed').value='100';$('#backgroundZoomStory').value='100';$('#backgroundZoomFeedOut').value='100%';$('#backgroundZoomStoryOut').value='100%';if(item.preferredLayout){state.autoLayout=item.preferredLayout;drawAll();status('Produto e foto de aplicação carregados',false)}else analyze()
  }).catch(function(){if(selectedProduct!==item)return;$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Produto carregado; a foto de aplicação não abriu',false)})}else{$('#backgroundFileName').textContent='Clique ou arraste uma imagem'}
  var urls=itemImageUrls(item,CATALOG_PRODUCT_WIDTH);if(!urls.length){status('Dados preenchidos; envie a foto do produto',false);return}status(bgUrl?'Carregando produto e foto de aplicação…':'Carregando e recortando a foto do catálogo…',true);$('#productFileName').textContent='Foto do catálogo · '+(codes[0]?codes[0].code:'produto')+' · clique para alterar';
  loadExportSafeImage(urls).then(function(im){if(selectedProduct!==item)return;
   state.product=im;$('#productFileName').textContent='Foto do catálogo carregada · clique para alterar';$('#removeWhite').checked=!hasTransparency(im);updateProduct()
- }).catch(function(err){if(selectedProduct!==item)return;console.warn('[post-editor] recorte automático falhou para',codes[0]&&codes[0].code,'—',err&&err.message,urls);status('Dados preenchidos; não foi possível carregar a foto automaticamente. Verifique a conexão e tente novamente, ou envie a foto manualmente.',false);$('#productFileName').textContent='Foto visível, mas o recorte automático falhou'})
+ }).catch(function(err){if(selectedProduct!==item)return;console.warn('[post-editor] recorte automático falhou para',codes[0]&&codes[0].code,'-',err&&err.message,urls);status('Dados preenchidos; não foi possível carregar a foto automaticamente. Verifique a conexão e tente novamente, ou envie a foto manualmente.',false);$('#productFileName').textContent='Foto visível, mas o recorte automático falhou'})
 }
 // resultados que começam pelo termo buscado (no nome ou em algum código) vêm antes dos que só
-// contêm o termo em outro ponto — ex.: buscar "aspirador" mostra "Aspirador de pó..." antes de
+// contêm o termo em outro ponto - ex.: buscar "aspirador" mostra "Aspirador de pó..." antes de
 // "Escova para aspirador"
 function productMatchRank(item,q,qc){
  if(q&&normalizeText(item.name||'').indexOf(q)===0)return 0;
@@ -278,7 +278,7 @@ function renderCatalogResults(){
   var img=btn.querySelector('img');if(img)setImgWithFallback(img,itemThumbnailUrls(item))
  })
 }
-// carrega o catálogo desta marca via CatalogProvider (ver catalog-provider.js) — nunca lê
+// carrega o catálogo desta marca via CatalogProvider (ver catalog-provider.js) - nunca lê
 // JSON nem localStorage diretamente aqui, só consome a Promise; assim, se a origem do
 // catálogo mudar no futuro (API própria, scraping agendado, etc.), só CatalogProvider muda
 function loadCatalog(){
@@ -292,10 +292,10 @@ function loadCatalog(){
 function status(message,busy){var el=$('#editorStatus');el.classList.toggle('is-busy',!!busy);el.querySelector('span:last-child').textContent=message}
 // carrega uma imagem e marca em im.exportSafe se ela pode ser desenhada no canvas sem
 // "contaminar" a exportação (toBlob/toDataURL). Mesma origem e data: URI são sempre seguras;
-// uma origem externa só é segura se o servidor permitir CORS (daí o XHR como blob funcionar —
+// uma origem externa só é segura se o servidor permitir CORS (daí o XHR como blob funcionar -
 // nesse caso os bytes já vieram pra cá, então a imagem final é local pro navegador). Quando o
 // servidor de origem não manda CORS (caso do endpoint de fotos usado pelo catálogo da VONDER,
-// ver data/catalog-vonder.json), a única forma de exibir a imagem é via <img src> direto — o
+// ver data/catalog-vonder.json), a única forma de exibir a imagem é via <img src> direto - o
 // que funciona pra pré-visualização, mas deixa qualquer canvas que a desenhar permanentemente
 // impedido de exportar (é uma trava do próprio navegador, não tem como contornar sem o
 // servidor de origem cooperar). Por isso quem chama loadImage() para desenhar em canvas
@@ -312,7 +312,7 @@ function loadExportSafeImage(urls){return new Promise(function(resolve,reject){
  function tryList(candidates){return new Promise(function(ok,fail){var index=0;function next(){if(index>=candidates.length){fail(new Error('Nenhuma origem exportável'));return}loadImage(candidates[index++]).then(function(im){if(im.exportSafe)ok(im);else next()}).catch(next)}next()})}
  // O worker/PHP (others) não dependem de nada rodando na máquina do usuário, então vão
  // primeiro e sem espera. O auxiliar local (127.0.0.1:8765, iniciado pelo "Abrir
- // Calendario.cmd") só entra como último recurso — com retentativas, porque o lançador abre
+ // Calendario.cmd") só entra como último recurso - com retentativas, porque o lançador abre
  // o navegador logo depois de iniciar o auxiliar, e em máquinas mais lentas o editor pode
  // pedir a foto durante essa pequena janela antes dele responder.
  function tryLocal(){
@@ -322,7 +322,7 @@ function loadExportSafeImage(urls){return new Promise(function(resolve,reject){
  tryList(others).catch(tryLocal).then(resolve,reject)
 })}
 // ============================================================
-// MARCA NO CABEÇALHO — biblioteca de logos em post-editor-assets/brands/*.svg (centenas de
+// MARCA NO CABEÇALHO - biblioteca de logos em post-editor-assets/brands/*.svg (centenas de
 // marcas). Os SVGs brutos são fontes locais e ficam fora do Git. Cada um tem um "wrapper"
 // publicado em post-editor-assets/brands-js/ (mesmo nome + .js), que registra uma data: URI em
 // window.OVD_BRAND_LOGOS. Uma tag <script> carrega o wrapper sem restrição de CORS sob file://;
@@ -391,18 +391,18 @@ function drawPlaceholder(ctx,t){
  ctx.save();ctx.globalAlpha=.13;ctx.fillStyle='#fff';for(var i=0;i<8;i++){ctx.fillRect(i*170-120,t.h*.62,100,t.h*.38)}ctx.restore()
 }
 // limita o deslocamento de arraste (bgDx/bgDy) pra imagem desenhada com largura/altura w×h
-// nunca deixar de cobrir o quadro w0×h0 — sem isso, arrastar no zoom mínimo (onde a imagem só
+// nunca deixar de cobrir o quadro w0×h0 - sem isso, arrastar no zoom mínimo (onde a imagem só
 // encosta nas bordas, sem sobra) expõe canvas vazio/transparente pra fora da arte. Uma margem
 // mínima de folga.
 function clampOffset(d,size,frameSize){var slack=Math.max(0,(size-frameSize)/2);return Math.max(-slack,Math.min(slack,d))}
 // zoom nunca pode ir abaixo de 1 (o necessário pra cobrir 100% do frame): a imagem de fundo
 // sempre cobre o quadro inteiro, nunca aparece fundo auxiliar/blur, e o arraste (clampOffset)
 // atua só sobre essa imagem real, nunca sobre uma camada de preenchimento separada. Em 100% a
-// escala é exatamente a de cobertura, então o recorte é o menor possível — quem precisar de folga
+// escala é exatamente a de cobertura, então o recorte é o menor possível - quem precisar de folga
 // pra arrastar nos dois eixos aumenta o zoom.
 // visibleH: altura que de fato precisa ser coberta. Presets com rodapé opaco (faixa que tampa a
 // base da arte) passam o topo do rodapé, senão a foto seria ampliada e travada por causa de uma
-// faixa que ninguém enxerga — o que corta imagem à toa e engessa o arraste.
+// faixa que ninguém enxerga - o que corta imagem à toa e engessa o arraste.
 function drawCover(ctx,img,t,format,visibleH){
  var frameH=visibleH>0?visibleH:t.h,cover=Math.max(t.w/img.width,frameH/img.height),p=state.format[format],zoom=Math.max(1,state.bgZoom[format]);
  ctx.save();ctx.beginPath();ctx.rect(0,0,t.w,t.h);ctx.clip();
@@ -424,7 +424,7 @@ function layout(){return $('#layoutMode').value==='auto'?state.autoLayout:$('#la
 // caixa for maior que o frame (fora do uso normal), ainda assim nunca deixa ela sair de vez
 function clampBoxPos(pos,size,frame){var lo=Math.min(0,frame-size),hi=Math.max(0,frame-size);return Math.max(lo,Math.min(hi,pos))}
 // escala em torno de um único ponto (anchor) compartilhado entre produto e selo, em vez do
-// centro de cada caixa isoladamente — assim a distância entre as duas encolhe na mesma
+// centro de cada caixa isoladamente - assim a distância entre as duas encolhe na mesma
 // proporção do "Tamanho do destaque" e, se já estavam encostadas/sobrepostas, continuam
 // encostadas/sobrepostas em qualquer zoom (sem abrir vão entre elas)
 function scaled(box,format,anchor){var s=state.overlayScale,p=state.format[format],t=templates[format],ax=anchor[0],ay=anchor[1],w=box[2]*s,h=box[3]*s,x=clampBoxPos(ax+(box[0]-ax)*s+p.overlayDx,w,t.w),y=clampBoxPos(ay+(box[1]-ay)*s+p.overlayDy,h,t.h);return[x,y,w,h]}
@@ -453,7 +453,7 @@ function draw(format){
  if(activePreset&&typeof activePreset.renderer==='function'){
   lastProductBox[format]=null;lastBadgeBox[format]=null;
   // setMoveBox: o preset diz qual área dele é arrastável, e ela entra no mesmo hit-test do duplo
-  // clique usado pelas outras editorias — quem move o elemento é o overlayDx/overlayDy de sempre.
+  // clique usado pelas outras editorias - quem move o elemento é o overlayDx/overlayDy de sempre.
   activePreset.renderer({format:format,canvas:c,ctx:ctx,t:t,state:state,item:selectedProduct,productName:$('#productName').value,helpers:{drawCover:drawCover,drawPlaceholder:drawPlaceholder,contain:contain,roundRect:roundRect,font:font,fitFont:fitFont,setMoveBox:function(box){lastProductBox[format]=box}}});return
  }
  if(state.background)drawCover(ctx,state.background,t,format);else drawPlaceholder(ctx,t);
@@ -461,7 +461,7 @@ function draw(format){
  var productBox=scaled(pos.product,format,anchor),badgeBox=scaled(pos.badge,format,anchor);lastProductBox[format]=productBox;lastBadgeBox[format]=badgeBox;
  // mesmo clipping do frame aplicado na imagem de fundo (drawCover), agora também no selo e no
  // produto recortado: mesmo com a posição já limitada por clampBoxPos, sombra/blur desses
- // desenhos poderiam sujar pixels perto da borda do frame — o clip garante que nada deles
+ // desenhos poderiam sujar pixels perto da borda do frame - o clip garante que nada deles
  // apareça fora da área final de exportação
  ctx.save();ctx.beginPath();ctx.rect(0,0,t.w,t.h);ctx.clip();
  drawProduct(ctx,productBox);var badge=format==='feed'?state.badgeFeed:state.badgeStory;if(badge)ctx.drawImage(badge,badgeBox[0],badgeBox[1],badgeBox[2],badgeBox[3]);
@@ -477,7 +477,7 @@ function analyze(){
  Object.keys(candidates).forEach(function(k){var s=regionScore(state.background,candidates[k]);if(s<score){score=s;best=k}});state.autoLayout=best;drawAll();status('Composição automática: '+({left:'esquerda',stacked:'superior',right:'direita'}[best]),false)
 }
 function fileImage(file){return new Promise(function(resolve,reject){var u=URL.createObjectURL(file),im=new Image();im.onload=function(){URL.revokeObjectURL(u);resolve(im)};im.onerror=function(){URL.revokeObjectURL(u);reject(new Error('Imagem inválida'))};im.src=u})}
-// true se a imagem já vier com transparência de verdade (PNG já recortado no catálogo) — nesse
+// true se a imagem já vier com transparência de verdade (PNG já recortado no catálogo) - nesse
 // caso o recorte automático não deve rodar de novo em cima dela: sem fundo sobrando pras bordas
 // calibrarem a cor "de fundo", o algoritmo (baseado na cor média dos 4 cantos) perde a referência
 // e passa a comer partes claras/escuras do próprio produto. Amostra em baixa resolução (mesmo
@@ -598,7 +598,7 @@ window.PostEditor={redraw:drawAll,state:state,chooseProduct:chooseCatalogProduct
  function offerCta(sku){if(sku.offerCta)return sku.offerCta;var price=Number(sku.price),old=Number(sku.listPrice);return old>price?Math.round((old-price)*100/old)+'% OFF':'APROVEITE!'}
  function applySku(offer,sku,dual){
   if(currentFlowMode!=='edit')chooseManualProduct();
-  $('#productName').value=offer.title||$('#productName').value;var importedBrand=brandLogoForOffer(offer.brand,offer.title),brandHint=$('#brandLogoSummary small');if(importedBrand){selectBrandLogo(importedBrand);$('#brandLogoName').textContent=offer.brand||displayBrandName(importedBrand).toUpperCase();if(brandHint)brandHint.textContent=offer.brand?'Preenchida automaticamente da oferta FG':'Identificada automaticamente pelo título da oferta'}else if(offer.brand){state.brandLogoName=offer.brand;state.customAssets.brandLogo=null;$('#brandLogoName').textContent=offer.brand;$('#brandLogoThumb').textContent='＋';if(brandHint)brandHint.textContent='Logo ainda não disponível — selecione manualmente'}$('#productCode').value=sku.sku||'';$('#codeVariant1').value=sku.variation||'';
+  $('#productName').value=offer.title||$('#productName').value;var importedBrand=brandLogoForOffer(offer.brand,offer.title),brandHint=$('#brandLogoSummary small');if(importedBrand){selectBrandLogo(importedBrand);$('#brandLogoName').textContent=offer.brand||displayBrandName(importedBrand).toUpperCase();if(brandHint)brandHint.textContent=offer.brand?'Preenchida automaticamente da oferta FG':'Identificada automaticamente pelo título da oferta'}else if(offer.brand){state.brandLogoName=offer.brand;state.customAssets.brandLogo=null;$('#brandLogoName').textContent=offer.brand;$('#brandLogoThumb').textContent='＋';if(brandHint)brandHint.textContent='Logo ainda não disponível - selecione manualmente'}$('#productCode').value=sku.sku||'';$('#codeVariant1').value=sku.variation||'';
   $('#codeCount').value=dual?'2':'1';if(dual){var other=offer.skus[1];$('#productCode2').value=other.sku||'';$('#codeVariant2').value=other.variation||''}else{$('#productCode2').value=''}
   $('#ecommercePrice').value=money(sku.price);$('#ecommerceOldPrice').value=sku.listPrice?money(sku.listPrice):'';$('#ecommercePriceMode').value=sku.listPrice?'de-por':'por';$('#ecommerceDiscount').value=sku.discountPercent>0?Math.round(sku.discountPercent)+'% OFF':'';$('#ecommerceCta').value=offerCta(sku);syncCodeFields();$('#ecommercePriceMode').dispatchEvent(new Event('change'));drawAll();status('Oferta FG carregada. Revise os dados antes de baixar.',false)
 

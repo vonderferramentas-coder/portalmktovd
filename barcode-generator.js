@@ -34,7 +34,7 @@
       return { code: d + check(d), note: 'dígito verificador calculado' };
     }
     if (d.length === 7) return { code: d + check(d), note: 'dígito verificador calculado' };
-    return { error: d.length + ' dígitos — aceito EAN-13/UPC-A (12–13), EAN-8 (7–8) e ITF-14 (14)' };
+    return { error: d.length + ' dígitos - aceito EAN-13/UPC-A (12–13), EAN-8 (7–8) e ITF-14 (14)' };
   }
 
   // { w, h, base, font, rects:[{x,y,w,h}], texts:[{s,x}] } numa unidade própria de cada tipo: 1 = menor barra

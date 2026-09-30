@@ -5,9 +5,9 @@
 <script src="../conecta-fg.js"></script>
 <script>
 // Roda em Chrome headless (ver .github/workflows/testes.yml). Monta .docx de verdade em memória
-// (zip + deflate) com as estruturas dos textos do blog — cabeçalho, título, chamada em
+// (zip + deflate) com as estruturas dos textos do blog - cabeçalho, título, chamada em
 // itálico/caixa-alta, negrito por estilo "Forte", links, listas, títulos e as várias formas de
-// indicar produto — e confere a saída contra o que os posts publicados têm.
+// indicar produto - e confere a saída contra o que os posts publicados têm.
 (async function(){
   const Cf = window.ConectaFg;
   const eq = (actual, expected, label) => {
@@ -41,7 +41,7 @@
   const rels = items => `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${items}</Relationships>`;
   const link = (id, target) => `<Relationship Id="${id}" Type="x/hyperlink" Target="${target}" TargetMode="External"/>`;
 
-  // zip mínimo (deflate) — o leitor do Conecta FG ignora o CRC, então fica zerado
+  // zip mínimo (deflate) - o leitor do Conecta FG ignora o CRC, então fica zerado
   async function zip(files){
     const enc = new TextEncoder(), parts = [], central = [];
     let offset = 0;
@@ -139,7 +139,7 @@
   eq(b.unsupported, ['imagens', 'tabelas de texto'], 'imagem solta e tabela de texto avisadas em vez de sumir sem aviso');
 
   // ---- documento C: "Parte superior/inferior do formulário" (lixo do Word ao colar de uma
-  // página com <form> — aparece como parágrafo solto e, na tabela de produtos, como um parágrafo
+  // página com <form> - aparece como parágrafo solto e, na tabela de produtos, como um parágrafo
   // a mais dentro da mesma célula do nome) -------------------------------------------------------
   const c = await read(`
     ${para(run('Documento C'))}

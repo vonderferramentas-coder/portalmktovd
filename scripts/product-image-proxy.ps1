@@ -1,5 +1,5 @@
 # ponytail: mesmo contrato (?code=&w=) reimplementado sem código compartilhado em
-# cloudflare-worker.js e product-image.php — três runtimes diferentes, sem build step neste
+# cloudflare-worker.js e product-image.php - três runtimes diferentes, sem build step neste
 # projeto pra unificar. Ver product-image.php pro histórico de divergência real já encontrada
 # num proxy irmão (scripts/fg-offer-proxy.ps1); ao mudar regra aqui, replicar nos outros dois.
 param([int]$Port = 8765)
@@ -23,7 +23,7 @@ while($listener.IsListening){
   $context=$listener.GetContext();$request=$context.Request;$response=$context.Response
   $response.Headers['Access-Control-Allow-Origin']='*';$response.Headers['Access-Control-Allow-Methods']='GET, OPTIONS';$response.Headers['Access-Control-Allow-Headers']='Content-Type';$response.Headers['X-Content-Type-Options']='nosniff'
   # exigido pelo Chrome (Private Network Access) pra permitir que uma página https (ex: o site
-  # publicado no GitHub Pages) busque algo em 127.0.0.1 — sem isso o navegador bloqueia o pedido
+  # publicado no GitHub Pages) busque algo em 127.0.0.1 - sem isso o navegador bloqueia o pedido
   # antes mesmo de chegar aqui, mesmo com o auxiliar rodando normalmente
   $response.Headers['Access-Control-Allow-Private-Network']='true'
   if($request.HttpMethod-eq'OPTIONS'){$response.StatusCode=204;$response.Close();continue}

@@ -4,7 +4,7 @@
  *
  * Guarda o estado inteiro do app (postagens e configurações) num banco SQLite
  * local (data.sqlite, criado automaticamente na primeira chamada), em vez de só
- * no localStorage do navegador — assim o planejamento sobrevive a uma limpeza de
+ * no localStorage do navegador - assim o planejamento sobrevive a uma limpeza de
  * cache ou troca de navegador/computador, e a equipe inteira compartilha o mesmo
  * calendário.
  *
@@ -22,7 +22,7 @@
  * gerado por editoria).
  *
  * "posts"/"settings"/"intel" também aceitam um sufixo "__{brandId}" (ex:
- * k=posts__b1a2b3) — é assim que o portal isola os dados de cada perfil de
+ * k=posts__b1a2b3) - é assim que o portal isola os dados de cada perfil de
  * marca: a marca padrão usa as chaves sem sufixo (dados que já existiam antes
  * do portal), marcas novas ganham seu próprio conjunto de linhas na tabela.
  * "brands" (sem sufixo) guarda a lista de perfis de marca em si.

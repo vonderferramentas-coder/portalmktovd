@@ -45,7 +45,7 @@
     activeId = option.dataset.brandId;
     localStorage.setItem(ACTIVE_BRAND_KEY, activeId);
     // sem recarregar: troca a marca ativa, a cor e reaplica marca + permissões do usuário nos
-    // cards (auth-guard.js já rodou antes de qualquer clique — a Início fica oculta até lá)
+    // cards (auth-guard.js já rodou antes de qualquer clique - a Início fica oculta até lá)
     window.PortalShell.setActiveBrand(activeId);
     window.PortalAccess.refresh();
     renderPicker();

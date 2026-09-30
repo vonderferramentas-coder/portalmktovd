@@ -17,7 +17,7 @@
         let extraHeight = center && pageGroups.length <= 3 ? codeExtra(group) : (lastRow ? pairedExtraHeight : 0); return { group, col, gridRow: Math.floor(index / columns), size: 1, center, pair, extraHeight };
       }) });
     }
-    if (prev) out.forEach(page => page.items.forEach(item => { let old = prev.get(item.group); if (old) { if (old.title) item.title = old.title; if (old.photo) item.photo = old.photo; } }));
+    if (prev) out.forEach(page => page.items.forEach(item => { let old = prev.get(item.group); if (old) { if (old.title) { item.title = old.title; if (old.titleHtml) item.titleHtml = old.titleHtml; } if (old.photo) item.photo = old.photo; } }));
     return out;
   }
 

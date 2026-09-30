@@ -138,7 +138,7 @@
   };
 
   // Garante que a Swiss721 (fonte dos arquivos editáveis originais) esteja carregada antes de
-  // qualquer desenho no canvas — sem isso, a 1ª renderização pode cair no fallback (Arial Narrow/Arial).
+  // qualquer desenho no canvas - sem isso, a 1ª renderização pode cair no fallback (Arial Narrow/Arial).
   var fontsReady = (function () {
     if (!window.FontFace || !document.fonts || !document.fonts.load) return Promise.resolve();
     return Promise.all([
@@ -371,7 +371,7 @@
     }
   }
 
-  // Seletor manual de negrito do nome — usado nos cartões que desenham o nome em runs
+  // Seletor manual de negrito do nome - usado nos cartões que desenham o nome em runs
   // {texto,negrito} (VONDER, OSTEN, GRUPO OVD e PILAR TECNOLOGIA). Cada nome tem uma parte "fantasia" própria e
   // sem regra fixa (ex.: "Ailton Ribeiro da Silva" → Ailton Silva; "Marlos José Camilli" → só
   // Marlos), por isso a escolha fica a cargo de quem revisa o cartão.
@@ -669,7 +669,7 @@
   // Pares singular/plural de substantivos e adjetivos comuns em cargos, usados para checar
   // concordância de número entre palavras vizinhas no campo Cargo (ex.: "Auxiliares Administrativo").
   // Comparação usa normalize() (sem acento, minúsculo), então funciona com ou sem acentuação.
-  // Formas canônicas (com acento correto) — a comparação com o texto digitado é feita via
+  // Formas canônicas (com acento correto) - a comparação com o texto digitado é feita via
   // normalize() dos dois lados, então "tecnico"/"técnico" batem com a mesma entrada; o valor aqui
   // é o que efetivamente entra no cartão quando o "Aplicar" é clicado.
   var CARGO_NOUNS = [
@@ -693,7 +693,7 @@
     ["técnico", "técnicos"], ["técnica", "técnicas"]
   ];
 
-  // Reaplica no texto de troca (fix) o padrão de maiúsculas do trecho original encontrado —
+  // Reaplica no texto de troca (fix) o padrão de maiúsculas do trecho original encontrado -
   // assim "TECNICO" vira "TÉCNICO", "Tecnico" vira "Técnico" e "tecnico" vira "técnico".
   function matchCase(sample, replacement) {
     if (sample === sample.toUpperCase()) return replacement.toUpperCase();
@@ -737,12 +737,12 @@
     if (r.website && !/[.]/.test(r.website)) issues.push({ blocking: false, message: "Confira o endereço do site: não foi encontrado um domínio completo." });
     var scan = (r.name + " " + r.role + " " + r.address).toLowerCase();
     // Palavras comuns em nome, cargo e endereço de cartão de visitas que costumam ser digitadas
-    // sem acento. Cada entrada só dispara quando a forma exata sem acento aparece — se a pessoa já
+    // sem acento. Cada entrada só dispara quando a forma exata sem acento aparece - se a pessoa já
     // escreveu certo, o regex não bate e nada é sugerido.
     ACCENT_FIXES.forEach(function (rule) {
       if (rule.find.test(scan)) issues.push({ blocking: false, message: "Possível ajuste de acentuação: confira " + rule.label + ".", fix: rule });
     });
-    // Palavra repetida em sequência (ex.: "da da", "Rua Rua") — erro comum de copiar/colar.
+    // Palavra repetida em sequência (ex.: "da da", "Rua Rua") - erro comum de copiar/colar.
     var dupSeen = {};
     var dupSource = [r.name, r.role, r.address].join(" ");
     var dupMatch;
@@ -759,7 +759,7 @@
       });
     }
     // Concordância de número no cargo: substantivo e adjetivo próximos devem concordar no plural
-    // (ex.: "Auxiliares Administrativo" está errado — ou os dois no singular, ou os dois no plural).
+    // (ex.: "Auxiliares Administrativo" está errado - ou os dois no singular, ou os dois no plural).
     var roleWords = [];
     var roleWordRe = /[A-Za-zÀ-ÖØ-öø-ÿ]+/g;
     var roleMatch;
@@ -821,10 +821,10 @@
     return -1;
   }
 
-  // Lê o HTML de rich text que o SheetJS expõe por célula (cell.h — cada trecho com formatação
+  // Lê o HTML de rich text que o SheetJS expõe por célula (cell.h - cada trecho com formatação
   // diferente vira um <span>, o negrito vem como <b>) e devolve os trechos como {text,bold},
   // juntando trechos vizinhos com o mesmo peso. É o único jeito de saber QUAIS palavras do nome
-  // estão em negrito na planilha — não dá pra deduzir isso só do texto puro.
+  // estão em negrito na planilha - não dá pra deduzir isso só do texto puro.
   function parseRichRunsFromHtml(html) {
     var div = document.createElement("div");
     div.innerHTML = html;
@@ -859,7 +859,7 @@
       address: headerIndex(headers, ["endereco", "address"]),
       // "fone"/"telefone" ficam só no Telefone: uma planilha com coluna única "FONE" ou
       // "TELEFONE" (sem Celular separado) deve carregar apenas o Telefone, e não duplicar o
-      // mesmo número no Celular — "Telefone" sozinho, ao lado de "Celular", é o fixo/comercial.
+      // mesmo número no Celular - "Telefone" sozinho, ao lado de "Celular", é o fixo/comercial.
       landline: headerIndex(headers, ["telefonefixo", "fixo", "telefonecomercial", "landline", "fone", "telefone"]),
       phone: headerIndex(headers, ["celular", "telefonecelular", "whatsapp", "mobile", "phone"]),
       email: headerIndex(headers, ["email", "correioeletronico"]),
@@ -1084,7 +1084,7 @@
   // posição (px), tamanho de fonte (px) e cor abaixo replicam exatamente o arquivo de impressão
   // (business-card-assets/source/fg-business-card.ai / .pdf, card 94×54mm a 20px/mm): Nome 11.5pt,
   // Cargo 8.5pt e Endereço/Celular/E-mail·Site 7pt, todos na cor #4d4d4d (CMYK 0/0/0/70). Esses
-  // valores são fixos — não usam fitText/auto-encolhe — porque esse é o padrão gráfico aprovado
+  // valores são fixos - não usam fitText/auto-encolhe - porque esse é o padrão gráfico aprovado
   // para impressão e não pode variar conforme o texto digitado.
   var FG_GRAY = "#4d4d4d";
   var FG_SAFE_FROM_BLEED_MM = 6.36;
@@ -1104,7 +1104,7 @@
   // Variação de logotipo por cartão: "fg" é o padrão institucional já usado; "fg-ico" acrescenta o
   // selo ICO ao lado do logotipo (business-card-assets/source, arquivo cedido por Lucas). A escolha
   // fica salva em cada registro (r.logoVariant), afetando somente o cartão selecionado. As duas
-  // imagens vêm embutidas em base64 (business-card-assets.js) — carregar por caminho relativo
+  // imagens vêm embutidas em base64 (business-card-assets.js) - carregar por caminho relativo
   // sob file:// "contamina" o canvas e impede a releitura de pixels (getImageData) na recolorização.
   var FG_LOGO_VARIANTS = {
     "fg": "business-card-assets/fg-template-600.png",
@@ -1174,14 +1174,14 @@
   // Réplica do arquivo CorelDRAW "Cartoes de Visitas OVD.cdr" (posições e fotos extraídas do
   // PDF exportado por ele). Escala: nosso canvas lógico 1880×1080 representa a arte de 94×54mm
   // (corte 90×50 + 2mm de sangria original), com origem no canto da FOLHA de impressão de
-  // 104×64mm (7mm de sangria contínua até a borda) — daí o deslocamento de 5mm (7−2) abaixo.
+  // 104×64mm (7mm de sangria contínua até a borda) - daí o deslocamento de 5mm (7−2) abaixo.
   var OVD_PT_TO_PX = 20 * 25.4 / 72; // px de canvas por ponto PDF (20px/mm)
   var OVD_ORIGIN_PX = 5 * 20; // 5mm (sangria da folha menos a já embutida na arte) em px
   function ovdX(xPt) { return OVD_PT_TO_PX * xPt - OVD_ORIGIN_PX; }
   function ovdY(yPt) { return H - (OVD_PT_TO_PX * yPt - OVD_ORIGIN_PX); }
 
   // Desenha uma imagem usando a matriz de posicionamento (a,b,c,d,e,f) extraída literalmente
-  // do "cm" do PDF de referência — mesma convenção de matriz afim, só trocando a escala/origem.
+  // do "cm" do PDF de referência - mesma convenção de matriz afim, só trocando a escala/origem.
   function drawOvdPdfImage(img, a, b, c, d, e, f, opacity) {
     if (!img) return;
     var s = OVD_PT_TO_PX;
@@ -1189,7 +1189,7 @@
     ctx.globalAlpha = opacity == null ? 1 : opacity;
     ctx.transform(s * a, -s * b, s * c, -s * d, ovdX(e), ovdY(f));
     // O PDF desenha a linha 0 da imagem em v=1 (topo do quadrado unitário, espaço y-para-cima);
-    // o canvas desenha a linha 0 em v=0 (topo, y-para-baixo) — sem este flip local, toda imagem
+    // o canvas desenha a linha 0 em v=0 (topo, y-para-baixo) - sem este flip local, toda imagem
     // sai de cabeça pra baixo/deslocada em relação à posição exata do arquivo de referência.
     ctx.translate(0, 1);
     ctx.scale(1, -1);
@@ -1206,7 +1206,7 @@
 
   // Telefone sai de formatPhone() como "(DDD) XXXX-XXXX" (padrão usado no resto do app), mas o
   // cartão OVD mostra "DDD XXXXX XXXX" sem parênteses/traço, com o DDD normal e o resto em
-  // negrito — replicando a formatação da planilha (mesma regra pro FONE institucional e pro
+  // negrito - replicando a formatação da planilha (mesma regra pro FONE institucional e pro
   // CELULAR pessoal). Reconstrói a partir dos dígitos, então não depende da pontuação de exibição.
   function ovdPhoneRuns(value, prefix) {
     var digits = String(value || "").replace(/\D/g, "");
@@ -1222,7 +1222,7 @@
   }
 
   // Sem negrito vindo da planilha (cartão criado manualmente ou importado de .csv), aplica um
-  // padrão razoável: primeiro e último nome em negrito, meio normal — não é garantia de bater
+  // padrão razoável: primeiro e último nome em negrito, meio normal - não é garantia de bater
   // com o que a pessoa realmente destaca, só evita o nome sair 100% sem ênfase nenhuma.
   function ovdDefaultNameRuns(name) {
     var text = String(name || "");
@@ -1234,7 +1234,7 @@
     return runs;
   }
 
-  // Mesma ideia do padrão OVD, mas o cartão PILAR TECNOLOGIA destaca só o primeiro nome —
+  // Mesma ideia do padrão OVD, mas o cartão PILAR TECNOLOGIA destaca só o primeiro nome -
   // o restante (sobrenome) sai em peso normal enquanto ninguém escolher outra palavra.
   function pilarDefaultNameRuns(name) {
     var text = String(name || "");
@@ -1265,7 +1265,7 @@
   }
 
   // Expande runs {text,bold} num array de flags de negrito por caractere, na mesma ordem do
-  // texto concatenado — usado para descobrir se uma palavra específica do nome está em negrito.
+  // texto concatenado - usado para descobrir se uma palavra específica do nome está em negrito.
   function nameRunsToCharBold(runs) {
     var flags = [];
     runs.forEach(function (run) {
@@ -1343,7 +1343,7 @@
     // topo da chave de fenda em y≈95 pt; a base fica escondida atrás da barra preta inferior.
     drawOvdPdfImage(tools, 75.4, 0, 0, 64.2, 114.5, 30.8);
 
-    // Barra preta superior e inferior — sangram até a borda da folha (ver ovdBarRect/clamp).
+    // Barra preta superior e inferior - sangram até a borda da folha (ver ovdBarRect/clamp).
     ctx.fillStyle = "#000";
     var topBar = ovdBarRect(125.4543, 169.9251);
     ctx.fillRect(0, topBar[0], W, topBar[1]);
@@ -1380,7 +1380,7 @@
 
     var left = ovdX(30.5847);
     // Só usa os negritos escolhidos manualmente (ou vindos da planilha) se o texto deles ainda
-    // bater com o nome atual — se o cartão foi editado manualmente depois, cai no padrão
+    // bater com o nome atual - se o cartão foi editado manualmente depois, cai no padrão
     // automático em vez de mostrar negrito fora de lugar sobre um nome que já mudou.
     drawOvdRuns(ovdActiveNameRuns(r), left, ovdY(107.2908), 9 * OVD_PT_TO_PX, "#000");
     ctx.font = "400 " + (6.5 * OVD_PT_TO_PX) + "px Swiss721,Arial Narrow,Arial,sans-serif";
@@ -1443,10 +1443,10 @@
 
     // A foto de ferramentas embutida na base saía com um tom azulado na exportação CMYK; troca
     // pelo vetor aprovado (mesma caixa/proporção do original, medida no fundo estático em px de
-    // canvas — o viewBox da base é 1880×1080, igual ao canvas, então bate 1 para 1).
+    // canvas - o viewBox da base é 1880×1080, igual ao canvas, então bate 1 para 1).
     var toolsBox = { x: 622.7064, y: 524.2927, w: 633.2549, h: 400.0007 };
     var toolsPad = 6;
-    // O rodapé preto da base começa em y=923.5539 (medido no SVG embutido) — a caixa de limpeza
+    // O rodapé preto da base começa em y=923.5539 (medido no SVG embutido) - a caixa de limpeza
     // não pode descer até lá, senão pinta uma tarja branca por cima do topo do rodapé.
     var toolsFooterTop = 923.5539;
     var toolsClearTop = toolsBox.y - toolsPad;
@@ -1517,7 +1517,7 @@
     }
 
     if (r.website) {
-      // Ao lado do QR (não embaixo — a caixa do QR desce até dentro do rodapé preto e cobriria
+      // Ao lado do QR (não embaixo - a caixa do QR desce até dentro do rodapé preto e cobriria
       // o texto): encostado à esquerda da caixa com um respiro, base alinhada com a base do QR.
       var vonderWebsiteRuns = [{ text: r.website, bold: true }];
       var vonderWebsiteSize = 7.5 * OVD_PT_TO_PX;
@@ -1544,9 +1544,9 @@
 
     // Repassa o paralelogramo amarelo por cima do fundo estático. Lateral direita em 90°, lateral
     // esquerda diagonal; medidas conferidas pela diretoria (2,7768cm de largura no topo, 3,1101cm
-    // na base, 1,1921cm de altura). O canto inferior direito (ângulo reto) é a referência fixa —
+    // na base, 1,1921cm de altura). O canto inferior direito (ângulo reto) é a referência fixa -
     // vem do stream de conteúdo do PDF original (Cartoes de Visitas Osten.pdf, "f*" logo após
-    // "0.0000 0.2510 1.0000 0.0000 k") — e os demais pontos derivam dele com as medidas acima.
+    // "0.0000 0.2510 1.0000 0.0000 k") - e os demais pontos derivam dele com as medidas acima.
     // Pontos medidos a partir do canto da folha de impressão 104×64mm, por isso passam direto por
     // ovdX/ovdY como o resto do texto do cartão.
     var PT_PER_CM = 28.3464566929;
@@ -1558,7 +1558,7 @@
     var flagTopY = flagBottomY + flagHeightPt;
     var flagBottomLeftX = flagBottomRightX - flagBottomWidthPt;
     var flagTopLeftX = flagBottomRightX - flagTopWidthPt;
-    // O amarelo do fundo estático é ligeiramente mais alto que a medida acima — sem limpar antes,
+    // O amarelo do fundo estático é ligeiramente mais alto que a medida acima - sem limpar antes,
     // esse resíduo continuaria visível por trás/acima do polígono novo, menor. Cobre de branco
     // toda a região (até a borda direita/superior do cartão) antes de repintar o tamanho exato.
     var flagClearLeft = ovdX(Math.min(flagTopLeftX, flagBottomLeftX)) - 10;
@@ -2049,7 +2049,7 @@
   // o "rich black" que a conversão genérica produziria) e o laranja do logo OSTEN FERRAGENS
   // (#F5821F, aprovado como CMYK 0/60/100/0). Cada entrada vira um vetor/norma pré-calculado
   // usado para detectar tanto o pixel sólido quanto sua suavização contra o branco ao redor.
-  // "styles" limita cada receita ao(s) estilo(s) de cartão que realmente usam aquela cor —
+  // "styles" limita cada receita ao(s) estilo(s) de cartão que realmente usam aquela cor -
   // sem isso, o verde escuro do FG (uma direção de vetor próxima do neutro) "casava" por
   // coincidência com pixels cinza-claro de fotos em outros cartões (ex.: a foto de ferramentas
   // do VONDER saía com um véu esverdeado) mesmo sem nenhum verde ali de verdade.
@@ -2092,7 +2092,7 @@
         // Coberturas até 1.03 são toleradas para pegar tons de marca ligeiramente diferentes
         // (ex.: #FABC09 vs #FFC20D) como o mesmo amarelo aprovado, mas sem o clamp abaixo o
         // valor final passava de 255 e o Uint8Array "dava a volta" (ex.: 260 virava 4),
-        // esvaziando o canal e deixando o amarelo quase sem tinta — a mesma cor lida como rosa.
+        // esvaziando o canal e deixando o amarelo quase sem tinta - a mesma cor lida como rosa.
         var appliedCoverage = Math.min(coverage, 1);
         output[target] = Math.round(255 * recipe.cmyk[0] * appliedCoverage);
         output[target + 1] = Math.round(255 * recipe.cmyk[1] * appliedCoverage);
@@ -2114,7 +2114,7 @@
   }
 
   // Arte calibrada: cartão de 90 × 50 mm de corte + 2 mm de sangria original = 94 × 54 mm em
-  // pontos PDF (1pt = 1/72in, 1in = 25.4mm). Este é o canvas 1880 × 1080 já aprovado — nunca
+  // pontos PDF (1pt = 1/72in, 1in = 25.4mm). Este é o canvas 1880 × 1080 já aprovado - nunca
   // deve ser redimensionado nem ter suas posições internas recalculadas.
   var DESIGN_WIDTH_PT = 266.456693;
   var DESIGN_HEIGHT_PT = 153.070866;
@@ -2128,7 +2128,7 @@
   var SHEET_MARGIN_MM = 4;
   var PAGE_WIDTH_MM = TRIM_WIDTH_MM + 2 * (TARGET_BLEED_MM + SHEET_MARGIN_MM);
   var PAGE_HEIGHT_MM = TRIM_HEIGHT_MM + 2 * (TARGET_BLEED_MM + SHEET_MARGIN_MM);
-  // Vão entre a marca de corte e o canto real do corte, e espessura do traço — replicam o arquivo
+  // Vão entre a marca de corte e o canto real do corte, e espessura do traço - replicam o arquivo
   // de referência acima (marcas de corte reais, não a marca magenta que é só guia de tela).
   var MARK_GAP_MM = 2;
   var MARK_WIDTH_PT = 0.3;
@@ -2427,7 +2427,7 @@
       return;
     }
     // cada cartão vira um PDF individual (nome = nome completo da pessoa), não mais páginas de
-    // um único PDF — assim cada arquivo pode ir separado pra gráfica/participante; agrupamos
+    // um único PDF - assim cada arquivo pode ir separado pra gráfica/participante; agrupamos
     // tudo num ZIP só pra facilitar o download em lote
     toast("Preparando " + records.length + " cartões em PDFs individuais…");
     var used = {};
@@ -2451,7 +2451,7 @@
     showWorkspace();
   }
 
-  // Criar cartão manualmente a partir da etapa "Criar ou Importar" começa uma lista nova — não
+  // Criar cartão manualmente a partir da etapa "Criar ou Importar" começa uma lista nova - não
   // soma ao que já existia (diferente de "Adicionar cartão manualmente" dentro do workspace, que
   // complementa um lote em andamento).
   function startManualCard() {

@@ -15,7 +15,7 @@
       --font-ui:'Urbanist',Segoe UI,Arial,sans-serif;
       --base-font-family:var(--font-body);
       /* altura padrão compartilhada por inputs de texto/data/número, selects, o seletor de cor e
-         botões (tamanho normal) — garante que fiquem alinhados quando aparecem lado a lado, como
+         botões (tamanho normal) - garante que fiquem alinhados quando aparecem lado a lado, como
          em "Nova rede" (campo + cor + Adicionar) */
       --control-h:38px;
     }
@@ -39,7 +39,7 @@
     button,input,select,textarea,option{font-family:var(--font-ui)}
     .container{max-width:1900px;margin:0 auto}
 
-    /* Brilho de fundo que acompanha o mouse (Início e Login) — canvas inserido via
+    /* Brilho de fundo que acompanha o mouse (Início e Login) - canvas inserido via
        mouse-light.js como 1º filho do body, substitui o gradiente radial estático de
        .auth-page::before/.home-body::before (que continua servindo de fallback em telas sem
        mouse ou com "reduzir movimento" ativado). Desenho (rastro de blobs desbotando) é feito
@@ -58,21 +58,21 @@
     .portal-logo{display:flex;align-items:center;gap:8px;padding:0 4px;font-weight:900;font-size:15px;color:var(--text);letter-spacing:-.01em;min-width:0}
     .portal-logo-mark{width:26px;height:26px;border-radius:8px;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0}
 
-    /* Navegação entre ferramentas do portal — mesma linguagem visual de .settings-nav-btn
+    /* Navegação entre ferramentas do portal - mesma linguagem visual de .settings-nav-btn
        (usado no menu lateral de Configurações), só que como links <a> em vez de <button> */
     .portal-nav{display:flex;flex-direction:column;gap:2px}
     .portal-nav-item{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:var(--radius-sm);color:var(--muted);font-weight:700;font-size:13px;text-decoration:none;transition:background .12s,color .12s}
-    /* [hidden] some vencer o display:flex acima — a regra nativa do navegador pra [hidden] tem
+    /* [hidden] some vencer o display:flex acima - a regra nativa do navegador pra [hidden] tem
        prioridade mais baixa que qualquer seletor do autor, então precisa ser repetida aqui */
     .portal-nav-item[hidden]{display:none}
     .portal-nav-item svg{flex-shrink:0}
     .portal-nav-item:hover{background:var(--surface-muted);color:var(--text)}
     .portal-nav-item.active{background:var(--accent-weak);color:var(--accent-ink)}
-    /* variante <button> (ex.: "Configurações" no rodapé da sidebar) — mesma aparência do link,
+    /* variante <button> (ex.: "Configurações" no rodapé da sidebar) - mesma aparência do link,
        só zerando o chrome nativo do elemento */
     button.portal-nav-item{width:100%;border:0;background:transparent;font-family:inherit;cursor:pointer;text-align:left}
 
-    /* Seções de navegação ("Criação"/"Mídias Sociais"/"Administração") — só um rótulo estático
+    /* Seções de navegação ("Criação"/"Mídias Sociais"/"Administração") - só um rótulo estático
        acima dos itens, sem ícone e sem interação (referência: rótulo "Projects" da sidebar do
        animate-ui.com/docs/components/radix/sidebar). Itens ficam alinhados com o rótulo, sem
        indentação extra. O gap de 36px é só entre seções consecutivas (+); de "Início" até a
@@ -82,14 +82,14 @@
     .portal-nav-section + .portal-nav-section{margin-top:36px}
     .portal-nav-section-label{padding:4px 11px;color:var(--text-faint);font-weight:800;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em}
 
-    /* Botão de recolher/expandir a sidebar — quadradinho só com ícone, ao lado da logo
+    /* Botão de recolher/expandir a sidebar - quadradinho só com ícone, ao lado da logo
        (mesmo estilo compacto do toggle "|←" de referência) */
     .portal-collapse-btn{flex-shrink:0;width:28px;height:28px;padding:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
     .portal-collapse-btn:hover{background:var(--surface-muted);color:var(--text)}
     .portal-collapse-btn svg{flex-shrink:0}
 
     /* Seletor de marca: mesmo mecanismo de trigger+popover ancorado no <body> via
-       position:fixed que .icon-picker-trigger/.icon-picker-popover já usam — necessário
+       position:fixed que .icon-picker-trigger/.icon-picker-popover já usam - necessário
        porque a sidebar tem overflow-y:auto, que cortaria um popover position:absolute preso nela */
     .portal-brand-trigger{display:flex;align-items:center;gap:9px;width:100%;padding:8px 9px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--card);cursor:pointer;text-align:left;font-family:inherit;transition:border-color .12s,background .12s}
     .portal-brand-trigger:hover{background:var(--surface-muted)}
@@ -102,9 +102,9 @@
 
     /* Barra de conta no rodapé da sidebar: quem está logado, sempre em uma única linha (o
        nome+e-mail truncam com reticências antes de empurrar o ícone de sair). A barra inteira é
-       clicável (abre o menu com Redefinir senha/Sair pra cima, ver portal-shell.js) — o ícone de
+       clicável (abre o menu com Redefinir senha/Sair pra cima, ver portal-shell.js) - o ícone de
        sair dentro dela é só um atalho e usa stopPropagation pra não abrir o menu junto. */
-    /* Seletor claro/escuro, logo acima da barra de conta — mesmo padrão visual do .view-toggle
+    /* Seletor claro/escuro, logo acima da barra de conta - mesmo padrão visual do .view-toggle
        (Mês/Quinzena/Semana no calendário), só com ícones em vez de texto. */
     .portal-theme-toggle{width:100%}
     .portal-theme-toggle button{flex:1;display:flex;align-items:center;justify-content:center;padding:7px 0}
@@ -113,7 +113,7 @@
     .portal-account-bar.open{border-color:var(--accent-ink);box-shadow:0 0 0 2px var(--accent-weak)}
     .portal-account-avatar{position:relative;flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--surface-muted);color:var(--muted);display:flex;align-items:center;justify-content:center}
     /* Indicador de notificação não lida: badge com a quantidade (até "9+"), no avatar da barra
-       "Conta" e, quando o dropdown abre, ao lado de "Notificações" — ver applyNotificationDot em
+       "Conta" e, quando o dropdown abre, ao lado de "Notificações" - ver applyNotificationDot em
        portal-shell.js. */
     .portal-account-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
     .portal-account-avatar-dot{position:absolute;top:-4px;right:-4px;min-width:14px;height:14px;padding:0 3px;border-radius:999px;background:var(--accent);color:var(--on-accent);box-shadow:0 0 0 2px var(--card);display:flex;align-items:center;justify-content:center;font-size:9px;line-height:1;font-weight:800}
@@ -129,7 +129,7 @@
 
     /* Textos que somem ao recolher a sidebar: em vez de display:none (que troca de estado na
        hora, dessincronizado da largura da sidebar animando), encolhem/desaparecem juntos com
-       a mesma duração — sem isso o texto "pipocava" largo antes do menu terminar de encolher */
+       a mesma duração - sem isso o texto "pipocava" largo antes do menu terminar de encolher */
     .portal-logo-text,
     .portal-nav-item span,
     .portal-nav-section-label,
@@ -166,13 +166,13 @@
     .portal-brand-photo-preview{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:var(--surface-muted);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--text-faint)}
     .portal-brand-photo-preview img{width:100%;height:100%;object-fit:cover;display:block}
 
-    /* Modal "Perfil": o modal inteiro é sempre a foto do usuário — cabeçalho, nome, Perfil
+    /* Modal "Perfil": o modal inteiro é sempre a foto do usuário - cabeçalho, nome, Perfil
        (role) e as ações (botão "Editar", ou "Cancelar"/"Salvar" durante a edição) ficam
-       sobrepostos a ela tanto na leitura quanto na edição (só o conteúdo do rodapé/topo troca —
+       sobrepostos a ela tanto na leitura quanto na edição (só o conteúdo do rodapé/topo troca -
        ver setProfileEditing em portal-shell.js). O Perfil (role) nunca é editável aqui: só muda
        pelo admin, em Usuários e acessos > Perfis. As classes .portal-profile-form/-photo-upload/
        -preview/-edit/-name-field abaixo são compartilhadas com o modal "Editar usuário" de
-       admin-users.js (fundo claro, avatar circular) — não mexer nelas por causa deste modal.
+       admin-users.js (fundo claro, avatar circular) - não mexer nelas por causa deste modal.
        Foto capturada em maior resolução (480px, ver readBrandPhoto) porque aqui ela cobre o
        modal inteiro em vez de um avatar pequeno. */
     #profileBackdrop .modal-header{position:absolute;inset:0 0 auto 0;z-index:2;padding:24px;border-bottom:0;background:linear-gradient(to bottom,rgba(0,0,0,.55),rgba(0,0,0,0) 100%)}
@@ -189,7 +189,7 @@
 
     /* Modal "Ajustar foto": janela circular do tamanho real do avatar final, pra escolher
        exatamente qual parte da imagem cai dentro do círculo (.portal-account-avatar/
-       .admin-table-avatar) — arrastar reposiciona, a régua ou a roda do mouse dão zoom. Ver
+       .admin-table-avatar) - arrastar reposiciona, a régua ou a roda do mouse dão zoom. Ver
        openCropModal/buildCropModal em portal-shell.js. */
     #profilePhotoCropBackdrop .modal{width:360px;max-width:360px}
     .portal-photo-crop-stage{width:280px;height:280px;margin:0 auto;border-radius:50%;overflow:hidden;background:var(--surface-muted);cursor:grab;touch-action:none}
@@ -202,7 +202,7 @@
     .portal-profile-card-name{font-size:24px;font-weight:800;color:#fff;line-height:1.2}
     .portal-profile-card-role{font-size:14px;font-weight:500;color:rgba(255,255,255,.85);margin-top:-4px}
     /* especificidade #id + .classe pra vencer .btn.ghost (2 classes) e não voltar pro fundo
-       opaco de var(--card) — os botões ficam sobre o degradê escuro, então precisam do efeito
+       opaco de var(--card) - os botões ficam sobre o degradê escuro, então precisam do efeito
        "vidro" claro independente do tema */
     #profileBackdrop .portal-profile-edit-toggle{width:100%;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.4);backdrop-filter:blur(6px)}
     #profileBackdrop .portal-profile-edit-toggle:hover{background:rgba(255,255,255,.26)}
@@ -228,20 +228,20 @@
     .portal-sidebar.collapsed .portal-brand-trigger-body,
     .portal-sidebar.collapsed .portal-brand-trigger-chevron,
     .portal-sidebar.collapsed .portal-account-info{max-width:0;opacity:0;transition:max-width .2s ease,opacity .08s ease}
-    /* o "gap" do flex ainda reserva espaço ao redor de um filho escondido via max-width:0 —
+    /* o "gap" do flex ainda reserva espaço ao redor de um filho escondido via max-width:0 -
        sem zerar o gap aqui, o ícone visível (logo/avatar) fica puxado pra esquerda, fora do
        centro real da coluna de ícones, e cada linha desalinha numa medida diferente */
     .portal-sidebar.collapsed .portal-logo{gap:0}
     .portal-sidebar.collapsed .portal-nav-item{justify-content:center;gap:0}
     .portal-sidebar.collapsed .portal-brand-trigger{width:auto;margin:0 auto;justify-content:center;gap:0;padding:5px;border-color:transparent;background:transparent}
     .portal-sidebar.collapsed .portal-brand-trigger:hover{background:var(--surface-muted)}
-    /* recolhida, os 3 ícones (avatar + 2 botões) não cabem lado a lado nos 72px — empilha.
+    /* recolhida, os 3 ícones (avatar + 2 botões) não cabem lado a lado nos 72px - empilha.
        max-width:0 (regra acima) só zera a largura; numa pilha vertical isso não tira a altura
        do texto invisível, então precisa de display:none aqui pra não sobrar um vão entre os ícones */
     .portal-sidebar.collapsed .portal-account-bar{flex-direction:column;width:auto;margin:0 auto;gap:4px;padding:5px;border-color:transparent;background:transparent}
     .portal-sidebar.collapsed .portal-account-info{display:none}
     /* mesma ideia: sem largura pra pílula horizontal, os dois ícones empilham soltos (sem fundo
-       nem borda do wrapper) — o "ativo" continua legível pelo próprio .view-toggle button.active */
+       nem borda do wrapper) - o "ativo" continua legível pelo próprio .view-toggle button.active */
     .portal-sidebar.collapsed .portal-theme-toggle{flex-direction:column;width:auto;margin:0 auto;gap:4px;padding:0;border-color:transparent;background:transparent}
 
     @media (max-width:760px){
@@ -257,13 +257,13 @@
       .portal-brand-trigger:hover{background:var(--surface-muted)}
     }
 
-    /* Escala tipográfica do site — sempre usar a tag semântica correspondente ao nível:
-       H1 · título da página (só existe um, no topo) — 23px/900
-       H2 · título de modal (Filtros, Configurações, Editar postagem...) — 17px/900
+    /* Escala tipográfica do site - sempre usar a tag semântica correspondente ao nível:
+       H1 · título da página (só existe um, no topo) - 23px/900
+       H2 · título de modal (Filtros, Configurações, Editar postagem...) - 17px/900
        H3 · título de seção dentro de um modal (ex: "Publicação", "Redes sociais" no
-            formulário de postagem) — discreto e em caixa alta, mas com peso suficiente
+            formulário de postagem) - discreto e em caixa alta, mas com peso suficiente
             pra se destacar dos labels de campo comuns
-       H4 · reservado para um 4º nível (subtítulo dentro de uma seção), ainda sem uso hoje —
+       H4 · reservado para um 4º nível (subtítulo dentro de uma seção), ainda sem uso hoje -
             definido aqui pra já nascer consistente quando alguma tela precisar dele */
     h1,h2,h3,h4,h5,h6{margin:0;font-family:var(--font-display);color:var(--text)}
     h1{font-size:26px;font-weight:700;line-height:1.15;letter-spacing:-.02em}
@@ -277,7 +277,7 @@
     .page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}
     /* Cor de destaque para TEXTO (antetítulo etc.): no claro é a --accent-ink da marca; no escuro sobe a
        luminosidade só até ficar legível (destaques escuros como o verde da FG ou o azul da Pilar somem
-       no fundo escuro), mantendo o matiz — cores já claras (amarelo, cinza) passam sem alteração.
+       no fundo escuro), mantendo o matiz - cores já claras (amarelo, cinza) passam sem alteração.
        Sem suporte a cor relativa, cai numa mistura com branco. */
     :root{--accent-text:var(--accent-ink)}
     :root[data-theme="dark"]{--accent-text:color-mix(in srgb,var(--accent-ink) 45%,#fff)}
@@ -291,7 +291,7 @@
     /* Busca de postagens (lupa no cabeçalho): em repouso é só o botão-lupa; ao abrir, a barra
        cresce por cima do espaço vazio do cabeçalho (entre o título e os botões) como uma camada
        flutuante (position:absolute), ancorada pela direita no lugar do próprio botão-lupa. Como
-       ela sai do fluxo normal, Configurações/Nova postagem nunca se movem — só a barra anima. */
+       ela sai do fluxo normal, Configurações/Nova postagem nunca se movem - só a barra anima. */
     .search-wrap{position:relative;flex-shrink:0}
     .search-toggle-btn{display:flex}
     .search-active .search-toggle-btn{display:none}
@@ -337,9 +337,9 @@
     input[type=color]{border:1px solid var(--border);border-radius:var(--radius-sm);height:var(--control-h);padding:2px;width:44px;cursor:pointer;flex-shrink:0}
     input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent-ink);box-shadow:0 0 0 3px var(--accent-weak)}
 
-    /* Botões — altura igual à dos campos de texto/select/cor, para ficarem alinhados quando lado a lado */
+    /* Botões - altura igual à dos campos de texto/select/cor, para ficarem alinhados quando lado a lado */
     .btn{height:var(--control-h);display:inline-flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;background:var(--accent);color:var(--on-accent);padding:0 14px;border-radius:var(--radius-sm);border:0;cursor:pointer;font-weight:700;font-size:13px;transition:background .12s,transform .06s,box-shadow .12s;font-family:inherit}
-    /* [hidden] some vencer o display:inline-flex acima — a regra nativa do navegador pra [hidden]
+    /* [hidden] some vencer o display:inline-flex acima - a regra nativa do navegador pra [hidden]
        tem prioridade mais baixa que qualquer seletor do autor (mesmo caso do .tool-card em
        index.css, do botão do Google em auth.css e do item do menu lateral em styles.css). */
     .btn[hidden]{display:none}
@@ -350,7 +350,7 @@
     .btn.ghost{background:var(--card);color:var(--text);border:1px solid var(--border);font-weight:700}
     .btn.ghost:hover{background:var(--surface-muted);border-color:var(--border-strong)}
     /* variante "small", usada tanto para botões compactos com texto (Cancelar, Aplicar) quanto para
-       ícones soltos (✕ de remover) — ambas as classes .btn.small e .btn.ghost.small compartilham a
+       ícones soltos (✕ de remover) - ambas as classes .btn.small e .btn.ghost.small compartilham a
        mesma altura reduzida, para não desalinhar quando aparecem juntas numa mesma linha */
     .btn.ghost.small,.btn.small{height:28px;padding:0 10px;font-size:12px}
     .btn.ghost.danger{color:var(--danger);border-color:var(--danger-border)}
@@ -382,7 +382,7 @@
     .month-label{min-width:160px;text-align:center;font-weight:700;font-size:14px;background:transparent;border:1px solid transparent;color:var(--text);font-family:inherit;cursor:pointer;padding:5px 8px;border-radius:var(--radius-sm);display:inline-flex;align-items:center;justify-content:center;gap:4px;transition:background .12s,border-color .12s}
     .month-label:hover{background:var(--surface-muted)}
     /* enquanto o popover de mês está aberto, o rótulo (agora mostrando só o ano) fica com uma caixa ativa,
-       como um campo em foco — sinaliza que as setas ‹ › do cabeçalho agora navegam por ano */
+       como um campo em foco - sinaliza que as setas ‹ › do cabeçalho agora navegam por ano */
     .month-label[aria-expanded="true"]{border-color:var(--accent-ink);background:var(--card)}
     .month-label-caret{font-size:10px;color:var(--muted);transition:transform .15s}
     .month-label[aria-expanded="true"] .month-label-caret{transform:rotate(180deg)}
@@ -401,7 +401,7 @@
     .ms-row-count{flex:0 0 auto;font-weight:700;color:var(--muted)}
 
     /* Popover de seleção rápida de mês dentro do ano, ancorado abaixo do rótulo (que mostra o ano
-       enquanto o popover está aberto). Não tem navegação de ano própria — reaproveita as setas ‹ › do cabeçalho. */
+       enquanto o popover está aberto). Não tem navegação de ano própria - reaproveita as setas ‹ › do cabeçalho. */
     .month-year-picker{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:12px;width:240px;z-index:40;display:none}
     .month-year-picker.open{display:block}
     .myp-months{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -411,7 +411,7 @@
     .myp-month.current{outline:1px solid var(--accent);outline-offset:-1px}
     .myp-month.selected{background:var(--accent);color:var(--on-accent)}
 
-    /* Indicador de sincronização com o servidor (api.php) — texto discreto que só some
+    /* Indicador de sincronização com o servidor (api.php) - texto discreto que só some
        quando vazio; "ok" e "warn" mudam a cor pro estado atual */
     .sync-status{font-size:11px;color:var(--text-faint);white-space:nowrap}
     .sync-status:empty{display:none}
@@ -430,7 +430,7 @@
     .tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
     #tabs button{border-radius:var(--radius-sm);padding:6px 13px;font-size:12.5px;height:30px}
     #tabs button.icon-only{position:relative;width:30px;height:30px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:transparent;border:0}
-    /* X pequeno que aparece sobre o ícone quando aquela rede está selecionada (seleção múltipla) —
+    /* X pequeno que aparece sobre o ícone quando aquela rede está selecionada (seleção múltipla) -
        puramente indicativo: o clique continua indo pro botão inteiro, que já alterna a seleção */
     .tab-remove{display:none;position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;background:var(--accent-ink);color:var(--card);align-items:center;justify-content:center;font-size:10px;line-height:1;border:1.5px solid var(--card);pointer-events:none}
     #tabs button.icon-only:not(.ghost) .tab-remove{display:flex}
@@ -455,7 +455,7 @@
     .dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0}
 
     /* Seleção de redes sociais no modal de postagem: mesmo padrão de círculo só-ícone das
-       abas de canal no topo (ver #tabs button.icon-only acima) — sem borda, sem texto. Rede
+       abas de canal no topo (ver #tabs button.icon-only acima) - sem borda, sem texto. Rede
        não marcada fica em P&B (grayscale); ao marcar, ganha cor cheia + anel de destaque. */
     .chip-net{position:relative;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;user-select:none}
     .chip-net input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
@@ -492,7 +492,7 @@
     .format-net-group{display:flex;flex-direction:column;gap:6px}
     .format-net-group + .format-net-group{margin-top:12px}
     .format-net-group-label{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em}
-    /* largura fixa baseada em 3 colunas por linha (não usa 1fr) — se não, um grupo com só
+    /* largura fixa baseada em 3 colunas por linha (não usa 1fr) - se não, um grupo com só
        1 ou 2 formatos esticaria o(s) chip(s) pra preencher a linha toda */
     .format-net-group-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(0,calc((100% - 16px)/3)));gap:8px}
     .format-chip{display:flex;align-items:flex-start;gap:7px;padding:7px 11px;border-radius:12px;border:1px solid var(--border);background:var(--card);font-family:var(--base-font-family);cursor:pointer;user-select:none;transition:background .12s,border-color .12s,color .12s}
@@ -510,27 +510,27 @@
     .weekday-header{display:grid;grid-template-columns:repeat(7,1fr);gap:14px;margin-top:16px}
     .weekday-header div{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);padding-left:6px}
     /* cada linha (semana) cresce com o conteúdo: uma semana vazia fica baixa (só o mínimo de
-       110px), uma semana com cards cresce pra caber — em vez de toda semana ter a mesma altura
+       110px), uma semana com cards cresce pra caber - em vez de toda semana ter a mesma altura
        fixa, o que deixava muito espaço vazio nas semanas sem postagem */
     .grid-month{display:grid;grid-template-columns:repeat(7,1fr);gap:14px;margin-top:8px;grid-auto-rows:minmax(110px,auto)}
     /* min-height:0 permite que o item de grid encolha até o mínimo da linha (110px) mesmo sem
        conteúdo; overflow:hidden continua como rede de segurança para o raro caso de um card
        individual ultrapassar a altura da célula (o badge "+N" já cuida do excesso de cards) */
     /* a transição de "height" só entra em ação quando o JS anima a troca de altura (ao mover um
-       card pra outro dia, ver render() em app.js) — em uso normal a célula segue esticada pela
+       card pra outro dia, ver render() em app.js) - em uso normal a célula segue esticada pela
        grade (height:auto), sem valor inline, então nada dispara a transição à toa */
     .day{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px;position:relative;display:flex;flex-direction:column;min-height:0;overflow:hidden;transition:border-color .15s,box-shadow .15s,height .32s cubic-bezier(.2,.9,.2,1)}
     .day:hover{border-color:var(--border-strong);box-shadow:var(--shadow-sm)}
     .day.empty{background:transparent;border:1px dashed var(--border);box-shadow:none}
     /* dia de hoje: contorno na cor de destaque em vez de --accent-ink (que rendia um marrom
-       escuro esquisito ao lado do halo amarelo) — agora borda e halo usam o mesmo amarelo,
+       escuro esquisito ao lado do halo amarelo) - agora borda e halo usam o mesmo amarelo,
        ficando coerentes com a bolinha da data logo abaixo */
     .day.today{border:2px solid var(--accent);box-shadow:0 0 0 3px var(--accent-weak)}
     .day-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
-    /* data em destaque — maior e mais peso, pra ser a primeira coisa que o olho pega na célula */
+    /* data em destaque - maior e mais peso, pra ser a primeira coisa que o olho pega na célula */
     .day .date{box-sizing:border-box;font-size:16px;line-height:1;font-weight:900;color:var(--text);width:27px;height:27px;min-width:27px;min-height:27px;max-width:27px;max-height:27px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .day.today .date{background:var(--accent);color:var(--on-accent)}
-    /* nome da data comemorativa (feriado/data comercial), ao lado do número do dia — ver
+    /* nome da data comemorativa (feriado/data comercial), ao lado do número do dia - ver
        commemorativeDateName() em app.js. Trunca com "..." na grade do mês (pouco espaço
        horizontal); o title="" no elemento mostra o nome completo ao passar o mouse. */
     .holiday-name{font-size:12px;font-weight:300;font-style:italic;color:var(--accent-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;cursor:pointer;text-decoration:underline;text-decoration-color:transparent;text-underline-offset:2px;transition:text-decoration-color .12s}
@@ -545,7 +545,7 @@
        pai usando justify-content:space-between entre data/feriado/contador */
     .day-count-wrap{display:flex;align-items:center;gap:4px;flex-shrink:0}
     /* ícone ao lado do contador: avisa se algum card do dia tem campo essencial faltando (triângulo
-       amarelo de alerta) ou se todos estão completos (círculo verde) — só existe quando o dia tem
+       amarelo de alerta) ou se todos estão completos (círculo verde) - só existe quando o dia tem
        pelo menos um card. Cor do alerta é fixa (não segue --accent do tema), pra continuar lendo
        como "atenção" mesmo se o usuário escolher um tema de cor amarelo/dourado */
     .day-status-icon{width:14px;height:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:help}
@@ -555,14 +555,14 @@
     .more-badge{position:absolute;right:8px;bottom:8px;background:var(--card);border-radius:var(--radius-sm);padding:3px 9px;border:1px solid var(--border);font-size:11px;font-weight:700;color:var(--accent-ink);box-shadow:var(--shadow-sm);cursor:pointer}
     .more-badge:hover{background:var(--accent-weak)}
 
-    /* Visão em semana: 7 colunas (Dom→Sáb), só com as postagens daquela semana — reaproveita a
+    /* Visão em semana: 7 colunas (Dom→Sáb), só com as postagens daquela semana - reaproveita a
        célula .day (fundo, borda, hoje/data em destaque) mas sem o limite de 3 cards + "+N" do mês:
        aqui a coluna cresce com o conteúdo, então mostra tudo (ver render() em app.js). */
     .week-view{margin-top:16px}
     .grid-week{display:grid;grid-template-columns:repeat(7,1fr);gap:14px;align-items:start}
     .week-day{overflow:visible;min-height:160px}
     .week-day-head{display:flex;flex-direction:column;gap:6px}
-    /* label + contador "x/y" na mesma linha, contador encostado na direita — igual ao mês, onde
+    /* label + contador "x/y" na mesma linha, contador encostado na direita - igual ao mês, onde
        ele fica no canto superior direito da célula em vez de embaixo da data */
     .week-day-top-row{display:flex;align-items:center;justify-content:space-between;gap:6px}
     .week-day-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint)}
@@ -590,7 +590,7 @@
     .event-menu-btn:hover{background:var(--surface-muted);color:var(--text)}
     .list-row-menu-btn{align-self:center;border:none;background:transparent;color:var(--text-faint);cursor:pointer;border-radius:6px;width:24px;height:24px;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:inherit}
     .list-row-menu-btn:hover{background:var(--card);color:var(--text)}
-    /* position:fixed e reposicionado via JS a cada abertura — se nascesse dentro do card
+    /* position:fixed e reposicionado via JS a cada abertura - se nascesse dentro do card
        (que tem overflow:hidden para arredondar cantos), o menu seria cortado */
     .event-menu{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);z-index:1000;display:none;flex-direction:column;min-width:130px;overflow:hidden}
     .event-menu.open{display:flex}
@@ -634,7 +634,7 @@
 
     /* seletor de ícone de rede (presets + upload de SVG), usado em "Adicionar rede" e na edição de
        cada rede: um botão-gatilho circular que mostra o ícone atual e abre um popover ancorado
-       embaixo dele — evita jogar presets + upload numa fileira inline que quebrava torto ao lado
+       embaixo dele - evita jogar presets + upload numa fileira inline que quebrava torto ao lado
        dos outros campos da linha. */
     .icon-picker-wrap{position:relative;flex-shrink:0}
     .icon-picker-trigger{width:30px;height:30px;padding:0;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--border);border-radius:50%;background:var(--card);cursor:pointer;flex-shrink:0;transition:border-color .12s}
@@ -643,7 +643,7 @@
     .icon-picker-trigger img{width:20px;height:20px;border-radius:50%}
     .icon-picker-none{font-size:14px;line-height:1;color:var(--muted)}
     /* posicionado via JS (position:fixed + top/left calculados do gatilho) porque é anexado
-       direto ao <body> — foge de qualquer ancestral com overflow:hidden/auto que o cortaria */
+       direto ao <body> - foge de qualquer ancestral com overflow:hidden/auto que o cortaria */
     .icon-picker-popover{position:fixed;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:10px;width:190px;z-index:200}
     .icon-picker-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
     .icon-picker-opt{width:28px;height:28px;padding:0;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--border);border-radius:50%;background:var(--card);cursor:pointer}
@@ -661,7 +661,7 @@
        referência, Peças já adicionadas, Orientações adicionais etc.) */
     #intelWorkspaceBody .fg-label{font-size:15px}
 
-    /* Assistente de "nova peça de referência" — os 4 passos (rede → briefing → artes por
+    /* Assistente de "nova peça de referência" - os 4 passos (rede → briefing → artes por
        formato → legenda) usados pra montar uma unidade completa de conhecimento da editoria */
     .intel-piece-step{margin-top:16px}
     .intel-piece-step:first-child{margin-top:0}
@@ -673,7 +673,7 @@
     .intel-format-slot{display:flex;flex-direction:column;flex:1 1 0;min-width:200px;border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;background:var(--surface-muted);transition:background .12s,border-color .12s}
     .intel-format-slot--piece{flex:0 0 240px;min-width:0}
 
-    /* Peças já adicionadas — seccionadas por rede social e, dentro de cada rede, por formato
+    /* Peças já adicionadas - seccionadas por rede social e, dentro de cada rede, por formato
        (a mesma peça pode aparecer em mais de um formato se tiver artes em vários); os formatos
        ficam lado a lado na mesma linha horizontal, igual em "Artes por formato" */
     #intelPiecesList{display:flex;flex-direction:column;gap:16px}
@@ -697,7 +697,7 @@
     .intel-format-empty-drop{display:flex;align-items:center;justify-content:center;text-align:center;margin-top:10px;min-height:64px;padding:12px 14px;border:2px dashed var(--border-strong);border-radius:var(--radius-md);background:var(--card);color:var(--muted);font-size:11.5px;font-weight:600;line-height:1.4;cursor:pointer;transition:background .12s,border-color .12s,color .12s}
     .intel-format-empty-drop:hover{background:var(--accent-weak);border-color:var(--accent-ink);color:var(--accent-ink)}
 
-    /* Preview de cada arte enviada — miniatura de proporção fixa 4:5 (não varia com o tamanho
+    /* Preview de cada arte enviada - miniatura de proporção fixa 4:5 (não varia com o tamanho
        do arquivo enviado); a dimensão real do formato aparece como texto no título do slot */
     .intel-preview-box{position:relative;width:120px;aspect-ratio:4/5;border-radius:var(--radius-md);overflow:hidden;cursor:pointer;border:1px solid var(--border);background:var(--card);flex-shrink:0}
     .intel-preview-box--empty{display:flex;align-items:center;justify-content:center;border-style:dashed;background:var(--card);color:var(--text-faint);cursor:default}
@@ -706,7 +706,7 @@
     .intel-preview-remove{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s}
     .intel-preview-remove:hover{background:rgba(0,0,0,.8)}
 
-    /* Lightbox — clique numa arte pra ver maior: cantos arredondados, fundo escurecido, X pra fechar */
+    /* Lightbox - clique numa arte pra ver maior: cantos arredondados, fundo escurecido, X pra fechar */
     .intel-lightbox-backdrop{position:fixed;inset:0;background:var(--backdrop,rgba(0,0,0,.72));display:flex;align-items:center;justify-content:center;z-index:500;padding:40px}
     .intel-lightbox-box{position:relative;max-width:min(720px,90vw);max-height:90vh;border-radius:var(--radius-lg);overflow:hidden;background:var(--card);box-shadow:var(--shadow-lg)}
     .intel-lightbox-box img,.intel-lightbox-box video{display:block;max-width:100%;max-height:90vh;object-fit:contain}
@@ -714,7 +714,7 @@
     .intel-lightbox-close:hover{background:rgba(0,0,0,.78)}
 
     /* Modal genérico: fundo escurecido (backdrop) + caixa central, usado por todos os modais.
-       Estrutura em 3 partes empilhadas (header/body/footer) numa coluna flex — o header (título +
+       Estrutura em 3 partes empilhadas (header/body/footer) numa coluna flex - o header (título +
        ações) e o footer (botões) ficam fixos, só o body rola. O "overflow:hidden" no .modal (em
        vez de overflow-y:auto direto nele) é o que garante os 4 cantos igualmente arredondados:
        como a caixa toda vira a "moldura" e cada parte é só uma faixa retangular dentro dela, o
@@ -724,7 +724,7 @@
     .modal-sm{max-width:420px}
     /* modal de Configurações: mais largo, para caber o menu lateral + o conteúdo da seção */
     .modal.modal--wide{max-width:900px}
-    /* modais mais simples (ex.: Exportar briefing), sem menu lateral nem grade — não precisam da largura padrão */
+    /* modais mais simples (ex.: Exportar briefing), sem menu lateral nem grade - não precisam da largura padrão */
     .modal.modal--narrow{max-width:440px}
     .modal-header{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border)}
     .modal-header h2{margin:0}
@@ -733,9 +733,9 @@
     .modal-header-title{display:flex;align-items:center;gap:6px;min-width:0}
     .modal-body{flex:1 1 auto;overflow-y:auto;padding:16px 18px}
     .modal-footer{flex:0 0 auto;display:flex;gap:8px;justify-content:flex-end;padding:14px 18px;border-top:1px solid var(--border)}
-    /* modal sem rodapé de botões (ex: "Postagens do dia") — o body já encosta no canto de baixo */
+    /* modal sem rodapé de botões (ex: "Postagens do dia") - o body já encosta no canto de baixo */
     .modal-body:last-child{padding-bottom:18px}
-    /* Botão "X" (e o "⋮" de mais ações) — agora um item normal na linha do header, não mais
+    /* Botão "X" (e o "⋮" de mais ações) - agora um item normal na linha do header, não mais
        posicionado sobre o texto do título */
     .modal-close{position:static;width:28px;height:28px;border:0;background:transparent;color:var(--muted);font-size:15px;line-height:1;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s,color .12s}
     .modal-close:hover{background:var(--surface-muted);color:var(--text)}
@@ -782,7 +782,7 @@
     /* Linha de rede social (dentro de Configurações > Redes), com seus formatos em um sub-dropdown */
     .net-row{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
     .net-row-head{display:flex;align-items:center;gap:8px;padding:7px 9px;background:var(--card);flex-wrap:wrap}
-    /* exibição normal (somente leitura) vs. campos editáveis — só um dos dois aparece por vez */
+    /* exibição normal (somente leitura) vs. campos editáveis - só um dos dois aparece por vez */
     .net-view{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
     .net-view-name{font-weight:700;color:var(--text)}
     .net-view-short{color:var(--text-faint)}
@@ -852,7 +852,7 @@
     .product-chip .pc-remove{border:0;background:var(--surface-muted);color:var(--muted);cursor:pointer;font-size:13px;padding:4px 8px;border-radius:8px;flex-shrink:0;font-family:inherit;display:inline-flex;align-items:center;justify-content:center}
     .product-chip .pc-remove:hover{background:var(--danger-bg-strong);color:var(--danger)}
 
-    /* Modal "Aplicar editoria ao mês" — uma linha por data gerada pelo agendamento fixo */
+    /* Modal "Aplicar editoria ao mês" - uma linha por data gerada pelo agendamento fixo */
     .ae-list{display:flex;flex-direction:column;gap:10px}
     .ae-row{border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;background:var(--card);transition:opacity .12s}
     .ae-row.ae-row-inactive{opacity:.55}
@@ -868,7 +868,7 @@
     /* Seções agrupadas dentro dos formulários dos modais (ex: "Conteúdo", "Categorização") */
     .form-group{background:var(--surface-muted);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:12px}
     .form-group:last-child{margin-bottom:0}
-    /* título de seção (H3) — linha fina embaixo pra ancorar visualmente o bloco, já que o fundo
+    /* título de seção (H3) - linha fina embaixo pra ancorar visualmente o bloco, já que o fundo
        cinza-claro do .form-group sozinho não destacava o suficiente onde uma seção termina e a
        próxima começa */
     .form-group .fg-label{font-size:12px;padding-bottom:8px;margin-bottom:12px;border-bottom:1px solid var(--border)}
@@ -895,7 +895,7 @@
     .cs-actions{display:flex;justify-content:flex-end;margin-top:7px}
     .cs-use{border:0;background:var(--accent);color:var(--on-accent);font-weight:700;font-size:11.5px;height:24px;padding:0 10px;border-radius:var(--radius-sm);cursor:pointer;flex-shrink:0;font-family:inherit}
     .cs-use:hover{background:var(--accent-hover)}
-    /* pauta atualmente inserida no campo Texto — ver lastInsertedPautaBlock em app.js */
+    /* pauta atualmente inserida no campo Texto - ver lastInsertedPautaBlock em app.js */
     .cs-card--active{border-color:var(--accent);background:var(--surface-muted)}
     .cs-use:disabled{background:var(--border);color:var(--text-faint);cursor:default}
 
@@ -917,7 +917,7 @@
     .bp-ref-thumb{width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--border);background:var(--card)}
 
     /* Imagens de referência anexadas no campo "Referências salvas em:" (upload local,
-       comprimido/redimensionado no navegador) — miniaturas com botão de remover, refletidas na
+       comprimido/redimensionado no navegador) - miniaturas com botão de remover, refletidas na
        pré-visualização do briefing e embutidas no .docx exportado */
     .reference-images-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
     .ref-image-thumb{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--surface-muted);flex-shrink:0}
@@ -947,9 +947,9 @@
     /* texto de apoio discreto abaixo de um h3 de seção, explicando pra que serve o cadastro */
     .bg-section-desc{font-size:11.5px;color:var(--muted);margin:-4px 0 2px;line-height:1.5}
 
-    /* lista de itens já cadastrados — uma .bg-list-row por item, com título + subtítulo(s) à
+    /* lista de itens já cadastrados - uma .bg-list-row por item, com título + subtítulo(s) à
        esquerda e um botão de remover à direita; usada pelas listas de referências da Central
-       de Inteligência (artes, legendas, briefings — ver intelligence-center.js) */
+       de Inteligência (artes, legendas, briefings - ver intelligence-center.js) */
     .bg-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
     .bg-list-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface-muted)}
     .bg-list-row-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
@@ -966,15 +966,15 @@
        Usadas pela Central de Inteligência (intelligence-center.html) e pelo bloco de
        integração dentro do modal de criar/editar postagem (visual-editor.html/app.js).
        ============================================================ */
-    /* aviso inline (ex: editoria ainda sem DNA gerado) — só avisa, não impede salvar */
+    /* aviso inline (ex: editoria ainda sem DNA gerado) - só avisa, não impede salvar */
     .bg-inline-warning{margin-top:8px;padding:8px 10px;border:1px solid var(--danger-border);border-radius:var(--radius-sm);background:var(--danger-bg);color:var(--danger);font-size:12px;line-height:1.5}
 
-    /* linha "rótulo: valor(es)" — usada no painel de DNA da editoria (palavras/CTAs identificados) */
+    /* linha "rótulo: valor(es)" - usada no painel de DNA da editoria (palavras/CTAs identificados) */
     .bg-quick-insert-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
     .bg-quick-insert-label{font-size:11px;font-weight:700;color:var(--muted);flex:0 0 auto;margin-right:2px}
 
     /* ============================================================
-       CENTRAL DE INTELIGÊNCIA (intelligence-center.html/js) — biblioteca de editorias,
+       CENTRAL DE INTELIGÊNCIA (intelligence-center.html/js) - biblioteca de editorias,
        pílulas de status do aprendizado, listas de regras do DNA e barra de aderência da
        validação inteligente. Também usadas no bloco de integração dentro do modal de
        criar/editar postagem (visual-editor.html), alimentadas pelo IntelStore em app.js.
@@ -1009,7 +1009,7 @@
     .intel-main-concept{font-size:12.5px;line-height:1.55;color:var(--muted);margin-top:10px}
     .intel-main-concept b{color:var(--text)}
 
-    /* bloco de integração no modal de postagem (app.js) — mesma linguagem visual de
+    /* bloco de integração no modal de postagem (app.js) - mesma linguagem visual de
        .bg-quick-insert, mas com destaque de cor de acento pra sinalizar que é a IA falando */
     .intel-modal-box{margin-top:10px;padding:12px 14px;border:1px solid var(--accent-ink);border-radius:var(--radius-sm);background:var(--accent-weak);display:flex;flex-direction:column;gap:10px}
     .intel-modal-box-title{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--accent-ink)}

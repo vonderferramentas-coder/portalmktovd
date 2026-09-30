@@ -1,10 +1,10 @@
 # Cruza os termos do Google Trends coletados por sync-google-trends.yml com o catálogo de
-# produtos (data/catalog-vonder.json) — para cada termo, lista os produtos cujo nome tem
+# produtos (data/catalog-vonder.json) - para cada termo, lista os produtos cujo nome tem
 # palavra(s) em comum com a busca, ranqueados por quantas palavras bateram. Roda logo após a
 # coleta, antes de publicar (edita data/google-trends.json no lugar).
 #
 # ponytail: casamento por substring de palavra, sem sinônimos nem categoria própria no
-# catálogo (o catálogo não tem esse campo hoje — é texto livre). Mostra candidatos demais de
+# catálogo (o catálogo não tem esse campo hoje - é texto livre). Mostra candidatos demais de
 # propósito (melhor sobrar produto que faltar um relevante); uma pessoa da equipe filtra
 # visualmente na Central de Inteligência. Caminho de evolução se o ruído incomodar na prática:
 # lista de sinônimos curada manualmente por produto, não IA/LLM (evita custo/dependência nova).
@@ -16,7 +16,7 @@ from pathlib import Path
 
 MAX_MATCHES_PER_TERM = 5
 MIN_WORD_LENGTH = 4
-# Palavras comuns em português que não ajudam a identificar produto — lista pequena de
+# Palavras comuns em português que não ajudam a identificar produto - lista pequena de
 # propósito, cobre só os casos mais óbvios que apareceriam em nomes de produto e buscas.
 STOPWORDS = {
     'para', 'com', 'sem', 'uma', 'umas', 'uns', 'que', 'dos', 'das', 'nos', 'nas',
@@ -70,7 +70,7 @@ def run(trends_path, catalog_path):
     trends_path, catalog_path = Path(trends_path), Path(catalog_path)
     document = json.loads(trends_path.read_text(encoding='utf-8'))
     if not catalog_path.exists():
-        print(f'{catalog_path} não existe — pulando cruzamento com catálogo.')
+        print(f'{catalog_path} não existe - pulando cruzamento com catálogo.')
         return
     catalog = json.loads(catalog_path.read_text(encoding='utf-8'))
     index = build_index(catalog)
