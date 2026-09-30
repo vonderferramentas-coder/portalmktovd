@@ -34,7 +34,7 @@
     ctx.fillStyle=ORANGE;roundedRect(ctx,-28,bannerY,bannerW+28,bannerH,24);ctx.fill();drawCalendar(ctx,day,month,calendarX,calendarY);
     var firstCenter=bannerY+(bannerH-(lines.length*lineH))/2+lineH/2;
     // O baseline de cada linha é calculado uma única vez, sempre com a fonte do título (a maior
-    // da linha), e reaproveitado pela chamada — nunca cada texto com o seu próprio "centro
+    // da linha), e reaproveitado pela chamada - nunca cada texto com o seu próprio "centro
     // visual": senão a chamada e o título (fontes/tamanhos diferentes) acabam em baselines
     // diferentes e a linha parece torta, principalmente quando só um dos dois tem descendente.
     ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.font=titleFont(titleSize,'700');

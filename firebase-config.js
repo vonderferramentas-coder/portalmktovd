@@ -10,7 +10,7 @@
     appId: '1:927595740263:web:bfab6557fa395750f368c2'
   };
 
-  // Projeto Firebase de testes (HML) — dados isolados de produção, ver docs/ARQUITETURA-E-INTEGRACOES.md.
+  // Projeto Firebase de testes (HML) - dados isolados de produção, ver docs/ARQUITETURA-E-INTEGRACOES.md.
   var HML_CONFIG = {
     apiKey: 'AIzaSyAQTAFVnS7kK9qJuIiSSfH8LdMrNn5LLL4',
     authDomain: 'mkt-ovd-hml.firebaseapp.com',

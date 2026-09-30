@@ -18,7 +18,7 @@ service cloud.firestore {
       return activeUser() && currentUser().role == 'admin';
     }
 
-    // Documentos de controle (quem pode ver o quê, pra onde notificações vão) — ninguém edita
+    // Documentos de controle (quem pode ver o quê, pra onde notificações vão) - ninguém edita
     // isso direto na tela, sempre passa por uma ação administrativa. Sem essa checagem, um
     // usuário comum conseguiria se autopromover a admin escrevendo direto nesses documentos
     // pelo console do navegador (a tela de Usuários e acessos só bloqueia pela interface).
@@ -26,7 +26,7 @@ service cloud.firestore {
       return id in ['user-profiles-v1', 'page-permissions-v1', 'social-media-notification-routes-v1'];
     }
     // Seguidores/posts/vídeos/trends: só o GitHub Actions grava isso (Admin SDK, que ignora
-    // estas regras por definição) — nenhum caminho legítimo de escrita pelo navegador. Travar
+    // estas regras por definição) - nenhum caminho legítimo de escrita pelo navegador. Travar
     // pra admin não tira função de ninguém e evita que um usuário comum forje esses números.
     function isCollectedDataDoc(id) {
       return id.matches('^(followers|posts|youtube-videos|facebook-posts|trends)-.*');
@@ -37,7 +37,7 @@ service cloud.firestore {
       allow list: if admin();
       allow create, delete: if admin();
       // lastAccessAt (auth-guard.js, todo login) e name/photo (menu "Perfil", autoatendimento) são
-      // os únicos campos que o próprio dono da conta pode alterar sem ser admin — role/status/email
+      // os únicos campos que o próprio dono da conta pode alterar sem ser admin - role/status/email
       // continuam travados, então ninguém se autopromove escrevendo direto pelo console.
       allow update: if admin() || (request.auth.uid == userId &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastAccessAt', 'name', 'photo']));

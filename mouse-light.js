@@ -1,9 +1,9 @@
 // Luz de fundo (mesmo brilho sutil de .auth-page::before/.home-body::before) que acompanha o
 // mouse pela tela inteira: um ponto "suavizado" persegue o cursor com leve atraso via
 // Animatable do anime.js, e a cada tanto de percurso desse ponto nasce um blob translúcido que
-// desbota sozinho — o rastro fica sendo só a soma desses blobs, sem WebGL/Three.js (inspirado
+// desbota sozinho - o rastro fica sendo só a soma desses blobs, sem WebGL/Three.js (inspirado
 // no efeito do tuxkarma.co, mas em Canvas 2D puro: bem mais leve, e o loop de desenho só roda
-// enquanto há algo se movendo/desbotando na tela — parado, o custo é zero).
+// enquanto há algo se movendo/desbotando na tela - parado, o custo é zero).
 import { createAnimatable } from 'https://cdn.jsdelivr.net/npm/animejs@4.5.0/dist/modules/index.js';
 
 const body = document.body;
@@ -18,7 +18,7 @@ if (!reduceMotion && hasMouse) {
   const ctx = canvas.getContext('2d');
 
   // cor dos blobs = --accent-weak (mesma do brilho estático que este canvas substitui, já
-  // é theme-aware — só precisa ser lida uma vez porque hoje vale o mesmo em claro/escuro)
+  // é theme-aware - só precisa ser lida uma vez porque hoje vale o mesmo em claro/escuro)
   const accentWeak = getComputedStyle(document.documentElement).getPropertyValue('--accent-weak').trim();
   const rgbaMatch = accentWeak.match(/rgba?\(([^)]+)\)/);
   const [baseR, baseG, baseB, baseA] = rgbaMatch
@@ -37,7 +37,7 @@ if (!reduceMotion && hasMouse) {
   window.addEventListener('resize', resizeCanvas);
 
   const LIFE = 700; // ms até um blob desbotar por completo
-  const MAX_PARTICLES = 40; // teto — mouse "chacoalhado" recicla os mais antigos em vez de acumular
+  const MAX_PARTICLES = 40; // teto - mouse "chacoalhado" recicla os mais antigos em vez de acumular
   const SPAWN_MIN_DIST = 14; // px percorridos pelo ponto suavizado até nascer o próximo blob
   const particles = [];
   let lastSpawn = { x: null, y: null };
@@ -47,7 +47,7 @@ if (!reduceMotion && hasMouse) {
     particles.push({ x, y, radius: 130 + Math.random() * 70, born: performance.now() });
   }
 
-  // ponto que persegue o mouse com leve atraso (Animatable) — os blobs nascem neste ponto
+  // ponto que persegue o mouse com leve atraso (Animatable) - os blobs nascem neste ponto
   // suavizado, não direto na posição crua do cursor, pra combinar com o resto do rastro
   const pointer = { x: window.innerWidth * 0.72, y: 0 };
   const animatable = createAnimatable(pointer, { x: 900, y: 900, ease: 'out(3)' });

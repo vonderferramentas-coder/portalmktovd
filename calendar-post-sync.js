@@ -147,7 +147,7 @@
       persistOutbox();
       running=false;
       if(failed){
-        options.onStatus('Sem conexão — alteração guardada neste navegador','warn');
+        options.onStatus('Sem conexão - alteração guardada neste navegador','warn');
         schedule(5000);
       }else if(outbox.size){
         schedule(0);
@@ -197,11 +197,11 @@
         await api.ensurePostsStore(options.storeKey,legacyPosts);
         unsubscribe=await api.subscribeToPosts(options.storeKey,applySnapshot,error=>{
           console.error('[calendar-post-sync] assinatura interrompida',error);
-          options.onStatus('Sem conexão — usando cópia local','warn');
+          options.onStatus('Sem conexão - usando cópia local','warn');
         });
       }catch(error){
         console.error('[calendar-post-sync] falha ao iniciar',error);
-        options.onStatus('Sem conexão — usando cópia local','warn');
+        options.onStatus('Sem conexão - usando cópia local','warn');
         setTimeout(start,5000);
       }
     }

@@ -58,7 +58,7 @@ function render() {
   $('total').textContent = total;
   $('users').textContent = users;
   $('tools').textContent = new Set(subset.map(row => row.tool)).size;
-  $('change').textContent = '—';
+  $('change').textContent = '-';
   list('ranking', subset, 'tool', toolLabel);
   list('brands', subset, 'brandId', brandLabel);
 }

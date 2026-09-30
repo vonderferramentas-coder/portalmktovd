@@ -1,9 +1,9 @@
 # ponytail: mesma lógica de parsing/cálculo de oferta duplicada aqui e em cloudflare-worker.js
-# (rota /product-offer), sem código compartilhado entre PowerShell e o Worker — já divergiram
+# (rota /product-offer), sem código compartilhado entre PowerShell e o Worker - já divergiram
 # antes (aqui usava Math.Floor pro desconto e não devolvia offerCta; o Worker usa Math.Round e
 # sempre devolve offerCta; corrigido em 15/09/2026 pra bater com o Worker). Se divergir de novo,
 # considerar um teste de contrato (mesma URL de oferta fixture, comparar os dois JSONs) em vez de
-# só confiar em revisão manual — os dois arquivos não têm nenhum lint/teste compartilhado hoje.
+# só confiar em revisão manual - os dois arquivos não têm nenhum lint/teste compartilhado hoje.
 param([int]$Port = 8766)
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Net.Http

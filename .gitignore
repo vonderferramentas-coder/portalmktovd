@@ -1,4 +1,4 @@
-# Ferramentas locais (Claude Code / agentes) — não faz parte do site
+# Ferramentas locais (Claude Code / agentes) - não faz parte do site
 .agents/
 .claude/
 .autosync/
@@ -17,11 +17,11 @@ tmp/
 *.db
 
 # Exports pessoais do Instagram ("Baixe suas informações") usados como fonte pontual para
-# reconstruir histórico — contêm dado pessoal (username/link) de cada seguidor e não devem
+# reconstruir histórico - contêm dado pessoal (username/link) de cada seguidor e não devem
 # ir pro repositório; só o resultado já agregado em data/social-followers-*.json é publicado.
 data/instagram-*-20*/
 
-# Segredos — nunca commitar
+# Segredos - nunca commitar
 .env
 .env.*
 *.key

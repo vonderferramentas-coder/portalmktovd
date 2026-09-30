@@ -5,7 +5,7 @@
  * evitando expor os códigos do catálogo a serviços públicos de terceiros.
  *
  * ponytail: mesmo contrato (?code=&w=) reimplementado sem código compartilhado em
- * cloudflare-worker.js e scripts/product-image-proxy.ps1 — três linguagens/runtimes
+ * cloudflare-worker.js e scripts/product-image-proxy.ps1 - três linguagens/runtimes
  * diferentes, sem um jeito simples de compartilhar lógica sem introduzir build step.
  * Já achamos divergência real entre implementações irmãs (ver histórico de
  * scripts/fg-offer-proxy.ps1); ao mudar uma regra aqui, replicar nas outras duas.
@@ -132,7 +132,7 @@ if($width > 0 && extension_loaded('gd')){
                 imagewebp($dst, null, 80);
             }else{
                 // GD sem suporte a WEBP (função imagewebp ausente): cai pra JPEG, então o
-                // Content-Type enviado mais abaixo precisa mudar junto — sem isso o cabeçalho
+                // Content-Type enviado mais abaixo precisa mudar junto - sem isso o cabeçalho
                 // dizia image/webp com bytes JPEG dentro (bug real, corrigido em 15/09/2026).
                 $mime = 'image/jpeg';
                 imagejpeg($dst, null, 82);

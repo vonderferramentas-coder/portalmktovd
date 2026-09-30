@@ -1,16 +1,16 @@
 // ============================================================
-// CATALOGPROVIDER — camada única de acesso ao catálogo de produtos.
+// CATALOGPROVIDER - camada única de acesso ao catálogo de produtos.
 //
 // Hoje a única origem é um arquivo JSON estático por marca, em data/catalog-{slug}.json
-// (caminho relativo à página — não pode ser absoluto tipo "/data/...", porque o site pode
+// (caminho relativo à página - não pode ser absoluto tipo "/data/...", porque o site pode
 // estar publicado numa subpasta, como é o caso do GitHub Pages). Quem consome (Post Editor e
 // Conecta FG) sempre chama CatalogProvider.load(slug) e recebe uma
-// Promise — nunca lê o arquivo JSON nem o cache diretamente. Isso é o que permite trocar a
+// Promise - nunca lê o arquivo JSON nem o cache diretamente. Isso é o que permite trocar a
 // origem no futuro (uma API própria, um catálogo gerado por scraping agendado, etc.) mexendo
 // só na função load() abaixo, sem tocar em nenhum consumidor.
 //
 // Convenção de marcas: catalog-vonder.json, catalog-fg.json, catalog-toolmix.json,
-// catalog-dismatal.json — cada uma some/aparece só
+// catalog-dismatal.json - cada uma some/aparece só
 // criando/removendo o arquivo; nenhum código muda. Uma marca sem arquivo próprio ainda
 // resolve normalmente para uma lista vazia (mesmo comportamento de "catálogo sem produtos"
 // que o Post Editor já tratava antes).
@@ -42,12 +42,12 @@
     try{
       localStorage.setItem(cacheKey(slug), JSON.stringify({ items, fetchedAt: Date.now() }));
     }catch(e){
-      // catálogo grande demais pro localStorage (ou modo privado sem storage disponível) —
+      // catálogo grande demais pro localStorage (ou modo privado sem storage disponível) -
       // não é fatal, só significa que não vai ter cópia offline desta vez
     }
   }
 
-  // aceita qualquer campo extra como veio do JSON (ex: background, preferredLayout) — só
+  // aceita qualquer campo extra como veio do JSON (ex: background, preferredLayout) - só
   // garante o mínimo (um nome) pra entrada ser exibível; formato completo aceito, ver README
   // do schema no objetivo #2 do pedido que originou este arquivo: name, title, subtitle,
   // code, codes/variants, sourceUrl, imageUrl, category
@@ -82,7 +82,7 @@
     });
   }
 
-  // resolve sempre — nunca rejeita: rede indisponível ou arquivo ainda inexistente cai pro
+  // resolve sempre - nunca rejeita: rede indisponível ou arquivo ainda inexistente cai pro
   // cache local (se houver) e, na ausência de cache também, pra lista vazia. Quem chama não
   // precisa de try/catch; o campo `source` diz de onde veio ('network' | 'cache' | 'none')
   function load(slug){

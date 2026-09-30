@@ -1,19 +1,19 @@
 // ============================================================
-// CONECTA FG — converte o .docx do texto do blog (conecta.fg.com.br) no código da aba "Texto"
+// CONECTA FG - converte o .docx do texto do blog (conecta.fg.com.br) no código da aba "Texto"
 // do WordPress: parágrafos com o negrito/itálico/links do próprio Word, listas, títulos e os
 // produtos do documento como [caption] (foto + link do site FG), no mesmo formato dos posts
 // já publicados (ex.: /pulverizadores-hortas-em-casa/).
 //
 // Os documentos não seguem um padrão único de produto, então o que a tela recebe é uma lista de
 // produtos (parseDocument.products) montada a partir de qualquer um destes jeitos, e cada
-// produto sabe onde entra no texto (`at`) — ver parseDocument:
+// produto sabe onde entra no texto (`at`) - ver parseDocument:
 //   - linha de tabela "nome | código";
 //   - parágrafo só com o link do produto no site FG (com ou sem foto colada antes);
 //   - parágrafo em negrito com o nome + parágrafo seguinte só com o link.
 // Produto que o redator não indicou (ou indicou errado) a tela adiciona/corrige por link ou código.
 //
 // Tudo roda no navegador. Rede: só o Worker (nome/código/link oficial do produto, ver
-// lookupLink; e as fotos da miniatura/prévia, ver previewPhotoUrl) — no código do WordPress as
+// lookupLink; e as fotos da miniatura/prévia, ver previewPhotoUrl) - no código do WordPress as
 // fotos entram como <img> de app.ovd.com.br e quem as baixa é o WordPress/leitor. O navegador do
 // usuário NÃO carrega app.ovd.com.br direto: na rede da empresa esse nome aponta para IP interno
 // (10.x) e o Chrome pediria "Acessar outros dispositivos na sua rede local". A tela fica em
@@ -41,17 +41,17 @@
   }
 
   // Mesmo "slug" da VTEX (loja da FG): sem acento, minúsculo, e cada caractere fora de a-z/0-9
-  // vira "-" sem colapsar — por isso " - " vira "---" e "3,6" vira "3-6". Só serve de plano B
+  // vira "-" sem colapsar - por isso " - " vira "---" e "3,6" vira "3-6". Só serve de plano B
   // quando o Worker não responde; o link oficial vem de lookupLink.
   const slug = name => name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '-');
   const guessLink = name => 'https://www.fg.com.br/' + slug(name) + '/p';
   const alnum = s => slug(s).replace(/-/g, '');
 
-  // Página de produto do site FG (/{slug}/p) — no docx costuma vir sozinha num parágrafo.
+  // Página de produto do site FG (/{slug}/p) - no docx costuma vir sozinha num parágrafo.
   const PRODUCT_URL = /^https?:\/\/(www\.)?fg\.com\.br\/([^/?#\s]+)\/p\/?$/i;
   // "Parte superior/inferior do formulário": lixo que o Word cola sozinho quando o conteúdo
   // (o texto do post ou, mais comum, a própria tabela de produtos) foi copiado de uma página
-  // com um <form> — o Word marca o início/fim do form com esses dois parágrafos fixos em
+  // com um <form> - o Word marca o início/fim do form com esses dois parágrafos fixos em
   // português. Na tabela isso vira um parágrafo A MAIS dentro da mesma célula do produto (nome
   // colado junto: "Parte superior do formulário Nome do Produto"), por isso filtra tanto
   // parágrafo solto quanto texto de célula antes de virar bloco/produto.
@@ -75,7 +75,7 @@
   // ---- .docx (zip) --------------------------------------------------------------------------
   // Lê só as entradas pedidas. O diretório central dá posição e tamanho de cada arquivo (o
   // cabeçalho local pode vir zerado quando o Word usa "data descriptor") e o
-  // DecompressionStream do navegador faz o deflate — sem biblioteca.
+  // DecompressionStream do navegador faz o deflate - sem biblioteca.
   async function unzip(buf, names){
     const u8 = new Uint8Array(buf), dv = new DataView(buf), out = {};
     let end = u8.length - 22;
@@ -100,14 +100,14 @@
   const kids = (el, name) => Array.from(el.children).filter(c => c.localName === name);
   const attr = (el, name) => el.getAttributeNS(W, name);
   const textOf = el => Array.from(el.getElementsByTagNameNS(W, 't')).map(t => t.textContent).join('');
-  // <w:b/> liga; <w:b w:val="0"/> desliga — o Word grava o "desligar" de forma explícita, e
+  // <w:b/> liga; <w:b w:val="0"/> desliga - o Word grava o "desligar" de forma explícita, e
   // ele vence o estilo de caractere (a chamada do exemplo é "Forte" com negrito desligado).
   const isOn = el => !['0', 'false', 'off'].includes(attr(el, 'val'));
 
   function parseDocument(docXml, relsXml, numberingXml){
     const parse = xml => new DOMParser().parseFromString(xml, 'application/xml');
     const body = parse(docXml).getElementsByTagNameNS(W, 'body')[0];
-    if(!body) throw new Error('Não encontrei o texto neste arquivo — envie um .docx do Word.');
+    if(!body) throw new Error('Não encontrei o texto neste arquivo - envie um .docx do Word.');
 
     // Só link http(s)/mailto vira <a>: um "javascript:" num documento não pode ir pro blog.
     const rels = {};
@@ -269,7 +269,7 @@
 
   async function readDocx(buf){
     const files = await unzip(buf, ['word/document.xml', 'word/_rels/document.xml.rels', 'word/numbering.xml']);
-    if(!files['word/document.xml']) throw new Error('Não encontrei o texto neste arquivo — envie um .docx do Word.');
+    if(!files['word/document.xml']) throw new Error('Não encontrei o texto neste arquivo - envie um .docx do Word.');
     return parseDocument(files['word/document.xml'], files['word/_rels/document.xml.rels'] || '', files['word/numbering.xml'] || '');
   }
 
@@ -278,7 +278,7 @@
   // texto quase nunca é idêntico ao da tabela ("20 L" x "20L", "com precisão de" x "precisão"),
   // então vale o bloco com maior fração das palavras do nome (mín. 75%), ignorando acento,
   // caixa e pontuação.
-  // ponytail: heurística de palavras — não entende sinônimo nem ordem; o usuário ajusta na tela.
+  // ponytail: heurística de palavras - não entende sinônimo nem ordem; o usuário ajusta na tela.
   function mentionAt(blocks, name){
     const need = slug(name).split('-').filter(Boolean);
     if(!need.length) return -1;
@@ -292,13 +292,13 @@
   }
 
   // ---- montagem do código ---------------------------------------------------------------------
-  // O código pro WordPress (wp) separa parágrafo de título/lista/card só por linha em branco —
-  // sem <p> por cima do texto solto — porque é o wpautop do WordPress que fecha os <p> ao salvar
+  // O código pro WordPress (wp) separa parágrafo de título/lista/card só por linha em branco -
+  // sem <p> por cima do texto solto - porque é o wpautop do WordPress que fecha os <p> ao salvar
   // o post (mesmo formato dos posts já publicados). Pra prévia (view) renderizar igual, cada
   // trecho de texto solto (o que não é título/lista/card) ganha o <p> aqui, já que o navegador
   // ignora linha em branco fora de <pre>.
   // \n solto (uma linha só, sem virar parágrafo novo) é o que sobra quando o usuário aperta
-  // Enter editando #code à mão — o wpautop do WordPress trata isso como <br />, então a prévia
+  // Enter editando #code à mão - o wpautop do WordPress trata isso como <br />, então a prévia
   // faz o mesmo aqui (o texto vindo do .docx já chega com \n trocado por <br /> desde o parse,
   // então isso não afeta o caminho normal, só a edição manual)
   const wrapBlock = html => /^<(h\d|ul|ol|div)\b/.test(html) ? html : `<p>${html.replace(/\n/g, '<br />')}</p>`;
@@ -317,7 +317,7 @@
       const label = p.name || p.url || p.code;
       const url = isHttp(p.url) ? esc(p.url) : '';
       const img = `<img src="${esc(photoUrl(p.code))}" alt="${esc(label)}" width="${box}" height="${box}" style="display:block;width:100%;height:100%;object-fit:contain" />`;
-      // nova guia (target=_blank): é um link de saída pro site FG — clicar não pode navegar pra
+      // nova guia (target=_blank): é um link de saída pro site FG - clicar não pode navegar pra
       // longe da prévia/do post, senão perde o trabalho em andamento na tela
       const photo = url ? `<a href="${url}" target="_blank" rel="noopener" style="display:block;width:100%;height:100%">${img}</a>` : img;
       const name = url ? `<a href="${url}" target="_blank" rel="noopener" style="color:#17171a;text-decoration:none">${esc(label)}</a>` : esc(label);

@@ -25,14 +25,14 @@ function show(text, success = false) {
   message.className = 'auth-message show' + (success ? ' success' : '');
 }
 function formatDate(value) {
-  if (!value || !value.toDate) return '—';
+  if (!value || !value.toDate) return '-';
   return value.toDate().toLocaleString('pt-BR');
 }
 
 // ============================================================
-// PERFIS — lista editável (id/nome), gravada em portalStore/user-profiles-v1. "Administrador"
+// PERFIS - lista editável (id/nome), gravada em portalStore/user-profiles-v1. "Administrador"
 // é fixo (locked): não some da lista nem perde o cadeado de permissões travadas, porque é o
-// único perfil com privilégio real no Firestore (ver firestore.rules, função admin()) — sem
+// único perfil com privilégio real no Firestore (ver firestore.rules, função admin()) - sem
 // ele ninguém consegue mais gerenciar usuários/perfis. Os demais são só rótulos com um
 // conjunto de páginas visíveis (ver PERMISSÕES abaixo) e podem ser excluídos livremente.
 // ============================================================
@@ -76,7 +76,7 @@ async function loadProfiles() {
 }
 
 // ============================================================
-// PERMISSÕES POR PERFIL — checklist de quais páginas do menu cada perfil pode ver, gravado em
+// PERMISSÕES POR PERFIL - checklist de quais páginas do menu cada perfil pode ver, gravado em
 // portalStore/page-permissions-v1 e aplicado por auth-guard.js em toda página (esconde
 // item/card e bloqueia acesso direto pela URL). A lista de páginas vem de
 // window.PortalNavItems (portal-shell.js), fonte única do menu.
@@ -102,14 +102,14 @@ function pagesForRole() {
   return window.PortalNavItems || [];
 }
 // perfil Administrador vem com TODAS as páginas marcadas e travadas (não dá pra desmarcar
-// nenhuma) — um admin nunca pode, por engano, tirar o próprio acesso (nem o de outros admins)
+// nenhuma) - um admin nunca pode, por engano, tirar o próprio acesso (nem o de outros admins)
 // a alguma área. Os demais perfis só travam a Início.
 function lockedPagesForRole(role) {
   return role === 'admin' ? pagesForRole().map(item => item.href) : ['index.html'];
 }
 // sem nada salvo ainda pra este perfil, replica o que o portal já fazia antes deste checklist
 // existir: todo mundo vê tudo, exceto páginas defaultHidden (hoje só Usuários e acessos),
-// essas só pro perfil admin — mesma regra espelhada em auth-guard.js (defaultAllowedPages).
+// essas só pro perfil admin - mesma regra espelhada em auth-guard.js (defaultAllowedPages).
 function defaultAllowedForRole(role) {
   return pagesForRole().filter(item => role === 'admin' || !item.defaultHidden).map(item => item.href);
 }
@@ -150,7 +150,7 @@ if (profileListEl) profileListEl.addEventListener('click', event => {
 });
 
 // ============================================================
-// MODAL "PERMISSÕES DO PERFIL" — único, centralizado, mesmo padrão .modal-backdrop/.modal do
+// MODAL "PERMISSÕES DO PERFIL" - único, centralizado, mesmo padrão .modal-backdrop/.modal do
 // resto do portal. Aberto pelo lápis de cada linha em Perfis; a lista de páginas é a mesma
 // pros dois modais (aqui e no antigo checklist por abas que este substitui).
 // ============================================================
@@ -209,7 +209,7 @@ function buildPermModal() {
   return backdrop;
 }
 // Reaproveitado tanto pelo modal de Permissões (perfil já existente) quanto pelo checklist que
-// já vem aberto na criação de um novo perfil — mesma marcação, mesmas regras de travamento.
+// já vem aberto na criação de um novo perfil - mesma marcação, mesmas regras de travamento.
 function permPagesHtml(selected, locked) {
   return pagesForRole().map(item => {
     const isLocked = locked.has(item.href);
@@ -220,13 +220,13 @@ function permPagesHtml(selected, locked) {
 function openProfilePermissionsModal(profile) {
   if (!permModalEl) permModalEl = buildPermModal();
   permModalEl.dataset.role = profile.id;
-  $('profilePermTitle').textContent = 'Permissões — ' + profile.name;
+  $('profilePermTitle').textContent = 'Permissões - ' + profile.name;
   $('profilePermPages').innerHTML = permPagesHtml(new Set(allowedForRole(profile.id)), new Set(lockedPagesForRole(profile.id)));
   permModalEl.style.display = 'flex';
 }
 
 // ============================================================
-// MODAL "EXCLUIR PERFIL" — confirmação, listando (se houver) os usuários ainda vinculados a
+// MODAL "EXCLUIR PERFIL" - confirmação, listando (se houver) os usuários ainda vinculados a
 // esse perfil. A exclusão não migra esses usuários pra outro perfil automaticamente: o campo
 // role deles continua com o id do perfil apagado, e passa a valer o padrão de visibilidade
 // (defaultAllowedForRole) até alguém reatribuir um perfil existente na Edição do usuário.
@@ -306,10 +306,10 @@ function openDeleteProfileModal(profile) {
 }
 
 // ============================================================
-// MODAL "NOVO PERFIL" — aberto pelo "+" no cabeçalho de Perfis. Pede o nome (o id é gerado a
+// MODAL "NOVO PERFIL" - aberto pelo "+" no cabeçalho de Perfis. Pede o nome (o id é gerado a
 // partir dele, slug sem acento) e já traz o mesmo checklist de páginas do modal de Permissões,
 // pré-marcado com o padrão de visibilidade (defaultAllowedForRole: tudo, exceto páginas
-// defaultHidden como Usuários e acessos — essa fica desmarcada mas liberada pra marcar). O
+// defaultHidden como Usuários e acessos - essa fica desmarcada mas liberada pra marcar). O
 // checklist é salvo junto com o perfil, sem precisar abrir o lápis depois pra isso.
 // ============================================================
 const PROFILE_ID_ACCENTS = { 'á': 'a', 'à': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a', 'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e', 'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i', 'ó': 'o', 'ò': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o', 'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u', 'ç': 'c', 'ñ': 'n' };
@@ -368,7 +368,7 @@ function buildCreateProfileModal() {
       profilesVersion = result.updated_at;
       profiles = nextProfiles;
       // grava já o checklist marcado no próprio modal de criação, em vez de deixar o perfil
-      // sem permissões salvas até alguém abrir o lápis depois — best-effort: se falhar, o
+      // sem permissões salvas até alguém abrir o lápis depois - best-effort: se falhar, o
       // perfil ainda existe e cai no padrão de visibilidade (defaultAllowedForRole) até alguém
       // salvar as permissões manualmente.
       try {
@@ -416,7 +416,7 @@ function renderUserRows() {
     <td>${escape(user.email)}</td>
     <td>${escape(profileName(user.role))}</td>
     <td><span class="admin-badge ${user.status === 'active' ? 'active' : 'blocked'}">${user.status === 'active' ? 'Ativo' : 'Bloqueado'}</span></td>
-    <td><div class="admin-notification-brands">${(user.notificationBrands || []).length ? (user.notificationBrands || []).map(id => { const brand = (window.PortalBrand.list || []).find(item => item.id === id); return `<span class="admin-badge notification-brand">${escape((brand || {}).name || id)}</span>`; }).join('') : '<span class="muted">—</span>'}</div></td>
+    <td><div class="admin-notification-brands">${(user.notificationBrands || []).length ? (user.notificationBrands || []).map(id => { const brand = (window.PortalBrand.list || []).find(item => item.id === id); return `<span class="admin-badge notification-brand">${escape((brand || {}).name || id)}</span>`; }).join('') : '<span class="muted">-</span>'}</div></td>
     <td>${formatDate(user.lastAccessAt)}</td>
     <td><div class="admin-table-actions">
       <button class="btn-icon" type="button" data-edit="${user.id}" title="Editar usuário" aria-label="Editar usuário">${PENCIL_ICON}</button>
@@ -432,9 +432,9 @@ async function load() {
 }
 
 // ============================================================
-// LOG DE SEGURANÇA — só leitura (allow read: if admin() em firestore.rules), sem paginação:
+// LOG DE SEGURANÇA - só leitura (allow read: if admin() em firestore.rules), sem paginação:
 // mostra os 50 eventos mais recentes de securityAudit (login/logout, mudanças de acesso,
-// migração de seguidores — ver audit() em firebase-client.js para a lista completa de
+// migração de seguidores - ver audit() em firebase-client.js para a lista completa de
 // eventos gravados). Sem UI pra isso até agora, só dava pra ver abrindo o Console do Firebase.
 // ============================================================
 const AUDIT_EVENT_LABELS = {
@@ -444,10 +444,10 @@ const AUDIT_EVENT_LABELS = {
 };
 function actorLabel(uid) {
   const user = latestUsers.find(item => item.id === uid);
-  return user ? (user.name || user.email) : (uid || '—');
+  return user ? (user.name || user.email) : (uid || '-');
 }
 function auditDetailsLabel(details) {
-  if (!details || typeof details !== 'object' || !Object.keys(details).length) return '—';
+  if (!details || typeof details !== 'object' || !Object.keys(details).length) return '-';
   return Object.entries(details).map(([key, value]) => `${key}: ${value}`).join(', ');
 }
 function renderAuditRows(events) {
@@ -466,7 +466,7 @@ async function loadAudit() {
 }
 
 // ============================================================
-// MODAL "EDITAR USUÁRIO" — único, centralizado, mesmo padrão .modal-backdrop/.modal do
+// MODAL "EDITAR USUÁRIO" - único, centralizado, mesmo padrão .modal-backdrop/.modal do
 // resto do portal (ver portal-shell.js). Reúne nome/e-mail/perfil num só lugar.
 // ============================================================
 let editModalEl = null;
@@ -508,7 +508,7 @@ function buildEditModal() {
   backdrop.querySelector('#cancelEditUser').addEventListener('click', close);
   backdrop.querySelector('#editUserPhotoInput').addEventListener('change', ev => {
     const file = ev.target.files && ev.target.files[0]; if (!file) return;
-    // 640px (não os 160px padrão de avatar pequeno) — essa foto também aparece em tela cheia no
+    // 640px (não os 160px padrão de avatar pequeno) - essa foto também aparece em tela cheia no
     // modal "Perfil" (menu Conta) do próprio usuário, ver portal-shell.js
     window.PortalShell.readBrandPhoto(file, dataUrl => {
       editUserPhotoDataUrl = dataUrl;
@@ -559,7 +559,7 @@ function openEditModal(user) {
 }
 
 // ============================================================
-// MENU "⋯" DA LINHA — reticências que reúnem "Redefinir senha" e "Bloquear"/"Liberar", no
+// MENU "⋯" DA LINHA - reticências que reúnem "Redefinir senha" e "Bloquear"/"Liberar", no
 // mesmo estilo .portal-brand-popover/.portal-account-menu que o menu da barra de conta usa
 // (ver portal-shell.js). Criado a cada clique (não reaproveitado) porque o conteúdo depende
 // do status atual do usuário da linha.
@@ -633,7 +633,7 @@ $('userRows').addEventListener('click', event => {
 });
 
 // ============================================================
-// MODAL "NOVO USUÁRIO" — único, centralizado, mesmo padrão .modal-backdrop/.modal do resto
+// MODAL "NOVO USUÁRIO" - único, centralizado, mesmo padrão .modal-backdrop/.modal do resto
 // do portal, aberto pelo "+" no cabeçalho de Acessos cadastrados.
 // ============================================================
 let createModalEl = null;
@@ -728,5 +728,5 @@ $('refreshAudit').addEventListener('click', () => loadAudit().catch(() => show('
 load().catch(() => show('Não foi possível carregar usuários. Verifique seu perfil administrativo.'));
 loadProfiles().catch(() => show('Não foi possível carregar os perfis.'));
 loadPagePermissions().catch(() => show('Não foi possível carregar as permissões.'));
-// Card do log de segurança está oculto (admin-users.html, section.admin-audit-card[hidden]) —
+// Card do log de segurança está oculto (admin-users.html, section.admin-audit-card[hidden]) -
 // sem carregar aqui, senão faz uma leitura de securityAudit à toa a cada visita à tela.

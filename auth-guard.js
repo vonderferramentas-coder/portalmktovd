@@ -10,7 +10,7 @@ async function deny(message) {
 }
 // Falta de permissão (perfil autenticado, só não é o exigido nesta página) não é falha de
 // sessão: deslogar aqui derrubava a pessoa do portal inteiro por clicar num link que nem
-// deveria estar visível para ela, e sem nenhuma mensagem — parecia um loop travado. Aqui só
+// deveria estar visível para ela, e sem nenhuma mensagem - parecia um loop travado. Aqui só
 // avisa e manda de volta ao início, mantendo a sessão.
 function denyPermission(message = 'Você não tem permissão para acessar esta área.') {
   alert(message);
@@ -18,7 +18,7 @@ function denyPermission(message = 'Você não tem permissão para acessar esta �
 }
 // Padrão usado enquanto nenhum admin tiver salvo Permissões por perfil ainda (documento
 // inexistente) e como piso de segurança em cada leitura: replica o que o portal já fazia antes
-// deste checklist existir — todo mundo ativo vê tudo, exceto as páginas marcadas
+// deste checklist existir - todo mundo ativo vê tudo, exceto as páginas marcadas
 // defaultHidden em portal-shell.js (hoje só Usuários e acessos), essas só pro perfil admin.
 function defaultAllowedPages(role) {
   const items = window.PortalNavItems || [];
@@ -27,7 +27,7 @@ function defaultAllowedPages(role) {
   allowed.add('index.html'); // nunca esconde/bloqueia a própria Início, senão ninguém tem pra onde ir
   return allowed;
 }
-// "Quais páginas cada perfil pode ver" — editado em Usuários e acessos (checkbox por perfil),
+// "Quais páginas cada perfil pode ver" - editado em Usuários e acessos (checkbox por perfil),
 // gravado em portalStore/page-permissions-v1.
 async function loadAllowedPages(role) {
   try {
@@ -49,13 +49,13 @@ try {
   else {
     const rolePages = await loadAllowedPages(context.profile.role);
     // window.PortalNavItems vem de portal-shell.js (script clássico, já executado antes deste
-    // módulo adiado) — só páginas do menu principal são "gerenciadas" por este mecanismo;
+    // módulo adiado) - só páginas do menu principal são "gerenciadas" por este mecanismo;
     // páginas fora dele (ex: migrate-followers.html) continuam controladas só por data-auth-role.
     const navItems = window.PortalNavItems || [];
     // Página exclusiva de certas marcas (item.brands em portal-shell.js): nas outras sai da lista
-    // liberada, seja qual for o perfil — some do menu/Início e a própria página é bloqueada.
+    // liberada, seja qual for o perfil - some do menu/Início e a própria página é bloqueada.
     // Como a permissão por página, é só interface (não protege o dado no Firestore). Calculado a
-    // cada chamada (não uma vez só) porque a Início troca a marca sem recarregar — ver
+    // cada chamada (não uma vez só) porque a Início troca a marca sem recarregar - ver
     // window.PortalAccess.refresh abaixo.
     const pagesForBrand = () => {
       const brandId = window.PortalBrand.activeId;
@@ -68,7 +68,7 @@ try {
     else {
       body.dataset.authenticated = 'true'; body.dataset.userRole = context.profile.role; body.dataset.userEmail = context.user.email; document.documentElement.classList.remove('auth-pending');
       // esconde qualquer link (sidebar, card da Início etc.) que aponte pra uma página
-      // gerenciada fora da lista liberada pro perfil — um único mecanismo pras duas entradas.
+      // gerenciada fora da lista liberada pro perfil - um único mecanismo pras duas entradas.
       // Também reexibe os liberados (hidden = false) pra poder rodar de novo ao trocar de marca.
       const applyLinkVisibility = () => {
         const { allowed } = pagesForBrand();
@@ -77,8 +77,8 @@ try {
           if (navItems.some(item => item.href === href)) link.hidden = !allowed.has(href);
         });
         // some também o rótulo da seção (ex: "Administração") quando nenhum item dela sobrou
-        // visível — senão fica um título solto sem nada embaixo. display:none via estilo inline,
-        // não hidden — .portal-nav-section já tem display:flex no CSS, mesma especificidade de
+        // visível - senão fica um título solto sem nada embaixo. display:none via estilo inline,
+        // não hidden - .portal-nav-section já tem display:flex no CSS, mesma especificidade de
         // [hidden] só que de origem "autor" (vence a stylesheet do navegador).
         document.querySelectorAll('.portal-nav-section').forEach(section => {
           const anyVisible = Array.from(section.querySelectorAll('.portal-nav-item')).some(a => !a.hidden);
@@ -105,7 +105,7 @@ try {
     }
   }
 } catch (error) {
-  // "Nunca logou nesta aba" (auth/not-signed-in) é o estado normal de quem ainda não entrou —
+  // "Nunca logou nesta aba" (auth/not-signed-in) é o estado normal de quem ainda não entrou -
   // não é uma sessão que expirou, então não mostra o aviso de expiração (nem qualquer reason).
   const code = error && error.code;
   await deny(code === 'auth/access-pending' ? 'pending' : code === 'auth/not-signed-in' ? null : 'access');

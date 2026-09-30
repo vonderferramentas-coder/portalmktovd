@@ -55,7 +55,7 @@
       // gradiente + o retângulo amarelo, tudo cozido numa imagem só. Pra cor do retângulo
       // virar configurável, desenhamos ele por cima com a cor escolhida (mesmas coordenadas
       // do retângulo original, medidas em pixel na imagem) e depois a logo escolhida por
-      // cima, igual ao Story já faz — sem imagem achatada. Só a variante "Vonder_plus" ainda
+      // cima, igual ao Story já faz - sem imagem achatada. Só a variante "Vonder_plus" ainda
       // usa o header próprio (headerPlus); qualquer outra marca cai no header padrão.
       var header=isPlus?state.customAssets.headerPlus:state.customAssets.headerVonder;
       if(header)ctx.drawImage(header,0,0,t.w,377);else{ctx.fillStyle='#000';ctx.fillRect(0,0,t.w,228)}

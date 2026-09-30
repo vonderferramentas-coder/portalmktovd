@@ -49,10 +49,10 @@
     .cf-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: 36px; margin-bottom: 16px; }
     .cf-card h2 { margin: 0 0 4px; font: 800 17px var(--font-display); }
     .cf-hint { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.45; }
-    /* Cabeçalho colapsável de um cf-card (hoje só "Produtos") — mesmo padrão de
+    /* Cabeçalho colapsável de um cf-card (hoje só "Produtos") - mesmo padrão de
        .section-divider do dashboard de seguidores: grid-template-rows 0fr<->1fr anima "até a
        altura real do conteúdo" em CSS puro, sem medir pixels em JS; o filho único
-       (.cf-section-divider-body-inner) precisa de overflow:hidden pro recorte funcionar — de brinde,
+       (.cf-section-divider-body-inner) precisa de overflow:hidden pro recorte funcionar - de brinde,
        esse overflow:hidden cria um novo contexto de formatação de bloco (BFC), então o margin-top
        do primeiro filho (aqui embaixo) não "vaza" colapsando pra fora do card; sem isso os 24px
        do primeiro produto até o subtítulo, por exemplo, sumiriam. */
@@ -77,13 +77,13 @@
     .cf-alert.bad { border-color: var(--danger-border); background: var(--danger-bg); color: var(--danger); }
 
     /* h2.cf-title-heading precisa dessa especificidade pra vencer o "margin: 0 0 4px" de
-       .cf-card h2 (a regra geral dos demais títulos de card) — só este título pede 10px. */
+       .cf-card h2 (a regra geral dos demais títulos de card) - só este título pede 10px. */
     .cf-card h2.cf-title-heading { margin-bottom: 10px; }
     .cf-title-heading, .cf-title-row, .cf-meta { text-align: left; }
     .cf-title-row { display: flex; gap: 12px; align-items: flex-end; }
     .cf-meta { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
 
-    /* margin-bottom:0 anula o "label{margin-bottom:6px}" global (styles.css) — pensado pro padrão
+    /* margin-bottom:0 anula o "label{margin-bottom:6px}" global (styles.css) - pensado pro padrão
        <label>Legenda</label><input> (label sozinho, sem envolver o campo). Aqui .cf-field é um
        <label> que ENVOLVE a legenda e o input (gap:5px já cuida do espaço entre eles); sem esse
        reset, a margem extra do <label> deixava o campo mais curto que o botão ao lado
@@ -101,18 +101,18 @@
     /* Produtos: grade de 3 colunas de cards compactos (foto + nome + código + menu "⋮"). "Editar"
        no menu abre o formulário completo (.cf-prod, o card de sempre) num modal centralizado, na
        identidade da plataforma (mesma .modal-backdrop/.modal dos demais); "Excluir" funciona
-       igual ao X de sempre. .cf-prod só é anexado ao modal quando abre (openEditProductModal) —
+       igual ao X de sempre. .cf-prod só é anexado ao modal quando abre (openEditProductModal) -
        fora disso fica solto, fora do documento, mas vivo (mesma instância, mesmos listeners),
        porque showStatus()/loadPhoto() escrevem nos campos dele a qualquer momento (ex.: resposta
        assíncrona de resolve() chegando com o produto fechado). */
     #products { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
-    /* segurar e arrastar um card reordena products[] (ver moveProductTo) — a ordem da lista é o
+    /* segurar e arrastar um card reordena products[] (ver moveProductTo) - a ordem da lista é o
        que desempata produtos que caem na mesma posição do texto (Cf.assemble). Mesmo mecanismo dos
        cards do calendário (app.js/createEventElement): Drag and Drop API nativa, dragover só marca
-       onde vai cair (drop-before/drop-after) e a troca de fato só acontece no drop — arrastar por
+       onde vai cair (drop-before/drop-after) e a troca de fato só acontece no drop - arrastar por
        cima sem soltar não reordena nada. A diferença é só visual: no drop, quem mudou de posição
        (o card solto e quem abriu/fechou espaço pra ele) desliza suavemente até o lugar novo em vez
-       de saltar — FLIP (mede a posição de cada card antes de mexer no DOM, mede de novo depois, e
+       de saltar - FLIP (mede a posição de cada card antes de mexer no DOM, mede de novo depois, e
        anima só a diferença; ver moveProductTo). Indicador de soltar na borda esquerda/direita do
        card (não topo/base, como no calendário): aqui o fluxo da grade é horizontal. */
     .cf-prod-cell { cursor: grab; }
@@ -120,16 +120,16 @@
     .cf-prod-cell.drop-before .cf-prod-mini { box-shadow: inset 3px 0 0 0 var(--accent); }
     .cf-prod-cell.drop-after .cf-prod-mini { box-shadow: inset -3px 0 0 0 var(--accent); }
 
-    /* borda esquerda verde: mesma identidade do card publicado (fg-product-card, conecta-fg.js —
+    /* borda esquerda verde: mesma identidade do card publicado (fg-product-card, conecta-fg.js -
        border-left:5px solid #004e32), pra o card do editor já lembrar o card final no post */
     .cf-prod-mini { position: relative; display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--border); border-left: 5px solid #004e32; border-radius: var(--radius-md); background: var(--surface-muted); cursor: pointer; }
     .cf-prod-mini-thumb { position: relative; flex: 0 0 72px; width: 72px; height: 72px; }
     /* fundo sempre branco (não var(--card)): a maioria das fotos de produto tem fundo transparente
-       recortado pra branco — no tema escuro, var(--card) deixava a miniatura com uma caixa cinza
+       recortado pra branco - no tema escuro, var(--card) deixava a miniatura com uma caixa cinza
        escura em volta da foto, destoando */
     .cf-prod-mini-thumb .cf-thumb { border-radius: 12px; background: #fff; }
     /* selo de validação do card: canto superior direito da foto, resumindo em 1 ícone o que
-       cf-status (link)/cf-photo (foto) já apuram campo a campo — ok só quando os dois concordam
+       cf-status (link)/cf-photo (foto) já apuram campo a campo - ok só quando os dois concordam
        que está tudo certo; qualquer "bad" nos dois vence; o resto (checking, link deduzido,
        nome divergente etc.) cai em "revisar" por padrão. Anel com a cor do card separa o selo da
        foto por baixo, já que fotos de produto costumam ter fundo branco colado na borda. */
@@ -146,7 +146,7 @@
        linha visível sozinho, sem precisar medir texto em JS) */
     .cf-prod-mini-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-family: var(--font-display); font-size: 14px; font-weight: 800; line-height: 1.3; color: var(--text); }
     .cf-prod-mini-code { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    /* o ícone de aviso só aparece pra sinalizar problema (link não confirmado etc.) — "ok"/
+    /* o ícone de aviso só aparece pra sinalizar problema (link não confirmado etc.) - "ok"/
        "checking" ficam sem ícone, pra não gerar ruído visual num estado normal */
     .cf-prod-mini-code::before { content: ""; flex: 0 0 12px; width: 12px; height: 12px; display: none; background: currentColor; }
     .cf-prod-mini-code.caution { color: var(--cf-caution); }
@@ -156,12 +156,12 @@
     .cf-prod-mini-kebab { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; transition: background .12s, border-color .12s, color .12s; }
     .cf-prod-mini-kebab:hover, .cf-prod-mini-kebab[aria-expanded="true"] { background: var(--card); border-color: var(--border); color: var(--text); }
 
-    /* formulário completo — agora é só conteúdo do modal (sem moldura própria: o .modal já dá
+    /* formulário completo - agora é só conteúdo do modal (sem moldura própria: o .modal já dá
        fundo/borda/sombra), então nada de padding/background/border aqui. */
     .cf-prod { display: flex; flex-direction: column; gap: 16px; }
     .cf-prod-top { display: flex; align-items: flex-start; gap: 14px; }
     /* modal de edição: mesma entrada suave já usada no aviso de conflito de sincronização
-       (sync-conflict-in) — reaproveita os mesmos valores (8px/.985/.18s) de propósito, pra toda
+       (sync-conflict-in) - reaproveita os mesmos valores (8px/.985/.18s) de propósito, pra toda
        transformação "card → modal" do portal se mover igual */
     #editProductBackdrop.is-open { display: flex; }
     @media (prefers-reduced-motion: no-preference) {
@@ -179,12 +179,12 @@
     .cf-thumb.has-photo::before { display: none; }
     .cf-thumb img { position: relative; max-width: 100%; max-height: 100%; object-fit: contain; }
     .cf-prod-main { flex: 1; min-width: 0; }
-    /* .cf-name é um <input> (edita o nome do produto), mas visualmente é o título do card — sem
+    /* .cf-name é um <input> (edita o nome do produto), mas visualmente é o título do card - sem
        font-family aqui ele herda a fonte de corpo via "input:not([type]){font-family:inherit}"
        (styles.css), destoando dos títulos reais ("Produtos" etc., que usam --font-display) */
     .cf-prod-main .cf-name { width: 100%; height: auto; min-height: 34px; padding: 2px 0 6px; border: 0; border-bottom: 1px solid var(--border-strong); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); font-size: 17px; font-weight: 800; line-height: 1.3; }
     .cf-code-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 10px; }
-    /* mesmo tratamento visual de .cf-lab (rótulo de campo do card) — só sem display:block, porque
+    /* mesmo tratamento visual de .cf-lab (rótulo de campo do card) - só sem display:block, porque
        este fica embutido na linha ao lado do input, não sozinho acima */
     .cf-code-line label { color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
     .cf-code-line .cf-code-in { width: 124px; height: 32px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--card); color: var(--text); font: 13px/1 var(--cf-mono); }
@@ -234,14 +234,14 @@
 
     .cf-out { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
     /* as dicas dos dois títulos ("Você pode revisar..." x "Aproximação:...") têm tamanhos
-       diferentes e quebram em números de linha diferentes — sem reservar o mesmo espaço pras
+       diferentes e quebram em números de linha diferentes - sem reservar o mesmo espaço pras
        duas, o código e a prévia começavam em alturas diferentes mesmo com os widgets do mesmo
        tamanho. 2.9em ~ 2 linhas no tamanho/entrelinha de .cf-hint (13px, line-height 1.45). */
     .cf-out .cf-hint { min-height: 2.9em; }
     /* Card do código no estilo animate-ui/Code Tabs (https://animate-ui.com/docs/components/animate/code-tabs):
-       cabeçalho com "aba" (rótulo do arquivo + sublinhado, aqui estático — só há um código, não
+       cabeçalho com "aba" (rótulo do arquivo + sublinhado, aqui estático - só há um código, não
        vários idiomas pra trocar) e botão de copiar embutido, corpo em fonte mono sem moldura
-       própria (a moldura é só do card). Escopo só deste bloco — o resto do portal (inclusive a
+       própria (a moldura é só do card). Escopo só deste bloco - o resto do portal (inclusive a
        Prévia ao lado) mantém os componentes de sempre. */
     .cf-code-card { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--card); }
     .cf-code-card-head { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 8px 0 16px; background: var(--surface-muted); border-bottom: 1px solid var(--border); }
@@ -254,13 +254,13 @@
     .cf-code-copy.is-copied .cf-code-copy-icon-copy { opacity: 0; transform: scale(.5) rotate(20deg); }
     .cf-code-copy.is-copied .cf-code-copy-icon-check { opacity: 1; transform: scale(1) rotate(0); }
     /* Realce de sintaxe: uma camada <pre> colorida por baixo do textarea real (que fica com o
-       texto transparente, só o cursor visível) — as duas ocupam a mesma célula do grid, mesma
+       texto transparente, só o cursor visível) - as duas ocupam a mesma célula do grid, mesma
        fonte/padding, então ficam pixel a pixel alinhadas. O valor de verdade (o que é copiado,
-       salvo e colado no WordPress) continua só no textarea, sem reformatação — só a cor muda.
+       salvo e colado no WordPress) continua só no textarea, sem reformatação - só a cor muda.
        #code/scroll sincroniza o scroll das duas (ver JS). */
     /* altura fixa pra bater com os 560px (border-box) da .cf-view ao lado, descontando o que o
-       resto do card do código já consome — a própria borda (1px em cima + 1px embaixo) e o
-       cabeçalho "wordpress.html" (40px, altura fixa) — senão o card do código ficava mais alto
+       resto do card do código já consome - a própria borda (1px em cima + 1px embaixo) e o
+       cabeçalho "wordpress.html" (40px, altura fixa) - senão o card do código ficava mais alto
        que a prévia: 560 - 2 - 40 = 518. Sem essa altura fixa, o <pre> de realce (que não tem
        altura própria, cresce pro tamanho do conteúdo) inflava a linha do grid pro tamanho do
        código inteiro. min-height:0 nos filhos é o de sempre pra grid/flex: sem ele um item não
@@ -328,7 +328,7 @@
         <span class="page-kicker">Blog · Ferramentas Gerais</span>
         <h1>Conecta FG</h1>
         <p class="page-subtitle">Envie o texto do blog em .docx. O portal converte para o formato do WordPress e monta os produtos do
-          documento (tabela com código ou links do site FG) com foto e link — é só copiar o código e colar no post.</p>
+          documento (tabela com código ou links do site FG) com foto e link - é só copiar o código e colar no post.</p>
       </header>
 
       <div id="library">
@@ -402,7 +402,7 @@
                   </label>
                   <button class="cf-tool" id="showUsage" type="button" aria-pressed="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
-                    <span><strong>Exibir aplicações</strong><small id="usageState">Ativado — mostra dicas de uso.</small></span>
+                    <span><strong>Exibir aplicações</strong><small id="usageState">Ativado - mostra dicas de uso.</small></span>
                   </button>
                 </div>
               </section>
@@ -511,7 +511,7 @@
       const cap = s => s.charAt(0).toLocaleUpperCase('pt-BR') + s.slice(1).toLocaleLowerCase('pt-BR');
       let model = null, products = [], places = [], catalogItemsPromise = null, rowSeq = 0;
       // último código gerado automaticamente: se o usuário editar #code à mão (corrigindo
-      // quebra/negrito/itálico), o valor diverge disso e update() para de sobrescrever — senão
+      // quebra/negrito/itálico), o valor diverge disso e update() para de sobrescrever - senão
       // qualquer clique em produto/posição/tamanho apaga a edição manual (perde a formatação).
       let lastGenerated = '';
 
@@ -528,9 +528,9 @@
       const STATUS = {
         checking: ['', 'Consultando o site FG…'],
         site: ['ok', 'Confirmado no site FG'],
-        guess: ['caution', 'Link deduzido do nome do produto (não consegui consultar o site FG) — clique em Abrir e confira'],
-        doc: ['caution', 'Link do documento (não consegui consultar o site FG para confirmar) — clique em Abrir e confira'],
-        notfound: ['bad', 'Não encontrei este produto no site FG — deixei de fora do código; corrija o código ou o link para incluir'],
+        guess: ['caution', 'Link deduzido do nome do produto (não consegui consultar o site FG) - clique em Abrir e confira'],
+        doc: ['caution', 'Link do documento (não consegui consultar o site FG para confirmar) - clique em Abrir e confira'],
+        notfound: ['bad', 'Não encontrei este produto no site FG - deixei de fora do código; corrija o código ou o link para incluir'],
         manual: ['', 'Link editado por você']
       };
 
@@ -550,7 +550,7 @@
         // o produto existe, mas não é o do nome do documento: erro de digitação vira link/foto errados
         if (p.state === 'site' && p.name && Cf.slug(p.siteName) !== Cf.slug(p.name)) {
           tone = 'caution';
-          text += ` — mas no site este produto é «${p.siteName}»: confira se código/link e nome do documento batem`;
+          text += ` - mas no site este produto é «${p.siteName}»: confira se código/link e nome do documento batem`;
         }
         if (needsLink) { tone = 'bad'; text = 'Cole o link do produto no site FG (sem link, o nome sai só como texto)'; }
         const status = row.querySelector('.cf-status');
@@ -565,7 +565,7 @@
         row.querySelector('.cf-url').setAttribute('aria-invalid', String(needsLink));
         const open = row.querySelector('.cf-open');
         if (isHttp(p.url)) open.href = p.url; else open.removeAttribute('href');
-        // card compacto (padrão): nome, código e — só quando há problema — o mesmo aviso do
+        // card compacto (padrão): nome, código e - só quando há problema - o mesmo aviso do
         // formulário completo, pra não esconder um produto que ficou de fora do código gerado
         const miniName = p.miniRow.querySelector('.cf-prod-mini-name');
         miniName.textContent = p.name || 'Sem nome';
@@ -589,14 +589,14 @@
       const usageEnabled = () => $('showUsage').getAttribute('aria-pressed') === 'true';
       function setUsageEnabled(value) {
         $('showUsage').setAttribute('aria-pressed', String(value));
-        $('usageState').textContent = value ? 'Ativado — mostra dicas de uso.' : 'Desativado — oculta as dicas.';
+        $('usageState').textContent = value ? 'Ativado - mostra dicas de uso.' : 'Desativado - oculta as dicas.';
       }
 
       function update() {
         if (!model) return;
         const box = Math.min(600, Math.max(100, +$('box').value || 260));
         const out = Cf.assemble(model.blocks, products, box, usageEnabled());
-        // só substitui #code se ele ainda for o último código gerado — se o usuário editou o
+        // só substitui #code se ele ainda for o último código gerado - se o usuário editou o
         // texto à mão (formatação, quebra de linha etc.), essa edição fica intocada até ele
         // mesmo mudar algo que force gerar de novo (ex.: reabrir o post)
         if ($('code').value === lastGenerated) { $('code').value = out.wp; $('view').innerHTML = out.view; clearViewHighlight(); }
@@ -605,7 +605,7 @@
       }
 
       // Realce de sintaxe do cf-code: tokenizer por regex (tag/atributo/valor), o bastante pra
-      // parecer código de verdade sem parser HTML completo nem lib externa (Shiki etc.) — roda só
+      // parecer código de verdade sem parser HTML completo nem lib externa (Shiki etc.) - roda só
       // sobre uma cópia pro <pre> por trás do textarea (ver .cf-code-editor no CSS); o valor real
       // do textarea (o que é copiado/salvo/colado no WordPress) nunca é tocado por isso.
       function highlightHtml(src) {
@@ -623,7 +623,7 @@
       function syncCodeHighlight() { $('codeHighlight').innerHTML = highlightHtml($('code').value); }
 
       // A própria miniatura mede a foto (naturalWidth/Height): as dimensões vão no <img> do card.
-      // O card compacto (miniThumb) só mostra a mesma foto — quem mede w/h pro código gerado é
+      // O card compacto (miniThumb) só mostra a mesma foto - quem mede w/h pro código gerado é
       // sempre o thumb do formulário completo (thumb/img abaixo), existindo ele visível ou não.
       function loadPhoto(p) {
         const thumb = p.row.querySelector('.cf-thumb'), msg = p.row.querySelector('.cf-photo');
@@ -664,7 +664,7 @@
 
       // Nome, código e link oficial pelo Worker (pelo link do produto, se houver; senão pelo código).
       // Se ele não responder, o link do documento fica como está e o de um produto de tabela vira
-      // um link deduzido do nome — a linha avisa qual dos casos é.
+      // um link deduzido do nome - a linha avisa qual dos casos é.
       function resolve(p) {
         const catalog = fillCatalogUsage(p);
         let siteUsage = '';
@@ -689,7 +689,7 @@
         });
       }
 
-      // Menu "⋮" de cada card compacto — um único menu flutuante em document.body, reposicionado a
+      // Menu "⋮" de cada card compacto - um único menu flutuante em document.body, reposicionado a
       // cada abertura (mesmo padrão do menu "⋮" dos cards do calendário, app.js/getCardMenuEl):
       // se cada card criasse o seu próprio menu como filho, o layout em grade cortaria/empurraria
       // o menu em vez de deixá-lo flutuar por cima dos vizinhos.
@@ -732,7 +732,7 @@
 
       // Modal "Editar produto": move o formulário completo (p.row, sempre a mesma instância) pra
       // dentro do modal enquanto ele estiver aberto. Cancelar/fechar restaura os campos ao estado
-      // de antes de abrir (snapshot) — Salvar só fecha, porque os campos já ficam salvos em p a
+      // de antes de abrir (snapshot) - Salvar só fecha, porque os campos já ficam salvos em p a
       // cada tecla (os listeners abaixo chamam showStatus()/update() a cada input, como sempre).
       let pendingEditProduct = null, editProductSnapshot = null;
       function openEditProductModal(p) {
@@ -766,7 +766,7 @@
         cell.draggable = true;
         // mesmo padrão de drag-and-drop dos cards do calendário (app.js/createEventElement):
         // dragstart guarda o uid, dragover só decide antes/depois pela metade em que o mouse está
-        // (aqui X, não Y — a grade de produtos flui na horizontal) e SÓ o drop reordena products[]
+        // (aqui X, não Y - a grade de produtos flui na horizontal) e SÓ o drop reordena products[]
         // (ver moveProductTo, que também dispara a animação de deslocamento dos cards afetados).
         cell.addEventListener('dragstart', ev => { ev.dataTransfer.setData('text/plain', p.uid); cell.classList.add('dragging'); ev.dataTransfer.effectAllowed = 'move'; });
         cell.addEventListener('dragend', () => cell.classList.remove('dragging'));
@@ -794,7 +794,7 @@
           `<button type="button" class="cf-prod-mini-kebab" aria-haspopup="true" aria-expanded="false" aria-label="Mais ações" title="Mais ações"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>`;
         wireProdMenuButton(mini.querySelector('.cf-prod-mini-kebab'), p);
         // clicar no card inteiro já abre a edição (mesmo padrão dos cards do calendário,
-        // app.js/createDayPost — o "⋮" já para a propagação no próprio clique, então não conflita;
+        // app.js/createDayPost - o "⋮" já para a propagação no próprio clique, então não conflita;
         // a Drag and Drop API nativa também já não dispara "click" depois de um arraste de verdade)
         cell.addEventListener('click', () => openEditProductModal(p));
         cell.append(mini);
@@ -839,9 +839,9 @@
 
       const cardCells = () => Array.from($('products').children);
 
-      // Só o drop reordena products[] — arrastar por cima de outros cards sem soltar (dragover)
+      // Só o drop reordena products[] - arrastar por cima de outros cards sem soltar (dragover)
       // não muda nada, só o indicador visual (drop-before/drop-after, no listener de dragover lá
-      // em cima). FLIP: mede a posição de cada card (inclusive o arrastado — ele nunca sai do
+      // em cima). FLIP: mede a posição de cada card (inclusive o arrastado - ele nunca sai do
       // grid, só fica com opacity:.5 via .dragging) antes de mexer no DOM, reordena, mede de novo
       // e anima só quem realmente mudou de lugar (os parados nem ganham transition).
       function moveProductTo(draggedP, targetP, insertBefore) {
@@ -955,7 +955,7 @@
         $('notes').hidden = !model.notes.length;
         $('notes').textContent = 'Recados do redator (ficam de fora do código): ' + model.notes.map(n => `«${n}»`).join(' ');
         $('warn').hidden = !model.unsupported.length;
-        $('warn').textContent = `O documento tem ${model.unsupported.join(', ')}, que a conversão ainda não trata: ficam de fora do código — confira o documento original e ajuste no WordPress.`;
+        $('warn').textContent = `O documento tem ${model.unsupported.join(', ')}, que a conversão ainda não trata: ficam de fora do código - confira o documento original e ajuste no WordPress.`;
         places = [['Início do artigo', 0], ...model.blocks.map((html, i) => {
           const plain = new DOMParser().parseFromString(html, 'text/html').body.textContent.replace(/\s+/g, ' ').trim();
           return [`Depois de «${plain.length > 55 ? plain.slice(0, 55) + '…' : plain}»`, i + 1];
@@ -977,7 +977,7 @@
         else products.forEach(p => {
           if (p.url) return fillCatalogUsage(p).then(() => { showStatus(p); if (!customCode) update(); });
           // sem link salvo (post salvo enquanto a busca ainda estava em andamento, ou produto não
-          // encontrado da última vez): tenta de novo ao reabrir — resolve() só age com state
+          // encontrado da última vez): tenta de novo ao reabrir - resolve() só age com state
           // 'checking' (guarda contra uma resposta antiga chegar depois de outra busca já ter
           // mudado o produto), então precisa setar aqui antes de chamar
           p.state = 'checking';
@@ -1097,7 +1097,7 @@
       $('addBtn').addEventListener('click', addProduct);
       $('addRef').addEventListener('keydown', e => { if (e.key === 'Enter') addProduct(); });
 
-      // Remoção de produto, com confirmação (modal padrão do portal — mesmo usado pelo calendário
+      // Remoção de produto, com confirmação (modal padrão do portal - mesmo usado pelo calendário
       // pra "Remover produto?"/"Excluir postagem?"): evita apagar por engano ao clicar no X.
       let pendingRemoveProduct = null;
       function openRemoveProductConfirm(p) {
@@ -1158,9 +1158,9 @@
       $('showUsage').addEventListener('click', () => { setUsageEnabled(!usageEnabled()); update(); });
       // o código do WordPress separa parágrafo só por linha em branco (o wpautop fecha o <p> ao
       // salvar); a prévia precisa do <p> aqui, senão o navegador ignora a linha em branco e tudo
-      // vira um parágrafo só — mesma regra usada em Cf.assemble (ver Cf.wpToPreviewHtml)
+      // vira um parágrafo só - mesma regra usada em Cf.assemble (ver Cf.wpToPreviewHtml)
       $('code').addEventListener('input', () => { $('view').innerHTML = Cf.wpToPreviewHtml($('code').value); clearViewHighlight(); syncCodeHighlight(); });
-      // camada de realce por trás (ver .cf-code-editor) tem seu próprio scroll — como ela não
+      // camada de realce por trás (ver .cf-code-editor) tem seu próprio scroll - como ela não
       // tem barra própria (overflow:hidden), sem isso o texto colorido ficaria parado enquanto
       // o textarea (transparente, por cima) rola por cima dele.
       $('code').addEventListener('scroll', () => {
@@ -1190,7 +1190,7 @@
       // Seleção cruzada código <-> prévia: a palavra selecionada de um lado é marcada no outro.
       // #code guarda o HTML cru e #view o mesmo conteúdo renderizado; tirando tags, entidades e
       // espaços/quebras de linha, os dois têm exatamente os mesmos caracteres na mesma ordem. Então
-      // o k-ésimo caractere visível do código é o k-ésimo caractere visível da prévia — mapeamento
+      // o k-ésimo caractere visível do código é o k-ésimo caractere visível da prévia - mapeamento
       // exato, sem proporção nem busca por texto (que errava quando a palavra se repete). Só se os
       // dois textos divergirem (ex.: entidade desconhecida) cai numa busca da ocorrência mais
       // próxima. Nada aqui muda foco, seleção real ou conteúdo do #code: as duas marcações são
@@ -1199,7 +1199,7 @@
       const ENTITY = /&(?:#\d+|#x[0-9a-f]+|[a-z][a-z0-9]*);/iy;
       // Devolve o texto puro do HTML cru + para cada caractere o índice cru onde começa (map) e
       // onde termina (ends). "\n" some: Cf.assemble junta blocos com "\n\n" e quebra manual vira
-      // <br /> na prévia — nenhum deles gera texto lá.
+      // <br /> na prévia - nenhum deles gera texto lá.
       function stripTagsWithMap(html) {
         let plain = '', map = [], ends = [];
         const add = (str, from, to) => { for (let k = 0; k < str.length; k++) { plain += str[k]; map.push(from); ends.push(to); } };
@@ -1250,7 +1250,7 @@
       }
       // Índices num texto puro -> Range do DOM dentro de container (andando pelos nós de texto).
       // Serve pro #view e pro #codeHighlight (que, sem os <span> de cor, é o #code caractere a
-      // caractere — o textarea em si não expõe a posição de um trecho).
+      // caractere - o textarea em si não expõe a posição de um trecho).
       function domRangeFromOffsets(container, start, end) {
         const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
         let pos = 0, range = document.createRange(), started = false, node;
@@ -1262,9 +1262,9 @@
         }
         return null;
       }
-      // ponto do DOM (nó + offset, podendo ser um elemento — ex.: triple-click) -> índice no texto
+      // ponto do DOM (nó + offset, podendo ser um elemento - ex.: triple-click) -> índice no texto
       const textOffset = (container, node, offset) => { const r = document.createRange(); r.selectNodeContents(container); r.setEnd(node, offset); return r.toString().length; };
-      // Rola o painel só se o trecho estiver fora da área visível — nunca mexe no painel onde o
+      // Rola o painel só se o trecho estiver fora da área visível - nunca mexe no painel onde o
       // usuário está selecionando/editando.
       function revealRange(range, scrollEl) {
         const rect = range.getClientRects()[0] || range.getBoundingClientRect();
@@ -1302,7 +1302,7 @@
         const selRange = sel.getRangeAt(0);
         const startIn = view.contains(selRange.startContainer), endIn = view.contains(selRange.endContainer);
         if (!startIn && !endIn) return;
-        // clicar na prévia sem arrastar colapsa a seleção ali — some com as marcações
+        // clicar na prévia sem arrastar colapsa a seleção ali - some com as marcações
         if (sel.isCollapsed) return clearViewHighlight();
         // seleção da prévia -> marca no código (as pontas fora da prévia contam como início/fim)
         const viewText = view.textContent;
@@ -1326,7 +1326,7 @@
       ['select', 'keyup', 'mouseup'].forEach(evt => $('code').addEventListener(evt, scheduleSelectionSync));
 
       // Tab normalmente pula pro próximo campo do formulário (comportamento padrão de textarea);
-      // aqui dentro do código isso deveria indentar, como um editor de verdade — Shift+Tab
+      // aqui dentro do código isso deveria indentar, como um editor de verdade - Shift+Tab
       // continua navegando pra trás, sem tratamento especial de "desindentar".
       $('code').addEventListener('keydown', ev => {
         if (ev.key !== 'Tab' || ev.shiftKey) return;
@@ -1339,14 +1339,14 @@
       async function copy(field, button) {
         const label = button.textContent;
         try { await navigator.clipboard.writeText(field.value); button.textContent = 'Copiado ✓'; }
-        catch { field.select(); button.textContent = 'Selecionado — use Ctrl+C'; }
+        catch { field.select(); button.textContent = 'Selecionado - use Ctrl+C'; }
         setTimeout(() => { button.textContent = label; }, 2000);
       }
       $('backToPosts').addEventListener('click', () => { $('work').hidden = true; $('library').hidden = false; fail(''); loadSavedPosts(); });
       $('savePost').addEventListener('click', saveCurrentPost);
       loadSavedPosts();
       $('copyTitle').addEventListener('click', e => copy($('title'), e.currentTarget));
-      // botão ícone-only (card do código, estilo animate-ui/Code Tabs) — não usa copy() porque
+      // botão ícone-only (card do código, estilo animate-ui/Code Tabs) - não usa copy() porque
       // ela troca o textContent do botão, o que apagaria os SVGs; aqui é só a classe is-copied
       // que faz o ícone copiar virar check por CSS (ver .cf-code-copy-icon acima).
       $('copyCode').addEventListener('click', async () => {
@@ -1359,7 +1359,7 @@
         btn._copyTimer = setTimeout(() => { btn.classList.remove('is-copied'); btn.setAttribute('aria-label', 'Copiar código'); }, 2000);
       });
 
-      // Seção "Produtos" colapsável (padrão section-divider do dashboard de seguidores) — abre
+      // Seção "Produtos" colapsável (padrão section-divider do dashboard de seguidores) - abre
       // por padrão (aria-expanded="true" já no HTML); usa classe animada em vez de hidden, pra
       // recolher/abrir com transição.
       $('productsToggle').addEventListener('click', () => {

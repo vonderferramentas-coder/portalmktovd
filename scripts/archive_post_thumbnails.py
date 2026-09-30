@@ -1,6 +1,6 @@
 # Baixa a miniatura de cada post e guarda uma cópia permanente em
 # data/social-posts-thumbnails/<id>.<ext>, reescrevendo thumbnailUrl para esse caminho
-# local. A Meta assina e expira a URL de imagem depois de um tempo — guardar só o link (como
+# local. A Meta assina e expira a URL de imagem depois de um tempo - guardar só o link (como
 # era feito para o histórico reconstruído) deixa a miniatura quebrada mais pra frente sem
 # re-coleta. Guardando a imagem em vez do link, o problema não existe mais.
 #
@@ -21,7 +21,7 @@ LOCAL_PREFIX = 'data/social-posts-thumbnails/'
 IMAGE_CONTENT_TYPES = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
 
 # A Meta devolve a imagem em resolução quase cheia (a maior coluna do painel, o modal de
-# prévia, usa só 340px de largura em CSS — 680px cobre até tela retina 2x com folga).
+# prévia, usa só 340px de largura em CSS - 680px cobre até tela retina 2x com folga).
 # Reencodar pra JPEG nesse tamanho leva o arquivo de ~300KB pra dezenas de KB sem perda
 # visível num card pequeno.
 MAX_WIDTH = 720
@@ -58,7 +58,7 @@ def _download_image(url):
 def archive_thumbnails(posts, refetch=None):
     """Garante uma cópia local da miniatura de cada post e reescreve post['thumbnailUrl']
     para o caminho local. `refetch(media_id)` só é chamado quando o post não tem
-    thumbnailUrl nenhum (histórico antigo) — busca um link assinado fresco na Meta antes de
+    thumbnailUrl nenhum (histórico antigo) - busca um link assinado fresco na Meta antes de
     baixar. Nunca derruba a coleta: falha em um post só pula pro próximo."""
     THUMBS_DIR.mkdir(parents=True, exist_ok=True)
     existing_files = _existing_files()
@@ -71,7 +71,7 @@ def archive_thumbnails(posts, refetch=None):
             continue
         url = post.get('thumbnailUrl')
         if url and url.startswith(LOCAL_PREFIX):
-            continue  # já era local mas o arquivo sumiu — nada a fazer sem re-coleta
+            continue  # já era local mas o arquivo sumiu - nada a fazer sem re-coleta
         if not url and refetch:
             try:
                 url = refetch(media_id)
@@ -83,7 +83,7 @@ def archive_thumbnails(posts, refetch=None):
         try:
             result = _download_image(url)
         except Exception:
-            # Cobre falha de rede e imagem corrompida/formato que o Pillow não abre — um post
+            # Cobre falha de rede e imagem corrompida/formato que o Pillow não abre - um post
             # ruim não pode travar a coleta dos outros milhares.
             result = None
         if not result:

@@ -1,12 +1,12 @@
 # Backup diário de portalStore/users do Firestore de produção (mkt-ovd) pro repositório
-# PRIVADO vonderferramentas-coder/portalmktovd-backups — não pro repo público do site (dados
+# PRIVADO vonderferramentas-coder/portalmktovd-backups - não pro repo público do site (dados
 # internos/pessoais não podem ir pra lá) e não pro Cloud Storage do Firebase (esse produto
 # passou a exigir plano Blaze pra ser ativado, mesmo no uso gratuito; Spark não serve mais).
 # Usado por backup-portalstore.yml (agendado + manual), que já deixou o repo de backup
 # clonado no diretório que este script recebe como argumento.
 #
 # Guarda a coleção portalStore inteira (calendário, config, permissões e dados coletados) e
-# users — é o estado que precisaria ser restaurado manualmente em caso de exclusão/regra
+# users - é o estado que precisaria ser restaurado manualmente em caso de exclusão/regra
 # quebrada. securityAudit fica de fora de propósito: é log append-only, não estado a restaurar.
 import datetime
 import gzip
@@ -17,7 +17,7 @@ import sys
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-RETENTION_DAYS = 30  # ponytail: retenção fixa por contagem de dias, sem poda por tamanho —
+RETENTION_DAYS = 30  # ponytail: retenção fixa por contagem de dias, sem poda por tamanho -
 # se o repositório de backup crescer rápido demais, revisar antes de simplesmente aumentar isso.
 
 
@@ -27,7 +27,7 @@ def _dump_collection(db, name):
 
 def _json_default(value):
     # Campos Timestamp do Firestore voltam como datetime (DatetimeWithNanoseconds), que o
-    # json padrão não serializa — praticamente todo documento aqui tem updated_at/updatedAt.
+    # json padrão não serializa - praticamente todo documento aqui tem updated_at/updatedAt.
     if isinstance(value, datetime.datetime):
         return value.isoformat()
     raise TypeError(f'Tipo não serializável no backup: {type(value)!r}')

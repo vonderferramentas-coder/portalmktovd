@@ -1,7 +1,7 @@
-// Central de Inteligência — painel de consulta do Google Trends (categoria/período/região).
+// Central de Inteligência - painel de consulta do Google Trends (categoria/período/região).
 // Só leitura: os dados são coletados uma vez por dia por .github/workflows/sync-google-trends.yml
 // e publicados em portalStore/trends-v1 (mesmo gateway PortalFirebase.readPortalStore usado pelo
-// painel de seguidores) — esta tela nunca chama o Google Trends direto do navegador.
+// painel de seguidores) - esta tela nunca chama o Google Trends direto do navegador.
 (() => {
   'use strict';
   const STORE_KEY = 'trends-v1';
@@ -18,7 +18,7 @@
   const CATEGORY_LABELS = Object.fromEntries(CATEGORIES.map(c => [c.slug, c.label]));
 
   // "Comparativo anual" reaproveita o mesmo balde de dados de "Últimos 12 meses" coletado pelo
-  // workflow — só muda o rótulo mostrado na coluna "Período analisado", não a consulta em si
+  // workflow - só muda o rótulo mostrado na coluna "Período analisado", não a consulta em si
   // (ver comentário equivalente em .github/workflows/sync-google-trends.yml).
   const PERIODS = [
     { key: '7d', label: 'Últimos 7 dias', dataKey: '7d' },
@@ -48,9 +48,9 @@
   }
 
   function formatDateTime(iso) {
-    if (!iso) return '—';
+    if (!iso) return '-';
     const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return '—';
+    if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
@@ -80,17 +80,17 @@
   }
 
   function renderVariation(variation) {
-    if (!variation) return '<span class="intel-variation-flat">—</span>';
+    if (!variation) return '<span class="intel-variation-flat">-</span>';
     const isUp = variation === 'Alta' || variation.startsWith('+');
     return `<span class="${isUp ? 'intel-variation-up' : ''}">${escapeHtml(variation)}</span>`;
   }
 
   // Cruzamento com o catálogo de produtos, calculado uma vez por dia pelo próprio workflow de
-  // coleta (scripts/match_trends_catalog.py) — aqui só exibe o que já veio pronto no documento,
+  // coleta (scripts/match_trends_catalog.py) - aqui só exibe o que já veio pronto no documento,
   // nenhum cálculo/carregamento de catálogo acontece no navegador (ver
   // docs/ARQUITETURA-E-INTEGRACOES.md, seção 16).
   function renderMatchedProducts(products) {
-    if (!products || !products.length) return '<span class="intel-variation-flat">—</span>';
+    if (!products || !products.length) return '<span class="intel-variation-flat">-</span>';
     const items = products.map(p => `<li>${escapeHtml(p.name)}</li>`).join('');
     return `<details class="intel-matched-products"><summary>${products.length} produto${products.length === 1 ? '' : 's'}</summary><ul>${items}</ul></details>`;
   }
@@ -108,7 +108,7 @@
       empty.style.display = '';
       empty.textContent = TRENDS
         ? 'Nenhuma tendência coletada ainda para essa combinação de categoria e período.'
-        : 'Ainda não há coleta de tendências — a primeira atualização automática roda no próximo ciclo diário.';
+        : 'Ainda não há coleta de tendências - a primeira atualização automática roda no próximo ciclo diário.';
       setText('trendsSummary', '');
       pager.hidden = true;
       return;
@@ -212,7 +212,7 @@
         TRENDS ? 'ok' : 'warn'
       );
     } catch (error) {
-      setSyncStatus('Sem conexão com o servidor — tente novamente mais tarde', 'warn');
+      setSyncStatus('Sem conexão com o servidor - tente novamente mais tarde', 'warn');
     }
     render();
   }

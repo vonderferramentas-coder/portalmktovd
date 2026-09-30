@@ -91,7 +91,7 @@
 
   // Regressão do atalho "Abrir editor de posts direto" (datas comemorativas, ver app.js): ele
   // navega pra post-editor.html logo após criar o card, então precisa que flush() só resolva
-  // depois da gravação confirmar no servidor — sem isso o card nunca chegava a existir no Firestore.
+  // depois da gravação confirmar no servidor - sem isso o card nunca chegava a existir no Firestore.
   postsA.push({id:'card-direct',title:'Criado com flush direto',date:'2026-09-11',order:0});
   syncA.save();
   await syncA.flush();

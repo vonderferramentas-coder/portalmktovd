@@ -3,7 +3,7 @@
   var green='#005745', red='#f20d0d';
   // Feed e Story têm a mesma largura (1080px), então compartilham a mesma grade horizontal: a marca e a
   // logo FG saem da mesma margem esquerda, e título, régua, código, caixa de preço e texto legal fecham
-  // na mesma margem direita. Só o eixo vertical muda entre os formatos — assim as duas artes batem.
+  // na mesma margem direita. Só o eixo vertical muda entre os formatos - assim as duas artes batem.
   var LEFT=90,RIGHT=1001,BRAND_W=340,BRAND_H=156,TITLE_X=468,TITLE_GAP=16,TITLE_INK=.74;
   function value(id,fallback){var el=document.getElementById(id);return el&&el.value.trim()?el.value.trim():(fallback||'')}
   // Curva desenhada explicitamente: evita que o arcTo herde um caminho anterior e gere pontas triangulares.
@@ -13,14 +13,14 @@
   // Quebra automática por largura, mas respeitando o Enter digitado no nome: cada trecho separado por
   // \n começa numa linha nova, e só o excedente dele é que quebra sozinho.
   function wrap(ctx,text,width){var out=[];String(text||'PRODUTO').toUpperCase().split(/\r?\n/).forEach(function(part){var line='';part.trim().split(/\s+/).forEach(function(word){if(!word)return;var test=(line+' '+word).trim();if(line&&ctx.measureText(test).width>width){out.push(line);line=word}else line=test});if(line)out.push(line)});return out.length?out:['']}
-  // O canto superior direito é bem mais arredondado que os outros três — mesma assinatura do logo da
+  // O canto superior direito é bem mais arredondado que os outros três - mesma assinatura do logo da
   // FG (medido no PNG: ~11px de raio nesse canto contra ~3px nos demais, numa arte de 100px).
   function drawBrand(ctx,state,helpers,x,y,w,h){rounded(ctx,x,y,w,h,[10,44,10,10]);ctx.fillStyle='#fff';ctx.fill();if(state.customAssets.brandLogo)helpers.contain(ctx,state.customAssets.brandLogo,[x+18,y+16,w-36,h-32])}
   // O bloco "R$ + valor" manda na caixa: define a largura dela (some a sobra quando o preço é curto),
-  // fica centralizado, e as outras linhas se penduram nele — "De"/"Por:" pela esquerda do bloco e
+  // fica centralizado, e as outras linhas se penduram nele - "De"/"Por:" pela esquerda do bloco e
   // "à vista" pela direita. Os offsets verticais saem da altura real de desenho (ink) das Korolev:
   // "De" ocupa 21px a partir de -1, "Por:" 19px a partir de +1, o valor 64px a partir de +2 e
-  // "à vista" 19px a partir de -1 — por isso o mesmo GAP acima e abaixo do valor vira o mesmo respiro.
+  // "à vista" 19px a partir de -1 - por isso o mesmo GAP acima e abaixo do valor vira o mesmo respiro.
   // A altura também sai do conteúdo: BANNER_ZONE é a parte da tarja que invade a caixa e MARGIN é o
   // respiro que sobra acima da primeira linha e abaixo da última. A caixa cresce pra cima (a base fica
   // ancorada em BASE_Y), então a distância pro rodapé não muda quando o preço ganha ou perde a linha "De".
@@ -36,7 +36,7 @@
         oldY=inkTop-INK.old[0],labelInkTop=hasOld?inkTop+INK.old[1]+OLD_GAP:inkTop,labelY=labelInkTop-INK.label[0],priceY=labelInkTop+INK.label[1]+GAP-INK.price[0],vistaY=priceY+INK.price[0]+INK.price[1]+GAP-INK.vista[0];
     if(api&&api.helpers.setMoveBox)api.helpers.setMoveBox([x,y-22,w,h+22]);
     // Sombra só no preenchimento da caixa (save/restore antes da tarja e dos textos, senão ela suja o
-    // vermelho e as letras) — serve pra descolar o verde da foto, sem virar um card flutuando.
+    // vermelho e as letras) - serve pra descolar o verde da foto, sem virar um card flutuando.
     ctx.save();ctx.shadowColor='rgba(0,0,0,.30)';ctx.shadowBlur=26;ctx.shadowOffsetY=9;rounded(ctx,x,y,w,h,38);ctx.fillStyle=green;ctx.fill();ctx.restore();
     ctx.font='700 27px "Korolev Offer","Arial Narrow",Arial,sans-serif';var bannerW=Math.max(120,Math.min(w-96,Math.ceil(ctx.measureText(bannerText).width+56))),bannerX=x+w-bannerW-48;
     rounded(ctx,bannerX,y-22,bannerW,50,22);ctx.fillStyle=red;ctx.fill();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(bannerText,bannerX+bannerW/2,y+3);
@@ -66,7 +66,7 @@
     // Primeiro tenta respeitando os Enters; só se nem no menor corpo couber é que ignora as quebras
     // manuais e deixa o nome fluir sozinho.
     // Duas linhas é o padrão; a terceira só entra quando em duas a fonte teria que ficar pequena demais
-    // (nome muito comprido) — aí ela usa a altura que sobra e o texto encosta no topo da caixa da marca.
+    // (nome muito comprido) - aí ela usa a altura que sobra e o texto encosta no topo da caixa da marca.
     var titleMaxH=BRAND_H-3-TITLE_GAP,fit=fitTitle(ctx,name,titleW,titleMaxH,2);
     if(fit.size<40)fit=fitTitle(ctx,name,titleW,titleMaxH,3);
     if(fit.lines.length>3)fit=fitTitle(ctx,String(name).replace(/\s+/g,' '),titleW,titleMaxH,3);
@@ -88,7 +88,7 @@
     if(state.productDrawable){ctx.save();ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=22;ctx.shadowOffsetY=12;api.helpers.contain(ctx,state.productDrawable,isStory?[46,620,710,690]:[42,430,620,560]);ctx.restore()}
     drawPrice(ctx,t,isStory,api);
     // A caixa do logo FG usa a proporção exata do PNG (100x145) pra que o contain não centralize nada
-    // e a borda esquerda caia exatamente em LEFT — a mesma da caixa branca da marca lá em cima.
+    // e a borda esquerda caia exatamente em LEFT - a mesma da caixa branca da marca lá em cima.
     var footerH=t.h-footerY;ctx.fillStyle=green;ctx.fillRect(0,footerY,t.w,footerH);
     if(state.customAssets.fgLogo)api.helpers.contain(ctx,state.customAssets.fgLogo,[LEFT,footerY-82,98,142]);
     ctx.fillStyle='#fff';ctx.textAlign='left';ctx.textBaseline='top';ctx.font='700 italic 38px "Swiss721Editor","Arial Narrow",Arial,sans-serif';ctx.fillText('.com.br',LEFT+106,footerY+12);

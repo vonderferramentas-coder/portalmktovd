@@ -1,11 +1,11 @@
 # Publica um snapshot de posts (formato {version, updatedAt, posts:[...]}) em
 # portalStore/<store_key> no Firestore. Usado por sync-meta-posts.yml e
-# reconstruir-historico-posts.yml — extraído pra um lugar só porque os dois faziam a mesma
+# reconstruir-historico-posts.yml - extraído pra um lugar só porque os dois faziam a mesma
 # coisa e o limite de 1 MiB por documento do Firestore precisa do mesmo tratamento nos dois.
 #
 # Antes disso, quando o histórico passava do limite, o publicador truncava e só os posts
 # mais recentes que coubessem chegavam ao painel (ver git blame). Em vez de truncar, divide
-# em documentos sequenciais (store_key, store_key__2, store_key__3, ...) — o painel lê e
+# em documentos sequenciais (store_key, store_key__2, store_key__3, ...) - o painel lê e
 # junta todos de volta (ver protectedStoreChunked em followers-dashboard.js). Continua
 # "gratuito" porque a cota grátis do Firestore é milhares de leituras/dia; ler 2-4
 # documentos pequenos em paralelo em vez de 1 não muda isso na prática.
@@ -18,7 +18,7 @@ from firebase_admin import credentials, firestore
 # Não o 1_048_576 real: deixa margem para o overhead dos campos updated_at/updatedAt/
 # chunkCount e da própria estrutura do documento.
 FIRESTORE_MAX_BYTES = 900_000
-# Quantos documentos extras além do necessário hoje tentamos apagar a cada publicação —
+# Quantos documentos extras além do necessário hoje tentamos apagar a cada publicação -
 # cobre o histórico encolher (post apagado no Instagram) e sobrar chunk órfão que o painel
 # ficaria lendo para sempre sem nunca mais ser atualizado.
 CLEANUP_MARGIN = 3

@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Templates — Calendário de Postagens</title>
+  <title>Templates - Calendário de Postagens</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -16,15 +16,15 @@
   <script src="firebase-config.js"></script>
   <script type="module" src="auth-guard.js"></script>
   <style>
-    /* Layout específico desta página — os componentes reutilizáveis (modal, botões, cards de
+    /* Layout específico desta página - os componentes reutilizáveis (modal, botões, cards de
        formulário) vêm de styles.css; aqui só o que é próprio da tela Templates. */
     .tpl-gallery-row { display: flex; gap: 16px; overflow-x: auto; padding: 4px 4px 10px }
 
-    /* Card do marketplace — proporção 3:4, foto de capa (ou gradiente com a cor da marca
+    /* Card do marketplace - proporção 3:4, foto de capa (ou gradiente com a cor da marca
        enquanto a foto não chega, ver cardBackground em templates.js) com um véu escuro por baixo
        pra legibilidade do texto, e um botão pill semi-transparente no rodapé. Borda sutil (em vez
        de 0): marca com cor de identidade bem escura (ex.: TikTok Shop, #010101) quase sumia contra
-       o fundo do modo escuro (#121214) — sem contorno nenhum, o card virava um retângulo preto
+       o fundo do modo escuro (#121214) - sem contorno nenhum, o card virava um retângulo preto
        sobre um fundo quase preto. */
     .tpl-card {
       position: relative; flex: 0 0 auto; width: 176px; aspect-ratio: 3 / 4;
@@ -46,8 +46,8 @@
     }
     .tpl-card-cta svg { flex: 0 0 auto }
 
-    /* Canal sem instruções cadastradas ainda (ver isChannelLocked em templates.js) — card em
-       tons de cinza, sem hover/clique (tabindex="-1", sem listener — ver renderChannelGallery),
+    /* Canal sem instruções cadastradas ainda (ver isChannelLocked em templates.js) - card em
+       tons de cinza, sem hover/clique (tabindex="-1", sem listener - ver renderChannelGallery),
        cadeado no lugar da seta. */
     .tpl-card.is-locked { cursor: not-allowed; filter: grayscale(1); opacity: .8 }
     .tpl-card.is-locked:hover, .tpl-card.is-locked:focus-visible { transform: none; box-shadow: var(--shadow-md) }
@@ -57,7 +57,7 @@
       -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
     }
 
-    /* Botão de reticências (editar/duplicar/excluir o card) — só admin (hidden por padrão, ver
+    /* Botão de reticências (editar/duplicar/excluir o card) - só admin (hidden por padrão, ver
        applyAdminVisibility em templates.js). Some pro lado do cadeado quando os dois coexistem
        (canal travado + admin), em vez de sobrepor. */
     .tpl-card-menu-btn {
@@ -67,13 +67,13 @@
     }
     .tpl-card-menu-btn:hover, .tpl-card-menu-btn:focus-visible { background: rgba(0,0,0,.65); outline: none }
     .tpl-card.is-locked .tpl-card-menu-btn { right: 44px }
-    /* [hidden] some vencer o display:flex acima — mesmo gotcha documentado em .portal-nav-item[hidden]
+    /* [hidden] some vencer o display:flex acima - mesmo gotcha documentado em .portal-nav-item[hidden]
        no styles.css: a regra nativa do navegador pra [hidden] tem prioridade mais baixa que
        qualquer seletor do autor, então precisa ser repetida aqui pra esconder de verdade quem não
        é admin (ver applyAdminVisibility em templates.js). */
     .tpl-card-menu-btn[hidden] { display: none }
 
-    /* Foto de fundo no modal de editar card (nome + foto) — mesma proporção 3:4 do card de
+    /* Foto de fundo no modal de editar card (nome + foto) - mesma proporção 3:4 do card de
        verdade, pra o admin já ver como vai ficar. Clique em qualquer parte abre o seletor de
        arquivo (label envolvendo um input file escondido, mesmo padrão do "Editar marca" em
        portal-shell.js). */
@@ -89,16 +89,16 @@
       font-size: 10.5px; font-weight: 700; color: #fff; background: rgba(0,0,0,.55);
     }
 
-    /* Modal — reaproveita .modal-backdrop/.modal/.modal--wide de styles.css; só o cabeçalho ganha
+    /* Modal - reaproveita .modal-backdrop/.modal/.modal--wide de styles.css; só o cabeçalho ganha
        a cor de identidade do marketplace clicado (ver openModal em templates.js). --tpl-modal-ink
-       é a cor de texto/ícone que contrasta com esse fundo — sem ela, "Voltar" e os botões de
+       é a cor de texto/ícone que contrasta com esse fundo - sem ela, "Voltar" e os botões de
        fechar/adicionar ficavam com var(--muted)/var(--text) do TEMA (claro/escuro), que não tem
        relação nenhuma com o fundo da marca: contra um amarelo bem claro (ex.: Mercado Livre), o
        cinza claro do --muted no modo escuro quase sumia. Os botões herdam a cor do cabeçalho por
        padrão; o hover usa color-mix com a própria cor pra continuar legível em fundo claro OU
        escuro sem precisar de um valor fixo (preto ou branco) que só funcionaria pra um dos dois. */
     .tpl-modal .modal-header { background: var(--tpl-modal-accent, var(--card)); color: var(--tpl-modal-ink, var(--text)); transition: background .15s, color .15s }
-    /* h2 tem color:var(--text) direto em styles.css (h1,h2,h3...) — uma regra que MIRA o elemento
+    /* h2 tem color:var(--text) direto em styles.css (h1,h2,h3...) - uma regra que MIRA o elemento
        sempre vence a herança do pai, então sem esse override o título ficava sempre na cor do
        tema (branco no modo escuro) por cima do amarelo, ignorando --tpl-modal-ink por completo. */
     .tpl-modal .modal-header h2 { color: var(--tpl-modal-ink, var(--text)) }
@@ -113,7 +113,7 @@
     }
     .tpl-modal-modules { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
 
-    /* Tela de escolha da área (Loja Oficial / Ads), primeiro passo dentro do modal — cards
+    /* Tela de escolha da área (Loja Oficial / Ads), primeiro passo dentro do modal - cards
        simples (sem foto, ao contrário do card do marketplace) já que são só duas opções fixas */
     .tpl-category-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px }
     .tpl-category-card {
@@ -139,13 +139,13 @@
     .tpl-module-toggle[aria-expanded="true"] .tpl-module-chevron { transform: rotate(180deg) }
     .tpl-module-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 
-    /* Abertura/fechamento do dropdown — altura animada com valores medidos em pixel (ver
+    /* Abertura/fechamento do dropdown - altura animada com valores medidos em pixel (ver
        openPanelFrom/closePanel em templates.js), não só CSS: o truque de grid-template-rows
        0fr→1fr parecia funcionar, mas a caixa de pré-visualização tem min-height próprio, que
-       contamina o cálculo automático do CSS e o painel nunca chegava a 0 de verdade — sobrava um
+       contamina o cálculo automático do CSS e o painel nunca chegava a 0 de verdade - sobrava um
        resto do formato fechado visível por baixo do próximo. .tpl-module-panel é só a casca que
        anima (por isso zero padding aqui: padding não-zero nunca deixa a altura chegar a 0 de
-       verdade, mesmo com box-sizing:border-box) — o padding de verdade mora no
+       verdade, mesmo com box-sizing:border-box) - o padding de verdade mora no
        .tpl-module-panel-inner, que pode ficar arbitrariamente alto por dentro sem afetar o
        colapso, porque overflow:hidden da casca corta tudo que sobra. */
     .tpl-module-panel { overflow: hidden; height: 0; transition: height .28s ease }
@@ -157,14 +157,14 @@
     .tpl-practices { margin-top: 12px }
     .tpl-practices p { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--text) }
 
-    /* Desktop e Mobile são a mesma peça, então aparecem juntos dentro do dropdown — cada versão
+    /* Desktop e Mobile são a mesma peça, então aparecem juntos dentro do dropdown - cada versão
        tem seu próprio botão de copiar (ícone), que copia as informações pra colar num briefing.
        Cada versão vira um bloco de duas colunas: pré-visualização na proporção real à esquerda,
        tamanho mínimo/peso/arquivo/boas práticas daquela versão à direita. Grid com 1fr/1fr faz as
        duas colunas ocuparem toda a largura disponível em partes iguais; o stretch padrão do grid
        (align-items não sobrescrito) já iguala a altura das duas ao maior conteúdo das duas, sem
        precisar fixar um tamanho. A pré-visualização em si é um SVG com viewBox (ver shapeBoxSvg em
-       templates.js) — ele encaixa sozinho dentro da coluna preservando a proporção real, do jeito
+       templates.js) - ele encaixa sozinho dentro da coluna preservando a proporção real, do jeito
        que um <img> faria com object-fit:contain, então acompanha a coluna fluida sem JS. */
     .tpl-format-block { padding: 14px 0; border-top: 1px solid var(--border) }
     .tpl-module-panel-inner > .tpl-format-block:first-child { border-top: 0; padding-top: 0 }
@@ -178,15 +178,15 @@
     }
     .tpl-format-preview { display: flex; align-items: center; justify-content: center; padding: 16px; min-height: 120px }
     /* a largura vem inline (% relativa ao maior formato do grupo, ver shapeBoxSvg em
-       templates.js) — a altura é automática, derivada do viewBox, então o retângulo nunca
+       templates.js) - a altura é automática, derivada do viewBox, então o retângulo nunca
        distorce; max-height é só uma proteção pra formatos retrato extremos não estourarem a
        coluna, algo que não acontece com os formatos cadastrados hoje (todos paisagem/quadrados) */
     .tpl-format-preview .tpl-shape-box { display: block; height: auto; max-height: 100%; overflow: visible }
     .tpl-format-preview .tpl-shape-box rect { fill: var(--surface-muted); stroke: var(--border-strong); stroke-width: 3 }
-    /* Faixa de degradê automático (gradientHeight em shapeBoxSvg/templates.js) — sombreada e
+    /* Faixa de degradê automático (gradientHeight em shapeBoxSvg/templates.js) - sombreada e
        rente à borda de baixo, desenhada ANTES das margens de segurança (fica atrás delas) */
     .tpl-format-preview .tpl-shape-box .tpl-gradient-zone { fill: var(--text-faint); opacity: .25; stroke: var(--border-strong); stroke-width: 2; stroke-dasharray: 6 5 }
-    /* Margens de segurança (safeAreas em shapeBoxSvg/templates.js) — retângulo tracejado sem
+    /* Margens de segurança (safeAreas em shapeBoxSvg/templates.js) - retângulo tracejado sem
        preenchimento por cima do retângulo externo, pra não competir com ele visualmente */
     .tpl-format-preview .tpl-shape-box .tpl-safe-area-rect { fill: none; stroke: var(--accent-ink); stroke-width: 2.5; stroke-dasharray: 10 8; opacity: .65 }
     .tpl-format-info { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px }
@@ -232,7 +232,7 @@
     </div>
   </div>
 
-  <!-- Modal de formatos — um único modal reaproveitado para qualquer marketplace clicado -->
+  <!-- Modal de formatos - um único modal reaproveitado para qualquer marketplace clicado -->
   <div class="modal-backdrop" id="tplModalBackdrop" aria-hidden="true">
     <section class="modal modal--wide tpl-modal" id="tplModal" role="dialog" aria-modal="true"
       aria-labelledby="tplModalTitle">
@@ -268,7 +268,7 @@
       </div>
       <div class="modal-body">
         <!-- Antes de escolher um formato, o usuário escolhe a área do marketplace (Loja Oficial
-             ou Ads) — os formatos e medidas mudam conforme a área, ver CATEGORIES em templates.js -->
+             ou Ads) - os formatos e medidas mudam conforme a área, ver CATEGORIES em templates.js -->
         <div id="tplCategoryView">
           <div class="tpl-category-grid" id="tplCategoryGrid"></div>
         </div>
@@ -279,7 +279,7 @@
     </section>
   </div>
 
-  <!-- Editar card (nome + foto de fundo) — só admin, aberto pelo menu de reticências do card
+  <!-- Editar card (nome + foto de fundo) - só admin, aberto pelo menu de reticências do card
        (ver openChannelEditModal em templates.js). Reaproveita .modal-backdrop/.modal/.modal-sm. -->
   <div class="modal-backdrop" id="tplChannelEditBackdrop" aria-hidden="true">
     <section class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="tplChannelEditTitle">
@@ -314,7 +314,7 @@
     </section>
   </div>
 
-  <!-- Confirmação de duplicar/excluir card — só admin, mesmo padrão do #cardActionConfirmBackdrop
+  <!-- Confirmação de duplicar/excluir card - só admin, mesmo padrão do #cardActionConfirmBackdrop
        em visual-editor.html (título/mensagem trocados por JS conforme a ação, ver
        openChannelConfirm em templates.js). -->
   <div class="modal-backdrop" id="tplChannelConfirmBackdrop" aria-hidden="true">

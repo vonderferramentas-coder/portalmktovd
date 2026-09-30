@@ -4,11 +4,11 @@
 // Ponto único de leitura/escrita/análise do "aprendizado" por editoria (localStorage +
 // api.php), usado tanto pela tela que o alimenta (intelligence-center.js) quanto pelo
 // calendário, que só consulta o DNA já gerado para sugerir conteúdo e validar publicações
-// (app.js) — mantém as duas telas lendo/gravando exatamente o mesmo formato de dados.
+// (app.js) - mantém as duas telas lendo/gravando exatamente o mesmo formato de dados.
 //
 // O "motor de IA" aqui é uma análise heurística de verdade sobre o que foi enviado
 // (frequência de palavras nas legendas, detecção de ganchos/CTAs por padrão de texto,
-// formato/proporção/cor média das artes...) — tudo extraído automaticamente do próprio
+// formato/proporção/cor média das artes...) - tudo extraído automaticamente do próprio
 // arquivo, sem nenhuma marcação manual do usuário. Não depende de nenhum serviço externo,
 // então funciona 100% offline, mas por isso também tem limites: não "olha" o conteúdo visual
 // da imagem em si (não reconhece produto, texto na peça etc.), só o que dá pra calcular do
@@ -22,7 +22,7 @@
   function emptyBucket(){
     return {
       // cada "peça" é uma unidade completa de referência: rede social + briefing de como foi
-      // pedida ao design + artes por formato daquela rede + legenda publicada — assim a IA
+      // pedida ao design + artes por formato daquela rede + legenda publicada - assim a IA
       // enxerga o processo inteiro (pedido → concepção → publicação), não pools soltos
       posts: [],
       instructions: '',
@@ -36,7 +36,7 @@
   }
 
   // migração: buckets salvos no modelo antigo (references.visuals/captions/briefings soltos,
-  // sem vínculo entre si) viram uma peça avulsa por item — não dá pra reconstruir de verdade
+  // sem vínculo entre si) viram uma peça avulsa por item - não dá pra reconstruir de verdade
   // qual arte/legenda/briefing pertencia à mesma publicação (esse vínculo nunca existiu no
   // formato antigo), mas nenhum dado enviado antes se perde
   function migrateLegacyReferences(legacy){
@@ -80,7 +80,7 @@
 
   // backfill de um DNA salvo por uma versão mais antiga de generateDNA() (ver função abaixo),
   // que ainda não tinha algum dos campos de leitura direta (ex: "ctas" foi adicionado depois de
-  // "hooks") — sem isso, um DNA gerado antes daquele campo existir quebra renderIntelSuggestBox()/
+  // "hooks") - sem isso, um DNA gerado antes daquele campo existir quebra renderIntelSuggestBox()/
   // validatePost() (app.js) com "Cannot read properties of undefined", que aborta a função no meio
   // e por isso nem chega a abrir o modal de edição da postagem
   function emptyConfidence(){ return { value:null, confidence:null, count:0 }; }
@@ -123,7 +123,7 @@
   }
 
   // "achata" as peças em listas de visuais/legendas/briefings pra reaproveitar toda a análise
-  // (Etapa 1 e 2) sem reescrevê-la — o vínculo peça→formato→arquivo continua disponível em
+  // (Etapa 1 e 2) sem reescrevê-la - o vínculo peça→formato→arquivo continua disponível em
   // cada visual (campo network/postId), só a consolidação estatística é que trata tudo junto
   function flattenPosts(posts){
     const visuals = [], captions = [], briefings = [];
@@ -137,7 +137,7 @@
     return { visuals, captions, briefings };
   }
 
-  // registra no histórico o momento em que o DNA foi (re)gerado — usado na área "Referências
+  // registra no histórico o momento em que o DNA foi (re)gerado - usado na área "Referências
   // utilizadas" pra mostrar quando a inteligência da editoria foi atualizada ao longo do tempo
   function recordDnaGeneration(bucket){
     bucket.dnaHistory = Array.isArray(bucket.dnaHistory) ? bucket.dnaHistory : [];
@@ -160,7 +160,7 @@
   }
 
   // arquivos de referência em base64 podem ser numerosos (uma editoria pode acumular
-  // dezenas de artes) — por isso as imagens já chegam aqui reduzidas (ver
+  // dezenas de artes) - por isso as imagens já chegam aqui reduzidas (ver
   // intelligence-center.js), mas mesmo assim a gravação local pode estourar a cota do
   // navegador; devolve false nesse caso em vez de deixar estourar
   function writeLocal(data){
@@ -190,7 +190,7 @@
 
   // 'sem-dados' (nada enviado) · 'nao-treinado' (tem referência mas nunca analisou) ·
   // 'desatualizado' (novas referências chegaram depois da última análise) ·
-  // 'poucas-referencias' (analisado, mas com poucas referências — DNA ainda frágil) ·
+  // 'poucas-referencias' (analisado, mas com poucas referências - DNA ainda frágil) ·
   // 'treinado' (analisado e com volume razoável de referências)
   function learningStatus(bucket){
     const n = referenceCount(bucket);
@@ -202,7 +202,7 @@
   }
 
   // ============================================================
-  // NLP-lite (pt-BR) — tokenização simples e sem dependências, suficiente para frequência
+  // NLP-lite (pt-BR) - tokenização simples e sem dependências, suficiente para frequência
   // de palavras e casamento de padrões; não tenta ser um tokenizador linguisticamente correto
   // ============================================================
   const STOPWORDS = new Set(['a','o','as','os','de','da','do','das','dos','em','um','uma','uns','umas','para','por','com','sem','que','e','ou','se','no','na','nos','nas','ao','aos','é','são','foi','ser','estar','como','mais','muito','tambem','ja','nao','sim','seu','sua','seus','suas','este','esta','esse','essa','isso','isto','aquele','aquela','pelo','pela','pelos','pelas','entre','ate','apos','sobre','quando','onde','porque','pois','mas','entao','vai','vem','tem','ter','fazer','faz','voce','vc','nosso','nossa','nossos','nossas','ele','ela','eles','elas','the','and','for','este','esta']);
@@ -224,7 +224,7 @@
     return Object.entries(freq).sort((a,b)=> b[1]-a[1]).slice(0, n).map(([word,count])=>({ word, count }));
   }
 
-  // testadas sempre contra o texto sem acento (stripAccents) — "garanta a sua"/"alguém"/"já"
+  // testadas sempre contra o texto sem acento (stripAccents) - "garanta a sua"/"alguém"/"já"
   // têm que casar independente de acentuação ou de concordância de gênero (a sua vs o seu)
   const CTA_PATTERNS = [
     { re:/saiba mais/i, label:'"Saiba mais"' },
@@ -239,7 +239,7 @@
     { re:/salve (esse|este) post|salva (esse|este) post/i, label:'"Salve este post"' },
     { re:/compre agora|adquira/i, label:'"Compre agora"' }
   ];
-  // sinaliza qual CTA foi encontrado num texto só (usado na análise individual — Etapa 1 — e
+  // sinaliza qual CTA foi encontrado num texto só (usado na análise individual - Etapa 1 - e
   // na validação de publicação); é só o primeiro padrão que bater, não todos
   function ctaMatchFor(text){
     const normalized = stripAccents(text);
@@ -254,7 +254,7 @@
     return Object.entries(counts).sort((a,b)=> b[1]-a[1]).map(([label,count])=>({ label, count }));
   }
 
-  // classifica a abertura (1ª linha) de cada legenda num "tipo de gancho" — heurística por
+  // classifica a abertura (1ª linha) de cada legenda num "tipo de gancho" - heurística por
   // padrão de texto, não entende o conteúdo de fato, só a forma como a frase é construída
   const HOOK_TESTS = [
     { test:first=> /\?\s*$/.test(first.trim()), label:'Pergunta' },
@@ -286,11 +286,11 @@
   }
 
   // ============================================================
-  // ANÁLISE AUTOMÁTICA DAS ARTES/CARROSSÉIS — nenhuma marcação manual: só o que dá pra
+  // ANÁLISE AUTOMÁTICA DAS ARTES/CARROSSÉIS - nenhuma marcação manual: só o que dá pra
   // extrair sozinho de cada arquivo (formato escolhido no upload, proporção largura×altura,
   // estático×vídeo e a cor média de cada imagem, usada pra notar paleta/luminosidade
   // recorrente). Isso substitui as antigas tags manuais ("produto em uso real", "pouco
-  // texto"...) — sem visão computacional de verdade, essas quatro características deixaram
+  // texto"...) - sem visão computacional de verdade, essas quatro características deixaram
   // de dar pra detectar sozinhas e viraram sinais automáticos equivalentes (formato,
   // proporção, estático/vídeo, paleta de cor).
   // ============================================================
@@ -337,7 +337,7 @@
 
   function cap(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
-  // "Como os produtos são apresentados" — formato predominante (peça única × carrossel ×
+  // "Como os produtos são apresentados" - formato predominante (peça única × carrossel ×
   // stories × vídeo) e o quanto o conteúdo é estático ou em vídeo
   function visualPresentationNote(visuals){
     if(!visuals.length) return null;
@@ -350,10 +350,10 @@
     const modeText = split.total >= 2
       ? (split.video===0 ? 'sempre em peças estáticas' : split.static===0 ? 'sempre em vídeo/Reels' : `misturando estático (${split.static}) e vídeo (${split.video})`)
       : null;
-    return `Predomina ${top} (${count} de ${visuals.length} peça${visuals.length===1?'':'s'})` + (modeText ? `, ${modeText}` : '') + (rest ? ` — também aparece ${rest}` : '');
+    return `Predomina ${top} (${count} de ${visuals.length} peça${visuals.length===1?'':'s'})` + (modeText ? `, ${modeText}` : '') + (rest ? ` - também aparece ${rest}` : '');
   }
-  // "Estilo das imagens" — luminosidade e paleta média das peças (claro/escuro, neutro/colorido).
-  // Tira conclusão a partir de 1 peça só — a confiança (ver withConfidence) é quem sinaliza que
+  // "Estilo das imagens" - luminosidade e paleta média das peças (claro/escuro, neutro/colorido).
+  // Tira conclusão a partir de 1 peça só - a confiança (ver withConfidence) é quem sinaliza que
   // a amostra ainda é pequena, a nota em si não precisa esperar um volume mínimo de referências.
   function visualStyleNote(visuals){
     const withColor = visuals.filter(v=> v.color);
@@ -365,7 +365,7 @@
     const suffix = withColor.length===1 ? ' (baseado numa única referência)' : '';
     return cap(brightness) + (warmth ? `, ${warmth}` : '') + suffix;
   }
-  // "Hierarquia das informações" — inferida do formato predominante: carrossel/stories sugerem
+  // "Hierarquia das informações" - inferida do formato predominante: carrossel/stories sugerem
   // hierarquia sequencial entre peças, peça única concentra tudo numa arte só
   function hierarchyNote(visuals){
     if(!visuals.length) return null;
@@ -374,9 +374,9 @@
     const total = visuals.length;
     const carrossel = counts['Carrossel'] || 0;
     const stories = counts['Stories'] || 0;
-    if(carrossel/total >= 0.4) return 'Predomínio de carrossel — hierarquia sequencial entre peças (capa → detalhe/benefício → CTA final)';
-    if(stories/total >= 0.4) return 'Predomínio de Stories — hierarquia rápida e fragmentada, uma informação por tela';
-    return 'Predomínio de arte única — hierarquia concentrada numa peça só, sem sequência entre imagens';
+    if(carrossel/total >= 0.4) return 'Predomínio de carrossel - hierarquia sequencial entre peças (capa → detalhe/benefício → CTA final)';
+    if(stories/total >= 0.4) return 'Predomínio de Stories - hierarquia rápida e fragmentada, uma informação por tela';
+    return 'Predomínio de arte única - hierarquia concentrada numa peça só, sem sequência entre imagens';
   }
   function compositionNote(visuals){
     const withRatio = visuals.filter(v=> v.ratio);
@@ -408,33 +408,33 @@
     const entries = Object.entries(bins).sort((a,b)=> b[1]-a[1]);
     if(entries.length){
       const [bin, count] = entries[0];
-      if(count/withColor.length >= 0.5) return `Paleta de cor consistente — predominância de tons ${hueLabel(Number(bin))} em ${count} de ${withColor.length} peças`;
+      if(count/withColor.length >= 0.5) return `Paleta de cor consistente - predominância de tons ${hueLabel(Number(bin))} em ${count} de ${withColor.length} peças`;
     }
     return null;
   }
 
   // ============================================================
-  // ANÁLISE AUTOMÁTICA DAS LEGENDAS/BRIEFINGS — identidade da editoria (objetivo, público,
+  // ANÁLISE AUTOMÁTICA DAS LEGENDAS/BRIEFINGS - identidade da editoria (objetivo, público,
   // tom) e padrões de conteúdo, tudo inferido dos ganchos/CTAs/palavras já detectados acima,
   // sem nenhum campo de marcação manual.
   // ============================================================
   // palavras-chave que apontam objetivo diretamente no texto (briefing costuma declarar isso
-  // explicitamente: "o objetivo é vender...", "queremos engajar...") — checado ANTES do
+  // explicitamente: "o objetivo é vender...", "queremos engajar...") - checado ANTES do
   // gancho/CTA porque é um sinal mais direto que uma heurística indireta de padrão de escrita
   const OBJECTIVE_PATTERNS = [
-    { re:/vender|venda|compr[ae]|adquir/i, label:'Conversão — incentivar a compra/aquisição do produto' },
-    { re:/engaj|compartilh|coment[ae]|intera[cç][aã]o|alcance/i, label:'Engajamento — estimular interação e alcance' },
+    { re:/vender|venda|compr[ae]|adquir/i, label:'Conversão - incentivar a compra/aquisição do produto' },
+    { re:/engaj|compartilh|coment[ae]|intera[cç][aã]o|alcance/i, label:'Engajamento - estimular interação e alcance' },
     { re:/educ|inform|ensin|explic|conscientiz/i, label:'Educar/informar o público sobre o produto ou uso' },
     { re:/lan[cç]amento|novidade|chegou|apresent/i, label:'Anunciar novidades e lançamentos' },
     { re:/problema|dificuldade|\bdor\b|desafio|resolv/i, label:'Resolver uma dor/problema do público com o produto' },
     { re:/fideliz|fortalecer a marca|posicionamento|autoridade/i, label:'Fortalecer o posicionamento/autoridade da marca' },
-    { re:/saiba mais|link na bio|direcion|tr[aá]feg/i, label:'Direcionamento — levar o público a saber mais/comprar' }
+    { re:/saiba mais|link na bio|direcion|tr[aá]feg/i, label:'Direcionamento - levar o público a saber mais/comprar' }
   ];
   function objectiveFromKeywords(text){
     const found = OBJECTIVE_PATTERNS.find(p=> p.re.test(text));
     return found ? found.label : null;
   }
-  // nunca devolve null quando existe texto pra analisar — se nenhuma palavra-chave nem
+  // nunca devolve null quando existe texto pra analisar - se nenhuma palavra-chave nem
   // gancho/CTA específico bater, ainda assim dá uma conclusão genérica em vez de deixar o
   // campo em branco (era esse retorno silencioso de null que fazia "Objetivo identificado"
   // aparecer como "não identificado" mesmo com muitas referências enviadas)
@@ -443,9 +443,9 @@
     if(byKeyword) return byKeyword;
     if(ctas.length){
       const top = ctas[0].label;
-      if(/compre agora|garanta|adquira/i.test(top)) return 'Conversão — incentivar a compra/aquisição do produto';
-      if(/coment|compartilh|marque/i.test(top)) return 'Engajamento — estimular interação e alcance';
-      if(/link|saiba mais|clique/i.test(top)) return 'Direcionamento — levar o público a saber mais/comprar';
+      if(/compre agora|garanta|adquira/i.test(top)) return 'Conversão - incentivar a compra/aquisição do produto';
+      if(/coment|compartilh|marque/i.test(top)) return 'Engajamento - estimular interação e alcance';
+      if(/link|saiba mais|clique/i.test(top)) return 'Direcionamento - levar o público a saber mais/comprar';
     }
     if(hooks.length){
       const top = hooks[0].label;
@@ -453,7 +453,7 @@
       if(top==='Anúncio') return 'Anunciar novidades e lançamentos';
       if(top==='Dor/problema') return 'Resolver uma dor/problema do público com o produto';
     }
-    return texts.length ? 'Apresentar produto/conteúdo — sem sinal claro de objetivo mais específico nas referências enviadas' : null;
+    return texts.length ? 'Apresentar produto/conteúdo - sem sinal claro de objetivo mais específico nas referências enviadas' : null;
   }
   const AUDIENCE_TERM_GROUPS = [
     { label:'Público profissional/técnico (obra, oficina, instalação)', terms:['profissional','profissionais','obra','instalacao','eletricista','oficina','industria','tecnico','construcao','marcenaria','soldagem','ferramenta','ferramentas'] },
@@ -473,9 +473,9 @@
     const exclam = texts.filter(t=> /!/.test(t)).length/texts.length;
     const emoji = texts.filter(t=> /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(t)).length/texts.length;
     const informal = texts.filter(t=> /\bvc\b|\bpra\b|\bta\b/i.test(stripAccents(t))).length/texts.length;
-    if(exclam >= 0.5 || emoji >= 0.4) return 'Descontraído e próximo — uso frequente de exclamações/emojis';
+    if(exclam >= 0.5 || emoji >= 0.4) return 'Descontraído e próximo - uso frequente de exclamações/emojis';
     if(informal >= 0.3) return 'Informal e direto';
-    return 'Técnico e informativo — tom mais formal';
+    return 'Técnico e informativo - tom mais formal';
   }
   function recommendedLanguageNote(avg, hashRatio, captionCount){
     if(!captionCount) return null;
@@ -494,7 +494,7 @@
   }
 
   // ============================================================
-  // INDICADOR DE CONFIANÇA — toda conclusão da Etapa 2 carrega o grau de confiança e a
+  // INDICADOR DE CONFIANÇA - toda conclusão da Etapa 2 carrega o grau de confiança e a
   // quantidade de referências que a sustentam, em vez de apresentar a inferência como um
   // fato absoluto. Quanto mais referências apoiam uma conclusão, maior a confiança.
   // ============================================================
@@ -510,9 +510,9 @@
   }
 
   // ============================================================
-  // ETAPA 1 — ANÁLISE INDIVIDUAL DE CADA REFERÊNCIA (arte, carrossel, vídeo, legenda ou
+  // ETAPA 1 - ANÁLISE INDIVIDUAL DE CADA REFERÊNCIA (arte, carrossel, vídeo, legenda ou
   // briefing), antes de qualquer consolidação. Artes/vídeos só têm sinais estruturais
-  // (formato, proporção, estático×vídeo) — sem visão computacional real não dá pra extrair
+  // (formato, proporção, estático×vídeo) - sem visão computacional real não dá pra extrair
   // objetivo/mensagem/benefício de uma imagem, então esses campos ficam null pra esse tipo de
   // referência. Legendas e briefings são onde o objetivo, a mensagem, o tema, o benefício e o
   // gatilho de comunicação realmente aparecem, então são analisados por texto.
@@ -541,9 +541,9 @@
     const byKeyword = objectiveFromKeywords(text);
     if(byKeyword) return byKeyword;
     if(ctaLabel){
-      if(/compre agora|garanta|adquira/i.test(ctaLabel)) return 'Conversão — incentivar a compra/aquisição';
-      if(/coment|compartilh|marque/i.test(ctaLabel)) return 'Engajamento — estimular interação';
-      if(/link|saiba mais|clique/i.test(ctaLabel)) return 'Direcionamento — levar a saber mais/comprar';
+      if(/compre agora|garanta|adquira/i.test(ctaLabel)) return 'Conversão - incentivar a compra/aquisição';
+      if(/coment|compartilh|marque/i.test(ctaLabel)) return 'Engajamento - estimular interação';
+      if(/link|saiba mais|clique/i.test(ctaLabel)) return 'Direcionamento - levar a saber mais/comprar';
     }
     if(hook==='Pergunta' || hook==='"Você sabia?"') return 'Educar/informar';
     if(hook==='Anúncio') return 'Anunciar novidade/lançamento';
@@ -595,7 +595,7 @@
   }
 
   // ============================================================
-  // MODELOS DE CONTEÚDO — padrões reutilizáveis detectados nas legendas (gancho + presença de
+  // MODELOS DE CONTEÚDO - padrões reutilizáveis detectados nas legendas (gancho + presença de
   // benefício/CTA). Cada legenda casa com o primeiro modelo cuja condição bater; o mais
   // genérico ("Gancho → desenvolvimento → CTA") fica por último, como modelo "catch-all".
   // ============================================================
@@ -625,7 +625,7 @@
       visuals: visuals.map(v=> ({ refId:v.id, name:v.name, addedAt:v.addedAt, format:v.format, kind:v.kind, network:v.network })),
       captions: captions.map(c=> ({ refId:c.id, name: c.text.length>60 ? c.text.slice(0,60)+'…' : c.text, addedAt:c.addedAt })),
       briefings: briefings.map(b=> ({ refId:b.id, name: b.text.length>60 ? b.text.slice(0,60)+'…' : b.text, addedAt:b.addedAt })),
-      // uma linha por peça completa — dá o quadro geral (rede, o que tem preenchido) sem
+      // uma linha por peça completa - dá o quadro geral (rede, o que tem preenchido) sem
       // repetir cada arquivo individual, que já aparece detalhado nas listas acima
       posts: (bucket.posts||[]).map(p=> ({
         id:p.id, network:p.network, addedAt:p.addedAt,
@@ -643,7 +643,7 @@
   //     estratégia visual, estratégia de conteúdo e modelos reutilizáveis), cada conclusão
   //     com seu grau de confiança e a quantidade de referências que a sustentam.
   // Objetivo/público usam um corpus mais amplo (legendas + briefings + orientações do
-  // usuário) — um briefing ou uma instrução costuma declarar a intenção estratégica de forma
+  // usuário) - um briefing ou uma instrução costuma declarar a intenção estratégica de forma
   // até mais direta que a legenda publicada. Já o estilo de escrita (tamanho, hashtags,
   // estrutura, CTAs usados) segue baseado só nas legendas realmente publicadas, pra não
   // misturar prosa de briefing com o texto que de fato vai pro post.
@@ -655,7 +655,7 @@
     const strategyTexts = captionTexts.concat(briefingTexts, bucket.instructions ? [bucket.instructions] : []);
     const total = referenceCount(bucket);
 
-    // ETAPA 1 — análise individual de cada referência
+    // ETAPA 1 - análise individual de cada referência
     const perReferenceAnalysis = [];
     visuals.forEach(v=> perReferenceAnalysis.push(Object.assign({ refType:'visual', refId:v.id, name:v.name, addedAt:v.addedAt }, analyzeVisualReference(v))));
     captionItems.forEach(c=> perReferenceAnalysis.push(Object.assign({ refType:'caption', refId:c.id, name:(c.text||'').slice(0,60), addedAt:c.addedAt }, analyzeTextReference(c.text))));
@@ -673,7 +673,7 @@
     const strategyCtas = detectCtas(strategyTexts);
     const strategyHooks = detectHooks(strategyTexts);
 
-    // ETAPA 2 — consolidação estratégica, cada conclusão com seu grau de confiança
+    // ETAPA 2 - consolidação estratégica, cada conclusão com seu grau de confiança
     return {
       generatedAt: Date.now(),
       referenceCount: total,
@@ -712,7 +712,7 @@
   }
 
   // ============================================================
-  // VALIDAÇÃO INTELIGENTE — compara um rascunho (título + texto) com o DNA já gerado da
+  // VALIDAÇÃO INTELIGENTE - compara um rascunho (título + texto) com o DNA já gerado da
   // editoria e devolve um nível de aderência (0-100), pontos fortes e sugestões de melhoria
   // ============================================================
   function validatePost(draft, dna){
@@ -721,7 +721,7 @@
         score: null,
         mainConcept: null,
         strengths: [],
-        improvements: ['Esta editoria ainda não tem um DNA gerado — crie a inteligência na Central de Inteligência (Base de conhecimento da editoria → Criar inteligência da editoria) antes de validar.']
+        improvements: ['Esta editoria ainda não tem um DNA gerado - crie a inteligência na Central de Inteligência (Base de conhecimento da editoria → Criar inteligência da editoria) antes de validar.']
       };
     }
     let score = 50;
@@ -735,13 +735,13 @@
       const topHook = dna.hooks[0];
       const hookHere = hookLabelFor(caption || title);
       if(hookHere === topHook){ score += 12; strengths.push(`Abre com o gancho mais usado nesta editoria (${topHook}).`); }
-      else improvements.push(`O gancho mais eficaz nesta editoria costuma ser "${topHook}" — considere reescrever a abertura do texto.`);
+      else improvements.push(`O gancho mais eficaz nesta editoria costuma ser "${topHook}" - considere reescrever a abertura do texto.`);
     }
 
     if(dna.ctas && dna.ctas.length){
       const hasCta = !!ctaMatchFor(caption);
       if(hasCta){ score += 12; strengths.push('Contém uma chamada para ação, como nas referências desta editoria.'); }
-      else improvements.push(`Adicione uma chamada para ação — o histórico desta editoria costuma usar algo como ${dna.ctas[0]}.`);
+      else improvements.push(`Adicione uma chamada para ação - o histórico desta editoria costuma usar algo como ${dna.ctas[0]}.`);
     }
 
     const words = tokenize(caption).length;
