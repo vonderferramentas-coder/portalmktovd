@@ -130,7 +130,7 @@
     }
 
     /* Modal com a identidade do YouTube (vermelho da marca, ver NETWORKS em
-       followers-dashboard.js) — reaproveita .modal-backdrop/.modal do portal. */
+       followers-dashboard.js) - reaproveita .modal-backdrop/.modal do portal. */
     .youtube-approx-modal .modal-header {
       border-bottom-color: #F04444
     }
@@ -1529,6 +1529,27 @@
       display: none
     }
 
+    .top-post-label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--accent-ink);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase
+    }
+
+    .post-card.top-post-empty {
+      cursor: default;
+      justify-content: center;
+      min-height: 120px
+    }
+
+    .post-card.top-post-empty:hover {
+      transform: none;
+      box-shadow: none
+    }
+
     .post-card {
       display: flex;
       flex-direction: column;
@@ -1690,13 +1711,13 @@
       display: flex;
       gap: 24px;
       align-items: flex-start;
-      /* Uma variável só pras duas colunas (imagem e conteúdo) nunca desalinharem entre si —
+      /* Uma variável só pras duas colunas (imagem e conteúdo) nunca desalinharem entre si -
          ver .post-preview-image/.post-preview-content abaixo. */
       --post-preview-col-w: 340px
     }
 
     /* Largura fixa; a altura vem naturalmente da proporção real da própria imagem
-       (width:100%;height:auto no <img> abaixo — sem aspect-ratio fixo, sem object-fit, sem
+       (width:100%;height:auto no <img> abaixo - sem aspect-ratio fixo, sem object-fit, sem
        cortar nem sobrar barra nenhuma: a caixa só acompanha o que a imagem realmente é). Quando
        não há thumbnail, .post-preview-image-empty é quem define uma altura de referência (não
        tem imagem real pra derivar proporção nenhuma). syncPostPreviewContentHeight (JS) mede a
@@ -2098,7 +2119,7 @@
     }
 
     /* Os dois dropdowns de "Melhores posts" (ao contrário do período/ações acima) precisam
-       ficar exatamente do tamanho do próprio botão-gatilho, alinhados nas duas bordas — sem o
+       ficar exatamente do tamanho do próprio botão-gatilho, alinhados nas duas bordas - sem o
        min-width de 248px herdado, o menu ficaria mais largo que o botão e desalinhado à esquerda. */
     #postsFormatMenu,
     #postsSortMenu {
@@ -2179,7 +2200,7 @@
     }
 
     /* color-scheme diz ao navegador para desenhar os controles nativos do input (aqui, só o
-       ícone do calendário — o de meta virou texto puro, sem as setinhas de spinner) na variante
+       ícone do calendário - o de meta virou texto puro, sem as setinhas de spinner) na variante
        clara ou escura; sem isso o ícone do calendário fica escuro sobre fundo escuro no tema
        dark, quase invisível. */
     .goals-control-fields input[type="date"] {
@@ -2448,10 +2469,18 @@
                       type="date"></label><label>Data de fim<input id="endDate" type="date" disabled></label></div>
               </div>
             </div>
-            <button class="period-trigger" type="button" id="printReport"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M6 9V3h12v6M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M6 14h12v7H6z" stroke-linejoin="round" />
-                <path d="M18 12h.01" stroke-linecap="round" stroke-width="2.8" />
-              </svg><span>Imprimir / PDF</span></button>
+            <div class="actions-control" id="reportControl"><button class="period-trigger" type="button"
+                id="reportTrigger" aria-expanded="false" aria-controls="reportMenu"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z" stroke-linejoin="round" />
+                  <path d="M14 3v5h5M9 13h6M9 17h6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg><span>Gerar relatório</span><svg class="period-caret" aria-hidden="true" width="14" height="14"
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg></button>
+              <div class="actions-menu" id="reportMenu" hidden><button class="action-option" type="button"
+                  id="printReport">Imprimir / PDF</button><button class="action-option" type="button"
+                  id="emailReport">E-mail</button></div>
+            </div>
             <div class="actions-control" id="actionsControl"><button class="actions-trigger" type="button"
                 id="actionsTrigger" aria-expanded="false" aria-controls="actionsMenu"><span>••• Mais ações</span><svg
                   class="action-caret" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -2472,7 +2501,7 @@
             </div>
             <div class="milestone-nav">
               <button type="button" class="chevron-btn" id="milestonePrev" aria-label="Mês anterior">‹</button>
-              <span class="period-pill" id="milestoneMonthLabel">—</span>
+              <span class="period-pill" id="milestoneMonthLabel">-</span>
               <button type="button" class="chevron-btn" id="milestoneNext" aria-label="Próximo mês">›</button>
             </div>
           </div>
@@ -2500,7 +2529,7 @@
             <div class="tiktok-import-badge"><img src="icons/tiktok.svg" alt="" width="24" height="24"></div>
             <div class="tiktok-import-head-copy">
               <h2>Importar histórico do TikTok</h2>
-              <p class="muted">O TikTok não libera API para uso interno — a atualização dos seguidores aqui é
+              <p class="muted">O TikTok não libera API para uso interno - a atualização dos seguidores aqui é
                 manual, via arquivo CSV baixado direto no TikTok Studio da marca.</p>
             </div>
             <div class="tiktok-import-status">
@@ -2684,7 +2713,7 @@
                 <circle class="goal-ring-fill" id="goalRingFill" cx="60" cy="60" r="52" />
               </svg>
               <div class="goal-ring-center">
-                <strong id="goalRingPercent">—</strong>
+                <strong id="goalRingPercent">-</strong>
               </div>
             </div>
             <p class="goal-ring-caption" id="goalRingCaption">Nenhuma meta cadastrada</p>
@@ -2724,15 +2753,15 @@
             </div><span class="period-pill" id="goalStatus">Meta</span>
           </div>
           <div class="metrics" style="margin-top:16px">
-            <div class="metric"><span>Meta total</span><strong id="goalTotal">—</strong></div>
-            <div class="metric"><span>% da meta atingida</span><strong id="goalPercent">—</strong></div>
-            <div class="metric"><span>Faltam</span><strong id="goalRemaining">—</strong></div>
-            <div class="metric"><span>Ritmo necessário por dia</span><strong id="goalNeeded">—</strong></div>
-            <div class="metric"><span>Ritmo atual por dia</span><strong id="goalPace">—</strong></div>
-            <div class="metric"><span>Ritmo do período x meta mensal</span><strong id="goalMonthly">—</strong></div>
-            <div class="metric"><span>Projeção fim do mês</span><strong id="goalEndMonth">—</strong></div>
-            <div class="metric"><span>Projeção fim do ano</span><strong id="goalEndYear">—</strong></div>
-            <div class="metric"><span>Data estimada da meta</span><strong id="goalProjection">—</strong></div>
+            <div class="metric"><span>Meta total</span><strong id="goalTotal">-</strong></div>
+            <div class="metric"><span>% da meta atingida</span><strong id="goalPercent">-</strong></div>
+            <div class="metric"><span>Faltam</span><strong id="goalRemaining">-</strong></div>
+            <div class="metric"><span>Ritmo necessário por dia</span><strong id="goalNeeded">-</strong></div>
+            <div class="metric"><span>Ritmo atual por dia</span><strong id="goalPace">-</strong></div>
+            <div class="metric"><span>Ritmo do período x meta mensal</span><strong id="goalMonthly">-</strong></div>
+            <div class="metric"><span>Projeção fim do mês</span><strong id="goalEndMonth">-</strong></div>
+            <div class="metric"><span>Projeção fim do ano</span><strong id="goalEndYear">-</strong></div>
+            <div class="metric"><span>Data estimada da meta</span><strong id="goalProjection">-</strong></div>
           </div>
         </section>
         <section class="metrics-pair" style="margin-top:16px">
@@ -2744,15 +2773,15 @@
             </div><span class="period-pill">Relatório</span>
           </div>
           <div class="metrics" style="margin-top:16px">
-            <div class="metric"><span>Crescimento líquido</span><strong id="netGrowth">—</strong></div>
-            <div class="metric"><span>Taxa de crescimento</span><strong id="growthRate">—</strong></div>
-            <div class="metric"><span>Média líquida por dia</span><strong id="dailyRate">—</strong></div>
-            <div class="metric"><span>Maior crescimento diário</span><strong id="bestDay">—</strong></div>
-            <div class="metric"><span>Menor crescimento diário</span><strong id="worstDay">—</strong></div>
-            <div class="metric"><span>Média móvel 7 dias</span><strong id="ma7">—</strong></div>
-            <div class="metric"><span>Média móvel 30 dias</span><strong id="ma30">—</strong></div>
-            <div class="metric"><span>Acumulado no mês</span><strong id="mtd">—</strong></div>
-            <div class="metric"><span>Acumulado no ano</span><strong id="ytd">—</strong></div>
+            <div class="metric"><span>Crescimento líquido</span><strong id="netGrowth">-</strong></div>
+            <div class="metric"><span>Taxa de crescimento</span><strong id="growthRate">-</strong></div>
+            <div class="metric"><span>Média líquida por dia</span><strong id="dailyRate">-</strong></div>
+            <div class="metric"><span>Maior crescimento diário</span><strong id="bestDay">-</strong></div>
+            <div class="metric"><span>Menor crescimento diário</span><strong id="worstDay">-</strong></div>
+            <div class="metric"><span>Média móvel 7 dias</span><strong id="ma7">-</strong></div>
+            <div class="metric"><span>Média móvel 30 dias</span><strong id="ma30">-</strong></div>
+            <div class="metric"><span>Acumulado no mês</span><strong id="mtd">-</strong></div>
+            <div class="metric"><span>Acumulado no ano</span><strong id="ytd">-</strong></div>
           </div>
         </section>
         <section class="card" id="comparePanel">
@@ -2763,12 +2792,12 @@
             </div><span class="period-pill">Tendência</span>
           </div>
           <div class="metrics" style="margin-top:16px">
-            <div class="metric"><span>vs. dia anterior</span><strong id="cmpDay">—</strong></div>
-            <div class="metric"><span>vs. semana anterior</span><strong id="cmpWeek">—</strong></div>
-            <div class="metric"><span>vs. mês anterior</span><strong id="cmpMonth">—</strong></div>
-            <div class="metric"><span>Variação vs. período anterior</span><strong id="cmpPeriod">—</strong></div>
-            <div class="metric"><span>Aceleração do crescimento</span><strong id="cmpAccel">—</strong></div>
-            <div class="metric"><span>Melhor dia da semana</span><strong id="cmpWeekday">—</strong></div>
+            <div class="metric"><span>vs. dia anterior</span><strong id="cmpDay">-</strong></div>
+            <div class="metric"><span>vs. semana anterior</span><strong id="cmpWeek">-</strong></div>
+            <div class="metric"><span>vs. mês anterior</span><strong id="cmpMonth">-</strong></div>
+            <div class="metric"><span>Variação vs. período anterior</span><strong id="cmpPeriod">-</strong></div>
+            <div class="metric"><span>Aceleração do crescimento</span><strong id="cmpAccel">-</strong></div>
+            <div class="metric"><span>Melhor dia da semana</span><strong id="cmpWeekday">-</strong></div>
           </div>
         </section>
         </section>
@@ -2781,27 +2810,27 @@
           </div>
           <div class="metrics" style="margin-top:16px">
             <div class="metric metric-spark">
-              <span>Novos seguidores</span><strong id="grossFollows">—</strong>
+              <span>Novos seguidores</span><strong id="grossFollows">-</strong>
               <div class="tile-spark" id="grossFollowsSpark"></div>
             </div>
             <div class="metric metric-spark">
-              <span>Deixaram de seguir</span><strong id="unfollows">—</strong>
+              <span>Deixaram de seguir</span><strong id="unfollows">-</strong>
               <div class="tile-spark" id="unfollowsSpark"></div>
             </div>
             <div class="metric metric-spark">
-              <span>Saldo (Insights da Meta)</span><strong id="insightNet">—</strong>
+              <span>Saldo (Insights da Meta)</span><strong id="insightNet">-</strong>
               <div class="tile-spark" id="insightNetSpark"></div>
             </div>
             <div class="metric metric-spark">
-              <span>Alcance</span><strong id="reach">—</strong>
+              <span>Alcance</span><strong id="reach">-</strong>
               <div class="tile-spark" id="reachSpark"></div>
             </div>
             <div class="metric metric-spark">
-              <span>Conversão alcance → follow</span><strong id="followConversion">—</strong>
+              <span>Conversão alcance → follow</span><strong id="followConversion">-</strong>
               <div class="tile-spark" id="followConversionSpark"></div>
             </div>
             <div class="metric metric-spark">
-              <span>Média de novos por dia</span><strong id="avgFollows">—</strong>
+              <span>Média de novos por dia</span><strong id="avgFollows">-</strong>
               <div class="tile-spark" id="avgFollowsSpark"></div>
             </div>
           </div>
@@ -2857,6 +2886,15 @@
         </button>
         <div class="section-divider-body" id="postsBody">
         <div class="section-divider-body-inner">
+        <section class="card" id="topPostsPanel" style="margin-bottom:16px">
+          <div class="head">
+            <div>
+              <h2>Destaques do período</h2>
+              <p class="muted" id="topPostsSummary">Aguardando a primeira coleta.</p>
+            </div>
+          </div>
+          <div class="posts-grid" id="topPostsGrid"></div>
+        </section>
         <section class="card posts-card" id="postsPanel">
           <div class="head">
             <div>
@@ -2914,14 +2952,14 @@
             </div><span class="period-pill" id="postsStatsNetworkPill">Instagram</span>
           </div>
           <div class="metrics" style="margin-top:16px">
-            <div class="metric"><span>Publicações coletadas</span><strong id="postsStatTotal">—</strong></div>
-            <div class="metric"><span>Reels/Shorts</span><strong id="postsStatReels">—</strong></div>
-            <div class="metric"><span>Posts/Vídeos</span><strong id="postsStatStatic">—</strong></div>
-            <div class="metric"><span>Curtidas totais</span><strong id="postsStatLikes">—</strong></div>
-            <div class="metric"><span>Comentários totais</span><strong id="postsStatComments">—</strong></div>
-            <div class="metric"><span>Engajamento total</span><strong id="postsStatInteractions">—</strong></div>
-            <div class="metric"><span>Visualizações totais</span><strong id="postsStatViews">—</strong></div>
-            <div class="metric"><span>Salvamentos totais</span><strong id="postsStatSaved">—</strong></div>
+            <div class="metric"><span>Publicações coletadas</span><strong id="postsStatTotal">-</strong></div>
+            <div class="metric"><span>Reels/Shorts</span><strong id="postsStatReels">-</strong></div>
+            <div class="metric"><span>Posts/Vídeos</span><strong id="postsStatStatic">-</strong></div>
+            <div class="metric"><span>Curtidas totais</span><strong id="postsStatLikes">-</strong></div>
+            <div class="metric"><span>Comentários totais</span><strong id="postsStatComments">-</strong></div>
+            <div class="metric"><span>Engajamento total</span><strong id="postsStatInteractions">-</strong></div>
+            <div class="metric"><span>Visualizações totais</span><strong id="postsStatViews">-</strong></div>
+            <div class="metric"><span>Salvamentos totais</span><strong id="postsStatSaved">-</strong></div>
           </div>
         </section>
         </div>
@@ -2939,13 +2977,28 @@
             aria-label="Fechar">×</button></div>
       </div>
       <div class="modal-body">
-        <p>O YouTube arredonda o total de inscritos que devolve por API — o número aqui só muda de milhar em
+        <p>O YouTube arredonda o total de inscritos que devolve por API - o número aqui só muda de milhar em
           milhar (ex.: 41.059 vira <b>~41.0k</b>; só quando passar de 41.100 é que vira <b>~41.1k</b>), mesmo o
           canal ganhando inscritos todo dia.</p>
         <p>É assim em qualquer painel que use dados do YouTube, não é uma limitação deste portal. O número exato
           só existe dentro do YouTube Studio, para quem administra o canal.</p>
       </div>
       <div class="modal-footer"><button type="button" class="btn" id="youtubeApproxDone">Entendi</button></div>
+    </section>
+  </div>
+  <div class="modal-backdrop" id="emailReportBackdrop" aria-hidden="true">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="emailReportTitle">
+      <div class="modal-header">
+        <h2 id="emailReportTitle">Relatório por e-mail</h2>
+        <div class="modal-header-actions"><button type="button" class="modal-close" id="emailReportClose"
+            aria-label="Fechar">×</button></div>
+      </div>
+      <div class="modal-body">
+        <p class="muted" style="margin:0 0 8px">Texto pronto para a diretoria, com os números do período selecionado. Revise e ajuste antes de enviar; ao copiar, o negrito e os links seguem junto.</p>
+        <div id="emailReportText" contenteditable="true" spellcheck="false" style="max-height:60vh;overflow:auto;padding:16px 18px;border:1px solid var(--border);border-radius:10px;background:#fff;color:#222;outline:none"></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn ghost" id="emailReportCopy">Copiar texto</button><button
+          type="button" class="btn" id="emailReportOpen">Abrir no Outlook</button></div>
     </section>
   </div>
   <div class="modal-backdrop" id="goalsControlBackdrop" aria-hidden="true">
@@ -2982,7 +3035,7 @@
           </li>
           <li><i class="workflow-info-icon">~</i>
             <div><b>YouTube é aproximado</b><span>O próprio YouTube arredonda o total de inscritos que entrega por
-                API — o número aqui aparece como "~41.0k" e só muda de casa decimal em casa decimal (ex.: 41.059
+                API - o número aqui aparece como "~41.0k" e só muda de casa decimal em casa decimal (ex.: 41.059
                 vira ~41.0k; só ao passar de 41.100 vira ~41.1k), mesmo o canal ganhando inscritos todo dia. É assim
                 em qualquer painel que use dados do YouTube; o valor exato só existe dentro do YouTube Studio.
                 Toque no ícone ao lado do número para ver essa explicação de novo.</span></div>
@@ -2993,12 +3046,12 @@
           </li>
           <li><i class="workflow-info-icon">▾</i>
             <div><b>Por plataforma</b><span>Clique em um card de rede social para filtrar todas as métricas abaixo por
-                ela — o Instagram vem selecionado por padrão.</span></div>
+                ela - o Instagram vem selecionado por padrão.</span></div>
           </li>
           <li><i class="workflow-info-icon">IG</i>
             <div><b>Exclusivo do Instagram</b><span>Insights de novos seguidores/alcance e o ranking de posts (seções
-                "Performance em números" e "Conteúdo do Instagram") só existem para o Instagram — somem sozinhos ao
-                selecionar outra rede. O ranking de posts também segue o período escolhido no topo da página — para o
+                "Performance em números" e "Conteúdo do Instagram") só existem para o Instagram - somem sozinhos ao
+                selecionar outra rede. O ranking de posts também segue o período escolhido no topo da página - para o
                 Instagram, cobre o histórico completo da conta; YouTube e Facebook ainda cobrem só os posts recentes
                 coletados.</span></div>
           </li>
