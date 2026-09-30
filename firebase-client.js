@@ -293,7 +293,7 @@ export async function markNotificationRead(id) {
 }
 
 // Autoatendimento do menu "Perfil" (portal-shell.js): qualquer usuário ativo pode alterar seu
-// próprio nome/foto — nunca role/status/email, travado nas regras do Firestore
+// próprio nome/foto - nunca role/status/email, travado nas regras do Firestore
 // (match /users/{userId}, affectedKeys().hasOnly(['lastAccessAt','name','photo'])), então mesmo
 // uma chamada forjada pelo console do navegador não consegue se autopromover por aqui.
 export async function updateOwnProfile(patch) {

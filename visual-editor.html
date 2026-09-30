@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Editor Visual — Calendário de Postagens</title>
+  <title>Editor Visual - Calendário de Postagens</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -33,7 +33,7 @@
           <div class="page-header-actions" id="pageHeaderActions">
             <!-- Busca de postagens: em repouso é só a lupa; ao clicar, ela vira uma barra grande que
              toma o lugar de Configurações/Nova postagem (mesmo efeito de "abrir e expandir no
-             lugar" do app da Vonder) — X para fechar, campo de texto, lupa decorativa no fim.
+             lugar" do app da Vonder) - X para fechar, campo de texto, lupa decorativa no fim.
              Os resultados aparecem soltos embaixo da barra, com a largura toda dela. -->
             <div class="search-wrap" id="searchWrap">
               <button type="button" id="openSearch" class="btn-icon search-toggle-btn" aria-haspopup="true"
@@ -253,7 +253,7 @@
             </div>
           </div>
           <!-- Modal de Exportação de Briefing: escolhe o período (semanal, quinzenal, mensal,
-           bimestral, trimestral, semestral, anual ou datas livres) antes de gerar o .docx —
+           bimestral, trimestral, semestral, anual ou datas livres) antes de gerar o .docx -
            os presets só preenchem De/Até, o período exportado é sempre o que estiver nos campos -->
           <div id="exportBriefingBackdrop" class="modal-backdrop">
             <div class="modal modal--narrow" role="dialog" aria-modal="true">
@@ -386,17 +386,17 @@
                         <div id="newNetIconPicker"></div>
                       </div>
                       <div style="font-size:11.5px;color:var(--muted);margin:2px 0 -2px">Cada rede tem seus próprios
-                        formatos (ex: Instagram = Feed, Stories, Reels) — clique numa rede para configurá-los.</div>
+                        formatos (ex: Instagram = Feed, Stories, Reels) - clique numa rede para configurá-los.</div>
                       <div id="netsList" style="display:flex;flex-direction:column;gap:6px;margin-top:6px"></div>
                     </div>
 
                     <div class="settings-panel" id="secEditorias">
                       <div style="display:flex;align-items:center;justify-content:space-between">
-                        <div style="font-size:11.5px;color:var(--muted)">Categorias de conteúdo — opcionalmente com dias
+                        <div style="font-size:11.5px;color:var(--muted)">Categorias de conteúdo - opcionalmente com dias
                           fixos de publicação.</div>
                         <button type="button" id="toggleNewEditoriaBtn" class="btn ghost small">+ Adicionar</button>
                       </div>
-                      <!-- Formulário de nova editoria — fica oculto até "+ Adicionar" ser clicado -->
+                      <!-- Formulário de nova editoria - fica oculto até "+ Adicionar" ser clicado -->
                       <div id="newEditoriaForm"
                         style="display:none;flex-direction:column;gap:8px;margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface-muted)">
                         <div>
@@ -413,11 +413,11 @@
                         </div>
                       </div>
                       <!-- Navegador de mês: os dias fixos de cada editoria abaixo (chip e painel de
-                     edição) valem pro mês selecionado aqui — trocar de mês não mexe no
+                     edição) valem pro mês selecionado aqui - trocar de mês não mexe no
                      calendário de fundo, só no que esta lista está exibindo/editando. Clicar no
                      rótulo abre um popover com os 12 meses do ano (mesmo componente do rótulo de
                      mês do calendário principal); enquanto ele estiver aberto, as setas ‹ ›
-                     trocam de ano em vez de mês — ver renderEditoriasMonthPicker() em app.js. -->
+                     trocam de ano em vez de mês - ver renderEditoriasMonthPicker() em app.js. -->
                       <div id="editoriasMonthNav"
                         style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:7px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface-muted)">
                         <button type="button" id="editoriasMonthPrev" class="btn-icon"
@@ -443,7 +443,7 @@
                     </div>
 
                     <div class="settings-panel" id="secStatus">
-                      <div style="font-size:11.5px;color:var(--muted);margin:-2px 0 2px">Cor de cada etapa — aparece na
+                      <div style="font-size:11.5px;color:var(--muted);margin:-2px 0 2px">Cor de cada etapa - aparece na
                         barra lateral dos cards.</div>
                       <div style="display:flex;gap:8px;align-items:center">
                         <input id="newStatusInput" type="text" placeholder="Novo status" />
@@ -665,8 +665,8 @@
                     <div id="mCommemorativePostTypeField" hidden>
                       <label class="field-gap" for="mCommemorativePostType">Tipo de post da data</label>
                       <select id="mCommemorativePostType">
-                        <option value="custom">Personalizado — criar briefing</option>
-                        <option value="institutional">Institucional — criar no Editor de Posts</option>
+                        <option value="custom">Personalizado - criar briefing</option>
+                        <option value="institutional">Institucional - criar no Editor de Posts</option>
                       </select>
                     </div>
                   </div>
@@ -729,7 +729,7 @@
                       acordo com a editoria selecionada.</div>
                     <div id="contentSuggestions"></div>
                     <!-- Direcionamento aprendido pela Central de Inteligência (DNA da editoria
-                   selecionada), quando já houver referências analisadas — ver
+                   selecionada), quando já houver referências analisadas - ver
                    renderIntelSuggestBox() em app.js -->
                     <div id="intelSuggestBox" class="intel-modal-box" style="display:none"></div>
                   </div>
@@ -749,18 +749,18 @@
                         <label style="margin:0">Texto</label>
                         <div style="display:flex;gap:6px">
                           <!-- Gera um rascunho de legenda a partir dos dados reais do produto selecionado
-                       (destaques/aplicações/ficha técnica do catálogo) + estilo da editoria — ver
+                       (destaques/aplicações/ficha técnica do catálogo) + estilo da editoria - ver
                        generateCaptionDraft()/wireCaptionGenerator() em app.js -->
                           <button type="button" id="generateCaptionBtn" class="btn ghost small">Gerar legenda com
                             IA</button>
-                          <!-- Limpa o campo de texto — ver wireClearContentBtn() em app.js -->
+                          <!-- Limpa o campo de texto - ver wireClearContentBtn() em app.js -->
                           <button type="button" id="clearContentBtn" class="btn ghost small">Limpar conteúdo</button>
                         </div>
                       </div>
                       <textarea id="mNotes" rows="5"
                         placeholder="Escreva o conteúdo da publicação, a partir das sugestões acima ou do zero"></textarea>
                       <!-- Validação inteligente: compara este rascunho com o DNA da editoria
-                   selecionada — ver wireIntelValidation()/renderIntelValidation() em app.js -->
+                   selecionada - ver wireIntelValidation()/renderIntelValidation() em app.js -->
                       <div class="intel-modal-actions" style="margin-top:10px">
                         <button type="button" id="intelValidateBtn" class="btn ghost small">Analisar publicação</button>
                       </div>
@@ -817,7 +817,7 @@
                 class="btn">Confirmar</button></div>
           </div>
         </div>
-        <!-- Modal de confirmação: remover produto quando já há conteúdo escrito na publicação — avisa
+        <!-- Modal de confirmação: remover produto quando já há conteúdo escrito na publicação - avisa
          que o conteúdo (campo Texto) também será apagado antes de confirmar a remoção. Fica depois
          de #modalBackdrop no HTML de propósito, pra empilhar por cima dele (mesmo z-index, ordem no
          DOM decide) já que é aberto de dentro do modal de criar/editar postagem. -->

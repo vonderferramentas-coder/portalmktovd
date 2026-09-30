@@ -18,7 +18,7 @@
   const MENU_DOTS_PATH = '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>';
   const TRASH_PATH = '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>';
   const IMAGE_PATH = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.5-3.5a2 2 0 0 0-2.8 0L5 21"/>';
-  // Tamanho comum aos ícones de botão de ação (fechar, adicionar, editar, copiar) — cada um usava
+  // Tamanho comum aos ícones de botão de ação (fechar, adicionar, editar, copiar) - cada um usava
   // um número diferente (13 a 16px) e o "×" do fechar nem era SVG (era o caractere de texto "×",
   // que renderiza com peso/tamanho visual diferente de um SVG mesmo em font-size igual), então os
   // quatro ficavam visivelmente desalinhados lado a lado no cabeçalho do modal.
@@ -28,11 +28,11 @@
   const brand = (window.PortalBrand && (window.PortalBrand.list || []).find(item => item.id === window.PortalBrand.activeId)) || {};
   const brandKey = brand.id || 'default';
 
-  // Marketplaces por marca — cada marca do grupo vende em canais diferentes, mesmo padrão de
+  // Marketplaces por marca - cada marca do grupo vende em canais diferentes, mesmo padrão de
   // mapa por marca que BRAND_INTEGRATIONS usa em followers-dashboard.js. Hoje só a VONDER tem
   // marketplaces cadastrados; as demais mostram o estado vazio até alguém cadastrar os delas.
   // bg/ink = identidade visual pública de cada marketplace (usada no card e no cabeçalho do
-  // modal); image = foto de capa do card, proporção 3:4 — fica vazia até a arte chegar, e o card
+  // modal); image = foto de capa do card, proporção 3:4 - fica vazia até a arte chegar, e o card
   // cai num gradiente com a própria cor da marca enquanto isso (ver cardBackground).
   const MARKETPLACES_BY_BRAND = {
     default: [
@@ -45,12 +45,12 @@
   };
   // BASE_* são o ponto de partida fixo (nunca mutado); admin pode editar nome/foto (patch em
   // overrides.channels), duplicar (vira um registro completo em overrides.customChannels) ou
-  // excluir (marca deleted:true nos BASE_* — não dá pra remover do array fixo; ou remove de
+  // excluir (marca deleted:true nos BASE_* - não dá pra remover do array fixo; ou remove de
   // customChannels direto, já que esses não têm base nenhuma). Ver visibleMarketplaces/
   // visibleInstitucionais logo depois da seção de persistência.
   const BASE_MARKETPLACES = MARKETPLACES_BY_BRAND[brandKey] || [];
 
-  // Canais institucionais (sites/portais próprios da VONDER, não marketplaces de terceiros) — mesmo
+  // Canais institucionais (sites/portais próprios da VONDER, não marketplaces de terceiros) - mesmo
   // padrão de card/modal/cadeado dos marketplaces acima, só numa seção própria e sem identidade
   // visual de marca externa (usam a paleta neutra da própria VONDER), exceto o Reclame AQUI, que
   // tem cor de marca real.
@@ -64,7 +64,7 @@
   };
   const BASE_INSTITUCIONAIS = INSTITUCIONAIS_BY_BRAND[brandKey] || [];
 
-  // Área de atuação dentro do marketplace — os formatos de Loja Oficial e de Ads são peças
+  // Área de atuação dentro do marketplace - os formatos de Loja Oficial e de Ads são peças
   // diferentes (medidas, contexto de uso), então cada marketplace tem os dois conjuntos
   // separados. Igual pra todo marketplace, por isso não entra no mapa por marca acima.
   const CATEGORIES = [
@@ -74,13 +74,13 @@
 
   // ---------------------------------------------------------------- conteúdo padrão dos "formatos"
   // Cada formato (Banner principal, Logotipo...) tem uma ou duas versões: Desktop+Mobile quando o
-  // arquivo muda por tela — é a mesma peça, só preparada pra dispositivos diferentes — ou uma
+  // arquivo muda por tela - é a mesma peça, só preparada pra dispositivos diferentes - ou uma
   // única ("Arquivo único") quando a mesma peça serve pras duas. Boas práticas são POR VERSÃO
   // (Desktop e Mobile podem ter orientações diferentes), não do formato como um todo. A ordem do
-  // array é a ordem em que aparecem no dropdown e no formulário de edição — Desktop antes de Mobile.
+  // array é a ordem em que aparecem no dropdown e no formulário de edição - Desktop antes de Mobile.
   const JPG_PNG_WEBP = '.jpg, .png ou .webp';
   const JPG_PNG = '.jpg e/ou .png';
-  const MARGENS_DESKTOP = 'No desktop, a peça tem 1920px de largura, mas a arte deve ficar concentrada nos 1180px centrais, com margens laterais de 370px pensando na aplicação dentro da página oficial. Nessas margens, use só elementos de composição — nada de texto ou informação essencial.';
+  const MARGENS_DESKTOP = 'No desktop, a peça tem 1920px de largura, mas a arte deve ficar concentrada nos 1180px centrais, com margens laterais de 370px pensando na aplicação dentro da página oficial. Nessas margens, use só elementos de composição - nada de texto ou informação essencial.';
   function bannerPrincipalDefault() {
     return {
       id: 'banner-principal', name: 'Banner principal',
@@ -126,7 +126,7 @@
       ]
     };
   }
-  const MAINSLIDER_DESKTOP_NOTE = 'A imagem deve ficar dentro da margem de segurança de 1200x340px e o texto dentro de 1150x280px, ambas centralizadas, para o conteúdo não ser cortado em nenhum dispositivo. Um degradê é aplicado automaticamente abaixo do conteúdo pelo próprio Main Slider, correspondendo a 30% da altura do criativo (150px) — não precisa ser desenhado na arte.';
+  const MAINSLIDER_DESKTOP_NOTE = 'A imagem deve ficar dentro da margem de segurança de 1200x340px e o texto dentro de 1150x280px, ambas centralizadas, para o conteúdo não ser cortado em nenhum dispositivo. Um degradê é aplicado automaticamente abaixo do conteúdo pelo próprio Main Slider, correspondendo a 30% da altura do criativo (150px) - não precisa ser desenhado na arte.';
   const MAINSLIDER_MOBILE_NOTE = 'O texto deve ficar dentro da margem de segurança de 1248x384px, centralizada, para não ser cortado em nenhum dispositivo.';
   function adsMainSliderDefault() {
     return {
@@ -134,20 +134,20 @@
       formats: [
         { id: 'desktop', label: 'Desktop', min: '1920x500 px', peso: '1 MB', formatos: JPG_PNG, boasPraticas: MAINSLIDER_DESKTOP_NOTE,
           safeAreas: [
-            { label: 'Margem de segurança — Imagem', w: 1200, h: 340, top: true },
-            { label: 'Margem de segurança — Texto', w: 1150, h: 280 }
+            { label: 'Margem de segurança - Imagem', w: 1200, h: 340, top: true },
+            { label: 'Margem de segurança - Texto', w: 1150, h: 280 }
           ],
-          // degradê automático do Main Slider na base do criativo (30% da altura = 150px) — só
+          // degradê automático do Main Slider na base do criativo (30% da altura = 150px) - só
           // informativo no preview, igual às safeAreas acima (ver shapeBoxSvg)
           gradientHeight: 150 },
         { id: 'mobile', label: 'Mobile', min: '1312x448 px', peso: '1 MB', formatos: JPG_PNG, boasPraticas: MAINSLIDER_MOBILE_NOTE,
           safeAreas: [
-            { label: 'Margem de segurança — Texto', w: 1248, h: 384 }
+            { label: 'Margem de segurança - Texto', w: 1248, h: 384 }
           ] }
       ]
     };
   }
-  // Conjunto-base por área (Loja Oficial x Ads são peças diferentes de verdade — medidas próprias
+  // Conjunto-base por área (Loja Oficial x Ads são peças diferentes de verdade - medidas próprias
   // cada uma), igual pra todo marketplace por ora, editável (lápis) em vez de vir vazio.
   // Ordem = ordem de exibição na lista.
   function defaultFormatsFor(categoryId) {
@@ -159,7 +159,7 @@
     CATEGORIES.forEach(c => { byCategory[c.id] = defaultFormatsFor(c.id); });
     return byCategory;
   }
-  // Só o Mercado Livre tem instruções levantadas até agora — os demais (inclusive os canais
+  // Só o Mercado Livre tem instruções levantadas até agora - os demais (inclusive os canais
   // institucionais) entram travados (cadeado no card, sem abrir modal) até alguém cadastrar as
   // medidas reais deles. Ver isChannelLocked.
   const DEFAULT_MODULES = {
@@ -190,12 +190,12 @@
   // social-goals-v1-* usa em followers-dashboard.js).
   // overrides[marketplaceId][categoryId][moduleId] guarda só as edições feitas pelo lápis nos
   // formatos padrão (DEFAULT_MODULES); formatos criados pelo botão "+" não têm base nenhuma pra
-  // herdar, então ficam inteiros em overrides[marketplaceId][categoryId].custom[id] — ver
+  // herdar, então ficam inteiros em overrides[marketplaceId][categoryId].custom[id] - ver
   // reloadCurrentModules/saveCustomModule.
   const STORE_KEY = 'marketplace-templates-v1';
   let storeVersion = 0;
   let fullStore = {}; // documento inteiro (todas as marcas)
-  let overrides = {}; // fullStore[brandKey] — só as edições desta marca
+  let overrides = {}; // fullStore[brandKey] - só as edições desta marca
 
   function moduleData(marketplaceId, categoryId, base) {
     const ov = (((overrides[marketplaceId] || {})[categoryId]) || {})[base.id];
@@ -251,12 +251,12 @@
     });
   }
 
-  // Cards de marketplace/institucional (nome + foto), só pra admin (ver applyAdminVisibility) —
+  // Cards de marketplace/institucional (nome + foto), só pra admin (ver applyAdminVisibility) -
   // mesma mecânica de overrides acima, só que por canal em vez de por formato.
   // overrides.channels[id] = patch (name/image) por cima de um BASE_* existente, ou {deleted:true}
   // pra "excluir" um BASE_* (não dá pra remover de um array fixo no código).
   // overrides.customChannels[id] = registro completo (duplicado pelo admin), sem base nenhuma pra
-  // herdar — excluir aqui é remover a chave de verdade, não só marcar deleted.
+  // herdar - excluir aqui é remover a chave de verdade, não só marcar deleted.
   function saveChannelPatch(channelId, patch) {
     const gateway = window.PortalFirebase;
     if (!gateway || typeof gateway.writePortalStore !== 'function') {
@@ -330,7 +330,7 @@
     return BASE_INSTITUCIONAIS.filter(b => !isChannelDeleted(b.id)).map(channelData).concat(customChannelsFor('institucionais'));
   }
   // Lookup único usado pelo modal de formatos (card clicado pode vir de qualquer uma das duas
-  // galerias, mas reaproveitam o mesmo modal — ver openModal/showCategoryView/showFormatsView).
+  // galerias, mas reaproveitam o mesmo modal - ver openModal/showCategoryView/showFormatsView).
   function allVisibleChannels() {
     return visibleMarketplaces().concat(visibleInstitucionais());
   }
@@ -339,7 +339,7 @@
   // Composição do card seguindo a referência anexada: foto de capa 3:4, gradiente escuro por
   // cima pra legibilidade do texto, nome + estatística, e um botão pill semi-transparente no
   // rodapé. Sem a foto de capa ainda (image vazio em MARKETPLACES_BY_BRAND), cai num gradiente
-  // com a própria cor da marca — dá pra trocar por uma foto real a qualquer momento sem mexer em
+  // com a própria cor da marca - dá pra trocar por uma foto real a qualquer momento sem mexer em
   // mais nada além do campo `image`.
   function shade(hex, amount) {
     const n = parseInt(hex.replace('#', ''), 16);
@@ -358,13 +358,13 @@
     CATEGORIES.forEach(c => defaultsFor(m.id, c.id).forEach(mod => { formatsCount += mod.formats.length; }));
     return `${CATEGORIES.length} áreas · ${formatsCount} formatos`;
   }
-  // Canal travado: card em tons de cinza com cadeado no lugar da seta, sem clique — ainda não
+  // Canal travado: card em tons de cinza com cadeado no lugar da seta, sem clique - ainda não
   // temos as medidas reais dele pra mostrar (ver DEFAULT_MODULES/isChannelLocked). Mesma função
-  // desenha tanto a galeria de Marketplaces quanto a de Institucionais — ambas reaproveitam o
+  // desenha tanto a galeria de Marketplaces quanto a de Institucionais - ambas reaproveitam o
   // mesmo modal de formatos (ver allVisibleChannels/openModal).
   //
   // O card virou <div role="button"> em vez de <button> pra caber o botão de reticências (só
-  // admin, ver applyAdminVisibility) como filho de verdade — um <button> dentro de outro <button>
+  // admin, ver applyAdminVisibility) como filho de verdade - um <button> dentro de outro <button>
   // é HTML inválido e o navegador "recupera" fechando o de fora cedo, quebrando o clique. O div
   // replica o comportamento de botão nativo (tabindex, Enter/Espaço) só quando não está travado.
   function renderChannelGallery(rowId, emptyId, list, group, emptyMessage) {
@@ -419,7 +419,7 @@
 
   // ---------------------------------------------------------------- admin: editar/duplicar/excluir card
   // "... " só aparece pra quem está logado como admin (ver auth-guard.js, que grava o papel em
-  // document.body.dataset.userRole depois que a sessão resolve — como é um script módulo, pode
+  // document.body.dataset.userRole depois que a sessão resolve - como é um script módulo, pode
   // resolver depois deste script clássico, daí o polling, mesmo padrão que a badge de notificação
   // usa em portal-shell.js).
   let isAdmin = false;
@@ -435,7 +435,7 @@
     applyAdminVisibility();
   }
 
-  // Menu flutuante "Editar / Duplicar / Excluir" — mesmo componente (.portal-brand-popover /
+  // Menu flutuante "Editar / Duplicar / Excluir" - mesmo componente (.portal-brand-popover /
   // .portal-account-menu) e mecânica de posicionamento/fechamento (fixed sob o botão, fecha ao
   // clicar fora/rolar/redimensionar) do menu "Mais ações" de admin-users.js.
   let channelMenuEl = null;
@@ -488,7 +488,7 @@
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        // recorta pro mesmo 3:4 do card (cover, sem distorcer) antes de comprimir — assim a foto
+        // recorta pro mesmo 3:4 do card (cover, sem distorcer) antes de comprimir - assim a foto
         // usada em cardBackground já chega pronta pro enquadramento, sem depender do CSS pra cortar.
         const targetRatio = 3 / 4;
         const srcRatio = img.width / img.height;
@@ -570,7 +570,7 @@
     document.getElementById('tplChannelConfirmTitle').textContent = isDelete ? 'Excluir card?' : 'Duplicar card?';
     document.getElementById('tplChannelConfirmMessage').textContent = isDelete
       ? `"${ch.name}" será removido desta lista. Essa ação não pode ser desfeita.`
-      : `Será criada uma cópia de "${ch.name}" com o mesmo nome e foto — fica pendente (com cadeado) até alguém cadastrar os formatos dela.`;
+      : `Será criada uma cópia de "${ch.name}" com o mesmo nome e foto - fica pendente (com cadeado) até alguém cadastrar os formatos dela.`;
     const okBtn = document.getElementById('tplChannelConfirmOk');
     okBtn.textContent = isDelete ? 'Excluir' : 'Duplicar';
     okBtn.classList.toggle('ghost', isDelete);
@@ -615,11 +615,11 @@
 
   // ---------------------------------------------------------------- forma em escala real
   // A pré-visualização de cada versão é desenhada na proporção EXATA do tamanho mínimo daquela
-  // versão — mas "caber sozinha na própria coluna" (contain isolado) engana: um banner 1920×480
+  // versão - mas "caber sozinha na própria coluna" (contain isolado) engana: um banner 1920×480
   // (bem largo, então baixo dentro da coluna) e um logotipo 500×500 (quadrado, então alto dentro
-  // da MESMA coluna) acabavam desenhados em escalas diferentes um do outro — o menor parecia
+  // da MESMA coluna) acabavam desenhados em escalas diferentes um do outro - o menor parecia
   // maior. A largura de cada versão aqui é uma fração da LARGURA do maior formato de TODA A
-  // LISTA aberta no momento (não só das versões do mesmo formato — ver currentListMaxWidth), pra
+  // LISTA aberta no momento (não só das versões do mesmo formato - ver currentListMaxWidth), pra
   // um bloco não parecer maior ou menor que os vizinhos por acaso da altura disponível; quem tem
   // a largura mínima maior desenha maior. O resto (altura) vem do viewBox/preserveAspectRatio,
   // que garante que a proporção real da versão nunca é distorcida.
@@ -627,18 +627,18 @@
     const m = /(\d+)\s*[x×]\s*(\d+)/i.exec(minStr || '');
     return m ? { w: Number(m[1]), h: Number(m[2]) } : { w: 1, h: 1 };
   }
-  // safeAreas (opcional) = [{ label, w, h, top? }] — margens de segurança da versão (ex.: onde a
+  // safeAreas (opcional) = [{ label, w, h, top? }] - margens de segurança da versão (ex.: onde a
   // imagem/o texto precisam ficar contidos), sempre centralizadas na horizontal. Cada margem é
   // aninhada dentro da anterior (a 1ª dentro do criativo inteiro): por padrão centralizada
   // também na vertical dentro desse container; com `top: true` fica encostada no topo do
   // container em vez de centralizada (ex.: a margem da imagem do Main Slider, que some por
-  // baixo do degradê — ver MAINSLIDER_DESKTOP_NOTE). Assim a margem de texto do Main Slider
+  // baixo do degradê - ver MAINSLIDER_DESKTOP_NOTE). Assim a margem de texto do Main Slider
   // Desktop fica centralizada dentro da margem de imagem, enquanto a margem de texto do Mobile
   // (única, sem `top`) fica centralizada no criativo inteiro. gradientHeight (opcional, em px do
   // próprio criativo) marca a faixa inferior onde um degradê é aplicado automaticamente (ex.:
-  // Main Slider do Mercado Livre — ver MAINSLIDER_DESKTOP_NOTE), desenhada como uma faixa
+  // Main Slider do Mercado Livre - ver MAINSLIDER_DESKTOP_NOTE), desenhada como uma faixa
   // sombreada rente à borda de baixo, atrás das safeAreas. Nenhum dos dois é editável pelo
-  // formulário de edição (ver editFormHtml) — sobrevivem a uma edição normal porque o merge de
+  // formulário de edição (ver editFormHtml) - sobrevivem a uma edição normal porque o merge de
   // overrides em moduleData() é aditivo, não substitui o formato base inteiro.
   function shapeBoxSvg(minStr, groupMaxWidth, safeAreas, gradientHeight) {
     const { w, h } = parseMin(minStr);
@@ -672,7 +672,7 @@
 
   // ---------------------------------------------------------------- lista de formatos (dropdowns)
   function copyFormatText(m, f) {
-    let text = `${m.name} — ${f.label}\nTamanho mínimo: ${f.min}\nPeso máximo: ${f.peso}\nArquivo: ${f.formatos}`;
+    let text = `${m.name} - ${f.label}\nTamanho mínimo: ${f.min}\nPeso máximo: ${f.peso}\nArquivo: ${f.formatos}`;
     if (f.boasPraticas) text += `\nBoas práticas: ${f.boasPraticas}`;
     return text;
   }
@@ -701,7 +701,7 @@
 
   // Cada versão (Desktop/Mobile/Arquivo único) vira um bloco de duas colunas do mesmo tamanho:
   // a pré-visualização na proporção real à esquerda, e tamanho mínimo + peso + arquivo + boas
-  // práticas daquela versão à direita — boas práticas é por versão porque Desktop e Mobile podem
+  // práticas daquela versão à direita - boas práticas é por versão porque Desktop e Mobile podem
   // pedir orientações diferentes.
   function formatBlockHtml(f, groupMaxWidth) {
     return `
@@ -724,9 +724,9 @@
       </div>`;
   }
 
-  // Largura mínima real (não a maior entre largura/altura — a real DIMENSÃO DE LARGURA, já que
+  // Largura mínima real (não a maior entre largura/altura - a real DIMENSÃO DE LARGURA, já que
   // todas as versões cadastradas são paisagem ou quadradas) do maior formato de TODA a lista
-  // aberta no momento — referência de escala única compartilhada por todos os blocos, pra um
+  // aberta no momento - referência de escala única compartilhada por todos os blocos, pra um
   // formato pequeno (ex.: Logotipo) nunca desenhar maior que um formato grande (ex.: Banner
   // principal) só porque calhou de ter menos texto ao lado e uma coluna mais baixa.
   function currentListMaxWidth() {
@@ -778,17 +778,17 @@
     });
   }
 
-  // Abre/fecha sem reconstruir a lista inteira — só anima a altura do painel (ver
+  // Abre/fecha sem reconstruir a lista inteira - só anima a altura do painel (ver
   // openPanel/closePanel) e preenche o conteúdo do formato que está abrindo. Reconstruir tudo a
   // cada clique (como antes) recriava os nós na hora do clique, então não havia "de" pra "para"
-  // pro CSS animar — os nós dos outros formatos agora sobrevivem ao toggle.
+  // pro CSS animar - os nós dos outros formatos agora sobrevivem ao toggle.
   //
   // A altura é medida em pixels (scrollHeight) em vez de usar só CSS (ex.: grid-template-rows
-  // 0fr/1fr) porque o painel tem conteúdo com min-height próprio (a caixa de pré-visualização) —
+  // 0fr/1fr) porque o painel tem conteúdo com min-height próprio (a caixa de pré-visualização) -
   // esse mínimo contamina o cálculo automático do CSS e o painel nunca chegava a 0 de verdade,
   // deixando uma sobra visível do formato fechado por baixo do próximo. Medir em pixel não tem
   // essa ambiguidade.
-  // "from" é medido ANTES de qualquer troca de conteúdo (quem chama garante isso) — se
+  // "from" é medido ANTES de qualquer troca de conteúdo (quem chama garante isso) - se
   // medíssemos depois de já ter reescrito o innerHTML (ex.: ao cancelar uma edição, voltando pro
   // modo leitura, mais curto), a caixa já teria pulado pro tamanho novo instantaneamente e não
   // haveria "de" nenhum pra animar, só um "para".
@@ -841,7 +841,7 @@
 
   // ---------------------------------------------------------------- edição
   // showModuleName só aparece pra formatos criados pelo botão "+" (sem nome fixo em
-  // DEFAULT_MODULES) — os formatos padrão (Banner principal etc.) mantêm o nome fixo.
+  // DEFAULT_MODULES) - os formatos padrão (Banner principal etc.) mantêm o nome fixo.
   function editFormHtml(m, showModuleName) {
     return `
       <form class="tpl-edit-form">
@@ -920,7 +920,7 @@
     const outer = document.querySelector(`#tplModuleList .tpl-module[data-module-id="${moduleId}"] .tpl-module-panel`);
     const inner = outer.querySelector('.tpl-module-panel-inner');
     inner.innerHTML = editFormHtml(m, isCustom);
-    outer.style.height = 'auto'; // o formulário tem altura diferente da leitura — não vale a pena animar essa troca
+    outer.style.height = 'auto'; // o formulário tem altura diferente da leitura - não vale a pena animar essa troca
     wireEditForm(inner, m, isCustom, false);
   }
 
@@ -974,7 +974,7 @@
   function openCategory(categoryId) {
     currentCategoryId = categoryId;
     reloadCurrentModules();
-    selectedModuleId = null; // todo módulo começa fechado — usuário abre o que quiser ver
+    selectedModuleId = null; // todo módulo começa fechado - usuário abre o que quiser ver
     showFormatsView();
     renderModuleList();
   }
@@ -992,7 +992,7 @@
     logo.style.background = mk.bg;
     logo.style.color = mk.ink;
     // --tpl-modal-ink é a cor de texto/ícone do cabeçalho inteiro (título, Voltar, fechar,
-    // adicionar) — ver comentário de .tpl-modal .modal-header em templates.html pra saber por quê.
+    // adicionar) - ver comentário de .tpl-modal .modal-header em templates.html pra saber por quê.
     const header = document.getElementById('tplModalHeader');
     header.style.setProperty('--tpl-modal-accent', mk.bg);
     header.style.setProperty('--tpl-modal-ink', mk.ink);
@@ -1026,7 +1026,7 @@
   renderGalleries();
   checkAdminRole();
   // templates.js é script clássico (sem defer) e sempre executa antes de auth-guard.js (type=module,
-  // só roda após o parsing do HTML terminar) importar firebase-client.js — chamar loadOverrides()
+  // só roda após o parsing do HTML terminar) importar firebase-client.js - chamar loadOverrides()
   // direto aqui sempre encontrava window.PortalFirebase indefinido, e a função desistia sem erro
   // (ver guarda no início dela), deixando overrides/fullStore vazios a sessão inteira: toda foto de
   // capa salva no editar do card sumia no próximo carregamento, e cada salvamento passava a reescrever

@@ -1,10 +1,10 @@
 # Copia uma cópia pontual (não contínua) de documentos de leitura pública/agregada do Firestore
-# de produção (mkt-ovd) para o Firestore de testes (mkt-ovd-hml) — só pra o painel de Redes
+# de produção (mkt-ovd) para o Firestore de testes (mkt-ovd-hml) - só pra o painel de Redes
 # Sociais e a Central de Inteligência não ficarem vazios ao testar no HML. Usado por
 # copiar-dados-prd-para-hml.yml, disparado manualmente (workflow_dispatch), nunca agendado: HML
 # não precisa de dado ao vivo, só de uma amostra pra testar a interface.
 #
-# Só copia os documentos abaixo — nunca a coleção portalStore inteira. Calendário
+# Só copia os documentos abaixo - nunca a coleção portalStore inteira. Calendário
 # (calendar-post-*), perfis/permissões (user-profiles-v1, page-permissions-v1) e notificações
 # são estado interativo do próprio ambiente HML; sobrescrever isso destruiria testes em
 # andamento e o isolamento que a separação HML/PRD existe pra garantir (ver
@@ -25,7 +25,7 @@ SINGLE_DOCS = [
     'facebook-posts-ferramentas-gerais-v1',
     'trends-v1',
 ]
-# Documentos que podem vir divididos em vários (posts-vonder-v1, posts-vonder-v1__2, ...) —
+# Documentos que podem vir divididos em vários (posts-vonder-v1, posts-vonder-v1__2, ...) -
 # ver scripts/publish_posts_firestore.py, chunkCount no primeiro documento.
 CHUNKED_DOCS = [
     'posts-vonder-v1',

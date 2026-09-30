@@ -342,7 +342,7 @@
                 if (f) i.dup = f; else first.set(i.code, i);
             });
         }
-        const dupText = i => 'Repetido — mesmo código ' + (i.dup.row ? 'da linha ' + i.dup.row : 'digitado antes') + (i.dup.desc ? ' (' + i.dup.desc + ')' : '') + '. Remova ou corrija';
+        const dupText = i => 'Repetido - mesmo código ' + (i.dup.row ? 'da linha ' + i.dup.row : 'digitado antes') + (i.dup.desc ? ' (' + i.dup.desc + ')' : '') + '. Remova ou corrija';
 
         // origem na planilha (linha em destaque, célula e aba); itens digitados não têm
         const where = i => i.row
@@ -361,7 +361,7 @@
             const info = {
                 err: () => '<strong>' + esc(i.raw) + '</strong><span>' + esc(i.error) + (i.desc ? ' · ' + esc(i.desc) : '') + '</span>',
                 dup: () => '<strong>' + i.code + '</strong><span>' + esc(dupText(i)) + '</span>',
-                pend: () => '<strong>' + i.code + '</strong><span>Corrigido — falta testar a leitura e aprovar</span>',
+                pend: () => '<strong>' + i.code + '</strong><span>Corrigido - falta testar a leitura e aprovar</span>',
                 ok: () => '<strong>' + i.code + '</strong><span>' + esc(i.desc || (i.note || kind(i.code))) + (i.desc && i.note ? ' · ' + i.note : '') + '</span>'
             }[st]();
             const acts = {

@@ -26,7 +26,7 @@
         }
         return '';
     }
-    function logoUrl(brand) { let saved=S.brandLogos[brand]; if(saved && saved.startsWith('data:')) return saved; let asset=logoCandidates(brand).find(item=>item.file===saved)||logoCandidates(brand)[0]; return asset?brandLogoDataUri(asset.file):''; } async function loadBrandAssets() { try { let assets=await fetch('post-editor-assets/brands/index.json').then(r=>r.ok?r.json():[]); S.brandAssets=Array.isArray(assets)?assets:[]; if(S.pages.length){pages();draw();} }catch(_){} } function load(file) { sourceName = file.name; currentGridId = null; currentGridVersion = 0; currentGridCreatedAt = 0; S.brandLogos = {}; let reader = new FileReader; reader.onload = event => { try { let workbook = XLSX.read(event.target.result, { type: 'array' }), rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '' }), headers = Object.keys(rows[0] || {}), cols = CartazColumns.detect(headers, rows), ovd = cols.ovd, fg = cols.fg, titleColumn = cols.title, productCode = cols.productCode || ovd, principal = cols.barcode, brand = cols.brand, price = cols.price; if (!ovd || !titleColumn || !principal) throw Error('Não identifiquei na planilha: ' + [!ovd && 'código do produto', !titleColumn && 'nome/título', !principal && 'código de barras'].filter(Boolean).join(', ') + '. Colunas lidas: ' + headers.join(' | ')); let groups = [], group, latestTitle = ''; rows.forEach((row, index) => { let item = { ovd: t(row[ovd]).replace(/\.\d+$/, ''), fg: t(row[fg]).replace(/\.\d+$/, ''), title: t(row[titleColumn]), code: t(row[productCode]), principal: t(row[principal]).replace(/\.\d+$/, ''), brand: t(row[brand]), price: t(row[price]) }; if (!item.ovd && !item.title && !item.code) return; if (item.title) latestTitle = item.title; if (item.principal && item.principal !== group?.principal) { group = { title: latestTitle, principal: item.principal, rows: [] }; groups.push(group) } if (!group) throw Error('Linha ' + (index + 2) + ' sem CÓDIGO PRINCIPAL antes dos produtos.'); if (!item.ovd) throw Error('Linha ' + (index + 2) + ' sem CÓDIGO OVD.'); group.rows.push(item) }); if (!groups.length) throw Error('Nenhum produto encontrado na planilha.'); let brandGroups = new Map();
+    function logoUrl(brand) { let saved=S.brandLogos[brand]; if(saved && saved.startsWith('data:')) return saved; let asset=logoCandidates(brand).find(item=>item.file===saved)||logoCandidates(brand)[0]; return asset?brandLogoDataUri(asset.file):''; } async function loadBrandAssets() { try { let assets=await fetch('post-editor-assets/brands/index.json').then(r=>r.ok?r.json():[]); S.brandAssets=Array.isArray(assets)?assets:[]; if(S.pages.length){pages();drawWhenIdle();} }catch(_){} } function load(file) { sourceName = file.name; currentGridId = null; currentGridVersion = 0; currentGridCreatedAt = 0; S.brandLogos = {}; let reader = new FileReader; reader.onload = event => { try { let workbook = XLSX.read(event.target.result, { type: 'array' }), rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '' }), headers = Object.keys(rows[0] || {}), cols = CartazColumns.detect(headers, rows), ovd = cols.ovd, fg = cols.fg, titleColumn = cols.title, productCode = cols.productCode || ovd, principal = cols.barcode, brand = cols.brand, price = cols.price; if (!ovd || !titleColumn || !principal) throw Error('Não identifiquei na planilha: ' + [!ovd && 'código do produto', !titleColumn && 'nome/título', !principal && 'código de barras'].filter(Boolean).join(', ') + '. Colunas lidas: ' + headers.join(' | ')); let groups = [], group, latestTitle = ''; rows.forEach((row, index) => { let item = { ovd: t(row[ovd]).replace(/\.\d+$/, ''), fg: t(row[fg]).replace(/\.\d+$/, ''), title: t(row[titleColumn]), code: t(row[productCode]), principal: t(row[principal]).replace(/\.\d+$/, ''), brand: t(row[brand]), price: t(row[price]) }; if (!item.ovd && !item.title && !item.code) return; if (item.title) latestTitle = item.title; if (item.principal && item.principal !== group?.principal) { group = { title: latestTitle, principal: item.principal, rows: [] }; groups.push(group) } if (!group) throw Error('Linha ' + (index + 2) + ' sem CÓDIGO PRINCIPAL antes dos produtos.'); if (!item.ovd) throw Error('Linha ' + (index + 2) + ' sem CÓDIGO OVD.'); group.rows.push(item) }); if (!groups.length) throw Error('Nenhum produto encontrado na planilha.'); let brandGroups = new Map();
     groups.forEach(group => { let brandName = group.rows.map(row => row.brand).find(Boolean) || 'SEM MARCA'; if (!brandGroups.has(brandName)) brandGroups.set(brandName, []); brandGroups.get(brandName).push(group) });
     S.pages = []; S.undo = []; updateUndo();
     [...brandGroups].sort(([a], [b]) => a.localeCompare(b, 'pt-BR')).forEach(([brandName, brandItems]) => S.pages.push(...paginate(brandName, brandItems)));
@@ -117,7 +117,7 @@
         let off = page.logoOff || [], shown = off.length ? page.brands.filter(brand => !off.includes(brand)) : [...new Set(page.items.map(item => groupBrand(item.group)))]; /* sem escolha manual: as marcas que têm produto na página; com escolha: as marcas marcadas, em TODAS as páginas do grupo (sempre há ao menos uma) */
         return '<div class="sheet-footer multi" aria-hidden="true">' + shown.map(brand => { let url = logoUrl(brand); return '<div class="sheet-logo-card">' + (url ? '<img src="' + e(url) + '" alt="">' : '<span>' + e(brand) + '</span>') + '</div>'; }).join('') + '</div>';
     }
-    function updateDashboard() { let items = S.pages.flatMap(page => page.items), brands = new Set(S.pages.flatMap(page => page.brands || [page.brand])).size; $('metricBrands').textContent = brands; $('metricProducts').textContent = items.reduce((sum, item) => sum + item.group.rows.length, 0); $('metricBarcodes').textContent = items.filter(item => !barcodeOk(item.group.rows[0].principal)).length; $('metricCodes').textContent = items.reduce((sum, item) => sum + (item.hiddenCodes || 0), 0); $('metricA4').textContent = S.pages.filter(page => page.format === 'A4').length; $('metricA3').textContent = S.pages.filter(page => page.format === 'A3').length; } function title(group) { let brand = group.rows.map(r => r.brand).find(Boolean); return brand ? group.title + ', ' + brand : group.title } function code(x) { let d = t(x).replace(/\D/g, ""); return d.length === 10 ? d.replace(/(\d{2})(\d{2})(\d{3})(\d{3})/, "$1 $2 $3 $4") : t(x) }
+    function updateDashboard() { let items = S.pages.flatMap(page => page.items), brands = new Set(S.pages.flatMap(page => page.brands || [page.brand])).size; $('metricBrands').textContent = brands; $('metricIssues').textContent = validatorFindings().reduce((sum, f) => sum + f.issues.length, 0); $('metricProducts').textContent = items.reduce((sum, item) => sum + item.group.rows.length, 0); $('metricBarcodes').textContent = items.filter(item => !barcodeOk(item.group.rows[0].principal)).length; $('metricCodes').textContent = items.reduce((sum, item) => sum + (item.hiddenCodes || 0), 0); $('metricA4').textContent = S.pages.filter(page => page.format === 'A4').length; $('metricA3').textContent = S.pages.filter(page => page.format === 'A3').length; } function title(group) { let brand = group.rows.map(r => r.brand).find(Boolean); return brand ? group.title + ', ' + brand : group.title } function code(x) { let d = t(x).replace(/\D/g, ""); return d.length === 10 ? d.replace(/(\d{2})(\d{2})(\d{3})(\d{3})/, "$1 $2 $3 $4") : t(x) }
     /* ponytail: quantas linhas uma variacao ocupa na lista de codigos e estimado por contagem de caracteres
        (30 = o maior texto que ja confirmamos coubesse numa linha só, ver "GIR - 100 m: 31 71 100 000"),
        não por medida real da fonte renderizada - pode errar por um caractere ou outro perto do limite,
@@ -169,7 +169,7 @@
         let codeLines = texts.map(text => '<div><span class="cd">' + e(text) + '</span></div>'), pairCodes = texts.map(text => '<span class="cd">' + e(text) + '</span>'), split = Math.ceil(pairCodes.length / 2);
         return twoCols ? pairCodes.slice(0, split).map((left, index) => { let right = pairCodes[split + index]; return '<div class="code-pair">' + left + (right ? '<span class="code-separator" aria-hidden="true">|</span>' + right : '') + '</div>'; }).join('') : codeLines.join('');
     }
-    function card(item, idx, pageIndex, probe = false) { let group = item.group, row = group.rows[0], displayTitle = item.title || title(group), photoState = item.photo || { x: 0, y: 0, scale: 1 }, a3 = S.pages[pageIndex].format === 'A3', url = photoUrl(row.ovd), photo = probe ? '' : (url ? '<img src="' + e(url) + '" alt="' + e(group.title) + '" crossorigin="anonymous" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>Foto indisponível<br>Cód. ' + e(row.ovd) + '</span>' : '<span>Sem código</span>'), big = item.size === 2,
+    function card(item, idx, pageIndex, probe = false) { let group = item.group, row = group.rows[0], displayTitle = item.title || title(group).toUpperCase(), photoState = item.photo || { x: 0, y: 0, scale: 1 }, a3 = S.pages[pageIndex].format === 'A3', url = photoUrl(row.ovd), photo = probe ? '' : (url ? '<img src="' + e(url) + '" alt="' + e(group.title) + '" crossorigin="anonymous" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>Foto indisponível<br>Cód. ' + e(row.ovd) + '</span>' : '<span>Sem código</span>'), big = item.size === 2,
     /* renderiza TODAS as variacoes (nao so uma estimativa por caractere de quantas cabem) - quem decide
        o corte real e trimOverflow(), chamado em draw() depois do card estar no DOM, medindo a altura
        verdadeira renderizada (ver comentario la). Isso substitui o corte antecipado via fitRows()/
@@ -183,7 +183,7 @@
        já recalcula o layout ao cruzar o limiar de 9 códigos, senão um card editado pra 3 códigos
        continuava marcado como "mais de 9" e preso em duas colunas. */
     override = item.linesOverride, codeCount = override ? override.count : group.rows.length, twoCols = override ? override.twoCols : (group.rows.length > 9 && !a3),
-    lines = override ? override.html : codesHtml(group.rows.map(r => code(r.code)), twoCols), style = 'grid-column:' + (item.col + 1) + ';grid-row:' + (item.gridRow + 1) + ' / span ' + item.size + ';--card-extra:' + (item.extraHeight || 0) + 'px', eanSvg = barcodeSvg(row.principal), eanInfo = gtin(row.principal); return '<article class="card' + (big ? ' big' : '') + (a3 ? ' a3' : '') + (item.center ? ' center' : '') + (item.pair ? ' pair' : '') + (item.extraHeight ? ' expand' : '') + '" data-codes="' + codeCount + '"' + (eanInfo?.ok ? '' : ' data-bad-barcode="1"') + ' data-idx="' + idx + '" data-page="' + pageIndex + '" style="' + style + '">' + '<div class="cutwarn" hidden title="Esses códigos não aparecem no cartão - avise quem for revisar"></div>' + '<h3 contenteditable="true" spellcheck="true" oninput="updateTitle(this);centerPhoto(this.closest(\'.card\'))">' + e(displayTitle) + '</h3><div class="photo" title="Dê dois cliques para editar a foto" style="transform:translate(' + photoState.x + 'px,' + photoState.y + 'px) scale(' + photoState.scale + ')">' + photo + '</div><div class="lines' + (twoCols ? ' two-cols' : '') + '" contenteditable="true" spellcheck="false" oninput="updateCodes(this)">' + lines + '</div>' + (eanSvg ? '<div class="ean' + (eanInfo.ok ? '' : ' ean-invalid') + '" onclick="addBarcode(this)" title="' + (eanInfo.ok ? 'Clique para editar o código de barras' : 'Dígito verificador não confere: clique para corrigir o código antes de imprimir') + '">' + eanSvg + '</div>' : '<div class="ean ean-missing" onclick="addBarcode(this)" title="Adicionar código de barras manualmente (EAN-8, UPC-A, EAN-13 ou ITF-14) - não aparece na impressão até ser preenchido">+ Código de barras</div>') + '<small>' + (S.codes[row.ovd] ? 'WMF ' + e(row.ovd) + ' encontrado' : 'WMF ' + e(row.ovd) + ' pendente') + '</small></article>' } /* A3: os códigos ficam numa coluna só, no tamanho normal; só reduz a fonte (.dense) se a lista alcançaria o título */
+    lines = override ? override.html : codesHtml(group.rows.map(r => code(r.code)), twoCols), style = 'grid-column:' + (item.col + 1) + ';grid-row:' + (item.gridRow + 1) + ' / span ' + item.size + ';--card-extra:' + (item.extraHeight || 0) + 'px', eanSvg = barcodeSvg(row.principal), eanInfo = gtin(row.principal); return '<article class="card' + (big ? ' big' : '') + (a3 ? ' a3' : '') + (item.center ? ' center' : '') + (item.pair ? ' pair' : '') + (item.extraHeight ? ' expand' : '') + '" data-codes="' + codeCount + '"' + (eanInfo?.ok ? '' : ' data-bad-barcode="1"') + ' data-idx="' + idx + '" data-page="' + pageIndex + '" style="' + style + '">' + '<div class="cutwarn" hidden title="Esses códigos não aparecem no cartão - avise quem for revisar"></div>' + '<h3 contenteditable="true" spellcheck="true" oninput="updateTitle(this);centerPhoto(this.closest(\'.card\'))">' + (item.titleHtml ? CartazTitleFormat.clean(item.titleHtml) : e(displayTitle)) + '</h3><div class="photo" title="Dê dois cliques para editar a foto" style="transform:translate(' + photoState.x + 'px,' + photoState.y + 'px) scale(' + photoState.scale + ')">' + photo + '</div><div class="lines' + (twoCols ? ' two-cols' : '') + '" contenteditable="true" spellcheck="false" oninput="updateCodes(this)">' + lines + '</div>' + (eanSvg ? '<div class="ean' + (eanInfo.ok ? '' : ' ean-invalid') + '" onclick="addBarcode(this)" title="' + (eanInfo.ok ? 'Clique para editar o código de barras' : 'Dígito verificador não confere: clique para corrigir o código antes de imprimir') + '">' + eanSvg + '</div>' : '<div class="ean ean-missing" onclick="addBarcode(this)" title="Adicionar código de barras manualmente (EAN-8, UPC-A, EAN-13 ou ITF-14) - não aparece na impressão até ser preenchido">+ Código de barras</div>') + '<small>' + (S.codes[row.ovd] ? 'WMF ' + e(row.ovd) + ' encontrado' : 'WMF ' + e(row.ovd) + ' pendente') + '</small></article>' } /* A3: os códigos ficam numa coluna só, no tamanho normal; só reduz a fonte (.dense) se a lista alcançaria o título */
     function fitLines(card) {
         let lines = card.querySelector('.lines'), h3 = card.querySelector('h3'); if (!lines || !h3) return; lines.style.maxHeight = '';
         if (card.classList.contains('a3')) { lines.classList.remove('dense', 'denser'); if (lines.scrollHeight > lines.getBoundingClientRect().bottom - h3.getBoundingClientRect().bottom - 6) lines.classList.add('dense'); if (lines.classList.contains('dense') && lines.scrollHeight > lines.clientHeight) lines.classList.add('denser'); }
@@ -272,7 +272,7 @@
     entra como uma linha a mais e sozinho já estoura a folga disponível (confirmado medindo caso real: com 2
     códigos curtos ainda faltam ~13px, com 3 faltam ~29px, independente do tamanho do cartão) - por isso a trava
     de seguranca abaixo (que mede a posicao REAL de .lines depois de renderizado) nunca libera a largura toda
-    com 2+ códigos, so serve pra cobrir o caso raro de um código único tao comprido que quebra em 3 linhas */ let h3 = card.querySelector('h3'), lines = card.querySelector('.lines'), photo = card.querySelector('.photo'); if (!h3 || !photo || card.classList.contains('a3')) return; let top = h3.offsetTop + h3.offsetHeight + 8, bottomBound = card.clientHeight - 66; photo.style.top = (top + Math.max(0, bottomBound - top - photo.offsetHeight) / 2) + 'px'; photo.style.bottom = 'auto'; photo.style.margin = '0'; let wide = +card.dataset.codes === 1 && lines && lines.offsetTop >= bottomBound + 8; photo.style.left = wide ? '28px' : 'auto'; photo.style.width = wide ? 'auto' : '110px' } function updateTitle(el) { snapshot('title'); let card = el.closest('.card'); fitLines(card); checkTitle(card); S.pages[+card.dataset.page].items[+card.dataset.idx].title = t(el.textContent); } function updateCodes(el) { snapshot('codes'); let card = el.closest('.card'), item = S.pages[+card.dataset.page].items[+card.dataset.idx],
+    com 2+ códigos, so serve pra cobrir o caso raro de um código único tao comprido que quebra em 3 linhas */ let h3 = card.querySelector('h3'), lines = card.querySelector('.lines'), photo = card.querySelector('.photo'); if (!h3 || !photo || card.classList.contains('a3')) return; let top = h3.offsetTop + h3.offsetHeight + 8, bottomBound = card.clientHeight - 66; photo.style.top = (top + Math.max(0, bottomBound - top - photo.offsetHeight) / 2) + 'px'; photo.style.bottom = 'auto'; photo.style.margin = '0'; let wide = +card.dataset.codes === 1 && lines && lines.offsetTop >= bottomBound + 8; photo.style.left = wide ? '28px' : 'auto'; photo.style.width = wide ? 'auto' : '110px' } function updateTitle(el) { snapshot('title'); let card = el.closest('.card'); fitLines(card); checkTitle(card); let item = S.pages[+card.dataset.page].items[+card.dataset.idx]; item.title = t(el.textContent); let html = CartazTitleFormat.sanitize(el); if (html) item.titleHtml = html; else delete item.titleHtml; } function updateCodes(el) { snapshot('codes'); let card = el.closest('.card'), item = S.pages[+card.dataset.page].items[+card.dataset.idx],
         texts = [...el.querySelectorAll('.cd')].map(span => t(span.textContent)).filter(Boolean), twoCols = texts.length > 9 && !card.classList.contains('a3');
         /* só reconstrói o HTML (1 <-> 2 colunas) quando apagar/adicionar código muda o layout que cabe -
            reescrever el.innerHTML a cada tecla (mesmo sem mudar o layout) jogaria o cursor pro início do
@@ -289,6 +289,15 @@
             let sheet = heading.closest('.sheet'), logo = getComputedStyle(sheet, '::after'), limit = sheet.getBoundingClientRect().left + sheet.clientWidth - (parseFloat(logo.right) || 0) - (parseFloat(logo.width) || 0) - 16;
             heading.querySelectorAll('strong, span').forEach(part => { part.style.fontSize = ''; let base = parseFloat(getComputedStyle(part).fontSize), size = base; while (size > base * .6 && part.getBoundingClientRect().right > limit) { size -= base * .04; part.style.fontSize = size + 'px'; } });
         });
+    }
+    /* Redesenho vindo de carregamentos em segundo plano (templates compartilhados em loadShared, logos das marcas em loadBrandAssets):
+       eles terminam segundos depois da importação e o draw() recria todos os cards, o que derrubava a seleção e o foco de quem já
+       estava editando um título/códigos. Enquanto há um campo editável da prévia com foco, adia o redesenho até a pessoa sair dele. */
+    function drawWhenIdle() {
+        let box = $('preview'), active = document.activeElement;
+        if (!(box && active && box.contains(active) && active.isContentEditable)) { draw(); return; }
+        if (S.drawPending) return; S.drawPending = true;
+        box.addEventListener('focusout', () => setTimeout(() => { S.drawPending = false; drawWhenIdle(); }, 0), { once: true });
     }
     function draw() {
         let selectedPages = (S.brand ? S.pages.filter(page => page.brand === S.brand) : S.pages).filter(page => (!S.printFormat || page.format === S.printFormat) && (!S.only || S.only.includes(page.brand))); if (!selectedPages.length) return; selectedPages.forEach(page => page.items.forEach(item => item.hiddenCodes = 0));
@@ -464,7 +473,7 @@
             + (S.logo ? '\n.sheet.custom-logo::after{background-image:url("' + S.logo + '")}' : '')
             + '\n.sheet-heading{color:' + (header.subColor || HEADER_DEFAULT.subColor) + '}.sheet-heading strong{background:' + (header.stripe || HEADER_DEFAULT.stripe) + ';color:' + (header.titleColor || HEADER_DEFAULT.titleColor) + '}';
         renderTemplateCards();
-        if (S.pages.length) draw();
+        if (S.pages.length) drawWhenIdle();
     }
     /* grava a peça no portalStore (tira o registro quando value é null); o texto do cabeçalho espera 0,8 s
        parado para não gravar a cada tecla. part agora é "<template>-<peça>" (ex.: "feira-A4") ou "active". */
@@ -730,7 +739,7 @@
                 if (exportCancelled) { let error = Error('Exportação cancelada.'); error.name = 'AbortError'; throw error; }
                 let sheet = preview.querySelector('.sheet[data-page="' + pageIndex + '"]');
                 if (!sheet) throw Error('Não foi possível preparar a página ' + (index + 1) + '.');
-                updateExportProgress(index / targets.length * 90, index, targets.length, 'Gerando página ' + (index + 1) + ' de ' + targets.length + ' — ' + page.brand);
+                updateExportProgress(index / targets.length * 90, index, targets.length, 'Gerando página ' + (index + 1) + ' de ' + targets.length + ' - ' + page.brand);
                 await yieldExportUi();
                 let canvas, image;
                 try {
@@ -798,6 +807,122 @@
     document.addEventListener('click', event => { if (!event.target.closest('.action-menu')) closeActionMenus(); });
     document.addEventListener('pointerdown', event => { if (!event.target.closest('.card .photo')) document.querySelectorAll('.photo.photo-editing').forEach(photo => photo.classList.remove('photo-editing')); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeActionMenus(); });
+    /* Validador de textos (cartaz-validator.js): observações sobre o título de cada card (acentos, pontuação, hífen, duplicidade,
+       concordância, unidades de medida). Duas formas de trabalhar: o modal lista tudo (corrigir uma a uma ou tudo que for automático)
+       e a barra de revisão leva de observação em observação, rolando até o título do card e fazendo o campo brilhar. */
+    let validatorState = [], review = null; // review: { index } enquanto a barra de revisão está aberta
+    function cardText(item) { return item.title || title(item.group).toUpperCase(); }
+    function validatorFindings() {
+        let out = [];
+        S.pages.forEach((page, pi) => page.items.forEach((item, ii) => {
+            let issues = CartazValidator.check(cardText(item), { codes: item.group.rows.length, html: item.titleHtml });
+            if (issues.length) out.push({ pi, ii, page, text: cardText(item), issues });
+        }));
+        return out;
+    }
+    function applyIssue(item, issue) {
+        let result = CartazValidator.apply(cardText(item), item.titleHtml, issue);
+        item.title = result.title; if (result.titleHtml) item.titleHtml = result.titleHtml; else delete item.titleHtml;
+    }
+    const canFix = issue => issue.replace != null || !!issue.italic;
+    const validatorSteps = () => validatorFindings().flatMap(f => f.issues.map(issue => ({ f, issue })));
+    const KIND = { acento: 'Acentuação', caractere: 'Caractere', pontuacao: 'Pontuação', hifen: 'Hífen', duplicidade: 'Palavra repetida', concordancia: 'Concordância', unidade: 'Unidade de medida', italico: 'Itálico' };
+    const LEVEL = { erro: 'Erro', aviso: 'Aviso' };
+    // "antes -> depois" da correção sugerida (ou o que será aplicado, no caso do itálico)
+    function issueDiff(issue) {
+        if (issue.italic) return { from: issue.italic, to: issue.italic, italic: true };
+        return issue.replace != null ? { from: issue.find, to: issue.replace } : null;
+    }
+    const diffHtml = diff => diff ? '<span class="cg-diff"><s>' + e(diff.from) + '</s><i aria-hidden="true">&rarr;</i>' + (diff.italic ? '<b><em>' + e(diff.to) + '</em> (itálico)</b>' : '<b>' + e(diff.to) + '</b>') + '</span>' : '';
+    let validatorFilter = 'todos';
+    function renderValidator() {
+        let findings = validatorState = validatorFindings(), all = findings.flatMap(f => f.issues), total = all.length, errors = all.filter(i => i.level === 'erro').length;
+        if (validatorFilter !== 'todos' && !all.some(i => i.level === validatorFilter)) validatorFilter = 'todos';
+        $('validatorSummary').textContent = total ? total + ' observação(ões) em ' + findings.length + ' card(s). Erros têm correção sugerida; avisos pedem a sua conferência.' : (S.pages.length ? 'Nenhuma observação nos títulos. Tudo certo!' : 'Importe uma planilha para validar os textos.');
+        $('validatorFixAll').disabled = !all.some(canFix);
+        $('validatorReview').disabled = !total;
+        $('validatorFilters').hidden = !total;
+        $('validatorFilters').innerHTML = [['todos', 'Todas', total], ['erro', 'Erros', errors], ['aviso', 'Avisos', total - errors]].map(([key, label, count]) => '<button type="button" class="cg-vfilter' + (validatorFilter === key ? ' active' : '') + '" data-filter="' + key + '" aria-pressed="' + (validatorFilter === key) + '"' + (count ? '' : ' disabled') + '>' + label + ' <b>' + count + '</b></button>').join('');
+        let step = 0;
+        $('validatorList').innerHTML = findings.map((f, fi) => {
+            let rows = f.issues.map((issue, xi) => {
+                let index = step++; if (validatorFilter !== 'todos' && issue.level !== validatorFilter) return '';
+                return '<li class="' + issue.level + '"><div class="cg-vissue"><div class="cg-vissue-tags"><span class="cg-validator-badge ' + issue.level + '">' + LEVEL[issue.level] + '</span><span class="cg-vbar-kind">' + KIND[issue.kind] + '</span></div>'
+                    + '<p>' + e(issue.message) + '</p>' + diffHtml(issueDiff(issue)) + '</div><div class="cg-vissue-actions">'
+                    + (canFix(issue) ? '<button type="button" class="cg-vprimary" data-fix="' + fi + ':' + xi + '">Corrigir</button>' : '') + '<button type="button" data-goto="' + index + '">Ver no cartaz</button></div></li>';
+            }).join('');
+            return rows ? '<section class="cg-validator-card"><header><span><b>' + e(f.page.name) + '</b> · card ' + (f.ii + 1) + '</span></header><p class="cg-validator-title">' + e(f.text) + '</p><ul>' + rows + '</ul></section>' : '';
+        }).join('');
+    }
+    function openValidator() { closeReview(); renderValidator(); $('validatorDialog').showModal(); }
+    // vai até a observação `review.index`: mostra a marca certa, rola até o título do card e o faz brilhar
+    function focusStep() {
+        let steps = validatorSteps(), bar = $('validatorBar');
+        if (!steps.length) { closeReview(); toast('Nenhuma observação restante nos títulos.'); return; }
+        review.index = (review.index + steps.length) % steps.length;
+        let { f, issue } = steps[review.index], diff = issueDiff(issue);
+        bar.hidden = false;
+        $('vbarCount').textContent = (review.index + 1) + ' de ' + steps.length; $('vbarFill').style.width = ((review.index + 1) / steps.length * 100) + '%';
+        $('vbarWhere').textContent = f.page.name + ' · card ' + (f.ii + 1);
+        $('vbarBadge').textContent = LEVEL[issue.level]; $('vbarBadge').className = 'cg-validator-badge ' + issue.level; $('vbarKind').textContent = KIND[issue.kind];
+        $('vbarMsg').textContent = issue.message;
+        $('vbarDiff').hidden = !diff; $('vbarHint').hidden = !!diff;
+        if (diff) { $('vbarFrom').textContent = diff.from; $('vbarTo').textContent = diff.italic ? diff.to + ' (itálico)' : diff.to; $('vbarTo').classList.toggle('italic', !!diff.italic); }
+        $('vbarFix').disabled = !canFix(issue); review.done = false;
+        if (S.brand !== f.page.brand) relayout(f.page.brand);
+        flashTitle(f.pi, f.ii);
+    }
+    function flashTitle(pi, ii) {
+        let h3 = document.querySelector('.card[data-page="' + pi + '"][data-idx="' + ii + '"] h3');
+        if (!h3) return;
+        h3.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        h3.classList.remove('cg-flash'); void h3.offsetWidth; h3.classList.add('cg-flash'); clearTimeout(flashTitle.timer); flashTitle.timer = setTimeout(() => h3.classList.remove('cg-flash'), 3600);
+    }
+    // depois de Corrigir a barra fica na mesma observação, mostrando o resultado; quem decide seguir é o botão Avançar
+    function showFixed(step) {
+        let left = validatorSteps().length, diff = issueDiff(step.issue);
+        review.done = true;
+        $('vbarCount').textContent = left ? 'Corrigido · restam ' + left : 'Tudo corrigido!';
+        $('vbarBadge').textContent = 'Corrigido'; $('vbarBadge').className = 'cg-validator-badge ok';
+        $('vbarMsg').textContent = 'Correção aplicada no título. Use Avançar para ir à próxima observação.';
+        $('vbarDiff').hidden = !diff; $('vbarHint').hidden = true; $('vbarFix').disabled = true;
+        flashTitle(step.f.pi, step.f.ii);
+    }
+    function startReview(index) { review = { index }; $('validatorDialog').open && $('validatorDialog').close(); focusStep(); }
+    function closeReview() { review = null; $('validatorBar').hidden = true; }
+    $('metricIssuesBox').onclick = openValidator;
+    $('metricIssuesBox').onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openValidator(); } };
+    $('validatorReview').onclick = () => startReview(0);
+    $('validatorList').onclick = event => {
+        let fix = event.target.closest('[data-fix]'), go = event.target.closest('[data-goto]');
+        if (fix) { let [fi, xi] = fix.dataset.fix.split(':').map(Number), f = validatorState[fi]; snapshot(); applyIssue(S.pages[f.pi].items[f.ii], f.issues[xi]); draw(); renderValidator(); }
+        else if (go) startReview(+go.dataset.goto);
+    };
+    $('validatorFixAll').onclick = () => {
+        snapshot(); let fixed = 0;
+        for (let pass = 0; pass < 5; pass++) { // em rodadas: uma correção pode mudar o texto que outra procurava
+            let changed = false;
+            validatorFindings().forEach(f => f.issues.filter(canFix).forEach(issue => { applyIssue(S.pages[f.pi].items[f.ii], issue); changed = true; fixed++; }));
+            if (!changed) break;
+        }
+        draw(); renderValidator(); toast(fixed + ' correção(ões) aplicada(s). Use Desfazer se quiser voltar.');
+    };
+    // depois de corrigir, a observação some da lista: o mesmo índice já aponta para a próxima, então Avançar não soma 1
+    $('vbarNext').onclick = () => { if (!review.done) review.index++; focusStep(); };
+    $('vbarPrev').onclick = () => { review.index--; focusStep(); };
+    $('vbarClose').onclick = closeReview;
+    $('validatorFilters').onclick = event => { let button = event.target.closest('[data-filter]'); if (button) { validatorFilter = button.dataset.filter; renderValidator(); } };
+    // atalhos da barra de revisão (Alt + seta / Enter): funcionam mesmo com o cursor num título, sem atrapalhar a digitação
+    document.addEventListener('keydown', event => {
+        if (!review || !event.altKey || $('validatorDialog').open) return;
+        let key = { ArrowRight: 'vbarNext', ArrowLeft: 'vbarPrev', Enter: 'vbarFix' }[event.key];
+        if (key && !$(key).disabled) { event.preventDefault(); $(key).click(); }
+    });
+    $('vbarFix').onclick = () => {
+        let step = validatorSteps()[review.index]; if (!step || review.done) return;
+        snapshot(); applyIssue(S.pages[step.f.pi].items[step.f.ii], step.issue); draw(); showFixed(step);
+    };
+
     /* addBarcode/centerPhoto sao chamadas de atributo inline (onclick/oninput) no HTML que card() gera -
        esses atributos só enxergam funcao GLOBAL, nao a closure deste IIFE, entao precisam ser expostas
        aqui (sem isso o clique/edicao falhava calado, sem erro visivel, com ReferenceError so no console) */

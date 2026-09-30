@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Central de Inteligência — Calendário de Postagens</title>
+  <title>Central de Inteligência - Calendário de Postagens</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -16,7 +16,7 @@
   <script src="firebase-config.js"></script>
   <script type="module" src="auth-guard.js"></script>
   <style>
-    /* Dropdowns de filtro (Categoria/Período) — mesmo padrão visual usado em
+    /* Dropdowns de filtro (Categoria/Período) - mesmo padrão visual usado em
        followers-dashboard.html (.actions-control/.period-trigger/.period-menu), reaproveitado
        aqui em vez de inventar um componente novo. */
     .actions-control { position: relative }
@@ -115,7 +115,7 @@
     .intel-matched-products summary { cursor: pointer; color: var(--muted); font-size: 12px }
     .intel-matched-products ul { margin: 6px 0 0; padding-left: 16px; font-size: 12px; color: var(--muted) }
 
-    /* Paginação da tabela — mesmo padrão de #historyPager em followers-dashboard.html. */
+    /* Paginação da tabela - mesmo padrão de #historyPager em followers-dashboard.html. */
     .intel-pager { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px }
     .chevron-btn {
       width: 28px; height: 28px; padding: 0;
@@ -129,7 +129,7 @@
     .chevron-btn:disabled { opacity: .4; cursor: default }
     .intel-page-label { font-size: 10px; font-weight: 800; color: var(--muted); background: var(--surface-muted); border-radius: 7px; padding: 5px 8px }
 
-    /* Dropdown do ranking — mesmo padrão de .section-divider/.section-divider-body usado em
+    /* Dropdown do ranking - mesmo padrão de .section-divider/.section-divider-body usado em
        followers-dashboard.html (grid-template-rows 0fr<->1fr anima até a altura real do
        conteúdo sem medir pixels em JS), com margens ajustadas por não atuar como um divisor
        entre duas seções e sim como o cabeçalho clicável de uma única seção. */
@@ -143,7 +143,7 @@
     .section-divider p { margin: 0 }
     .section-divider-chevron { flex: none; color: var(--muted); margin-top: 4px; transition: transform .15s }
     .section-divider[aria-expanded="true"] .section-divider-chevron { transform: rotate(180deg) }
-    /* Risco entre o subtítulo e a tabela — mesmo espaçamento (20px) dos dois lados. */
+    /* Risco entre o subtítulo e a tabela - mesmo espaçamento (20px) dos dois lados. */
     .intel-trends-rule { border: 0; border-top: 1px solid var(--border); margin: 20px 0 }
     .section-divider-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .28s ease, opacity .22s ease; opacity: 1 }
     .section-divider-body.is-collapsed { grid-template-rows: 0fr; opacity: 0 }
@@ -168,7 +168,7 @@
           </div>
         </div>
 
-        <!-- Bloco 1 — Filtros: Categoria e Período são dropdowns; Região tem só "Brasil" nesta
+        <!-- Bloco 1 - Filtros: Categoria e Período são dropdowns; Região tem só "Brasil" nesta
              primeira versão, então vira uma pill estática em vez de um dropdown de uma opção só. -->
         <div class="card" style="margin-bottom:36px">
           <div class="intel-filters">
@@ -239,7 +239,7 @@
           <hr class="intel-trends-rule">
           <div class="section-divider-body is-collapsed" id="trendsSectionBody" aria-hidden="true" inert>
             <div class="section-divider-body-inner">
-              <!-- Bloco 2 — Ranking de tendências -->
+              <!-- Bloco 2 - Ranking de tendências -->
               <div class="card" style="padding:36px">
                 <div class="intel-trends-head">
                   <h3 class="fg-label" style="margin:0">Ranking de tendências</h3>

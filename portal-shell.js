@@ -1,15 +1,15 @@
 /**
- * Casca do portal — carregado ANTES de app.js/intelligence-center.js em toda página.
+ * Casca do portal - carregado ANTES de app.js/intelligence-center.js em toda página.
  *
  * Duas responsabilidades:
  * 1) Resolver a marca ativa de forma síncrona (só localStorage, sem esperar rede) e expor
- *    `window.PortalBrand.suffix` — é isso que app.js/intelligence-data.js usam para montar suas
+ *    `window.PortalBrand.suffix` - é isso que app.js/intelligence-data.js usam para montar suas
  *    próprias chaves de localStorage/api.php sufixadas por marca, logo no topo desses arquivos.
  *    Por isso o <script src="portal-shell.js"> precisa vir ANTES dos scripts das ferramentas.
  * 2) Montar o menu lateral (navegação entre ferramentas + seletor de marca) dentro do
  *    <aside id="portalSidebar"></aside> que cada página já traz vazio.
  *
- * Trocar de marca não tenta atualizar o estado em memória da ferramenta atual — troca o id
+ * Trocar de marca não tenta atualizar o estado em memória da ferramenta atual - troca o id
  * salvo em localStorage e recarrega a página, reaproveitando 100% da lógica de bootstrap que
  * app.js já tem (loadState/loadSettings/syncPull) sem precisar mexer nela.
  */
@@ -85,7 +85,7 @@
   window.PortalSyncConflict = { show:showSyncConflictModal, hide:hideSyncConflictModal };
 
   // ============================================================
-  // MARCA ATIVA — resolvida já no topo do arquivo, de forma síncrona (precisa vir ANTES da
+  // MARCA ATIVA - resolvida já no topo do arquivo, de forma síncrona (precisa vir ANTES da
   // seção de TEMA logo abaixo: cada marca pode ter uma cor de destaque própria, então é preciso
   // saber qual é a marca ativa antes de aplicar o tema pela primeira vez, pra não haver flash)
   // ============================================================
@@ -93,25 +93,25 @@
   const ACTIVE_BRAND_KEY = 'portal_active_brand_v1';
   const COLLAPSE_KEY = 'portal_sidebar_collapsed_v1';
   // a marca "default" é a base de dados que já existia antes do portal (posts/settings/guia
-  // sem sufixo) — por isso ela nunca é migrada, só vira a primeira entrada da lista. As demais
+  // sem sufixo) - por isso ela nunca é migrada, só vira a primeira entrada da lista. As demais
   // marcas do grupo já vêm pré-cadastradas aqui, com id fixo (não gerado por generateBrandId())
   // pra que qualquer navegador/computador que abra o portal pela primeira vez monte a mesma
-  // lista, com os mesmos ids — essencial pro sufixo de isolamento (posts__{id}, settings__{id})
+  // lista, com os mesmos ids - essencial pro sufixo de isolamento (posts__{id}, settings__{id})
   // bater entre máquinas diferentes antes da lista ainda ter sido sincronizada pelo servidor.
-  // Cada marca tem calendário, editorias, catálogo de produtos e metas 100% independentes —
+  // Cada marca tem calendário, editorias, catálogo de produtos e metas 100% independentes -
   // isso já vem de graça do sufixo por marca que app.js aplica em toda chave de
   // localStorage/api.php (ver BRAND_SUFFIX no topo de app.js).
   // themeColor/themeColorInk = tema pré-definido da marca (ver seção TEMA logo abaixo): dois
-  // tons — destaque (botões/links) e ênfase (rótulos/textos em destaque) — a partir da
-  // identidade visual de cada marca. Fixo por marca (o grid de cores não grava mais aqui) —
+  // tons - destaque (botões/links) e ênfase (rótulos/textos em destaque) - a partir da
+  // identidade visual de cada marca. Fixo por marca (o grid de cores não grava mais aqui) -
   // quem quiser uma cor diferente da identidade oficial usa o tema "Personalizado" em
-  // Configurações, que vale globalmente sem alterar este valor — ver getThemeSource().
+  // Configurações, que vale globalmente sem alterar este valor - ver getThemeSource().
   // onAccent (opcional) = cor do texto sobre botões da cor de destaque, quando a marca precisa
   // de algo diferente do que o cálculo automático de contraste escolheria (ex: TOOLMIX pediu
-  // fonte branca nos botões laranja mesmo o preto tendo contraste técnico maior) — ver applyColorTheme().
-  // GRUPO OVD usa a mesma identidade da VONDER (é o grupo por trás da marca) — pra diferenciar
+  // fonte branca nos botões laranja mesmo o preto tendo contraste técnico maior) - ver applyColorTheme().
+  // GRUPO OVD usa a mesma identidade da VONDER (é o grupo por trás da marca) - pra diferenciar
   // sem herdar o amarelo da Vonder (a 1ª sugestão foi um dourado mais escuro, mas não agradou),
-  // o destaque é um cinza claro neutro, sem tom de cor — reconhecível como "o grupo" (mais
+  // o destaque é um cinza claro neutro, sem tom de cor - reconhecível como "o grupo" (mais
   // institucional/neutro) em vez de "a marca" (mais vibrante/amarela).
   const DEFAULT_BRANDS = [
     { id:'default', name:'VONDER', shortName:'VD', photo:'icons/icon_vonder.jpg', themeColor:{ dark:'#F6BE00', light:'#F6BE00' }, themeColorInk:'#000000' },
@@ -125,7 +125,7 @@
     { id:'pilar-tecnologia', name:'PILAR TECNOLOGIA', shortName:'PT', photo:'icons/icon_pilar_tecnologia.svg', themeColor:{ dark:'#003A5D', light:'#003A5D' }, themeColorInk:'#FFFFFF', onAccent:'#FFFFFF' }
   ];
 
-  // paleta de fundo do avatar quando a marca não tem foto — escolhida por hash do id, só
+  // paleta de fundo do avatar quando a marca não tem foto - escolhida por hash do id, só
   // pra dar alguma variedade visual entre marcas sem foto (não é mais configurável pelo usuário)
   const AVATAR_COLORS = ['#F6BE00','#0ea5e9','#8b5cf6','#f97316','#10b981','#ec4899','#6366f1','#14b8a6'];
   function colorForBrand(id){
@@ -154,7 +154,7 @@
   }
   // lê um arquivo de imagem, recorta um quadrado central e reduz pra um avatar leve (evita
   // guardar fotos grandes no localStorage/SQLite, que aqui é só uma coluna de texto). size é
-  // opcional (padrão 160, suficiente pros avatares pequenos de marca/tabela) — o modal "Perfil"
+  // opcional (padrão 160, suficiente pros avatares pequenos de marca/tabela) - o modal "Perfil"
   // passa um valor maior porque exibe a mesma foto cobrindo o modal inteiro, não só um avatar.
   function readBrandPhoto(file, cb, size){
     loadImageFile(file, img=>{
@@ -199,7 +199,7 @@
     localStorage.setItem(ACTIVE_BRAND_KEY, id);
     location.reload();
   }
-  // Troca de marca sem recarregar — só a Início usa (os cards mudam na hora); as demais telas
+  // Troca de marca sem recarregar - só a Início usa (os cards mudam na hora); as demais telas
   // carregam dados por marca (sufixo de posts/settings) e continuam usando switchToBrand.
   window.PortalShell.setActiveBrand = function(id){
     if(!BRANDS.some(b=>b.id===id)) return;
@@ -211,19 +211,19 @@
   };
 
   // ============================================================
-  // TEMA (claro/escuro) e cor de destaque — aplicado o quanto antes (portal-shell.js é o
-  // primeiro script de cada página, e é o único que ainda aplica essas chaves — app.js não
+  // TEMA (claro/escuro) e cor de destaque - aplicado o quanto antes (portal-shell.js é o
+  // primeiro script de cada página, e é o único que ainda aplica essas chaves - app.js não
   // mexe nisso, e post-editor.js/intelligence-center.js pararam de reaplicar por conta própria
   // pra não sobrescrever o resultado já correto deste arquivo) pra evitar flash. O botão
   // "Configurações" no rodapé da sidebar abre um modal próprio (só a aba Aparência por
   // enquanto) que grava nessas chaves.
   // Duas fontes possíveis pra cor de destaque, escolhidas por THEME_SOURCE_KEY (padrão "brand")
-  // — ver getThemeSource()/setThemeSource():
+  // - ver getThemeSource()/setThemeSource():
   // - "brand": usa activeBrand().themeColor/themeColorInk, a identidade pré-setada de cada
-  //   marca (ver DEFAULT_BRANDS acima) — troca de marca troca de cor automaticamente, e cada
+  //   marca (ver DEFAULT_BRANDS acima) - troca de marca troca de cor automaticamente, e cada
   //   marca sempre volta pra própria cor ao reativar esta fonte.
   // - "custom": ignora a marca ativa e usa COLOR_THEME_KEY/CUSTOM_COLOR_KEY (grid de cores ou
-  //   cor livre, escolhidos em Configurações) — a mesma cor vale em qualquer marca que o
+  //   cor livre, escolhidos em Configurações) - a mesma cor vale em qualquer marca que o
   //   usuário acessar depois, respeitando o modo claro/escuro selecionado.
   // ============================================================
   const THEME_KEY = 'calendar_theme_v1';
@@ -284,7 +284,7 @@
   function applyColorTheme(id){
     // fonte "brand": marca ativa manda na cor (identidade pré-setada, ver DEFAULT_BRANDS na
     // seção MARCA ATIVA acima). Fonte "custom": ignora a marca e usa sempre a escolha global,
-    // pra valer em qualquer marca que o usuário acessar — ver getThemeSource()/THEME_SOURCE_KEY
+    // pra valer em qualquer marca que o usuário acessar - ver getThemeSource()/THEME_SOURCE_KEY
     const b = activeBrand();
     const brandTheme = getThemeSource()==='brand' ? (b && b.themeColor) : null;
     let dark, light, inkOverride = null;
@@ -308,12 +308,12 @@
     // Seleção de texto exige contraste AA inclusive em cores personalizadas. Não reutiliza
     // --on-accent porque algumas marcas têm uma exceção visual deliberada para botões.
     root.setProperty('--selection-text', contrastRatio(relLuminance(accent), 0) >= contrastRatio(relLuminance(accent), 1) ? '#000000' : '#ffffff');
-    // no escuro, a ênfase (--accent-ink, usada em texto/ícone sobre fundo escuro — ex: item
+    // no escuro, a ênfase (--accent-ink, usada em texto/ícone sobre fundo escuro - ex: item
     // ativo do menu lateral, botão ativo de Mês/Quinzena/Semana) sempre usa a própria cor de
     // destaque em vez da cor de ênfase da marca: um tom claro (como o amarelo da Vonder) lê bem
     // sobre fundo escuro, mas a cor de ênfase de várias marcas é um tom escuro/preto (pensado
-    // pra contrastar em fundo CLARO) — usá-la também no escuro deixava o texto quase invisível.
-    // no claro, --accent-ink também é sempre texto sobre fundo claro (menu lateral, rótulos) —
+    // pra contrastar em fundo CLARO) - usá-la também no escuro deixava o texto quase invisível.
+    // no claro, --accent-ink também é sempre texto sobre fundo claro (menu lateral, rótulos) -
     // por isso só usa a ênfase da marca se ela própria for escura o bastante pra ler; uma ênfase
     // clara (ex: branco da TOOLMIX, pensada pra ler sobre o botão laranja, não sobre fundo
     // branco) cai pro mesmo tom escurecido do destaque usado quando não há ênfase definida.
@@ -325,7 +325,7 @@
     root.setProperty('--accent-ink', ink);
   }
   // visual-editor.html tem sua própria aba Aparência (dentro de #settingsBackdrop, controlada
-  // por app.js) com os mesmos dados — reflete a troca lá também, senão o radio/grid daquele
+  // por app.js) com os mesmos dados - reflete a troca lá também, senão o radio/grid daquele
   // modal fica desatualizado até a próxima vez que a página carregar
   function syncLegacySettingsUi(){
     const theme = localStorage.getItem(THEME_KEY) || 'light';
@@ -340,7 +340,7 @@
     syncLegacySettingsUi();
     syncSidebarThemeToggle();
   }
-  // Seletor claro/escuro da sidebar (acima da barra de conta) — funil único é setTheme() acima,
+  // Seletor claro/escuro da sidebar (acima da barra de conta) - funil único é setTheme() acima,
   // então trocar por aqui, pelo modal de Configurações ou pela aba legada do calendário mantém
   // os três em sincronia entre si.
   function wireThemeToggle(){
@@ -359,8 +359,8 @@
     });
   }
   function setColorTheme(id){
-    // só é chamado com a fonte "custom" ativa (o grid fica oculto na fonte "brand" — ver
-    // renderPortalColorGrid) — grava sempre numa chave global, nunca na marca ativa, pra essa
+    // só é chamado com a fonte "custom" ativa (o grid fica oculto na fonte "brand" - ver
+    // renderPortalColorGrid) - grava sempre numa chave global, nunca na marca ativa, pra essa
     // escolha valer em qualquer marca que o usuário acessar depois (ver applyColorTheme acima)
     localStorage.setItem(COLOR_THEME_KEY, id);
     applyColorTheme(id);
@@ -377,7 +377,7 @@
   applyColorTheme(getColorTheme());
 
   // ============================================================
-  // SINCRONIZAÇÃO DA LISTA DE MARCAS (api.php?k=brands) — mesma mecânica de sync de chave
+  // SINCRONIZAÇÃO DA LISTA DE MARCAS (api.php?k=brands) - mesma mecânica de sync de chave
   // única que intelligence-data.js já usa pra "intel" (fetch/push/versão otimista)
   // ============================================================
   const SYNC_ENABLED = location.protocol !== 'file:';
@@ -416,22 +416,22 @@
             if(!brandPopoverOpen) renderBrandTrigger();
           }
         }
-      }catch(e){ /* offline — fica salvo só neste navegador, sem travar a UI */ }
+      }catch(e){ /* offline - fica salvo só neste navegador, sem travar a UI */ }
     }, 700);
   }
   // completa a lista já carregada (local ou do servidor) com marcas padrão novas que ainda não
-  // existiam nela, por id — mesma lógica de "somar sem sobrescrever" que app.js/loadSettings()
+  // existiam nela, por id - mesma lógica de "somar sem sobrescrever" que app.js/loadSettings()
   // já usa pra editorias/redes: preserva qualquer customização (nome, foto) de marcas
   // existentes, só acrescenta as que faltam. Assim, uma marca nova do grupo aparece pra quem já
   // tinha uma lista salva (deste navegador ou vinda do servidor), sem precisar recriar tudo pela
   // UI de "Nova marca". A renomeação "Vonder" → "VONDER" só é aplicada se o nome ainda for
-  // exatamente o valor padrão anterior — não sobrescreve um nome que alguém já tenha customizado.
+  // exatamente o valor padrão anterior - não sobrescreve um nome que alguém já tenha customizado.
   (function mergeDefaultBrands(){
     let changed = false;
     let activeChanged = false;
     const defaultEntry = BRANDS.find(b=>b.id==='default');
     if(defaultEntry && defaultEntry.name==='Vonder'){ defaultEntry.name = 'VONDER'; changed = true; }
-    // correções pontuais de sugestões anteriores que não agradaram — só substitui se a cor
+    // correções pontuais de sugestões anteriores que não agradaram - só substitui se a cor
     // ainda for exatamente a sugestão antiga (não mexe se alguém já tiver escolhido outra pelo
     // seletor): GRUPO OVD saiu do dourado escuro pro cinza claro, TOOLMIX ganhou ênfase branca,
     // FERRAMENTAS GERAIS trocou a ênfase vermelha por um verde escuro
@@ -451,7 +451,7 @@
         return;
       }
       // preenche a cor/foto pré-definida em quem ainda não tinha uma (sem sobrescrever o que
-      // o usuário já tenha customizado) — mesma lógica de "completar sem sobrescrever"
+      // o usuário já tenha customizado) - mesma lógica de "completar sem sobrescrever"
       if(existing.themeColor==null && def.themeColor){ existing.themeColor = def.themeColor; changed = true; if(existing.id===ACTIVE_ID) activeChanged = true; }
       if(existing.themeColorInk==null && def.themeColorInk){ existing.themeColorInk = def.themeColorInk; changed = true; if(existing.id===ACTIVE_ID) activeChanged = true; }
       if(existing.onAccent==null && def.onAccent){ existing.onAccent = def.onAccent; changed = true; if(existing.id===ACTIVE_ID) activeChanged = true; }
@@ -486,7 +486,7 @@
         renderBrandTrigger();
       }
       syncVersion = res.updated_at;
-    }catch(e){ /* sem conexão — segue com a cópia local */ }
+    }catch(e){ /* sem conexão - segue com a cópia local */ }
   }
 
   // ============================================================
@@ -494,12 +494,12 @@
   // ============================================================
   const NAV_ITEMS = [
     { href:'index.html', label:'Início', icon:'<path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>' },
-    // Seções de navegação: só um rótulo estático acima dos itens (sem ícone, sem recolher —
+    // Seções de navegação: só um rótulo estático acima dos itens (sem ícone, sem recolher -
     // referência: rótulo "Projects" da sidebar do animate-ui.com/docs/components/radix/sidebar).
     { group:'Criação', items:[
       { href:'photoshop-actions.html', label:'Ações do Photoshop', icon:'<path d="M4 4h16v16H4z"/><path d="M8 8h3.5a2.5 2.5 0 1 1 0 5H8z"/><path d="M14.5 15.5h2.7"/>' },
       { href:'post-editor.html', label:'Editor de Posts', icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/><path d="m14 18 3-3"/>' },
-      // brands: página exclusiva dessas marcas (ids de DEFAULT_BRANDS) — nas demais some do menu
+      // brands: página exclusiva dessas marcas (ids de DEFAULT_BRANDS) - nas demais some do menu
       // e da Início e a própria página é bloqueada; quem aplica é auth-guard.js
       { href:'cartaz-generator.html', label:'Gerador de Cartazes', brands:['grupo-ovd'], icon:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="m8 17 3-4 2 2.5 1.5-2 1.5 3.5"/>' },
       { href:'barcode-generator.html', label:'Código de Barras', icon:'<path d="M4 5v14M8 5v14M12 5v14M15 5v14M20 5v14"/><path d="M6 5v14" stroke-width="3"/><path d="M17.5 5v14" stroke-width="3"/>' },
@@ -516,14 +516,14 @@
     { group:'Administração', items:[
       // página sensível: fica de fora por padrão pro perfil Usuário (ver defaultHidden em
       // auth-guard.js/admin-users.js) até um administrador marcá-la em Usuários e acessos >
-      // Permissões por perfil — deixou de ser um bloqueio fixo de código (ver histórico) porque
+      // Permissões por perfil - deixou de ser um bloqueio fixo de código (ver histórico) porque
       // agora é o próprio admin quem decide, por perfil, se ela fica visível ou não
       { href:'admin-users.html', label:'Usuários e acessos', icon:'<path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6Z"/>', defaultHidden:true },
       { href:'usage-dashboard.html', label:'Métricas de performance', icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 16v-3M12 16V8M17 16v-5"/>', defaultHidden:true }
     ] }
   ];
   // fonte única da lista de páginas do menu (achatando os grupos acima), pra Usuários e acessos
-  // montar o checklist de "quais páginas cada perfil pode ver" sem duplicar href/label — ver
+  // montar o checklist de "quais páginas cada perfil pode ver" sem duplicar href/label - ver
   // admin-users.js (renderPermPages) e auth-guard.js (aplica o resultado escondendo item/card +
   // a própria página); permissão continua por página, nunca por grupo.
   const NAV_LEAF_ITEMS = NAV_ITEMS.flatMap(entry => entry.items || [entry]);
@@ -548,7 +548,7 @@
   }
 
   // ============================================================
-  // SELETOR DE MARCA — trigger + popover ancorado no <body> (mesma mecânica de
+  // SELETOR DE MARCA - trigger + popover ancorado no <body> (mesma mecânica de
   // .icon-picker-trigger/.icon-picker-popover em app.js: a sidebar tem overflow-y:auto, que
   // cortaria um popover position:absolute preso nela)
   // ============================================================
@@ -607,7 +607,7 @@
       photoInput.addEventListener('click', ev=> ev.stopPropagation());
       photoInput.addEventListener('change', ()=>{
         const file = photoInput.files && photoInput.files[0]; if(!file) return;
-        // a foto salva na hora, independente do nome/curto (que só commitam no blur/Enter) —
+        // a foto salva na hora, independente do nome/curto (que só commitam no blur/Enter) -
         // evita que trocar o foco pro seletor de arquivo dispare um commit de nome pela metade
         readBrandPhoto(file, dataUrl=>{
           b.photo = dataUrl;
@@ -617,7 +617,7 @@
         });
       });
     } else {
-      // Editar/duplicar/excluir marca fica só pra Admin — mesma checagem de
+      // Editar/duplicar/excluir marca fica só pra Admin - mesma checagem de
       // document.body.dataset.userRole (setado por auth-guard.js) usada em checkAdminRole
       // (templates.js) e no botão de recolher/etc. deste arquivo.
       const isAdmin = document.body.dataset.userRole === 'admin';
@@ -644,7 +644,7 @@
 
   function openBrandPopover(){
     const trigger = $('portalBrandTrigger'); if(!trigger) return;
-    // Criar marca nova também é só pra Admin — mesma checagem de buildBrandRow acima.
+    // Criar marca nova também é só pra Admin - mesma checagem de buildBrandRow acima.
     const isAdmin = document.body.dataset.userRole === 'admin';
     brandPopoverEl = document.createElement('div');
     brandPopoverEl.className = 'portal-brand-popover';
@@ -661,19 +661,19 @@
   }
 
   // ============================================================
-  // BARRA DE CONTA — linha única no rodapé da sidebar, com quem está logado. Nome/e-mail só são
+  // BARRA DE CONTA - linha única no rodapé da sidebar, com quem está logado. Nome/e-mail só são
   // conhecidos depois que auth-guard.js confirma a sessão (portal-shell.js roda antes disso, ver
-  // topo do arquivo) — por isso nasce com texto neutro e é preenchida de fora, em
+  // topo do arquivo) - por isso nasce com texto neutro e é preenchida de fora, em
   // #portalProfileName/#portalProfileEmail (e no data-user-email do <body>, usado pela
   // confirmação de redefinir senha); a página inteira já fica escondida por auth-pending até lá,
   // então não há flash de conteúdo vazio.
   //
   // A barra inteira é clicável e abre um menu pra CIMA (fica no rodapé, ver
-  // positionPopoverAbove) com "Redefinir senha" e "Sair" — igual ao seletor de marca no topo da
+  // positionPopoverAbove) com "Redefinir senha" e "Sair" - igual ao seletor de marca no topo da
   // sidebar, só que ancorado embaixo. O ícone de sair continua também solto na própria barra,
   // como atalho de um clique só; por isso seu clique precisa de stopPropagation, senão abriria o
-  // menu por cima ao mesmo tempo que desloga. Ambos chamam window.PortalFirebase.* — exposto por
-  // firebase-client.js — em vez de um import, porque este arquivo é um script clássico (não
+  // menu por cima ao mesmo tempo que desloga. Ambos chamam window.PortalFirebase.* - exposto por
+  // firebase-client.js - em vez de um import, porque este arquivo é um script clássico (não
   // módulo) de propósito: a marca ativa precisa ficar disponível de forma síncrona pros scripts
   // que vêm depois dele.
   // ============================================================
@@ -733,9 +733,9 @@
   }
 
   // ============================================================
-  // MODAL "REDEFINIR SENHA" — confirmação antes de disparar o e-mail (mesmo padrão
+  // MODAL "REDEFINIR SENHA" - confirmação antes de disparar o e-mail (mesmo padrão
   // .modal-backdrop/.modal do resto do app). Único jeito de trocar senha para quem não é admin
-  // (a área de administração é só pra quem já é admin) — reaproveita o mesmo e-mail de
+  // (a área de administração é só pra quem já é admin) - reaproveita o mesmo e-mail de
   // redefinição que "Esqueci minha senha" usa em login.html, só que sem precisar sair da sessão.
   // ============================================================
   let resetPasswordModalEl = null;
@@ -788,11 +788,11 @@
   }
 
   // ============================================================
-  // MODAL "PERFIL" — autoatendimento: nome e foto do próprio usuário, gravados em users/{uid}
+  // MODAL "PERFIL" - autoatendimento: nome e foto do próprio usuário, gravados em users/{uid}
   // (window.PortalFirebase.updateOwnProfile) em vez de localStorage, pra continuarem valendo em
   // qualquer navegador/dispositivo e sobreviverem a um F5.
   //
-  // O modal inteiro é sempre a foto do usuário (leitura E edição) — cabeçalho, nome, Perfil
+  // O modal inteiro é sempre a foto do usuário (leitura E edição) - cabeçalho, nome, Perfil
   // (role) e as ações ficam sobrepostos a ela; só o conteúdo do rodapé/nome troca entre os dois
   // modos (ver setProfileEditing). Na edição, um badge de câmera sobre a própria foto abre o
   // seletor de arquivo, e o nome vira um campo editável no lugar do texto. O Perfil (role) nunca
@@ -805,7 +805,7 @@
   let profileSavedPhoto = null;
   let profileCurrentUid = null;
   // Foto original (não recortada) + enquadramento (zoom/posição) por trás da foto atualmente
-  // exibida em profilePhotoDataUrl — permite reabrir o ajuste de zoom/posição já no ponto onde
+  // exibida em profilePhotoDataUrl - permite reabrir o ajuste de zoom/posição já no ponto onde
   // o usuário parou, em vez de reiniciar sempre do zero sobre o quadrado já recortado (sem
   // "memória" disso, reduzir o zoom nunca revelaria de volta o que já tinha sido cortado).
   //
@@ -813,7 +813,7 @@
   // segurança users/{uid} (hoje trava affectedKeys a ['lastAccessAt','name','photo']) nem correr
   // risco de estourar o limite de 1MB por documento do Firestore guardando a foto original
   // dentro do doc do usuário. Limitação real: essa "memória" de enquadramento é por navegador,
-  // não sincroniza entre dispositivos — troque de navegador/computador e o próximo ajuste parte
+  // não sincroniza entre dispositivos - troque de navegador/computador e o próximo ajuste parte
   // do quadrado já salvo (zoom=1, sem prejuízo à foto em si, só à conveniência de desfazer um
   // recorte antigo). Evolução natural seria mover a foto original pro Firebase Storage e guardar
   // só a URL no Firestore, o que já resolveria os dois limites de uma vez.
@@ -834,9 +834,9 @@
       const all = JSON.parse(localStorage.getItem(PROFILE_PHOTO_SRC_KEY) || '{}');
       all[uid] = { forPhoto, original, crop };
       localStorage.setItem(PROFILE_PHOTO_SRC_KEY, JSON.stringify(all));
-    }catch(e){ /* localStorage indisponível (privado/bloqueado/cheio) — só perde a conveniência */ }
+    }catch(e){ /* localStorage indisponível (privado/bloqueado/cheio) - só perde a conveniência */ }
   }
-  // Sincroniza profilePhotoOriginalUrl/profilePhotoCrop com o cache pra uma foto específica —
+  // Sincroniza profilePhotoOriginalUrl/profilePhotoCrop com o cache pra uma foto específica -
   // se o cache não bate com a foto atual (outro navegador, ou o rascunho que estava em edição
   // foi descartado), volta ao estado seguro de "sem original conhecido" em vez de mostrar um
   // enquadramento que não corresponde à foto de verdade.
@@ -845,7 +845,7 @@
     profilePhotoOriginalUrl = cached ? cached.original : null;
     profilePhotoCrop = cached ? cached.crop : null;
   }
-  // reduz a foto recém-enviada pra um teto razoável antes de guardá-la como "original" — evita
+  // reduz a foto recém-enviada pra um teto razoável antes de guardá-la como "original" - evita
   // carregar/guardar arquivos de câmera de vários MB só pra permitir reabrir o ajuste depois
   function resizeImageForStorage(img, cb){
     const maxDim = 1280;
@@ -859,7 +859,7 @@
     resized.onload = ()=>cb(resized, dataUrl);
     resized.src = dataUrl;
   }
-  // Mesmos perfis padrão de admin-users.js (DEFAULT_PROFILES) — cópia mínima só pro rótulo,
+  // Mesmos perfis padrão de admin-users.js (DEFAULT_PROFILES) - cópia mínima só pro rótulo,
   // porque este arquivo é script clássico e não importa módulos. Perfis customizados batem
   // certo assim mesmo: resolveProfileRoleName busca a lista real em portalStore antes de cair
   // aqui.
@@ -871,7 +871,7 @@
       try{
         const record = await window.PortalFirebase.readPortalStore('user-profiles-v1');
         if(Array.isArray(record.v) && record.v.length) profileRoleNamesCache = record.v;
-      }catch(e){ /* offline — usa só os nomes padrão abaixo */ }
+      }catch(e){ /* offline - usa só os nomes padrão abaixo */ }
     }
     const found = profileRoleNamesCache && profileRoleNamesCache.find(p=>p.id===role);
     return found ? found.name : (DEFAULT_PROFILE_NAMES[role] || role);
@@ -880,13 +880,13 @@
     profileModalEl.querySelector('#profileCardPhoto').innerHTML = url ? `<img src="${url}" alt="" />` : svgIcon('<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="5"/>', 40);
   }
   let profileIsEditing = false;
-  // O badge de reposicionar só faz sentido havendo uma foto pra reposicionar — some/aparece
+  // O badge de reposicionar só faz sentido havendo uma foto pra reposicionar - some/aparece
   // conforme profilePhotoDataUrl muda (upload novo, ajuste aplicado, ou saída do modo edição).
   function updateProfileCropBadge(){
     profileModalEl.querySelector('#profilePhotoCropBadge').style.display = (profileIsEditing && profilePhotoDataUrl) ? '' : 'none';
   }
   function setProfileEditing(editing){
-    // display:none via estilo inline, não hidden — .portal-profile-edit-toggle/-actions já têm
+    // display:none via estilo inline, não hidden - .portal-profile-edit-toggle/-actions já têm
     // display definido no CSS, mesma especificidade de [hidden] só que de origem "autor" (vence
     // a stylesheet do navegador), então o atributo hidden sozinho não escondia esses elementos.
     profileIsEditing = editing;
@@ -905,7 +905,7 @@
   }
 
   // ============================================================
-  // AJUSTE DE FOTO (reposicionar + zoom) — janela circular igual ao avatar final
+  // AJUSTE DE FOTO (reposicionar + zoom) - janela circular igual ao avatar final
   // (.portal-account-avatar/.admin-table-avatar são círculos via CSS), pra escolher exatamente
   // qual parte da foto aparece dentro dele em vez de confiar só no recorte central automático
   // de readBrandPhoto. Funciona tanto sobre uma foto recém-selecionada (upload ainda não
@@ -934,7 +934,7 @@
     canvas.getContext('2d').drawImage(cropImage, cropOffsetX, cropOffsetY, cropImage.width*scale, cropImage.height*scale);
   }
   function setCropZoomPct(pct){
-    // mantém o centro do enquadramento ao trocar o zoom — sem isso a imagem "pula" a cada ajuste
+    // mantém o centro do enquadramento ao trocar o zoom - sem isso a imagem "pula" a cada ajuste
     const oldScale = cropClamp();
     const centerImgX = (CROP_STAGE/2 - cropOffsetX) / oldScale;
     const centerImgY = (CROP_STAGE/2 - cropOffsetY) / oldScale;
@@ -964,7 +964,7 @@
           <input type="range" id="cropZoomSlider" min="100" max="300" value="100" />
           ${svgIcon('<circle cx="10" cy="10" r="6"/><path d="M7 10h6M10 7v6"/><path d="m21 21-4.3-4.3"/>', 15)}
         </div>
-        <p class="portal-photo-crop-hint">Arraste a foto pra posicionar e use o controle pra dar zoom — é assim que ela vai aparecer no avatar.</p>
+        <p class="portal-photo-crop-hint">Arraste a foto pra posicionar e use o controle pra dar zoom - é assim que ela vai aparecer no avatar.</p>
       </div>
       <div class="modal-footer">
         <button type="button" id="cropCancel" class="btn ghost">Cancelar</button>
@@ -1014,7 +1014,7 @@
     });
     return backdrop;
   }
-  // savedCrop (opcional) = { zoom, cx, cy } de um ajuste anterior sobre esta mesma imagem —
+  // savedCrop (opcional) = { zoom, cx, cy } de um ajuste anterior sobre esta mesma imagem -
   // reabre exatamente de onde o usuário parou em vez de sempre recomeçar centralizado em 100%
   function openCropModal(img, onConfirm, savedCrop){
     if(!cropModalEl) cropModalEl = buildCropModal();
@@ -1076,9 +1076,9 @@
       const file = ev.target.files && ev.target.files[0];
       ev.target.value = ''; // permite escolher o mesmo arquivo de novo depois de cancelar o ajuste
       if(!file) return;
-      // abre no ajuste de zoom/posição em vez de recortar o centro automaticamente — a imagem
+      // abre no ajuste de zoom/posição em vez de recortar o centro automaticamente - a imagem
       // aqui ainda é a original (reduzida a um teto razoável, ver resizeImageForStorage), não o
-      // quadrado final — é ela que fica guardada pra permitir reabrir o ajuste depois
+      // quadrado final - é ela que fica guardada pra permitir reabrir o ajuste depois
       loadImageFile(file, rawImg=>{
         resizeImageForStorage(rawImg, (img, originalDataUrl)=>{
           openCropModal(img, (dataUrl, cropMeta)=>{
@@ -1093,7 +1093,7 @@
       });
     });
     // reaproveita a original conhecida (se ainda corresponder à foto atual) como fonte pro
-    // ajuste, com o mesmo zoom/posição de antes — sem original conhecido, cai no quadrado atual
+    // ajuste, com o mesmo zoom/posição de antes - sem original conhecido, cai no quadrado atual
     // como se fosse a imagem inteira (mesmo comportamento de antes desta funcionalidade)
     backdrop.querySelector('#profilePhotoCropBadge').addEventListener('click', ()=>{
       if(!profilePhotoDataUrl) return;
@@ -1133,7 +1133,7 @@
     });
     return backdrop;
   }
-  // Aplica nome/foto salvos direto na sidebar, sem esperar um reload — mesma dupla de elementos
+  // Aplica nome/foto salvos direto na sidebar, sem esperar um reload - mesma dupla de elementos
   // (#portalProfileName + avatar da barra "Conta") que auth-guard.js já preenche no primeiro
   // carregamento com o que veio do Firestore.
   function applyOwnProfileToUI(patch){
@@ -1174,11 +1174,11 @@
       resolveProfileRoleName(context.profile.role).then(roleName=>{
         profileModalEl.querySelector('#profileCardRole').textContent = roleName;
       });
-    }catch(e){ /* mantém o cartão vazio — usuário ainda consegue preencher pelo Editar */ }
+    }catch(e){ /* mantém o cartão vazio - usuário ainda consegue preencher pelo Editar */ }
   }
 
   // ============================================================
-  // MODAL "NOVA MARCA" — mesmo padrão .modal-backdrop/.modal usado pelo resto do app,
+  // MODAL "NOVA MARCA" - mesmo padrão .modal-backdrop/.modal usado pelo resto do app,
   // criado uma vez e reaproveitado a cada abertura
   // ============================================================
   let newBrandModalEl = null;
@@ -1259,7 +1259,7 @@
   }
 
   // ============================================================
-  // MODAL "CONFIGURAÇÕES" DO PORTAL — aberto pelo botão no rodapé da sidebar, em toda
+  // MODAL "CONFIGURAÇÕES" DO PORTAL - aberto pelo botão no rodapé da sidebar, em toda
   // página. Por enquanto só tem a aba Aparência (mesma funcionalidade da aba Aparência de
   // Configurações do calendário); a estrutura de abas já fica pronta pra receber mais seções
   // depois. IDs próprios (prefixo "portal") pra não colidir com o #settingsBackdrop que
@@ -1270,7 +1270,7 @@
     const grid = $('portalColorThemeGrid'); if(!grid) return;
     const hint = $('portalThemeSourceHint');
     if(getThemeSource() !== 'custom'){
-      // fonte "brand": grid escondido — a cor vem da identidade pré-setada da marca ativa,
+      // fonte "brand": grid escondido - a cor vem da identidade pré-setada da marca ativa,
       // sem opção de escolha aqui (ver applyColorTheme/DEFAULT_BRANDS)
       grid.innerHTML = '';
       if(hint) hint.textContent = 'Cada marca usa a cor da própria identidade visual.';
@@ -1294,7 +1294,7 @@
     if(customInput){
       customInput.addEventListener('click', ev=> ev.stopPropagation());
       // ao vivo, enquanto arrasta o seletor: só reflete a cor na tela (sem gravar ainda, pra
-      // não gravar um valor por pixel arrastado) — a gravação de fato acontece só no "change",
+      // não gravar um valor por pixel arrastado) - a gravação de fato acontece só no "change",
       // quando o usuário solta o seletor
       customInput.addEventListener('input', ()=>{
         localStorage.setItem(CUSTOM_COLOR_KEY, customInput.value);
@@ -1343,7 +1343,7 @@
     const close = ()=>{ backdrop.style.display = 'none'; };
     backdrop.addEventListener('click', ev=>{ if(ev.target===backdrop) close(); });
     backdrop.querySelector('.modal-close').addEventListener('click', close);
-    // aba lateral escopada a este modal — não usa document.querySelectorAll pra não
+    // aba lateral escopada a este modal - não usa document.querySelectorAll pra não
     // interferir (nem sofrer interferência) do menu de Configurações do calendário, que já
     // faz sua própria troca de aba de forma global em app.js
     backdrop.querySelectorAll('.settings-nav-btn').forEach(btn=>{
@@ -1374,7 +1374,7 @@
   }
 
   // ============================================================
-  // RECOLHER/EXPANDIR A SIDEBAR — estado persistido, aplicado como classe no <aside>
+  // RECOLHER/EXPANDIR A SIDEBAR - estado persistido, aplicado como classe no <aside>
   // ============================================================
   let sidebarCollapsed = localStorage.getItem(COLLAPSE_KEY) === '1';
   function applyCollapsedClass(){
@@ -1437,7 +1437,7 @@
   }
 
   // ============================================================
-  // INDICADOR DE NOTIFICAÇÃO NÃO LIDA — badge com a quantidade (não só um ponto) no avatar da
+  // INDICADOR DE NOTIFICAÇÃO NÃO LIDA - badge com a quantidade (não só um ponto) no avatar da
   // barra "Conta" e, quando o dropdown abre, o mesmo badge ao lado de "Notificações" (é de lá
   // que o alerta vem). Só pro perfil social-media, mesma restrição que o badge antigo tinha.
   // ============================================================

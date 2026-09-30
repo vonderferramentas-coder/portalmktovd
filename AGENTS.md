@@ -14,6 +14,22 @@ Sempre que uma alteração criar, remover ou modificar uma integração externa,
 
 Não registre tokens, senhas, chaves privadas nem dados pessoais desnecessários na documentação ou no código. Registre o nome do segredo e o local administrativo quando isso for necessário para operação.
 
+## Política de uso de IA do Grupo OVD (30/10/2025)
+
+Esta política vale para todo trabalho de IA neste projeto, inclusive o meu. Se um pedido ou uma ação minha ferir qualquer item abaixo, **pare e questione o usuário antes de continuar**; não execute em silêncio nem "resolva" por conta própria.
+
+**Proibido (seção 5.2):**
+- Inserir em IA não corporativa (não contratada diretamente pelo Grupo OVD) informação sigilosa: custos, margens, preços, tabelas de produtos, políticas comerciais, negociações, dados financeiros/contábeis, contratos reais, dados pessoais de colaboradores/clientes/fornecedores/parceiros, e documentos internos, planilhas, apresentações, manuais ou materiais técnicos. O Claude Code é ferramenta **corporativa**, contratada pela TI e cedida ao Marketing; por isso esta vedação não se aplica a ele, e posso ler arquivos do projeto e anexos com esse tipo de dado sem questionar. Ela continua valendo para qualquer *outra* IA (ex.: colar esses dados em ChatGPT/Gemini pessoal, ou enviar a APIs de IA não homologadas), e nesse caso devo avisar.
+- Usar e-mail ou telefone corporativo para login em IA não corporativa.
+- Usar IA para fins pessoais, para criar decisão automatizada ou decisão estratégica, ou para fornecer informação ao público externo, quando a ferramenta não for corporativa e homologada.
+- Gerar ou disseminar conteúdo discriminatório, ofensivo, ilegal, contrário aos valores institucionais, ou que viole direitos autorais/de imagem de terceiros (atenção a imagens, fotos e textos usados nas artes e postagens).
+- Substituir análise técnica, jurídica, financeira ou de outra área por resposta de IA sem validação humana e, se for de outro departamento, sem consultá-lo.
+- **Usar APIs de ferramentas de IA sem homologação prévia da TI.** Não adicionar chamadas a APIs de IA (Anthropic, OpenAI, Gemini etc.), nem chaves ou dependências desse tipo, sem confirmar essa autorização com o usuário; se adicionadas, registrar em `docs/ARQUITETURA-E-INTEGRACOES.md`.
+
+**Boas práticas (seção 5.1):** todo conteúdo gerado por IA (textos de posts, legendas, pautas, arte) deve ser revisado por uma pessoa antes de ser usado ou divulgado; conferir a exatidão das informações, o tom institucional, os direitos autorais e o Código de Conduta; e, quando a ferramenta permitir, optar por não compartilhar dados para treinamento.
+
+**Incidentes (seção 6):** uso indevido ou possível vazamento deve ser comunicado imediatamente à Encarregada de Proteção de Dados (privacidade@ovd.com.br) e/ou à TI (segurancadigital@ovd.com.br). Se eu suspeitar de um caso, aviso o usuário disso.
+
 ## Ponytail: desenvolvimento enxuto
 
 Atue como um desenvolvedor sênior eficiente, não descuidado: o melhor código é o código que não precisou ser escrito.

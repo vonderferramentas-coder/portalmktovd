@@ -4,7 +4,7 @@
   // O painel lê a série diária publicada pelo workflow (data/social-followers.json) e a
   // combina com números lançados à mão. O dado da API nunca é gravado no navegador: ele
   // é relido a cada carga, para que a página nunca mostre uma cópia velha do que a Meta
-  // já corrigiu — foi exatamente esse tipo de cópia que fez a série de exemplo sobreviver
+  // já corrigiu - foi exatamente esse tipo de cópia que fez a série de exemplo sobreviver
   // à sua remoção do código.
 
   const brand = (window.PortalBrand && (window.PortalBrand.list || []).find(item => item.id === window.PortalBrand.activeId)) || {};
@@ -13,7 +13,7 @@
   // coleta automática própria (workflows .github/workflows/sync-meta-*.yml) tem uma entrada
   // aqui, com o sufixo dos documentos que ela grava no Firestore (portalStore/<rede>-<sufixo>-v1)
   // e quais redes de fato têm coleta. Marcas fora deste mapa (ainda sem integração) nunca
-  // buscam dados publicados nem herdam número/meta de outra marca — mostram "não conectado".
+  // buscam dados publicados nem herdam número/meta de outra marca - mostram "não conectado".
   const BRAND_INTEGRATIONS = {
     'default': { storeSuffix: 'vonder', instagram: true, facebook: true, youtube: true },
     'ferramentas-gerais': { storeSuffix: 'ferramentas-gerais', instagram: true, facebook: true, youtube: false },
@@ -30,7 +30,7 @@
   const AUTO_REFRESH_MS = 60000;
   const MAX_BUCKETS = 60;
 
-  // auth.css esconde a página inteira (visibility:hidden) até auth-guard.js liberar o acesso —
+  // auth.css esconde a página inteira (visibility:hidden) até auth-guard.js liberar o acesso -
   // mas transições CSS e requestAnimationFrame continuam correndo por baixo. Sem isso, a
   // animação do anel de meta termina escondida e só aparece o quadro final quando a página some
   // do auth-pending. pageVisible fica em memória (não observa de novo) porque a classe some uma
@@ -48,12 +48,12 @@
   }
 
   // 'social_followers_manual_v3_' era a chave da funcionalidade "Registrar número" (medição
-  // manual de seguidores), removida por não ser mais usada — limpa qualquer valor órfão que
+  // manual de seguidores), removida por não ser mais usada - limpa qualquer valor órfão que
   // ainda esteja salvo de quando a funcionalidade existia.
   ['social_followers_', 'social_followers_goals_', 'social_followers_v2_', 'social_followers_goals_v2_', 'social_followers_manual_v3_']
     .forEach(prefix => { try { localStorage.removeItem(prefix + brandKey); } catch (error) { /* sem storage */ } });
 
-  // Metas ficavam só em localStorage (goalsLegacyKey) — cada usuário só via a meta que ele
+  // Metas ficavam só em localStorage (goalsLegacyKey) - cada usuário só via a meta que ele
   // mesmo tinha cadastrado no próprio navegador. Migradas para portalStore (mesma área
   // protegida e compartilhada do Firestore que followers-vonder-v1 já usa) para que todo
   // usuário ativo veja e edite a mesma meta, em qualquer dispositivo.
@@ -66,7 +66,7 @@
     { name:'Facebook',  color:'#287BE0', icon:'icons/facebook.svg',  connected: !!(integration && integration.facebook) },
     { name:'YouTube',   color:'#F04444', icon:'icons/youtube.svg',   connected: !!(integration && integration.youtube) },
     // TikTok usa preto (#111827) como cor de marca no card "Comunidade total" (fundo, sempre
-    // legível) — mas essa mesma cor em linha/ponto/legenda do gráfico fica preto sobre preto no
+    // legível) - mas essa mesma cor em linha/ponto/legenda do gráfico fica preto sobre preto no
     // tema escuro (fundo do card também é bem escuro). colorChart é só para esses três usos
     // (ver chartColor abaixo) e cai no ciano do próprio logo do TikTok no tema escuro.
     { name:'TikTok',    color:'#111827', colorChartDark:'#69C9D0', icon:'icons/tiktok.svg', connected:false }
@@ -88,9 +88,9 @@
   };
   // Cada rede só devolve as métricas que a própria API expõe (ver sync-meta-posts.yml para o
   // Instagram, sync-youtube-videos.yml para o YouTube e sync-meta-facebook-posts.yml para o
-  // Facebook) — o YouTube não tem interações agregadas nem contagem de salvamentos, e o Facebook
+  // Facebook) - o YouTube não tem interações agregadas nem contagem de salvamentos, e o Facebook
   // só tem curtidas/comentários/interações (sem visualizações nem salvamentos, que a Graph API
-  // de Página não expõe pelos campos básicos do /posts) — o dropdown "Ordenar por" e as colunas
+  // de Página não expõe pelos campos básicos do /posts) - o dropdown "Ordenar por" e as colunas
   // da lista só mostram o que existe de fato para a rede em foco.
   const POST_SORT_KEYS_BY_NETWORK = {
     Instagram: ['timestamp', 'likeCount', 'commentsCount', 'totalInteractions', 'views', 'saved'],
@@ -101,10 +101,10 @@
     const keys = network && POST_SORT_KEYS_BY_NETWORK[network.name];
     return keys ? POST_SORT_OPTIONS.filter(option => keys.includes(option.key)) : POST_SORT_OPTIONS;
   };
-  // Reels só existe no Instagram e Shorts só no YouTube — por isso o dropdown "Tipo de
+  // Reels só existe no Instagram e Shorts só no YouTube - por isso o dropdown "Tipo de
   // publicação" nunca mistura os dois num mesmo item. O Facebook não tem uma classificação de
   // Reels confiável pelos campos básicos do /posts da Graph API, mas dá pra saber se o post é
-  // vídeo (attachments[0].media_type, ver sync-meta-facebook-posts.yml) — por isso ganha só a
+  // vídeo (attachments[0].media_type, ver sync-meta-facebook-posts.yml) - por isso ganha só a
   // divisão Vídeo/Posts, sem Reels.
   const FORMAT_ICON_SHORT = '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 9.5v5l4-2.5-4-2.5Z"/>'; // retrato + play: vídeo curto vertical
   const FORMAT_ICON_POST = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>';
@@ -144,7 +144,7 @@
   const monthEnd = date => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
   const shortDate = value => { const d = parse(value); return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`; };
   const monthTag = date => `${MONTHS[date.getUTCMonth()]}/${String(date.getUTCFullYear()).slice(-2)}`;
-  // <input type="date"> dispara "change" assim que dia+mês+ano formam uma data válida — e ao
+  // <input type="date"> dispara "change" assim que dia+mês+ano formam uma data válida - e ao
   // digitar o ano dígito a dígito, o primeiro já forma uma data "válida" (ano bem pequeno, tipo
   // 0002), disparando o listener antes do usuário terminar de digitar os outros 3 dígitos.
   const looksLikeTypedYear = isoDate => { const year = Number(isoDate.slice(0, 4)); return year >= 2000 && year <= 2099; };
@@ -173,7 +173,7 @@
   const setTone = (id, value) => { const node = el(id); if (node) node.className = value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral'; };
   const format = value => Number(value || 0).toLocaleString('pt-BR');
   // O YouTube arredonda o total de inscritos que devolve por API a 3 algarismos
-  // significativos (documentado pelo Google) — abaixo de 1.000 o valor já vem exato, então só
+  // significativos (documentado pelo Google) - abaixo de 1.000 o valor já vem exato, então só
   // formata como "~41.0k" a partir daí; a casa decimal muda exatamente quando o Google já
   // teria mudado o valor bruto (41.000→41.1k só quando o real vira 41.100), sem inventar falsa
   // precisão nem perder precisão real.
@@ -181,7 +181,7 @@
     const n = Number(value || 0);
     return n < 1000 ? format(n) : `~${(n / 1000).toFixed(1)}k`;
   };
-  // Escurece um hex (ex.: "#E94683") multiplicando cada canal — usado para gerar o tom escuro
+  // Escurece um hex (ex.: "#E94683") multiplicando cada canal - usado para gerar o tom escuro
   // do degradê do cartão de total a partir da cor da plataforma, mantendo o mesmo estilo visual
   // (escuro -> cor) que o gradiente padrão da marca já usava.
   const shadeColor = (hex, factor) => {
@@ -194,9 +194,9 @@
   };
   const signed = value => (value > 0 ? '+' : '') + format(Math.round(value));
   const percent = value => `${value > 0 ? '+' : ''}${value.toFixed(1).replace('.', ',')}%`;
-  // Seguidor é unidade inteira — "1.299,8/dia" não faz sentido. Toda taxa "por dia" arredonda.
+  // Seguidor é unidade inteira - "1.299,8/dia" não faz sentido. Toda taxa "por dia" arredonda.
   const rounded = value => format(Math.round(value));
-  // Legenda vem direto da Meta — trata como conteúdo não confiável antes de injetar no DOM.
+  // Legenda vem direto da Meta - trata como conteúdo não confiável antes de injetar no DOM.
   const escapeHtml = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
 
   let selectedNetwork = '0';
@@ -208,11 +208,12 @@
   let milestoneMonth = null;  // { year, month } navegado pelo usuário no card "Marcos do mês"
   // Uma vez que o usuário abre/fecha manualmente o "Passo a passo" do card do TikTok (ver
   // render() e initTikTokImport), o render() para de decidir esse estado sozinho a cada
-  // atualização automática — senão reabriria o card na cara do usuário a cada 60s.
+  // atualização automática - senão reabriria o card na cara do usuário a cada 60s.
   let tiktokStepsUserToggled = false;
   let postsData = [];        // snapshot mais recente de posts (sem histórico por dia)
   let postsSort = 'timestamp';
   let postsView = 'grid';
+  let lastReport = null;     // números do período exibido, capturados em render() para o e-mail
   let postsFormat = 'all'; // 'all' ou uma chave de POST_FORMAT_OPTIONS_BY_NETWORK (ex.: 'instagram-reels')
 
   // ---------------------------------------------------------------- dados
@@ -243,7 +244,7 @@
 
   const activeNetworks = () => selectedNetwork === 'all' ? NETWORKS : [NETWORKS[Number(selectedNetwork)]];
   // Insights detalhados e o ranking de posts só existem para o Instagram (é o único canal com
-  // esses dados coletados pela Meta) — em "Todas as redes" eles ainda fazem sentido como
+  // esses dados coletados pela Meta) - em "Todas as redes" eles ainda fazem sentido como
   // complemento, mas olhando Facebook/YouTube/TikTok isoladamente eles não condizem com a
   // seleção e precisam ficar escondidos.
   const isInstagramOrAllSelected = () => {
@@ -251,7 +252,7 @@
     return !active || active.name === 'Instagram';
   };
   // Painel de posts: ao contrário dos insights acima (exclusivos do Instagram), aceita as
-  // redes que já têm coleta de conteúdo (Instagram, YouTube e Facebook) — TikTok ainda não.
+  // redes que já têm coleta de conteúdo (Instagram, YouTube e Facebook) - TikTok ainda não.
   const POSTS_NETWORKS = ['Instagram', 'YouTube', 'Facebook'];
   const activeNetworkOrNull = () => selectedNetwork === 'all' ? null : NETWORKS[Number(selectedNetwork)];
   const isPostsNetworkSelected = () => {
@@ -377,13 +378,13 @@
       if (active && active.name !== 'YouTube') totalWatermarkMask.style.setProperty('--total-watermark', `url("${active.icon}")`);
     }
     // O YouTube arredonda o total de inscritos que devolve por API (confirmado na própria
-    // documentação do Google) — sinalizamos isso em vez de fingir precisão que a API não tem;
+    // documentação do Google) - sinalizamos isso em vez de fingir precisão que a API não tem;
     // o ícone abre um modal explicando (ver openYoutubeApprox), o valor exato só existe
     // dentro do YouTube Studio. O mesmo ícone também avisa quando o TikTok é um lançamento
-    // manual (ver TOTAL_APPROX_INFO) — some sozinho quando `connected` virar true, depois
+    // manual (ver TOTAL_APPROX_INFO) - some sozinho quando `connected` virar true, depois
     // que a coleta automática entrar no ar.
     const isYouTube = active && active.name === 'YouTube';
-    // O TikTok é manual pra qualquer marca (ver card "Importar histórico do TikTok" — cada
+    // O TikTok é manual pra qualquer marca (ver card "Importar histórico do TikTok" - cada
     // marca sobe a própria planilha), então o aviso aparece pra todas, não só a VONDER.
     const isManualTikTok = active && active.name === 'TikTok' && !active.connected;
     setText('total', isYouTube ? formatApproxYouTube(current) : format(current));
@@ -397,7 +398,7 @@
 
     setText('growthPeriod', `${shortDate(first.date)} a ${shortDate(last.date)}`);
 
-    // Saldo real do Instagram no período (follows/unfollows via Insights da Meta) — calculado
+    // Saldo real do Instagram no período (follows/unfollows via Insights da Meta) - calculado
     // sempre, independente da rede selecionada agora: o botão do Instagram na lista de
     // plataformas usa isso pro delta dele mesmo com outra rede em foco (ver renderPlatforms).
     const igPeriodInsights = points.map(point => point.insights && point.insights.Instagram)
@@ -406,33 +407,42 @@
     const igGrossUnfollows = igPeriodInsights.reduce((sum, insight) => sum + Number(insight.unfollows), 0);
 
     // Bruto (follows/unfollows) exibido no card "Crescimento no período" só faz sentido com
-    // Instagram/"Todas" selecionado — fora disso o dado não corresponde à seleção, então some
-    // como "—" em vez de mostrar um número de outra rede.
+    // Instagram/"Todas" selecionado - fora disso o dado não corresponde à seleção, então some
+    // como "-" em vez de mostrar um número de outra rede.
     const periodInsights = isInstagramOrAllSelected() ? igPeriodInsights : [];
     const grossFollows = isInstagramOrAllSelected() ? igGrossFollows : 0;
     const grossUnfollows = isInstagramOrAllSelected() ? igGrossUnfollows : 0;
 
     // "Crescimento líquido"/"Média por dia" deste card usam o saldo real (bruto − unfollows)
-    // quando ele está disponível — mesmo motivo do tooltip do gráfico (ver aggregate/
+    // quando ele está disponível - mesmo motivo do tooltip do gráfico (ver aggregate/
     // showTooltip): o delta bruto de followers_count entre duas medições diverge do saldo
     // real por ruído que não é "seguidor novo" (cache da Meta, limpeza de contas spam), e os
     // 4 números deste card precisam fechar a conta entre si (bruto − unfollows = líquido).
     // ponytail: com "Todas as redes" selecionado, isso restringe o líquido mostrado AQUI ao
     // saldo do Instagram (única rede com Insights), sem somar a fração de Facebook/YouTube/
-    // TikTok no período — o card "Comunidade total" acima continua com o total real das 4
+    // TikTok no período - o card "Comunidade total" acima continua com o total real das 4
     // redes. Evolução: se outra rede ganhar o mesmo tipo de Insights, somar aqui também.
     const netForCard = periodInsights.length ? grossFollows - grossUnfollows : net;
     const perDayForCard = periodInsights.length ? netForCard / span : perDay;
     const hasNetForCard = periodDeltas.length || periodInsights.length;
 
-    setText('newFollowers', hasNetForCard ? signed(netForCard) : '—');
+    setText('newFollowers', hasNetForCard ? signed(netForCard) : '-');
     setTone('newFollowers', hasNetForCard ? netForCard : 0);
-    setText('avg', perDayForCard === null ? '—' : signed(perDayForCard));
+    setText('avg', perDayForCard === null ? '-' : signed(perDayForCard));
     setTone('avg', perDayForCard || 0);
-    setText('grossFollowsPeriod', periodInsights.length ? signed(grossFollows) : '—');
+    setText('grossFollowsPeriod', periodInsights.length ? signed(grossFollows) : '-');
     setTone('grossFollowsPeriod', periodInsights.length ? grossFollows : 0);
-    setText('unfollowsPeriod', periodInsights.length ? signed(-grossUnfollows) : '—');
+    setText('unfollowsPeriod', periodInsights.length ? signed(-grossUnfollows) : '-');
     setTone('unfollowsPeriod', periodInsights.length ? -grossUnfollows : 0);
+
+    // Dia a dia do Instagram (Insights da Meta) - base do "dia com mais novos seguidores/unfollows"
+    // do relatório por e-mail; sem Insights, o melhor dia cai para o delta líquido da série.
+    const insightDays = isInstagramOrAllSelected() ? points.filter(point => point.insights && point.insights.Instagram
+      && Number.isFinite(Number(point.insights.Instagram.follows)) && Number.isFinite(Number(point.insights.Instagram.unfollows)))
+      .map(point => ({ date: point.date, follows: Number(point.insights.Instagram.follows), unfollows: Number(point.insights.Instagram.unfollows) })) : [];
+    const bestDelta = periodDeltas.length ? periodDeltas.reduce((top, item) => item.delta > top.delta ? item : top) : null;
+    lastReport = { from: first.date, to: last.date, networkName: active ? active.name : null, hasNet: !!hasNetForCard,
+      net: netForCard, perDay: perDayForCard, insightDays, bestDelta };
 
     renderGoalRing(currentPoint, nets);
     el('channelContext').innerHTML = active ? `<img src="${active.icon}" alt=""> ${active.name}` : 'Todas';
@@ -441,14 +451,14 @@
     renderPlatforms(points, nets, currentPoint, igPeriodInsights.length ? igGrossFollows - igGrossUnfollows : null);
     renderTable(points, nets, grain);
     renderIndicators(points, nets, periodDeltas, net, rate, perDay, span);
-    // A Meta só nos dá follows/unfollows/alcance detalhados do Instagram — não existe
+    // A Meta só nos dá follows/unfollows/alcance detalhados do Instagram - não existe
     // esse dado para Facebook/YouTube/TikTok, então o bloco não faz sentido fora do
     // Instagram (ou da visão "Todas", onde ele complementa o total).
     const showInstagramOnly = isInstagramOrAllSelected();
     const insightsPanel = el('insightsPanel');
     if (insightsPanel) insightsPanel.hidden = !showInstagramOnly;
     if (showInstagramOnly) renderInsights(points);
-    // Qualquer marca com painel ativo pode subir a própria planilha do TikTok — cada marca
+    // Qualquer marca com painel ativo pode subir a própria planilha do TikTok - cada marca
     // grava no próprio documento (FOLLOWERS_STORE_KEY já é por marca).
     const tiktokImportPanel = el('tiktokImportPanel');
     const isTikTokActive = !!(active && active.name === 'TikTok');
@@ -465,7 +475,7 @@
       const reimportLink = el('tiktokReimportLink');
       if (reimportLink) reimportLink.hidden = !hasImportedData;
       // Assim que já existe planilha importada, o passo a passo nasce fechado (quem já sabe o
-      // fluxo não precisa rolar por ele de novo) — mas só decide isso enquanto o usuário não
+      // fluxo não precisa rolar por ele de novo) - mas só decide isso enquanto o usuário não
       // tiver mexido no toggle com a própria mão (ver tiktokStepsUserToggled).
       const stepsToggle = el('tiktokStepsToggle'), stepsBody = el('tiktokStepsBody');
       if (stepsToggle && stepsBody && !tiktokStepsUserToggled) {
@@ -479,7 +489,7 @@
     renderComparatives(points, nets, periodDeltas);
     renderGoal(currentPoint, current, nets, periodDeltas, perDay);
 
-    // Ranking de posts: Instagram e YouTube (ver POSTS_NETWORKS) — Facebook/TikTok ainda não
+    // Ranking de posts: Instagram e YouTube (ver POSTS_NETWORKS) - Facebook/TikTok ainda não
     // têm coleta de conteúdo. `hidden` aqui é só o corte por plataforma; o recolher/expandir
     // manual (classe is-collapsed, ver o toggle mais abaixo) fica intacto independente disso.
     const showPosts = isPostsNetworkSelected();
@@ -537,12 +547,12 @@
       const previousValue = index > 0 ? buckets[index - 1].point.values[network.name] : undefined;
       let change = Number.isFinite(previousValue) ? value - previousValue : null;
       // O estoque de followers_count oscila entre dois fechamentos por motivos que não são
-      // "seguidor novo" (cache da Meta, contas removidas por spam etc.) — diverge do que a
+      // "seguidor novo" (cache da Meta, contas removidas por spam etc.) - diverge do que a
       // própria Meta contabiliza via Insights (follows_and_unfollows). Quando esse saldo real
       // existe para o Instagram (reconstruir-historico.yml o publica em insights.Instagram.net,
       // só os últimos ~29 dias), ele é mais confiável que a diferença bruta entre snapshots.
       if (network.name === 'Instagram' && Number.isFinite(item.igNetSum)) change = item.igNetSum;
-      tooltip.innerHTML = `<strong>${network.name} · ${shortDate(item.point.date)}</strong><span>Seguidores: <b>${format(value)}</b></span><span>Novos ${grainNounLabel}: <b class="${change === null ? 'neutral' : change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral'}">${change === null ? '—' : signed(change)}</b></span>`;
+      tooltip.innerHTML = `<strong>${network.name} · ${shortDate(item.point.date)}</strong><span>Seguidores: <b>${format(value)}</b></span><span>Novos ${grainNounLabel}: <b class="${change === null ? 'neutral' : change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral'}">${change === null ? '-' : signed(change)}</b></span>`;
       tooltip.hidden = false;
       const rect = el('bars').getBoundingClientRect();
       const pointerX = event.clientX || (rect.left + point.getBoundingClientRect().left - rect.left);
@@ -570,7 +580,7 @@
     const first = points[0];
     const chip = (value, delta, comparable) => comparable
       ? `<strong class="${delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral'}">${signed(delta)}</strong><small>no período</small>`
-      : `<strong class="neutral">—</strong>`;
+      : `<strong class="neutral">-</strong>`;
     const allTotal = totalAt(last, NETWORKS);
     const allDelta = allTotal - totalAt(first, NETWORKS);
     const comparableAll = points.length > 1;
@@ -582,7 +592,7 @@
       const shown = known ? (network.name === 'YouTube' ? formatApproxYouTube(value) : format(value)) : null;
       const detail = known ? `${shown} seguidores` : (network.connected ? 'Aguardando coleta' : 'Sem API conectada');
       // Instagram usa o saldo real dos Insights da Meta (follows − unfollows), não o delta
-      // bruto de followers_count entre duas medições — mesmo motivo do card "Crescimento no
+      // bruto de followers_count entre duas medições - mesmo motivo do card "Crescimento no
       // período" (ver render()): o total bruto oscila por ruído que não é "seguidor novo".
       const useIgNet = network.name === 'Instagram' && igNetPeriod !== null;
       const delta = useIgNet ? igNetPeriod : (known ? value - before : 0);
@@ -612,7 +622,7 @@
     el('table').innerHTML = pageItems.map(item => {
       const cells = nets.map(network => {
         const value = item.point.values[network.name];
-        return `<td>${Number.isFinite(value) ? format(value) : '—'}</td>`;
+        return `<td>${Number.isFinite(value) ? format(value) : '-'}</td>`;
       }).join('');
       return `<tr><td>${item.label}</td>${cells}<td><strong>${format(totalAt(item.point, nets))}</strong></td></tr>`;
     }).join('');
@@ -630,7 +640,7 @@
   // ----------------------------------------------------------- marcos do mês
 
   // Marcos fixos do card visual: abertura e fechamento do mês, mais toda sexta-feira
-  // entre os dois — são os pontos que o time usa para comparar semana a semana.
+  // entre os dois - são os pontos que o time usa para comparar semana a semana.
   function monthMilestones(year, month) {
     const start = new Date(Date.UTC(year, month, 1));
     const end = monthEnd(start);
@@ -655,7 +665,7 @@
     return null;
   }
 
-  // Distingue "cresceu 0 entre os marcos" de "não houve coleta nessa janela" — meses antigos só
+  // Distingue "cresceu 0 entre os marcos" de "não houve coleta nessa janela" - meses antigos só
   // têm um número estimado por mês (ver comentário em buildSeries), então o valor do marco é
   // sempre herdado do mês anterior até a próxima medição real, sem refletir a semana em si.
   function hasMeasurementInRange(networkName, fromExclusive, toInclusive) {
@@ -672,7 +682,7 @@
     const head = el('milestoneHead'), body = el('milestoneBody'), label = el('milestoneMonthLabel'), nextBtn = el('milestoneNext');
     if (!head || !body || !label) return;
     if (!series.length) {
-      label.textContent = '—';
+      label.textContent = '-';
       if (nextBtn) nextBtn.disabled = true;
       head.innerHTML = '<th>Rede social</th>';
       const message = !hasAnyIntegration ? 'A integração de redes sociais desta marca ainda não foi conectada.' : 'Aguardando a primeira coleta.';
@@ -699,7 +709,7 @@
     body.innerHTML = NETWORKS.map((network, netIndex) => {
       const values = dates.map(date => date > todayIso ? null : valueAtDate(date, network.name));
       // Sem coleta real dentro da janela (ex.: meses antigos, só um número estimado por mês), o valor
-      // do marco é apenas herdado do anterior — mostrar "0" aí sugeriria estagnação em vez de "sem dado".
+      // do marco é apenas herdado do anterior - mostrar "0" aí sugeriria estagnação em vez de "sem dado".
       const deltasRow = values.map((value, index) => {
         if (index === 0 || value === null || values[index - 1] === null) return null;
         if (!hasMeasurementInRange(network.name, dates[index - 1], dates[index])) return null;
@@ -710,9 +720,9 @@
       const altClass = netIndex % 2 ? ' alt' : '';
       const deltaCells = deltasRow.map(delta => {
         const isBest = best !== null && delta === best;
-        return `<td class="milestone-delta-cell ${toneClass(delta)}${isBest ? ' best-week' : ''}">${delta === null ? '—' : signed(delta)}</td>`;
+        return `<td class="milestone-delta-cell ${toneClass(delta)}${isBest ? ' best-week' : ''}">${delta === null ? '-' : signed(delta)}</td>`;
       }).join('');
-      const totalCells = values.map(value => `<td>${value === null ? '—' : format(value)}</td>`).join('');
+      const totalCells = values.map(value => `<td>${value === null ? '-' : format(value)}</td>`).join('');
       return `<tr class="milestone-total-row${altClass}"><td class="milestone-row-label"><span class="milestone-row-label-inner"><img class="milestone-icon" src="${network.icon}" alt="">${network.name}</span></td>${totalCells}</tr>` +
         `<tr class="milestone-delta-row${altClass}"><td class="milestone-row-label"></td>${deltaCells}</tr>`;
     }).join('');
@@ -735,23 +745,27 @@
     if (isNaN(d.getTime())) return '';
     return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
   };
-  // "Data" ordena pelo timestamp de verdade, não pelo texto formatado — as demais são numéricas.
+  // "Data" ordena pelo timestamp de verdade, não pelo texto formatado - as demais são numéricas.
   const postSortValue = (post, key) => key === 'timestamp' ? (new Date(post.timestamp).getTime() || 0) : (Number(post[key]) || 0);
 
-  function renderPostCard(post, index) {
+  // opts.label (galeria de destaques) troca a insígnia de posição #n por um título acima da legenda e
+  // opts.primary escolhe qual métrica fica em destaque nos chips (padrão: a ordenação do ranking abaixo).
+  function renderPostCard(post, index, opts = {}) {
+    const primaryKey = opts.primary || postsSort;
     const caption = escapeHtml(post.caption).slice(0, 140);
     const thumb = post.thumbnailUrl ? `<img src="${escapeHtml(post.thumbnailUrl)}" alt="" loading="lazy">` : '';
     // A data já aparece à parte (post-date); os chips de estatística cobrem só as métricas numéricas.
     const stats = sortOptionsForNetwork({ name: post.network }).filter(option => option.key !== 'timestamp').map(option => {
       const value = post[option.key];
       const known = Number.isFinite(Number(value));
-      return `<span class="post-stat${option.key === postsSort ? ' is-primary' : ''}">${postIconSvg(option.key)}<b>${known ? format(Number(value)) : '—'}</b></span>`;
+      return `<span class="post-stat${option.key === primaryKey ? ' is-primary' : ''}">${postIconSvg(option.key)}<b>${known ? format(Number(value)) : '-'}</b></span>`;
     }).join('');
     return `<button type="button" class="post-card" data-post-id="${escapeHtml(post.id)}">
-      <div class="post-thumb">${thumb}<span class="post-rank">#${index + 1}</span><span class="post-format-badge">${formatLabel(post)}</span></div>
+      <div class="post-thumb">${thumb}${opts.label ? '' : `<span class="post-rank">#${index + 1}</span>`}<span class="post-format-badge">${formatLabel(post)}</span></div>
       <div class="post-body">
+        ${opts.label ? `<span class="top-post-label">${opts.label}</span>` : ''}
         <p class="post-caption">${caption || '<em>Sem legenda</em>'}</p>
-        <span class="post-date${postsSort === 'timestamp' ? ' is-primary' : ''}">${postDateLabel(post.timestamp)}</span>
+        <span class="post-date${primaryKey === 'timestamp' ? ' is-primary' : ''}">${postDateLabel(post.timestamp)}</span>
         <div class="post-stats">${stats}</div>
       </div>
     </button>`;
@@ -770,7 +784,7 @@
         if (option.key === 'timestamp') return `<td>${postDateLabel(post.timestamp)}</td>`;
         const value = post[option.key];
         const known = Number.isFinite(Number(value));
-        return `<td>${known ? format(Number(value)) : '—'}</td>`;
+        return `<td>${known ? format(Number(value)) : '-'}</td>`;
       }).join('');
       return `<tr><td class="posts-table-post"><button type="button" data-post-id="${escapeHtml(post.id)}">${thumb}<span>${escapeHtml(post.caption).slice(0, 70) || 'Sem legenda'}</span></button><span class="posts-table-format">${formatLabel(post)}</span></td>${cells}</tr>`;
     }).join('');
@@ -785,22 +799,22 @@
   // posts mais recentes por cima do que reconstruir-historico-posts.yml já trouxe do resto da
   // conta), então qualquer período dentro da vida da conta tem post pra mostrar. YouTube e
   // Facebook ainda só guardam os ~30 posts mais recentes coletados (sync-youtube-videos.yml e
-  // sync-meta-facebook-posts.yml sobrescrevem o snapshot inteiro a cada rodada, sem acumular) —
+  // sync-meta-facebook-posts.yml sobrescrevem o snapshot inteiro a cada rodada, sem acumular) -
   // um período fora dessa janela para essas duas redes legitimamente não tem post pra mostrar.
   // 'REELS' cobre tanto Reels do Instagram quanto Shorts do YouTube (ver sync-youtube-videos.yml,
-  // que grava o mesmo campo/valor que sync-meta-posts.yml usa para Reels) — daí um filtro só
+  // que grava o mesmo campo/valor que sync-meta-posts.yml usa para Reels) - daí um filtro só
   // servir pras duas redes. 'VIDEO' cobre vídeo normal do YouTube e vídeo do Facebook (ver
-  // sync-meta-facebook-posts.yml) — nenhuma das duas é Reels/Short, mas ainda é vídeo.
+  // sync-meta-facebook-posts.yml) - nenhuma das duas é Reels/Short, mas ainda é vídeo.
   const formatLabel = post => {
     if (isShortFormatPost(post)) return post.network === 'YouTube' ? 'Short' : 'Reels';
     if (isVideoFormatPost(post)) return 'Vídeo';
     return 'Post';
   };
 
-  function postsInPeriod() {
+  function postsInPeriod(ignoreFormat = false) {
     const active = activeNetworkOrNull();
     const byNetwork = active ? postsData.filter(post => post.network === active.name) : postsData;
-    const formatOption = postsFormat !== 'all' && formatOptionsForNetwork(null).find(option => option.key === postsFormat);
+    const formatOption = !ignoreFormat && postsFormat !== 'all' && formatOptionsForNetwork(null).find(option => option.key === postsFormat);
     const byFormat = !formatOption ? byNetwork
       : byNetwork.filter(post => post.network === formatOption.network && formatOption.matches(post));
     const from = el('startDate').value, to = el('endDate').value;
@@ -812,7 +826,7 @@
   }
 
   // Reconstrói o conteúdo dos dois dropdowns (chamado a cada renderPosts, porque as opções
-  // dependem da rede em foco — trocar de Instagram para YouTube no topo muda as métricas e os
+  // dependem da rede em foco - trocar de Instagram para YouTube no topo muda as métricas e os
   // formatos disponíveis). O clique nos itens é delegado no listener fixo do menu (ver mais
   // abaixo), não precisa religar nada aqui.
   function renderPostsMenu(menu, items, activeKey, dataAttr, labelId, fallbackLabel) {
@@ -824,10 +838,33 @@
     setText(labelId, active ? active.label : fallbackLabel);
   }
 
+  // Galeria "Destaques do período": o post líder em cada métrica dentro do período selecionado, sem
+  // o filtro de formato do ranking abaixo.
+  const TOP_POSTS = [
+    { key: 'likeCount', label: 'Mais curtidas' }, { key: 'commentsCount', label: 'Mais comentários' },
+    { key: 'totalInteractions', label: 'Mais interações' }, { key: 'views', label: 'Mais visualizações' },
+    { key: 'saved', label: 'Mais salvamentos' }
+  ];
+  function renderTopPosts() {
+    const grid = el('topPostsGrid');
+    if (!grid) return;
+    const posts = hasAnyIntegration && postsData.length ? postsInPeriod(true) : [];
+    setText('topPostsSummary', posts.length ? `O post líder de cada métrica entre as ${format(posts.length)} publicações do período selecionado` : 'Nenhuma publicação no período selecionado.');
+    grid.innerHTML = TOP_POSTS.map(({ key, label }) => {
+      const ranked = posts.filter(post => Number(post[key]) > 0);
+      if (!ranked.length) {
+        return `<div class="post-card top-post-empty"><div class="post-body"><span class="top-post-label">${label}</span><p class="post-caption muted">Sem registro no período.</p></div></div>`;
+      }
+      const top = ranked.reduce((best, post) => Number(post[key]) > Number(best[key]) ? post : best);
+      return renderPostCard(top, 0, { label, primary: key });
+    }).join('');
+  }
+
   function renderPosts() {
     const grid = el('postsGrid'), tableWrap = el('postsTableWrap'), summary = el('postsSummary');
     const formatControl = el('postsFormatControl'), sortControl = el('postsSortControl');
     renderPostsStats();
+    renderTopPosts();
     if (!grid) return;
     if (!hasAnyIntegration) {
       if (summary) summary.textContent = 'Esta marca ainda não tem posts conectados.';
@@ -848,7 +885,7 @@
     }
     if (sortControl) {
       // Igual ao comportamento anterior: escondido na lista, porque lá quem ordena é o clique
-      // no cabeçalho da coluna — sem isso, voltar pra grade perdia a sincronia do menu.
+      // no cabeçalho da coluna - sem isso, voltar pra grade perdia a sincronia do menu.
       sortControl.hidden = postsView === 'list';
       renderPostsMenu(el('postsSortMenu'), sortOptions, postsSort, 'sort', 'postsSortLabel', 'Data');
     }
@@ -895,19 +932,19 @@
     const ids = ['postsStatTotal', 'postsStatReels', 'postsStatStatic', 'postsStatLikes', 'postsStatComments', 'postsStatInteractions', 'postsStatViews', 'postsStatSaved'];
     if (!hasAnyIntegration) {
       if (subtitle) subtitle.textContent = 'Esta marca ainda não tem posts conectados.';
-      ids.forEach(id => { const node = el(id); if (node) node.textContent = '—'; });
+      ids.forEach(id => { const node = el(id); if (node) node.textContent = '-'; });
       return;
     }
     if (!postsData.length) {
       if (subtitle) subtitle.textContent = 'Aguardando a primeira coleta de posts.';
-      ids.forEach(id => { const node = el(id); if (node) node.textContent = '—'; });
+      ids.forEach(id => { const node = el(id); if (node) node.textContent = '-'; });
       return;
     }
     const scoped = postsInPeriod();
     const total = scoped.length;
     if (!total) {
       if (subtitle) subtitle.textContent = 'Nenhum post publicado no período selecionado.';
-      ids.forEach(id => { const node = el(id); if (node) node.textContent = '—'; });
+      ids.forEach(id => { const node = el(id); if (node) node.textContent = '-'; });
       return;
     }
     const reels = scoped.filter(isShortFormatPost).length;
@@ -935,7 +972,7 @@
     return gateway.readPortalStore(key).then(record => record && record.v);
   }
 
-  // Um documento do Firestore tem limite de 1 MiB — quando o histórico de posts passa disso,
+  // Um documento do Firestore tem limite de 1 MiB - quando o histórico de posts passa disso,
   // scripts/publish_posts_firestore.py divide em documentos sequenciais (key, key__2, key__3,
   // ...) e marca chunkCount no primeiro. Junta todos de volta aqui antes de devolver pro
   // chamador, que não precisa saber que o dado veio fatiado.
@@ -954,7 +991,7 @@
 
   // Instagram (posts-vonder-v1), YouTube (youtube-videos-vonder-v1) e Facebook
   // (facebook-posts-vonder-v1) são coletados por workflows separados, cada um com seu próprio
-  // documento no Firestore — junta os três aqui na leitura, marcando a origem de cada item, para
+  // documento no Firestore - junta os três aqui na leitura, marcando a origem de cada item, para
   // o painel "Melhores posts" tratar como uma lista só (ver isPostsNetworkSelected). Uma falha
   // em um deles não derruba os outros.
   function loadPosts() {
@@ -973,7 +1010,7 @@
     }).catch(() => { postsData = []; renderPosts(); });
   }
 
-  // Barras finas divergindo de uma linha de base central — reaproveitado tanto no gráfico
+  // Barras finas divergindo de uma linha de base central - reaproveitado tanto no gráfico
   // grande de "Indicadores do período" quanto nos mini-gráficos de "Insights do Instagram".
   function divergingBarsSvg(values, width, height, minGap) {
     const baselineY = height / 2;
@@ -1041,11 +1078,11 @@
 
   function renderIndicators(points, nets, periodDeltas, net, rate, perDay, span) {
     const needs = days => `Faltam ${days} dia${days === 1 ? '' : 's'}`;
-    setText('netGrowth', periodDeltas.length ? signed(net) : '—');
+    setText('netGrowth', periodDeltas.length ? signed(net) : '-');
     setTone('netGrowth', periodDeltas.length ? net : 0);
-    setText('growthRate', periodDeltas.length ? percent(rate) : '—');
+    setText('growthRate', periodDeltas.length ? percent(rate) : '-');
     setTone('growthRate', periodDeltas.length ? rate : 0);
-    setText('dailyRate', perDay === null ? '—' : signed(perDay));
+    setText('dailyRate', perDay === null ? '-' : signed(perDay));
     setTone('dailyRate', perDay || 0);
 
     if (periodDeltas.length) {
@@ -1056,7 +1093,7 @@
       setText('worstDay', `${signed(worst.delta)} · ${shortDate(worst.date)}`);
       setTone('worstDay', worst.delta);
     } else {
-      setText('bestDay', '—'); setText('worstDay', '—');
+      setText('bestDay', '-'); setText('worstDay', '-');
     }
 
     const movingAverage = window => {
@@ -1083,20 +1120,20 @@
       return totalAt(last, nets) - totalAt(opening, nets);
     };
     const mtd = accumulated(monthStart), ytd = accumulated(yearStart);
-    setText('mtd', mtd === null ? '—' : signed(mtd));
+    setText('mtd', mtd === null ? '-' : signed(mtd));
     setTone('mtd', mtd || 0);
-    setText('ytd', ytd === null ? '—' : signed(ytd));
+    setText('ytd', ytd === null ? '-' : signed(ytd));
     setTone('ytd', ytd || 0);
   }
 
   const INSIGHT_SPARK_IDS = ['grossFollowsSpark', 'unfollowsSpark', 'insightNetSpark', 'reachSpark', 'followConversionSpark', 'avgFollowsSpark'];
   function renderInsights(points) {
-    // Mantém a data junto do insight — o tooltip dos mini-gráficos precisa dizer "em que dia".
+    // Mantém a data junto do insight - o tooltip dos mini-gráficos precisa dizer "em que dia".
     const daily = points
       .map(point => ({ date: point.date, insight: point.insights && point.insights.Instagram }))
       .filter(item => item.insight && Number.isFinite(Number(item.insight.follows)) && Number.isFinite(Number(item.insight.unfollows)));
     const blank = message => {
-      ['grossFollows','unfollows','insightNet','reach','followConversion','avgFollows'].forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = 'neutral'; });
+      ['grossFollows','unfollows','insightNet','reach','followConversion','avgFollows'].forEach(id => { setText(id, '-'); const node = el(id); if (node) node.className = 'neutral'; });
       INSIGHT_SPARK_IDS.forEach(id => renderTileSpark(id, [], 'area', null));
       setText('insightsSummary', message);
       setText('insightsPeriod', 'Aguardando');
@@ -1118,8 +1155,8 @@
     setText('grossFollows', signed(follows)); setTone('grossFollows', follows);
     setText('unfollows', signed(-left)); setTone('unfollows', -left);
     setText('insightNet', signed(net)); setTone('insightNet', net);
-    setText('reach', reachValues.length ? format(reach) : '—');
-    setText('followConversion', conversion === null ? '—' : `${conversion.toFixed(2).replace('.', ',')}%`);
+    setText('reach', reachValues.length ? format(reach) : '-');
+    setText('followConversion', conversion === null ? '-' : `${conversion.toFixed(2).replace('.', ',')}%`);
     setText('avgFollows', `${rounded(follows / daily.length)}/dia`); setTone('avgFollows', follows);
     setText('insightsSummary', `Dados confirmados pela Meta em ${daily.length} dia${daily.length === 1 ? '' : 's'} fechado${daily.length === 1 ? '' : 's'} no período.`);
     setText('insightsPeriod', `${daily.length} dia${daily.length === 1 ? '' : 's'}`);
@@ -1139,7 +1176,7 @@
       if (before === null || !series.some(point => point.date <= target)) return null;
       return totalAt(last, nets) - before;
     };
-    const show = (id, value) => { setText(id, value === null ? '—' : signed(value)); if (value !== null) setTone(id, value); };
+    const show = (id, value) => { setText(id, value === null ? '-' : signed(value)); if (value !== null) setTone(id, value); };
     show('cmpDay', periodDeltas.length ? periodDeltas[periodDeltas.length - 1].delta : null);
     show('cmpWeek', compareBack(7));
     show('cmpMonth', compareBack(30));
@@ -1153,7 +1190,7 @@
     const currentNet = periodDeltas.reduce((sum, item) => sum + item.delta, 0);
     const previousNet = previousDeltas.reduce((sum, item) => sum + item.delta, 0);
     if (!previousDeltas.length || !previousNet) {
-      setText('cmpPeriod', '—');
+      setText('cmpPeriod', '-');
     } else {
       const variation = (currentNet - previousNet) / Math.abs(previousNet) * 100;
       setText('cmpPeriod', percent(variation));
@@ -1203,7 +1240,7 @@
   let goalRingAnimFrame = null;
   let goalRingDisplayedPercent = null; // de onde a próxima animação parte, não o que está cru no DOM
 
-  // Conta do valor atual até o novo, em vez de trocar o número seco — mesma curva do
+  // Conta do valor atual até o novo, em vez de trocar o número seco - mesma curva do
   // preenchimento do traço (ver transition do .goal-ring-fill), pra sentir como um só movimento.
   function animateGoalRingPercent(percentEl, target) {
     const from = goalRingDisplayedPercent === null ? 0 : goalRingDisplayedPercent;
@@ -1230,7 +1267,7 @@
     if (!progress) {
       if (goalRingAnimFrame) { cancelAnimationFrame(goalRingAnimFrame); goalRingAnimFrame = null; }
       goalRingDisplayedPercent = null;
-      percentEl.textContent = '—';
+      percentEl.textContent = '-';
       captionEl.textContent = 'Nenhuma meta cadastrada para esta seleção.';
       fill.style.strokeDashoffset = `${GOAL_RING_CIRCUMFERENCE}`;
       fill.style.opacity = '0'; // sem isso, a ponta arredondada do traço desenha um pontinho mesmo com 0% de progresso
@@ -1254,7 +1291,7 @@
       setText('goalSummary', message);
       setText('goalStatus', 'Meta');
       ['goalTotal','goalPercent','goalRemaining','goalNeeded','goalPace','goalMonthly','goalEndMonth','goalEndYear','goalProjection']
-        .forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = ''; });
+        .forEach(id => { setText(id, '-'); const node = el(id); if (node) node.className = ''; });
     };
     const progress = goalProgressFor(nets, last);
     if (!progress) return blank('Nenhuma meta cadastrada para esta seleção.');
@@ -1267,19 +1304,19 @@
 
     if (remaining <= 0) {
       setText('goalStatus', 'Atingida');
-      ['goalNeeded','goalPace','goalMonthly','goalEndMonth','goalEndYear'].forEach(id => setText(id, '—'));
+      ['goalNeeded','goalPace','goalMonthly','goalEndMonth','goalEndYear'].forEach(id => setText(id, '-'));
       setText('goalProjection', 'Concluída');
       return;
     }
 
     const referenceDate = parse(last.date);
     // Prazo é opcional: sem ele a meta ainda serve de base pras projeções por ritmo (goalPace,
-    // goalEndMonth/Year, goalProjection) — só o que depende de comparar com uma data (ritmo
+    // goalEndMonth/Year, goalProjection) - só o que depende de comparar com uma data (ritmo
     // necessário por dia, "no ritmo"/"atrasada") fica indisponível.
     const daysToDeadline = deadline ? dayDiff(last.date, deadline) : null;
     if (deadline && daysToDeadline <= 0) {
       setText('goalNeeded', 'Prazo encerrado');
-      ['goalPace','goalMonthly','goalEndMonth','goalEndYear','goalProjection'].forEach(id => setText(id, '—'));
+      ['goalPace','goalMonthly','goalEndMonth','goalEndYear','goalProjection'].forEach(id => setText(id, '-'));
       setText('goalStatus', 'Prazo encerrado');
       return;
     }
@@ -1289,8 +1326,8 @@
     const pace = perDay;
     setText('goalNeeded', requiredDaily === null ? 'Sem prazo definido' : `${rounded(requiredDaily)}/dia`);
     if (pace === null || pace <= 0) {
-      setText('goalPace', pace === null ? '—' : `${rounded(pace)}/dia`);
-      ['goalMonthly','goalEndMonth','goalEndYear','goalProjection'].forEach(id => setText(id, '—'));
+      setText('goalPace', pace === null ? '-' : `${rounded(pace)}/dia`);
+      ['goalMonthly','goalEndMonth','goalEndYear','goalProjection'].forEach(id => setText(id, '-'));
       setText('goalStatus', pace === null ? 'Dados insuficientes' : 'Sem crescimento');
       return;
     }
@@ -1318,7 +1355,7 @@
 
   function renderEmpty(message) {
     setText('totalLabel', 'Comunidade total');
-    setText('total', '—');
+    setText('total', '-');
     const approxBadge = el('totalApprox');
     if (approxBadge) approxBadge.hidden = true;
     const totalCard = el('totalCard');
@@ -1329,19 +1366,19 @@
     if (totalWatermarkMask) totalWatermarkMask.hidden = true;
     el('growth').className = 'growth-line';
     setText('growth', message);
-    ['newFollowers','avg','grossFollowsPeriod','unfollowsPeriod'].forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = 'neutral'; });
-    setText('growthPeriod', '—');
+    ['newFollowers','avg','grossFollowsPeriod','unfollowsPeriod'].forEach(id => { setText(id, '-'); const node = el(id); if (node) node.className = 'neutral'; });
+    setText('growthPeriod', '-');
     renderGoalRing({ values:{} }, activeNetworks());
     el('channelContext').textContent = 'Todas';
     el('legend').innerHTML = '';
     el('chartY').innerHTML = '';
     el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">${message}<br>Instagram, Facebook e YouTube são coletados automaticamente; os demais canais ainda não têm coleta própria.</p>`;
-    el('platforms').innerHTML = NETWORKS.map(network => `<div class="platform" style="cursor:default"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${network.connected ? 'Aguardando coleta' : 'Sem API conectada'}</small></span><span class="platform-delta"><strong class="neutral">—</strong></span></div>`).join('');
+    el('platforms').innerHTML = NETWORKS.map(network => `<div class="platform" style="cursor:default"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${network.connected ? 'Aguardando coleta' : 'Sem API conectada'}</small></span><span class="platform-delta"><strong class="neutral">-</strong></span></div>`).join('');
     el('table').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted)">${message}</td></tr>`;
     const pager = el('historyPager'); if (pager) pager.hidden = true;
     INSIGHT_SPARK_IDS.forEach(id => renderTileSpark(id, [], 'area', null));
     ['netGrowth','growthRate','dailyRate','bestDay','worstDay','ma7','ma30','mtd','ytd','cmpDay','cmpWeek','cmpMonth','cmpPeriod','cmpAccel','cmpWeekday','grossFollows','unfollows','insightNet','reach','followConversion','avgFollows']
-      .forEach(id => { setText(id, '—'); const node = el(id); if (node) node.className = ''; });
+      .forEach(id => { setText(id, '-'); const node = el(id); if (node) node.className = ''; });
     renderGoal({ values:{} }, 0, activeNetworks(), [], null);
   }
 
@@ -1362,6 +1399,7 @@
   const labels = { '7':'Últimos 7 dias', '15':'Últimos 15 dias', '30':'Últimos 30 dias', month:'Este mês', year:'Este ano', all:'Desde o início', custom:'Personalizado' };
   const periodMenu = el('periodMenu'), periodTrigger = el('periodTrigger'), customRange = el('customRange');
   const actionsMenu = el('actionsMenu'), actionsTrigger = el('actionsTrigger');
+  const reportMenu = el('reportMenu'), reportTrigger = el('reportTrigger');
   const postsFormatControl = el('postsFormatControl'), postsFormatTrigger = el('postsFormatTrigger'), postsFormatMenu = el('postsFormatMenu');
   const postsSortControl = el('postsSortControl'), postsSortTrigger = el('postsSortTrigger'), postsSortMenu = el('postsSortMenu');
   const periodPrevBtn = el('periodPrev'), periodNextBtn = el('periodNext');
@@ -1369,13 +1407,14 @@
   const closeMenus = () => {
     periodMenu.hidden = true; periodTrigger.setAttribute('aria-expanded', 'false');
     actionsMenu.hidden = true; actionsTrigger.setAttribute('aria-expanded', 'false');
+    reportMenu.hidden = true; reportTrigger.setAttribute('aria-expanded', 'false');
     if (postsFormatMenu) { postsFormatMenu.hidden = true; postsFormatTrigger.setAttribute('aria-expanded', 'false'); }
     if (postsSortMenu) { postsSortMenu.hidden = true; postsSortTrigger.setAttribute('aria-expanded', 'false'); }
   };
-  const openPeriod = () => { actionsMenu.hidden = true; actionsTrigger.setAttribute('aria-expanded', 'false'); periodMenu.hidden = false; periodTrigger.setAttribute('aria-expanded', 'true'); };
+  const openPeriod = () => { closeMenus(); periodMenu.hidden = false; periodTrigger.setAttribute('aria-expanded', 'true'); };
 
   // "all" (todo o histórico) e "custom" (já é datas livres) não têm uma unidade natural
-  // para deslocar — só os presets de janela fixa (dias/mês/ano) ganham as setas.
+  // para deslocar - só os presets de janela fixa (dias/mês/ano) ganham as setas.
   const isShiftable = range => /^\d+$/.test(range) || range === 'month' || range === 'year';
   function computeWindow(range, offset) {
     const end = lastDate();
@@ -1441,15 +1480,20 @@
   if (periodPrevBtn) periodPrevBtn.addEventListener('click', () => applyPreset(periodPreset, true, periodOffset - 1));
   if (periodNextBtn) periodNextBtn.addEventListener('click', () => applyPreset(periodPreset, true, periodOffset + 1));
   periodTrigger.addEventListener('click', () => periodMenu.hidden ? openPeriod() : closeMenus());
-  const printReportBtn = el('printReport');
-  if (printReportBtn) printReportBtn.addEventListener('click', () => window.print());
+  reportTrigger.addEventListener('click', () => {
+    const opening = reportMenu.hidden;
+    closeMenus();
+    if (opening) { reportMenu.hidden = false; reportTrigger.setAttribute('aria-expanded', 'true'); }
+  });
+  el('printReport').addEventListener('click', () => { closeMenus(); window.print(); });
+  el('emailReport').addEventListener('click', () => { closeMenus(); openEmailReport(); });
   actionsTrigger.addEventListener('click', () => {
     const opening = actionsMenu.hidden;
     closeMenus();
     if (opening) { actionsMenu.hidden = false; actionsTrigger.setAttribute('aria-expanded', 'true'); }
   });
   document.addEventListener('click', event => {
-    if (!el('periodControl').contains(event.target) && !el('actionsControl').contains(event.target)
+    if (!el('periodControl').contains(event.target) && !el('actionsControl').contains(event.target) && !el('reportControl').contains(event.target)
       && (!postsFormatControl || !postsFormatControl.contains(event.target))
       && (!postsSortControl || !postsSortControl.contains(event.target))) closeMenus();
   });
@@ -1501,8 +1545,8 @@
     });
   }
   // "Performance em números" e "Conteúdo do Instagram" vêm abertos por padrão (ao contrário do
-  // histórico acima) — só existem para reduzir a verticalidade quando o usuário já sabe o que quer ver.
-  // Usa uma classe (animada via grid-template-rows no CSS) em vez de `hidden` — assim o
+  // histórico acima) - só existem para reduzir a verticalidade quando o usuário já sabe o que quer ver.
+  // Usa uma classe (animada via grid-template-rows no CSS) em vez de `hidden` - assim o
   // recolher/abrir anima; `hidden` continua reservado pra quando a seção inteira não se aplica
   // à plataforma selecionada (ver render()), que deve ser instantâneo, sem transição.
   [['performanceToggle', 'performanceBody'], ['postsDivider', 'postsBody']].forEach(([toggleId, bodyId]) => {
@@ -1558,10 +1602,10 @@
   ['workflowInfoClose', 'workflowInfoDone'].forEach(id => { const button = el(id); if (button) button.addEventListener('click', closeWorkflowInfo); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && workflowInfo && workflowInfo.style.display === 'flex') closeWorkflowInfo(); });
 
-  // Mesmo padrão do modal acima, mas para o ícone de aviso ao lado do total (ver render()) —
+  // Mesmo padrão do modal acima, mas para o ícone de aviso ao lado do total (ver render()) -
   // reaproveitado tanto para o número aproximado do YouTube quanto para o histórico importado
   // manualmente do TikTok, em qualquer marca (ver isManualTikTok e docs/ARQUITETURA-E-
-  // INTEGRACOES.md seção 15 — o TikTok não tem API oficial viável pra esse uso, o App Review do
+  // INTEGRACOES.md seção 15 - o TikTok não tem API oficial viável pra esse uso, o App Review do
   // Login Kit foi rejeitado em 17/09/2026): o conteúdo do modal é montado na hora, conforme a
   // rede selecionada no momento do clique.
   const youtubeApprox = el('youtubeApproxBackdrop');
@@ -1570,7 +1614,7 @@
     YouTube: {
       icon: 'icons/youtube.svg',
       title: 'Número aproximado',
-      body: `<p>O YouTube arredonda o total de inscritos que devolve por API — o número aqui só muda de milhar em
+      body: `<p>O YouTube arredonda o total de inscritos que devolve por API - o número aqui só muda de milhar em
         milhar (ex.: 41.059 vira <b>~41.0k</b>; só quando passar de 41.100 é que vira <b>~41.1k</b>), mesmo o
         canal ganhando inscritos todo dia.</p>
         <p>É assim em qualquer painel que use dados do YouTube, não é uma limitação deste portal. O número exato
@@ -1580,11 +1624,11 @@
       icon: 'icons/tiktok.svg',
       title: 'Dado importado manualmente',
       body: `<p>O TikTok não tem API liberada para esse uso (o TikTok recusa qualquer app que exiba, no próprio
-        site, dados da conta que a própria equipe administra) — por isso não há coleta automática como
+        site, dados da conta que a própria equipe administra) - por isso não há coleta automática como
         Instagram, Facebook e YouTube.</p>
         <p>Este histórico vem de uma planilha baixada manualmente no <b>TikTok Studio</b> (Análise → Seguidores
         → Baixar dados → CSV) e importada pelo card "Importar histórico do TikTok" logo acima. Ele só muda
-        quando alguém repetir essa importação — <b>precisa ser atualizado regularmente</b> para as métricas
+        quando alguém repetir essa importação - <b>precisa ser atualizado regularmente</b> para as métricas
         (crescimento, média por dia etc.) continuarem refletindo a realidade.</p>`
     }
   };
@@ -1615,8 +1659,134 @@
   ['youtubeApproxClose', 'youtubeApproxDone'].forEach(id => { const button = el(id); if (button) button.addEventListener('click', closeYoutubeApprox); });
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && youtubeApprox && youtubeApprox.style.display === 'flex') closeYoutubeApprox(); });
 
+  // Relatório por e-mail: texto corrido para a diretoria com os mesmos números do painel no período
+  // selecionado (capturados em render() → lastReport). Não há envio pelo portal - o texto abre num
+  // modal editável (HTML, para ter negrito e links dos posts) e segue por "Copiar texto" (cola com a
+  // formatação no Outlook/Gmail) ou "Abrir no Outlook" (baixa um rascunho .eml em HTML).
+  const plural = (value, one, many) => `<b>${format(Math.abs(value))}</b> ${Math.abs(value) === 1 ? one : many}`;
+  const safeUrl = url => /^https?:\/\//i.test(url || '') ? escapeHtml(url) : '';
+  const postRef = post => {
+    const caption = String(post.caption || '').replace(/\s+/g, ' ').trim();
+    const label = `${formatLabel(post)} de ${postDateLabel(post.timestamp)}`;
+    const url = safeUrl(post.permalink);
+    const link = url ? `<a href="${url}"><b>${label}</b></a>` : `<b>${label}</b>`;
+    return `${link}${caption ? `<br><i>“${escapeHtml(caption.length > 90 ? caption.slice(0, 90).trim() + '…' : caption)}”</i>` : ''}`;
+  };
+  function topPostItem(posts, key, title, unit) {
+    const known = posts.filter(post => Number.isFinite(Number(post[key])));
+    if (!known.length) return `<b>${title}:</b> esse dado ainda não é coletado pelo painel.`;
+    const top = known.reduce((best, post) => Number(post[key]) > Number(best[key]) ? post : best);
+    if (!Number(top[key])) return `<b>${title}:</b> nenhuma publicação registrou ${unit} no período.`;
+    return `<b>${title}:</b> ${postRef(top)}<br>com <b>${format(Number(top[key]))}</b> ${unit}.`;
+  }
+  function buildEmailReport() {
+    const r = lastReport;
+    if (!r) return null;
+    const brandName = brand.name || 'a marca';
+    const period = `<b>${postDateLabel(r.from)}</b> a <b>${postDateLabel(r.to)}</b>`;
+    const P = 'style="margin:0 0 14px"', H = 'style="margin:18px 0 8px;font-size:15px"', UL = 'style="margin:0 0 14px;padding-left:22px"', LI = 'style="margin:0 0 10px"';
+    const list = items => `<ul ${UL}>${items.map(item => `<li ${LI}>${item}</li>`).join('')}</ul>`;
+    const followers = [];
+    if (r.hasNet) {
+      followers.push(`<b>Crescimento total:</b> a comunidade ${r.net >= 0 ? 'ganhou' : 'perdeu'} ${plural(r.net, 'seguidor', 'seguidores')} no período (saldo líquido).`);
+      if (r.perDay !== null) followers.push(`<b>Média por dia:</b> <b>${signed(r.perDay)}</b> seguidores ao dia.`);
+    } else followers.push('<b>Crescimento total e média por dia:</b> sem medições suficientes no período.');
+    const bestFollows = r.insightDays.length ? r.insightDays.reduce((top, day) => day.follows > top.follows ? day : top) : null;
+    const worstUnfollows = r.insightDays.length ? r.insightDays.reduce((top, day) => day.unfollows > top.unfollows ? day : top) : null;
+    if (bestFollows) followers.push(`<b>Dia com mais novos seguidores:</b> <b>${postDateLabel(bestFollows.date)}</b>, com ${plural(bestFollows.follows, 'novo seguidor', 'novos seguidores')}.`);
+    else if (r.bestDelta && r.bestDelta.delta > 0) followers.push(`<b>Dia com mais novos seguidores:</b> <b>${postDateLabel(r.bestDelta.date)}</b>, com saldo de <b>${signed(r.bestDelta.delta)}</b>.`);
+    else followers.push('<b>Dia com mais novos seguidores:</b> sem dado disponível no período.');
+    if (worstUnfollows) followers.push(`<b>Dia com mais unfollows:</b> <b>${postDateLabel(worstUnfollows.date)}</b>, com ${plural(worstUnfollows.unfollows, 'pessoa que deixou', 'pessoas que deixaram')} de seguir.`);
+    else followers.push('<b>Dia com mais unfollows:</b> esse dado só existe para o Instagram e não há registro no período.');
+    const posts = postsInPeriod(true);
+    let publications;
+    if (!posts.length) publications = `<p ${P}>Nenhuma publicação registrada no período.</p>`;
+    else {
+      const reels = posts.filter(isShortFormatPost).length;
+      publications = list([
+        topPostItem(posts, 'views', 'Post com mais visualizações', 'visualizações'),
+        topPostItem(posts, 'likeCount', 'Post com mais curtidas', 'curtidas'),
+        topPostItem(posts, 'commentsCount', 'Post com mais comentários', 'comentários'),
+        topPostItem(posts, 'totalInteractions', 'Post com mais interações', 'interações'),
+        topPostItem(posts, 'saved', 'Post com mais salvamentos', 'salvamentos')
+      ]) + `<p ${P}><b>Total de publicações no período:</b> <b>${format(posts.length)}</b>, sendo ${plural(posts.length - reels, 'post', 'posts')} e ${plural(reels, 'reel', 'reels')}.</p>`;
+    }
+    const body = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#222">`
+      + `<p ${P}>Prezados,</p>`
+      + `<p ${P}>Segue o resumo do desempenho das redes sociais da <b>${escapeHtml(brandName)}</b>${r.networkName ? ` (<b>${r.networkName}</b>)` : ''} no período de ${period}.</p>`
+      + `<h3 ${H}>Seguidores</h3>${list(followers)}`
+      + `<h3 ${H}>Publicações</h3>${publications}`
+      + `<p ${P}>Fico à disposição para qualquer dúvida.</p><p style="margin:0">Atenciosamente,<br>Equipe de Marketing</p></div>`;
+    return { subject: `Relatório de redes sociais – ${brand.name || 'marca'} – ${postDateLabel(r.from)} a ${postDateLabel(r.to)}`, body };
+  }
+  const emailReportModal = el('emailReportBackdrop'), emailReportText = el('emailReportText');
+  let emailReportSubject = '', emailReportLastFocus = null;
+  const closeEmailReport = () => {
+    emailReportModal.style.display = 'none';
+    emailReportModal.setAttribute('aria-hidden', 'true');
+    if (emailReportLastFocus) emailReportLastFocus.focus();
+  };
+  function openEmailReport() {
+    const email = buildEmailReport();
+    if (!email) { alert('Ainda não há dados no período selecionado para montar o relatório.'); return; }
+    emailReportSubject = email.subject;
+    emailReportText.innerHTML = email.body;
+    emailReportText.scrollTop = 0;
+    emailReportLastFocus = document.activeElement;
+    emailReportModal.style.display = 'flex';
+    emailReportModal.setAttribute('aria-hidden', 'false');
+    emailReportText.focus();
+  }
+  // Texto puro do conteúdo (já editado): cada link ganha a URL entre parênteses. O clone precisa
+  // estar no DOM, fora da tela, para o innerText respeitar parágrafos e itens de lista.
+  function emailReportPlainText() {
+    const clone = emailReportText.cloneNode(true);
+    clone.querySelectorAll('a').forEach(link => { link.textContent += ` (${link.href})`; });
+    clone.style.cssText = 'position:fixed;left:-9999px;top:0;width:640px';
+    document.body.appendChild(clone);
+    const text = clone.innerText.replace(/\n{3,}/g, '\n\n').trim();
+    clone.remove();
+    return text;
+  }
+  emailReportModal.addEventListener('click', event => { if (event.target === emailReportModal) closeEmailReport(); });
+  el('emailReportClose').addEventListener('click', closeEmailReport);
+  // Copia o conteúdo com formatação: ClipboardItem leva HTML + texto puro (Outlook/Gmail colam com
+  // negrito e links); sem suporte, cai no execCommand('copy') sobre a seleção (também mantém a formatação).
+  const copyEmailReport = () => new Promise(resolve => {
+    const fallback = () => {
+      const range = document.createRange(); range.selectNodeContents(emailReportText);
+      const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+      resolve(document.execCommand('copy'));
+    };
+    if (!(navigator.clipboard && window.ClipboardItem)) return fallback();
+    navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([emailReportText.innerHTML], { type: 'text/html' }),
+      'text/plain': new Blob([emailReportPlainText()], { type: 'text/plain' })
+    })]).then(() => resolve(true)).catch(fallback);
+  });
+  el('emailReportCopy').addEventListener('click', event => {
+    const button = event.currentTarget;
+    copyEmailReport().then(ok => { if (ok) { button.textContent = 'Copiado!'; setTimeout(() => { button.textContent = 'Copiar texto'; }, 1800); } });
+  });
+  // mailto: não carrega HTML (a formatação some), então baixa um rascunho .eml - com X-Unsent: 1 o
+  // Outlook o abre já em modo de redação, com negrito e links. Corpo em base64/UTF-8 para acentos.
+  // Marcando "Sempre abrir arquivos deste tipo" no aviso de download do navegador (uma única vez),
+  // o rascunho passa a abrir sozinho a cada clique.
+  el('emailReportOpen').addEventListener('click', () => {
+    const b64 = text => btoa(unescape(encodeURIComponent(text))).replace(/.{1,76}/g, '$&\r\n');
+    const html = `<html><body>${emailReportText.innerHTML}</body></html>`;
+    const eml = ['X-Unsent: 1', `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(emailReportSubject)))}?=`, 'MIME-Version: 1.0',
+      'Content-Type: text/html; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', b64(html)].join('\r\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([eml], { type: 'message/rfc822' }));
+    link.download = 'relatorio-redes-sociais.eml';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && emailReportModal.style.display === 'flex') closeEmailReport(); });
+
   // Modal "Controle de metas": uma linha por rede (ver NETWORKS), com meta e prazo editáveis
-  // — substitui o antigo fluxo de 3 prompt() sequenciais (addGoal). Os campos só são lidos e
+  // - substitui o antigo fluxo de 3 prompt() sequenciais (addGoal). Os campos só são lidos e
   // gravados em goals[] ao clicar em Salvar; Cancelar/X fecham sem tocar no que já estava salvo.
   const goalsControl = el('goalsControlBackdrop');
   let goalsControlLastFocus = null;
@@ -1664,7 +1834,7 @@
       const target = Number(targetRaw);
       const deadlineOk = !deadlineRaw || /^\d{4}-\d{2}-\d{2}$/.test(deadlineRaw);
       // O prazo é opcional (a meta sozinha já alimenta as projeções de ritmo), mas um prazo sem
-      // meta não tem contra o que comparar — por isso só a meta é obrigatória aqui.
+      // meta não tem contra o que comparar - por isso só a meta é obrigatória aqui.
       if (!targetRaw || !Number.isFinite(target) || target <= 0 || !deadlineOk) {
         alert(`Informe uma meta válida (número maior que zero) para ${row.network.name}, ou deixe meta e prazo em branco.`);
         row.targetInput.focus();
@@ -1707,14 +1877,14 @@
   if (goalsControlSaveBtn) goalsControlSaveBtn.addEventListener('click', saveGoalsControl);
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && goalsControl && goalsControl.style.display === 'flex') closeGoalsControl(); });
 
-  // Modal de prévia de post: abre ao clicar numa miniatura (grade ou lista) — a publicação
+  // Modal de prévia de post: abre ao clicar numa miniatura (grade ou lista) - a publicação
   // embedada aparece à esquerda (perfil + legenda, no estilo do próprio Instagram/YouTube/
   // Facebook) e todas as métricas que a rede expõe para aquele post à direita. Só o botão "Ver
   // publicação" do rodapé de fato leva pra rede social, em nova guia; clicar na miniatura nunca
   // mais navega direto.
   const postPreview = el('postPreviewBackdrop');
   let postPreviewLastFocus = null;
-  // Sem endpoint que devolva o @ de cada rede — os três (Instagram, YouTube, TikTok) usam o
+  // Sem endpoint que devolva o @ de cada rede - os três (Instagram, YouTube, TikTok) usam o
   // mesmo handle @vonderferramentas (confirmado nos avisos de coleta manual do TikTok acima);
   // o Facebook não tem um @ equivalente, mostra o nome da marca mesmo.
   const NETWORK_HANDLE = {
@@ -1731,7 +1901,7 @@
   };
   // A imagem nunca é cortada nem sobra barra: a caixa só acompanha a proporção real dela
   // (width:100%;height:auto no CSS, sem aspect-ratio fixo). Quem se ajusta é a coluna de
-  // conteúdo — este helper mede a altura que a imagem (ou o estado "sem prévia") resultou e
+  // conteúdo - este helper mede a altura que a imagem (ou o estado "sem prévia") resultou e
   // aplica como piso em .post-preview-content, refeito sempre que essa altura pode ter mudado
   // (a própria imagem termina de carregar, expandir/recolher a legenda, redimensionar a
   // janela). Abaixo de 680px as colunas empilham (ver media query) e não faz sentido uma
@@ -1754,7 +1924,7 @@
       imageWrap.innerHTML = post.thumbnailUrl
         ? `<img src="${escapeHtml(post.thumbnailUrl)}" alt="">`
         : `<div class="post-preview-image-empty">${iconSvg(FORMAT_ICON_POST, 26)}<span>Prévia indisponível</span></div>`;
-      // A imagem carrega da CDN da Meta/YouTube de forma assíncrona — só dá pra medir a
+      // A imagem carrega da CDN da Meta/YouTube de forma assíncrona - só dá pra medir a
       // altura real dela depois do load (o requestAnimationFrame abaixo já cobre o estado
       // "sem prévia" e imagens que já estavam em cache, mas não uma que ainda está baixando).
       const imgEl = imageWrap.querySelector('img');
@@ -1774,7 +1944,7 @@
       metricsEl.innerHTML = options.map(option => {
         const value = post[option.key];
         const known = Number.isFinite(Number(value));
-        return `<div class="post-preview-metric-row"><span class="post-preview-metric-label">${postIconSvg(option.key)}${option.label}</span><span class="post-preview-metric-value">${known ? format(Number(value)) : '—'}</span></div>`;
+        return `<div class="post-preview-metric-row"><span class="post-preview-metric-label">${postIconSvg(option.key)}${option.label}</span><span class="post-preview-metric-value">${known ? format(Number(value)) : '-'}</span></div>`;
       }).join('');
     }
     const ctaEl = el('postPreviewCta');
@@ -1804,17 +1974,19 @@
     const expanded = captionEl.classList.toggle('is-expanded');
     postPreviewCaptionToggle.textContent = expanded ? 'ver menos' : 'ver mais';
     // Não precisa re-sincronizar altura aqui: a imagem não muda de tamanho com a legenda (é a
-    // coluna de conteúdo que acompanha a imagem, nunca o contrário) — o min-height já aplicado
+    // coluna de conteúdo que acompanha a imagem, nunca o contrário) - o min-height já aplicado
     // continua valendo como piso, e o bloco só cresce além dele se a legenda expandida precisar.
   });
   document.addEventListener('keydown', event => { if (event.key === 'Escape' && postPreview && postPreview.style.display === 'flex') closePostPreview(); });
   // Só relevante ao cruzar os 680px do media query (empilhar/desempilhar as colunas); com a
   // imagem em largura fixa, redimensionar sem cruzar essa fronteira não muda nada.
   window.addEventListener('resize', () => { if (postPreview && postPreview.style.display === 'flex') syncPostPreviewContentHeight(); });
-  const postsGridEl = el('postsGrid');
-  if (postsGridEl) postsGridEl.addEventListener('click', event => {
-    const card = event.target.closest('.post-card');
-    if (card && card.dataset.postId) openPostPreviewById(card.dataset.postId);
+  ['postsGrid', 'topPostsGrid'].forEach(id => {
+    const grid = el(id);
+    if (grid) grid.addEventListener('click', event => {
+      const card = event.target.closest('.post-card');
+      if (card && card.dataset.postId) openPostPreviewById(card.dataset.postId);
+    });
   });
   const postsTableBodyEl = el('postsTableBody');
   if (postsTableBodyEl) postsTableBodyEl.addEventListener('click', event => {
@@ -1911,7 +2083,7 @@
 
   // Sem API oficial viável (App Review do Login Kit rejeitado, ver docs/ARQUITETURA-E-
   // INTEGRACOES.md seção 15): o operador baixa o histórico em TikTok Studio > Análise >
-  // Seguidores > Baixar dados > CSV e importa aqui. Qualquer marca pode usar — cada uma grava
+  // Seguidores > Baixar dados > CSV e importa aqui. Qualquer marca pode usar - cada uma grava
   // no próprio documento (FOLLOWERS_STORE_KEY), o painel só mostra o botão com TikTok
   // selecionado (ver render(), tiktokImportPanel).
   const TIKTOK_MONTHS_PT = {
@@ -1932,10 +2104,10 @@
 
   const tiktokIsoDate = d => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 
-  // O CSV do TikTok Studio não tem coluna de ano — as linhas são dias de calendário
+  // O CSV do TikTok Studio não tem coluna de ano - as linhas são dias de calendário
   // consecutivos, então a âncora é a ÚLTIMA linha: deve cair pouco antes de hoje (a TikTok
   // atrasa a atualização alguns dias, nunca perto de um ano). Caminha pra trás um dia por
-  // linha; a data/mês do texto de cada linha só serve de conferência — se não bater, o
+  // linha; a data/mês do texto de cada linha só serve de conferência - se não bater, o
   // arquivo tem um buraco e a importação é recusada em vez de gravar uma série torta.
   function assignTikTokYears(rows, today) {
     if (!rows.length) throw new Error('Arquivo sem linhas de dados.');
@@ -1945,14 +2117,14 @@
     if (candidate.getTime() > today.getTime()) { year -= 1; candidate = new Date(Date.UTC(year, last.month - 1, last.day)); }
     const diffDays = Math.round((today.getTime() - candidate.getTime()) / 86400000);
     if (diffDays > 60 || diffDays < 0) {
-      throw new Error(`A última data do arquivo (${last.day}/${last.month}) não parece recente (${diffDays} dias atrás) — confira se é o FollowerHistory.csv certo.`);
+      throw new Error(`A última data do arquivo (${last.day}/${last.month}) não parece recente (${diffDays} dias atrás) - confira se é o FollowerHistory.csv certo.`);
     }
     let cursor = candidate;
     const dated = new Array(rows.length);
     for (let index = rows.length - 1; index >= 0; index--) {
       const row = rows[index];
       if (cursor.getUTCDate() !== row.day || cursor.getUTCMonth() + 1 !== row.month) {
-        throw new Error(`Data inesperada na linha ${index + 2} do CSV: esperava ${cursor.getUTCDate()}/${cursor.getUTCMonth() + 1}, o arquivo tem ${row.day}/${row.month} — o arquivo pode ter dias faltando.`);
+        throw new Error(`Data inesperada na linha ${index + 2} do CSV: esperava ${cursor.getUTCDate()}/${cursor.getUTCMonth() + 1}, o arquivo tem ${row.day}/${row.month} - o arquivo pode ter dias faltando.`);
       }
       dated[index] = { date: tiktokIsoDate(cursor), followers: row.followers };
       cursor = new Date(cursor.getTime() - 86400000);
@@ -1975,7 +2147,7 @@
     return assignTikTokYears(rows, today);
   }
 
-  // Mescla só a chave TikTok — nunca substitui o dicionário 'followers' inteiro do dia
+  // Mescla só a chave TikTok - nunca substitui o dicionário 'followers' inteiro do dia
   // (deixaria Instagram/Facebook/YouTube sem dado nesses dias, mesmo bug já corrigido em
   // reconstruir-historico.yml) nem remove dias fora do período do arquivo.
   function mergeTikTokHistory(current, dated) {
@@ -2035,7 +2207,7 @@
       if (dropzoneEmpty) dropzoneEmpty.hidden = false;
       if (dropzone) dropzone.classList.remove('has-file');
     };
-    // Reseta a visualização E a mensagem — usado ao remover o arquivo (X) ou quando o
+    // Reseta a visualização E a mensagem - usado ao remover o arquivo (X) ou quando o
     // input não traz nenhum arquivo. Depois de importar com sucesso, o botão Importar usa
     // só resetDropzone(): a visualização volta ao estado vazio, mas a mensagem de sucesso
     // permanece visível em vez de ser substituída por "Selecione o arquivo...".
@@ -2089,7 +2261,7 @@
     }
 
     fileInput.addEventListener('change', async () => {
-      // Sem o atributo `multiple` no input, isto só dispara pra seleção via clique — a
+      // Sem o atributo `multiple` no input, isto só dispara pra seleção via clique - a
       // proteção contra mais de um arquivo por vez do drag-and-drop está no handler de 'drop'
       // acima, que é quem de fato pode receber vários arquivos soltos de uma vez.
       if (fileInput.files.length > 1) { setSummary('Selecione só um arquivo por vez.', 'negative'); return; }

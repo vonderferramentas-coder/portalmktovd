@@ -86,7 +86,7 @@
 
 <body>
   <div class="imp-card">
-    <h2>Importar cronograma manual 2026 — VONDER</h2>
+    <h2>Importar cronograma manual 2026 - VONDER</h2>
     <p>Lê <code>data/import-vonder-cronograma-2026.json</code> (extraído do calendário manual em Excel, Jan–Jul/2026) e
       soma esses cards aos que já existem no calendário desta marca, sem duplicar. Nada é gravado até você clicar em
       "Importar".</p>
@@ -134,7 +134,7 @@
         $('preview').textContent = 'Não foi possível carregar ' + SOURCE_URL + ': ' + err.message;
       });
 
-      // contador de "order" por data, iniciado a partir do maior já existente — cada card novo
+      // contador de "order" por data, iniciado a partir do maior já existente - cada card novo
       // do mesmo dia pega o próximo número em sequência (senão todos cairiam na mesma posição)
       function makeOrderCounter(existingPosts) {
         var next = {};
@@ -151,7 +151,7 @@
       function log(lines) { $('logCard').hidden = false; $('log').textContent = lines.join('\n'); }
 
       // tenta sincronizar com api.php (mesmo protocolo usado por app.js); se não responder
-      // (hospedagem estática, sem PHP), segue só com localStorage — mesma resiliência que o
+      // (hospedagem estática, sem PHP), segue só com localStorage - mesma resiliência que o
       // resto do projeto já usa (CatalogProvider, etc.)
       function pushToServer(mergedPosts, onDone) {
         fetch('api.php?k=posts').then(function (r) { return r.json(); }).then(function (cur) {
@@ -165,10 +165,10 @@
           }).then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); });
         }).then(function (res) {
           if (res.status === 200) onDone(true, 'Sincronizado com o servidor (api.php) com sucesso.');
-          else if (res.status === 409) onDone(false, 'Conflito ao sincronizar com o servidor (alguém salvou por cima ao mesmo tempo) — os dados ficaram salvos neste navegador; recarregue e tente importar de novo para reconciliar.');
-          else onDone(false, 'Servidor respondeu ' + res.status + ' — os dados ficaram salvos neste navegador.');
+          else if (res.status === 409) onDone(false, 'Conflito ao sincronizar com o servidor (alguém salvou por cima ao mesmo tempo) - os dados ficaram salvos neste navegador; recarregue e tente importar de novo para reconciliar.');
+          else onDone(false, 'Servidor respondeu ' + res.status + ' - os dados ficaram salvos neste navegador.');
         }).catch(function () {
-          onDone(false, 'api.php não respondeu nesta origem (normal se a página não estiver rodando num servidor com PHP) — os dados ficaram salvos neste navegador.');
+          onDone(false, 'api.php não respondeu nesta origem (normal se a página não estiver rodando num servidor com PHP) - os dados ficaram salvos neste navegador.');
         });
       }
 
