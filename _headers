@@ -1,0 +1,10 @@
+# Cabeçalhos de segurança — só o Cloudflare Pages lê este arquivo (o GitHub Pages ignora).
+# script-src fica restrito aos hosts que o portal realmente usa (Firebase SDK em gstatic e animejs em
+# jsdelivr); 'unsafe-inline' segue liberado porque as páginas têm scripts inline.
+# ponytail: sem connect-src/img-src/style-src de propósito — listar todos os hosts de API/imagem sem
+# uma rodada de testes em HML poderia quebrar login ou miniaturas. Evolução: CSP Report-Only em HML,
+# levantar as violações e só então restringir esses três.
+/*
+  Content-Security-Policy: script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
