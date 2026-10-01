@@ -21,7 +21,10 @@ try {
   eq(shape(paginate('X', groups(13))), ['A3:7', 'A3:6'], '13 produtos');
   eq(paginate('X', groups(13))[0].name, 'X · A3 · pág 1/2', 'nome da página');
   // Listas longas usam duas colunas no A4; o A3 mantém a coluna única mais larga.
-  eq([twoCodeColumns(9, false), twoCodeColumns(10, false), twoCodeColumns(12, true)], [false, true, false], 'duas colunas acima de 9 códigos no A4');
+  eq([
+    twoCodeColumns(9, false), twoCodeColumns(10, false), twoCodeColumns(12, true),
+    twoCodeColumns(6, false, true), twoCodeColumns(7, false, true)
+  ], [false, true, false, false, true], 'duas colunas acima de 9 códigos no A4, ou acima de 6 com ITF-14');
 
 
   // Última linha incompleta: A4 centraliza 1 card; A3 põe 2 lado a lado (pair) ou 1 na coluna do meio
