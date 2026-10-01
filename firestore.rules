@@ -70,6 +70,20 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Páginas públicas /redir/<marca>/<pasta>/index.html (QR rastreável) criam um registro por
+    // escaneamento, sem login. Só esses campos mínimos (sem IP, sem cookie); só quem está logado lê.
+    match /qrHits/{hitId} {
+      allow create: if request.resource.data.keys().hasOnly(['qr', 't', 'os', 'lang', 'test'])
+        && request.resource.data.keys().hasAll(['qr', 't', 'os', 'lang', 'test'])
+        && request.resource.data.qr is string && request.resource.data.qr.size() <= 80
+        && request.resource.data.t is timestamp
+        && request.resource.data.os in ['ios', 'android', 'outro']
+        && request.resource.data.lang is string && request.resource.data.lang.size() <= 10
+        && request.resource.data.test is bool;
+      allow read: if activeUser();
+      allow update, delete: if false;
+    }
+
     match /portalStore/{recordId} {
       allow read: if activeUser();
       allow write: if activeUser() && (admin() || (!isControlDoc(recordId) && !isCollectedDataDoc(recordId)));
