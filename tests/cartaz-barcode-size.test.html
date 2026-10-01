@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste do tamanho do ITF-14 nos cartazes</title>
+<link rel="stylesheet" href="../cartaz-generator.css">
+<script src="../barcode-generator.js"></script>
+<body data-result="running">
+<main class="cg">
+  <article class="card" style="position:relative;width:340px;height:269px">
+    <h3>ABRAÇADEIRAS ROSCA SEM FIM</h3>
+    <div class="photo"><span>Produto</span></div>
+    <div class="lines two-cols">
+      <div class="code-pair"><span class="cd">28 73 102 121</span><span class="code-separator">|</span><span class="cd">28 73 646 300</span></div>
+      <div class="code-pair"><span class="cd">28 73 114 133</span><span class="code-separator">|</span><span class="cd">28 73 708 900</span></div>
+      <div class="code-pair"><span class="cd">28 73 140 159</span><span class="code-separator">|</span><span class="cd">28 73 769 500</span></div>
+      <div class="code-pair"><span class="cd">28 73 223 200</span></div>
+    </div>
+    <div class="ean itf"></div>
+  </article>
+  <p id="result"></p>
+</main>
+<script>
+try {
+  const code = '17891000100104', holder = document.querySelector('.ean');
+  holder.innerHTML = BarcodeGen.svg(code);
+  const svg = holder.firstElementChild;
+  svg.classList.add('ean-svg');
+  const layout = BarcodeGen.layout(code), narrow = Math.min(...layout.rects.filter(rect => rect.y === 8).map(rect => rect.w));
+  const narrowBarMm = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width * narrow * 25.4 / 96;
+  if (narrowBarMm < .495) throw new Error('barra estreita do ITF-14 mede ' + narrowBarMm.toFixed(3) + ' mm; mínimo: 0,495 mm');
+  document.body.dataset.result = 'pass';
+  document.querySelector('#result').textContent = 'PASS: ITF-14 com barra estreita de ' + narrowBarMm.toFixed(3) + ' mm';
+} catch (error) {
+  document.body.dataset.result = 'fail';
+  document.querySelector('#result').textContent = 'FAIL: ' + error.message;
+}
+</script>
