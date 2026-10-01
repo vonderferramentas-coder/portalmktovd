@@ -2,6 +2,7 @@
 // Funções puras (sem DOM): recebem e devolvem listas de páginas, para poderem ser testadas em tests/cartaz-pagination.test.html.
 (function () {
   const groupBrand = group => group.rows.map(row => row.brand).find(Boolean) || 'SEM MARCA';
+  const twoCodeColumns = (count, a3) => count > 9 && !a3;
 
   /* Distribui os produtos de UMA marca (ou de várias vinculadas, `members`) em páginas: A4 até 12 produtos,
      A3 acima disso, e a regra de linhas/colunas de sempre. `prev` devolve título e foto já editados de cada
@@ -64,5 +65,5 @@
     return { pages: next, key: brandKey };
   }
 
-  window.CartazPagination = { paginate, groupBrand, link, unlink, insertItem };
+  window.CartazPagination = { paginate, groupBrand, link, unlink, insertItem, twoCodeColumns };
 })();

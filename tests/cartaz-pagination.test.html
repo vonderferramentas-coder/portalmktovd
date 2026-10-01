@@ -6,7 +6,7 @@
 <script>
 // Roda em Chrome headless: chrome --headless=new --dump-dom file:///.../tests/cartaz-pagination.test.html
 try {
-  const { paginate, link, unlink, groupBrand, insertItem } = CartazPagination;
+  const { paginate, link, unlink, groupBrand, insertItem, twoCodeColumns } = CartazPagination;
   const eq = (a, b, label) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(label + '\n  esperado: ' + JSON.stringify(b) + '\n  obtido:   ' + JSON.stringify(a)); };
   const groups = (n, brand, codes = 1) => Array.from({ length: n }, (_, i) => ({ title: brand + ' ' + i, rows: Array.from({ length: codes }, () => ({ brand })) }));
   const shape = pagesList => pagesList.map(p => p.format + ':' + p.items.length);
@@ -20,6 +20,9 @@ try {
   eq(shape(paginate('X', groups(12))), ['A4:6', 'A4:6'], '12 produtos');
   eq(shape(paginate('X', groups(13))), ['A3:7', 'A3:6'], '13 produtos');
   eq(paginate('X', groups(13))[0].name, 'X · A3 · pág 1/2', 'nome da página');
+  // Listas longas usam duas colunas no A4; o A3 mantém a coluna única mais larga.
+  eq([twoCodeColumns(9, false), twoCodeColumns(10, false), twoCodeColumns(12, true)], [false, true, false], 'duas colunas acima de 9 códigos no A4');
+
 
   // Última linha incompleta: A4 centraliza 1 card; A3 põe 2 lado a lado (pair) ou 1 na coluna do meio
   let a4 = paginate('X', groups(5))[0].items;
