@@ -308,16 +308,6 @@ button:disabled {
     width: 100%;
     height: 100%;
 }
-.card .ean.itf {
-    left: 16px;
-    right: 16px;
-    bottom: 10px;
-    width: auto;
-    height: 82px;
-}
-.card:has(.ean.itf) .lines {
-    bottom: 102px;
-}
 .card .ean.ean-invalid {
     outline: 2px solid #ef6b5b;
     outline-offset: 2px;
@@ -370,12 +360,6 @@ button:disabled {
 .sheet.a3 .card .ean {
     width: 132px;
     height: 50px;
-}
-.sheet.a3 .card .ean.itf {
-    left: 16px;
-    right: 16px;
-    width: auto;
-    height: 82px;
 }
 .sheet.a3 .card .lines {
     max-height: 340px;
