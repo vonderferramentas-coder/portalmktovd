@@ -17,8 +17,8 @@ name: Monitorar menções no YouTube
 #    alta uma única vez por vídeo. Sem o segredo, a coleta funciona igual, só sem aviso.
 #
 # Custo de quota: search.list gasta 100 unidades por chamada (cota gratuita: 10.000/dia por
-# projeto, dividida com os outros coletores). Normal: 2 termos x 12 execuções = 2.400/dia, mais
-# 200 da busca diária por mais vistos = ~2.600/dia (teto teórico de 3 páginas por busca só
+# projeto, dividida com os outros coletores). Normal: 3 termos x 12 execuções = 3.600/dia, mais
+# 300 da busca diária por mais vistos = ~3.900/dia (teto teórico de 3 páginas por busca só
 # aconteceria com >50 vídeos novos em ~8h).
 #
 # Limitação real (ponytail): a busca do YouTube só casa título, descrição e tags (e às vezes
@@ -78,10 +78,16 @@ jobs:
           # Surgiu outro homônimo? Acrescente a palavra nas duas listas.
           EXCLUDE_WORDS = ['leyen', 'ursula']
           NOT_TERMS = ' ' + ' '.join('-' + w for w in EXCLUDE_WORDS)
+          # "vonder ferramentas" é o nome completo da marca: a busca por ele traz vídeos que a
+          # busca só por "vonder" (ordenada por data) deixaria de fora.
           SEARCH_TERMS = [
               'vonder' + NOT_TERMS,
+              'vonder ferramentas' + NOT_TERMS,
               'vonder review|vonder reclamação|vonder defeito|vonder problema|vonder qualidade' + NOT_TERMS,
           ]
+          # "von der" é expressão comum em alemão (e a busca aproxima "vonder" de "von der"). Vídeo
+          # com essa expressão e SEM a palavra "vonder" no texto é descartado; com "vonder" fica.
+          GERMAN_PHRASES = ['von der']
           # Palavras que, junto da marca no texto, elevam a prioridade. Lista curta e específica
           # de propósito ("problema" sozinho pega "sem problema"); ajustar conforme o ruído.
           NEGATIVE_WORDS = [
@@ -212,7 +218,9 @@ jobs:
                   by_id.pop(video_id, None)
                   continue
               raw_text = norm(' '.join([snippet.get('title') or '', snippet.get('description') or '', ' '.join(snippet.get('tags') or [])]))
-              if any(w in raw_text for w in EXCLUDE_WORDS):  # trecho, não palavra: pega "Vonderleyen" colado
+              homonym = any(w in raw_text for w in EXCLUDE_WORDS)  # trecho, não palavra: pega "Vonderleyen" colado
+              german = not has_word(BRAND_WORD, raw_text) and any(p in raw_text for p in GERMAN_PHRASES)
+              if homonym or german:
                   by_id.pop(video_id, None)  # homônimo: some do histórico também
                   continue
               if entry is None:
