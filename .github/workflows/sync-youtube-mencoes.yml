@@ -212,7 +212,9 @@ jobs:
               thumb = (thumbs.get('medium') or thumbs.get('high') or thumbs.get('default') or {}).get('url')
               description = snippet.get('description') or ''
               fields = {'título': snippet.get('title'), 'descrição': description, 'tags': ' '.join(snippet.get('tags') or [])}
-              full_text = norm(' '.join(v or '' for v in fields.values()))
+              # Palavras negativas só no título e nas tags: a descrição costuma ter propaganda, links
+              # e textos genéricos (ex.: "golpe" num vídeo de nível a laser) e dava falso positivo.
+              negative_text = norm(' '.join([fields['título'] or '', fields['tags']]))
               entry.update({
                   'title': snippet.get('title') or '',
                   'description': description[:300],
@@ -228,7 +230,7 @@ jobs:
                   # Ausente quando os comentários estão desativados (ver sync-youtube-videos.yml).
                   'comments': int(stats['commentCount']) if 'commentCount' in stats else None,
                   'matchedIn': [name for name, text in fields.items() if has_word(BRAND_WORD, norm(text))],
-                  'negative': [w for w in NEGATIVE_WORDS if has_word(w, full_text)],
+                  'negative': [w for w in NEGATIVE_WORDS if has_word(w, negative_text)],
                   'unavailable': False,
               })
               if video_id in found:
