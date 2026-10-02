@@ -29,7 +29,7 @@ service cloud.firestore {
     // estas regras por definição) - nenhum caminho legítimo de escrita pelo navegador. Travar
     // pra admin não tira função de ninguém e evita que um usuário comum forje esses números.
     function isCollectedDataDoc(id) {
-      return id.matches('^(followers|posts|youtube-videos|facebook-posts|trends)-.*');
+      return id.matches('^(followers|posts|youtube-videos|youtube-mentions|facebook-posts|trends)-.*');
     }
 
     match /users/{userId} {
