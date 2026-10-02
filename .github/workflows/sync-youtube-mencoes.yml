@@ -119,6 +119,11 @@ jobs:
           path = Path('data/social-youtube-mentions.json')
           previous = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
           by_id = {m['id']: m for m in previous.get('mentions', [])}
+          # Histórico de views: lista de objetos {h: hora desde a época, v: views}. O Firestore
+          # NÃO aceita lista dentro de lista (a 1ª versão gravava [h, v] e falhou na publicação),
+          # então o formato antigo, se ainda estiver no arquivo, é convertido aqui.
+          for m in by_id.values():
+              m['history'] = [p if isinstance(p, dict) else {'h': p[0], 'v': p[1]} for p in m.get('history', [])]
 
           if previous.get('searchedAt'):
               since = datetime.fromisoformat(previous['searchedAt'].replace('Z', '+00:00')) - timedelta(hours=OVERLAP_HOURS)
@@ -171,10 +176,10 @@ jobs:
 
           def views_growth(entry):
               # Visualizações ganhas desde o ponto mais antigo dentro das últimas 24h.
-              recent = [p for p in entry.get('history', []) if p[0] >= now_hour - 24]
-              if not recent or recent[0][0] == now_hour:
+              recent = [p for p in entry.get('history', []) if p['h'] >= now_hour - 24]
+              if not recent or recent[0]['h'] == now_hour:
                   return None, None
-              return entry['views'] - recent[0][1], now_hour - recent[0][0]
+              return entry['views'] - recent[0]['v'], now_hour - recent[0]['h']
 
           def priority(entry):
               if not entry['matchedIn']:
@@ -231,8 +236,8 @@ jobs:
 
               published = datetime.fromisoformat(entry['publishedAt'].replace('Z', '+00:00'))
               if now - published <= timedelta(days=HISTORY_DAYS):
-                  history = [p for p in entry.get('history', []) if p[0] != now_hour]
-                  entry['history'] = (history + [[now_hour, entry['views']]])[-HISTORY_POINTS:]
+                  history = [p for p in entry.get('history', []) if p['h'] != now_hour]
+                  entry['history'] = (history + [{'h': now_hour, 'v': entry['views']}])[-HISTORY_POINTS:]
               else:
                   entry.pop('history', None)
               entry['viewsDelta'], entry['viewsDeltaHours'] = views_growth(entry)
