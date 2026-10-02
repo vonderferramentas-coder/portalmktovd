@@ -72,9 +72,15 @@ jobs:
           BRAND_WORD = 'vonder'
           # q aceita "a|b" (OU). O 2º termo é de propósito voltado a reclamação/avaliação, onde
           # nasce a crise.
+          # Homônimos: "Von der Leyen" (política) aparece escrito "Vonder Leyen" e a busca do
+          # YouTube também aproxima "von der". "-palavra" tira o vídeo da busca; o filtro
+          # EXCLUDE_WORDS abaixo é a 2ª camada (descarta e limpa o que já estava guardado).
+          # Surgiu outro homônimo? Acrescente a palavra nas duas listas.
+          EXCLUDE_WORDS = ['leyen', 'ursula']
+          NOT_TERMS = ' ' + ' '.join('-' + w for w in EXCLUDE_WORDS)
           SEARCH_TERMS = [
-              'vonder',
-              'vonder review|vonder reclamação|vonder defeito|vonder problema|vonder qualidade',
+              'vonder' + NOT_TERMS,
+              'vonder review|vonder reclamação|vonder defeito|vonder problema|vonder qualidade' + NOT_TERMS,
           ]
           # Palavras que, junto da marca no texto, elevam a prioridade. Lista curta e específica
           # de propósito ("problema" sozinho pega "sem problema"); ajustar conforme o ruído.
@@ -204,6 +210,10 @@ jobs:
               snippet, stats = item['snippet'], item.get('statistics', {})
               if snippet['channelId'] == own_channel:
                   by_id.pop(video_id, None)
+                  continue
+              raw_text = norm(' '.join([snippet.get('title') or '', snippet.get('description') or '', ' '.join(snippet.get('tags') or [])]))
+              if any(w in raw_text for w in EXCLUDE_WORDS):  # trecho, não palavra: pega "Vonderleyen" colado
+                  by_id.pop(video_id, None)  # homônimo: some do histórico também
                   continue
               if entry is None:
                   entry = by_id[video_id] = {'id': video_id, 'firstSeenAt': iso(now)}
