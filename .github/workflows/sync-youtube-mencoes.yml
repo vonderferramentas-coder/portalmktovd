@@ -1,0 +1,343 @@
+name: Monitorar menções no YouTube
+
+# Monitoramento de reputação: acha vídeos de OUTROS canais que falam da Vonder, mesmo sem
+# marcar o canal (@). Usa a mesma YOUTUBE_API_KEY dos demais coletores (dados públicos, sem
+# OAuth) e o mesmo desenho de sync-youtube-videos.yml: JSON versionado + documento próprio no
+# Firestore (youtube-mentions-vonder-v1), que a página monitoramento.html lê.
+#
+# O que a coleta faz a cada execução:
+#  - busca vídeos NOVOS (publishedAfter) pelos termos abaixo, com até 3 páginas por termo;
+#  - 1x por dia (e em execução manual) busca também os MAIS VISTOS dos últimos 60 dias, para
+#    pegar vídeo antigo que viralizou agora (a busca por data nunca o veria de novo);
+#  - atualiza as métricas de tudo que já está guardado e mantém um histórico curto de
+#    visualizações, para medir crescimento (views ganhas desde ~24h atrás);
+#  - classifica a prioridade (alta/média/baixa) com regras simples e uma lista de palavras
+#    negativas — sem IA: é só correspondência de texto;
+#  - se houver o segredo MONITORAMENTO_WEBHOOK_URL (Teams/Slack), avisa os vídeos de prioridade
+#    alta uma única vez por vídeo. Sem o segredo, a coleta funciona igual, só sem aviso.
+#
+# Custo de quota: search.list gasta 100 unidades por chamada (cota gratuita: 10.000/dia por
+# projeto, dividida com os outros coletores). Normal: 2 termos x 12 execuções = 2.400/dia, mais
+# 200 da busca diária por mais vistos = ~2.600/dia (teto teórico de 3 páginas por busca só
+# aconteceria com >50 vídeos novos em ~8h).
+#
+# Limitação real (ponytail): a busca do YouTube só casa título, descrição e tags (e às vezes
+# legendas automáticas). Se o criador só falar "Vonder" no áudio, o vídeo não aparece aqui —
+# cobrir isso exige transcrição própria ou ferramenta paga de monitoramento.
+
+on:
+  schedule:
+    # A cada 2h, em minuto diferente dos demais coletores. Roda em hora par UTC (a busca diária
+    # por mais vistos usa 10h UTC = 7h em São Paulo).
+    - cron: '40 */2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Mesmo grupo dos outros workflows que fazem git push (ver sync-youtube-videos.yml).
+concurrency:
+  group: portal-dados-git-push
+  cancel-in-progress: false
+
+jobs:
+  sync-mencoes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Buscar menções e métricas
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          # Canal próprio (não conta como menção externa).
+          YOUTUBE_CHANNEL_ID: 'UCflcAVLpPmH-03R-njMSayw'
+          # Opcional: URL de webhook de entrada do Teams ou Slack (recebe {"text": "..."}).
+          WEBHOOK_URL: ${{ secrets.MONITORAMENTO_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$YOUTUBE_API_KEY"
+          python3 - <<'PY'
+          import json, os, re, unicodedata, urllib.parse, urllib.request
+          from datetime import datetime, timedelta, timezone
+          from pathlib import Path
+
+          api_key = os.environ['YOUTUBE_API_KEY']
+          own_channel = os.environ['YOUTUBE_CHANNEL_ID']
+          webhook_url = os.environ.get('WEBHOOK_URL', '').strip()
+          base = 'https://www.googleapis.com/youtube/v3'
+
+          # Palavra da marca usada para dizer ONDE ela aparece (título/descrição/tags) — vídeos
+          # sem nenhuma ocorrência vieram só por relevância da busca e valem menos atenção.
+          BRAND_WORD = 'vonder'
+          # q aceita "a|b" (OU). O 2º termo é de propósito voltado a reclamação/avaliação, onde
+          # nasce a crise.
+          SEARCH_TERMS = [
+              'vonder',
+              'vonder review|vonder reclamação|vonder defeito|vonder problema|vonder qualidade',
+          ]
+          # Palavras que, junto da marca no texto, elevam a prioridade. Lista curta e específica
+          # de propósito ("problema" sozinho pega "sem problema"); ajustar conforme o ruído.
+          NEGATIVE_WORDS = [
+              'defeito', 'defeituoso', 'quebrou', 'quebrada', 'estragou', 'queimou', 'golpe', 'fraude',
+              'enganacao', 'enganado', 'pessimo', 'pessima', 'lixo', 'reclamacao', 'procon',
+              'nao compre', 'nao funciona', 'nao vale', 'decepcao', 'decepcionado', 'arrependido',
+          ]
+          FIRST_RUN_DAYS = 14       # janela da 1ª execução
+          OVERLAP_HOURS = 6         # reabre um pouco a janela: o YouTube indexa vídeo novo com atraso
+          MAX_PAGES = 3             # páginas (50 resultados cada) por termo
+          DEEP_DAYS = 60            # janela da busca diária por mais vistos
+          DEEP_UTC_HOUR = 10
+          MAX_KEPT = 300            # teto do histórico (documento do Firestore tem limite de 1 MB)
+          HISTORY_DAYS = 14         # só vídeos recentes guardam histórico de views
+          HISTORY_POINTS = 36       # ~3 dias de pontos (1 a cada 2h)
+          # Prioridade: ALTA = marca no texto E (palavra negativa OU pico de views OU canal grande).
+          HIGH_DELTA, HIGH_SUBS = 5000, 100000
+          MID_DELTA, MID_SUBS, MID_VIEWS = 1000, 10000, 10000
+          ALERT_MAX_AGE_DAYS = 7    # não avisa de vídeo antigo, a menos que esteja em pico agora
+
+          def get(path, **params):
+              params['key'] = api_key
+              url = f'{base}/{path}?{urllib.parse.urlencode(params)}'
+              with urllib.request.urlopen(url, timeout=30) as resp:
+                  return json.loads(resp.read().decode('utf-8'))
+
+          def norm(text):
+              return unicodedata.normalize('NFKD', text or '').encode('ascii', 'ignore').decode().lower()
+
+          def chunks(seq, n=50):
+              for i in range(0, len(seq), n):
+                  yield seq[i:i + n]
+
+          def has_word(word, text):
+              return re.search(rf'\b{re.escape(word)}\b', text) is not None
+
+          now = datetime.now(timezone.utc).replace(microsecond=0)
+          iso = lambda dt: dt.isoformat().replace('+00:00', 'Z')
+          now_hour = int(now.timestamp() // 3600)
+
+          path = Path('data/social-youtube-mentions.json')
+          previous = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
+          by_id = {m['id']: m for m in previous.get('mentions', [])}
+          # Histórico de views: lista de objetos {h: hora desde a época, v: views}. O Firestore
+          # NÃO aceita lista dentro de lista (a 1ª versão gravava [h, v] e falhou na publicação),
+          # então o formato antigo, se ainda estiver no arquivo, é convertido aqui.
+          for m in by_id.values():
+              m['history'] = [p if isinstance(p, dict) else {'h': p[0], 'v': p[1]} for p in m.get('history', [])]
+
+          if previous.get('searchedAt'):
+              since = datetime.fromisoformat(previous['searchedAt'].replace('Z', '+00:00')) - timedelta(hours=OVERLAP_HOURS)
+          else:
+              since = now - timedelta(days=FIRST_RUN_DAYS)
+
+          def search(term, order, published_after):
+              ids, token = [], None
+              for _ in range(MAX_PAGES):
+                  params = dict(part='id', type='video', q=term, order=order, maxResults=50,
+                                publishedAfter=iso(published_after), relevanceLanguage='pt')
+                  if token:
+                      params['pageToken'] = token
+                  result = get('search', **params)
+                  ids += [item['id']['videoId'] for item in result.get('items', [])]
+                  token = result.get('nextPageToken')
+                  if not token:
+                      break
+              return ids
+
+          # 1) Descobre vídeos. Erro de API (ex.: quota) derruba o job de propósito: nada é
+          # gravado e o snapshot anterior continua intacto.
+          found = {}  # video_id -> termos que o acharam
+          for term in SEARCH_TERMS:
+              for video_id in search(term, 'date', since):
+                  found.setdefault(video_id, set()).add(term)
+          # Busca diária por mais vistos: pega vídeo antigo que viralizou depois de publicado.
+          if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' or now.hour == DEEP_UTC_HOUR:
+              for term in SEARCH_TERMS:
+                  result = get('search', part='id', type='video', q=term, order='viewCount', maxResults=50,
+                               publishedAfter=iso(now - timedelta(days=DEEP_DAYS)), relevanceLanguage='pt')
+                  for item in result.get('items', []):
+                      found.setdefault(item['id']['videoId'], set()).add(term)
+
+          # 2) Detalhes de tudo que é novo + métricas atualizadas de tudo que já está guardado.
+          ids = list(dict.fromkeys(list(found) + list(by_id)))
+          details = {}
+          for lote in chunks(ids):
+              for item in get('videos', part='snippet,statistics', id=','.join(lote)).get('items', []):
+                  details[item['id']] = item
+
+          # 3) Inscritos dos canais (alcance potencial) — 1 unidade a cada 50 canais.
+          channel_ids = sorted({d['snippet']['channelId'] for d in details.values()})
+          subscribers = {}
+          for lote in chunks(channel_ids):
+              for item in get('channels', part='statistics', id=','.join(lote)).get('items', []):
+                  stats = item.get('statistics', {})
+                  if not stats.get('hiddenSubscriberCount'):
+                      subscribers[item['id']] = int(stats.get('subscriberCount', 0) or 0)
+
+          def views_growth(entry):
+              # Visualizações ganhas desde o ponto mais antigo dentro das últimas 24h.
+              recent = [p for p in entry.get('history', []) if p['h'] >= now_hour - 24]
+              if not recent or recent[0]['h'] == now_hour:
+                  return None, None
+              return entry['views'] - recent[0]['v'], now_hour - recent[0]['h']
+
+          def priority(entry):
+              if not entry['matchedIn']:
+                  return 'baixa'
+              delta = entry.get('viewsDelta') or 0
+              subs = entry.get('channelSubscribers') or 0
+              if entry['negative'] or delta >= HIGH_DELTA or subs >= HIGH_SUBS:
+                  return 'alta'
+              if subs >= MID_SUBS or entry['views'] >= MID_VIEWS or delta >= MID_DELTA:
+                  return 'media'
+              return 'baixa'
+
+          new_count = 0
+          for video_id in ids:
+              item = details.get(video_id)
+              entry = by_id.get(video_id)
+              if item is None:
+                  # Sumiu da API (apagado/privado): mantém o registro, só sinaliza.
+                  if entry is not None:
+                      entry['unavailable'] = True
+                  continue
+              snippet, stats = item['snippet'], item.get('statistics', {})
+              if snippet['channelId'] == own_channel:
+                  by_id.pop(video_id, None)
+                  continue
+              if entry is None:
+                  entry = by_id[video_id] = {'id': video_id, 'firstSeenAt': iso(now)}
+                  new_count += 1
+              thumbs = snippet.get('thumbnails') or {}
+              thumb = (thumbs.get('medium') or thumbs.get('high') or thumbs.get('default') or {}).get('url')
+              description = snippet.get('description') or ''
+              fields = {'título': snippet.get('title'), 'descrição': description, 'tags': ' '.join(snippet.get('tags') or [])}
+              full_text = norm(' '.join(v or '' for v in fields.values()))
+              entry.update({
+                  'title': snippet.get('title') or '',
+                  'description': description[:300],
+                  'permalink': f'https://www.youtube.com/watch?v={video_id}',
+                  'thumbnailUrl': thumb,
+                  'publishedAt': snippet.get('publishedAt'),
+                  'channelId': snippet['channelId'],
+                  'channelTitle': snippet.get('channelTitle') or '',
+                  'channelUrl': f"https://www.youtube.com/channel/{snippet['channelId']}",
+                  'channelSubscribers': subscribers.get(snippet['channelId']),
+                  'views': int(stats.get('viewCount', 0) or 0),
+                  'likes': int(stats.get('likeCount', 0) or 0),
+                  # Ausente quando os comentários estão desativados (ver sync-youtube-videos.yml).
+                  'comments': int(stats['commentCount']) if 'commentCount' in stats else None,
+                  'matchedIn': [name for name, text in fields.items() if has_word(BRAND_WORD, norm(text))],
+                  'negative': [w for w in NEGATIVE_WORDS if has_word(w, full_text)],
+                  'unavailable': False,
+              })
+              if video_id in found:
+                  entry['terms'] = sorted(set(entry.get('terms', [])) | found[video_id])
+
+              published = datetime.fromisoformat(entry['publishedAt'].replace('Z', '+00:00'))
+              if now - published <= timedelta(days=HISTORY_DAYS):
+                  history = [p for p in entry.get('history', []) if p['h'] != now_hour]
+                  entry['history'] = (history + [{'h': now_hour, 'v': entry['views']}])[-HISTORY_POINTS:]
+              else:
+                  entry.pop('history', None)
+              entry['viewsDelta'], entry['viewsDeltaHours'] = views_growth(entry)
+              entry['priority'] = priority(entry)
+
+          # 4) Aviso (opcional) dos vídeos de prioridade alta ainda não avisados.
+          def n(value):
+              return f'{value:,}'.replace(',', '.')
+
+          def alert_reasons(entry):
+              reasons = []
+              if entry['negative']:
+                  reasons.append('palavras negativas: ' + ', '.join(entry['negative']))
+              if (entry.get('viewsDelta') or 0) >= HIGH_DELTA:
+                  reasons.append(f"+{n(entry['viewsDelta'])} views em {entry['viewsDeltaHours']}h")
+              if (entry.get('channelSubscribers') or 0) >= HIGH_SUBS:
+                  reasons.append(f"canal com {n(entry['channelSubscribers'])} inscritos")
+              return reasons
+
+          def alert_eligible(entry):
+              if entry.get('unavailable') or entry.get('alertedAt') or entry.get('priority') != 'alta':
+                  return False
+              published = datetime.fromisoformat(entry['publishedAt'].replace('Z', '+00:00'))
+              return now - published <= timedelta(days=ALERT_MAX_AGE_DAYS) or (entry.get('viewsDelta') or 0) >= HIGH_DELTA
+
+          to_alert = [m for m in by_id.values() if alert_eligible(m)]
+          if to_alert and not webhook_url:
+              print(f'{len(to_alert)} vídeo(s) de prioridade alta, mas MONITORAMENTO_WEBHOOK_URL não está configurado — sem aviso.')
+          elif to_alert:
+              lines = [f'Monitoramento YouTube: {len(to_alert)} vídeo(s) de prioridade ALTA sobre a Vonder.']
+              for m in to_alert[:8]:
+                  lines.append(f"- {m['title']} | canal {m['channelTitle']} | {n(m['views'])} views | "
+                               + '; '.join(alert_reasons(m)) + f" | {m['permalink']}")
+              request = urllib.request.Request(webhook_url, data=json.dumps({'text': '\n'.join(lines)}).encode('utf-8'),
+                                               headers={'Content-Type': 'application/json'}, method='POST')
+              try:
+                  with urllib.request.urlopen(request, timeout=30):
+                      pass
+                  for m in to_alert:
+                      m['alertedAt'] = iso(now)
+                  print(f'Aviso enviado: {len(to_alert)} vídeo(s).')
+              except Exception as error:
+                  # Não derruba a coleta: sem alertedAt, a próxima execução tenta avisar de novo.
+                  print(f'::warning::Falha ao enviar o aviso do webhook: {error}')
+
+          mentions = sorted(by_id.values(), key=lambda m: m.get('publishedAt') or '', reverse=True)[:MAX_KEPT]
+          document = {
+              'version': 2,
+              'updatedAt': iso(now),
+              'searchedAt': iso(now),
+              'terms': SEARCH_TERMS,
+              'mentions': mentions,
+          }
+          path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(f'{new_count} menção(ões) nova(s); {len(mentions)} no histórico.')
+          PY
+
+      - name: Publicar dados atualizados
+        run: |
+          git add data/social-youtube-mentions.json
+          if git diff --cached --quiet -- data/social-youtube-mentions.json; then
+            echo 'Nenhuma alteração para publicar.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: atualizar menções no YouTube'
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            [ "$tentativa" -eq 3 ] && exit 1
+          done
+
+      - name: Publicar menções no Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::warning::FIREBASE_SERVICE_ACCOUNT_KEY não configurado — pulando a gravação em portalStore/youtube-mentions-vonder-v1.'
+            exit 0
+          fi
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os, time
+          from pathlib import Path
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+
+          cred = credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY']))
+          firebase_admin.initialize_app(cred)
+          db = firestore.client()
+
+          published = json.loads(Path('data/social-youtube-mentions.json').read_text(encoding='utf-8'))
+
+          db.collection('portalStore').document('youtube-mentions-vonder-v1').set({
+              'v': published,
+              'updated_at': int(time.time() * 1000),
+              'updatedAt': firestore.SERVER_TIMESTAMP,
+          })
+          print('Firestore atualizado:', len(published['mentions']), 'menções em', published['updatedAt'])
+          PY
