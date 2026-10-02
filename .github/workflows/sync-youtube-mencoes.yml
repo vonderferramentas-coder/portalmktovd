@@ -85,9 +85,6 @@ jobs:
               'vonder ferramentas' + NOT_TERMS,
               'vonder review|vonder reclamação|vonder defeito|vonder problema|vonder qualidade' + NOT_TERMS,
           ]
-          # "von der" é expressão comum em alemão (e a busca aproxima "vonder" de "von der"). Vídeo
-          # com essa expressão e SEM a palavra "vonder" no texto é descartado; com "vonder" fica.
-          GERMAN_PHRASES = ['von der']
           # Palavras que, junto da marca no texto, elevam a prioridade. Lista curta e específica
           # de propósito ("problema" sozinho pega "sem problema"); ajustar conforme o ruído.
           NEGATIVE_WORDS = [
@@ -219,9 +216,11 @@ jobs:
                   continue
               raw_text = norm(' '.join([snippet.get('title') or '', snippet.get('description') or '', ' '.join(snippet.get('tags') or [])]))
               homonym = any(w in raw_text for w in EXCLUDE_WORDS)  # trecho, não palavra: pega "Vonderleyen" colado
-              german = not has_word(BRAND_WORD, raw_text) and any(p in raw_text for p in GERMAN_PHRASES)
-              if homonym or german:
-                  by_id.pop(video_id, None)  # homônimo: some do histórico também
+              # Só entra vídeo com "vonder" no título, descrição ou tags. Os que a busca devolve sem
+              # isso (ferramentas em geral, "von der" em alemão etc.) foram revisados à mão e eram
+              # ruído. Custo: menção só falada/em legenda não aparece (ver "Limitação real" acima).
+              if homonym or not has_word(BRAND_WORD, raw_text):
+                  by_id.pop(video_id, None)  # some do histórico também
                   continue
               if entry is None:
                   entry = by_id[video_id] = {'id': video_id, 'firstSeenAt': iso(now)}
