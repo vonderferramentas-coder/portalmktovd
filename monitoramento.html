@@ -72,7 +72,6 @@
     .mon-channel a:hover { text-decoration: underline }
     .mon-tag { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 10px; font-weight: 800; background: var(--surface-muted); color: var(--muted); margin: 2px 4px 0 0 }
     .mon-tag.is-new { background: var(--accent); color: var(--on-accent) }
-    .mon-tag.is-weak { background: transparent; border: 1px dashed var(--border-strong) }
     .mon-unavailable { opacity: .55 }
     .mon-prio-alta { background: var(--danger); color: #fff }
     .mon-prio-media { background: var(--accent-weak); color: var(--accent-ink) }
@@ -128,10 +127,6 @@
                 <option value="30" selected>Últimos 30 dias</option>
                 <option value="0">Todo o histórico</option>
               </select>
-              <select id="monMatch" aria-label="Relevância">
-                <option value="all">Todos os resultados</option>
-                <option value="direct" selected>Marca no título, descrição ou tags</option>
-              </select>
               <select id="monStatus" aria-label="Status">
                 <option value="pending">Pendentes</option>
                 <option value="all">Todos os status</option>
@@ -154,8 +149,7 @@
               <button type="button" class="chevron-btn" id="monPagerNext" aria-label="Próxima página">›</button>
             </div>
             <p class="page-subtitle" style="font-size:12px;margin-top:14px">
-              A coleta do YouTube cobre título, descrição e tags dos vídeos. Se alguém só citar a marca falando, o vídeo não aparece aqui.
-              Resultados marcados como "sem a marca no texto" vieram só por relevância da busca e podem ser ruído.
+              Só aparecem vídeos com a marca no título, na descrição ou nas tags. Se alguém só citar a marca falando, o vídeo não aparece aqui.
             </p>
           </div>
         </div>

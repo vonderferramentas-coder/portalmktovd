@@ -44,7 +44,6 @@
   const statusOf = m => (TRIAGE[m.id] && TRIAGE[m.id].status) || '';
   const statusLabel = m => STATUSES.find(s => s.value === statusOf(m)).label;
   const isNew = m => time(m.firstSeenAt) > lastVisit;
-  const isDirect = m => (m.matchedIn || []).length > 0;
   const priorityOf = m => m.priority || 'baixa';
 
   // Uma linha por coluna: rótulo, valor usado para ordenar, sentido inicial ao primeiro clique
@@ -112,9 +111,7 @@
       isNew(m) && lastVisit ? '<span class="mon-tag is-new">Novo</span>' : '',
       m.unavailable ? '<span class="mon-tag">Indisponível</span>' : '',
       (m.negative || []).length ? `<span class="mon-tag mon-neg">Palavras negativas: ${escapeHtml(m.negative.join(', '))}</span>` : '',
-      isDirect(m)
-        ? `<span class="mon-tag">Marca em: ${escapeHtml(m.matchedIn.join(', '))}</span>`
-        : '<span class="mon-tag is-weak">Sem a marca no texto</span>',
+      `<span class="mon-tag">Marca em: ${escapeHtml((m.matchedIn || []).join(', '))}</span>`,
     ].join('');
     const thumb = m.thumbnailUrl ? `<img src="${escapeHtml(m.thumbnailUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '<img alt="">';
     const delta = m.viewsDelta != null
@@ -138,12 +135,11 @@
     renderStats();
     renderHead();
     const days = Number(el('monPeriod').value);
-    const directOnly = el('monMatch').value === 'direct';
     const pendingOnly = el('monStatus').value === 'pending';
     const query = plain(el('monSearch').value).trim();
     const cutoff = days ? Date.now() - days * DAY_MS : 0;
     const rows = MENTIONS
-      .filter(m => time(m.publishedAt) >= cutoff && (!directOnly || isDirect(m)) && (!pendingOnly || PENDING.includes(statusOf(m)))
+      .filter(m => time(m.publishedAt) >= cutoff && (!pendingOnly || PENDING.includes(statusOf(m)))
         && (!query || plain(m.title).includes(query) || plain(m.channelTitle).includes(query)))
       // Desempate sempre pelo mais recente, para a ordem não "pular" entre linhas iguais.
       .sort((a, b) => compare(a, b) || time(b.publishedAt) - time(a.publishedAt));
@@ -226,7 +222,7 @@
     if (brandId !== 'default') { el('monNotConnected').hidden = false; return; }
     el('monContent').hidden = false;
     // Mudar qualquer filtro ou a busca volta para a página 1.
-    ['monSearch', 'monPeriod', 'monMatch', 'monStatus'].forEach(id => {
+    ['monSearch', 'monPeriod', 'monStatus'].forEach(id => {
       el(id).addEventListener(id === 'monSearch' ? 'input' : 'change', () => { page = 0; render(); });
     });
     el('monHead').addEventListener('click', onSortClick);
