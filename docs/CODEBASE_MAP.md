@@ -117,6 +117,7 @@ graph TB
 ├── business-card-generator.html/.js/.css       Gerador de cartão de visita (100% client-side)
 ├── business-card-*-assets.js, business-card-print-profile.js   Assets do cartão (gerado)
 ├── followers-dashboard.html / .js              Dashboard de seguidores/posts (só VONDER)
+├── monitoramento.html / .js                    Monitoramento de menções no YouTube (só VONDER)
 ├── intelligence-center.html / .js              Central de Inteligência (UI)
 ├── intelligence-data.js                        Motor heurístico de "DNA de editoria"
 ├── styles.css                                  Design system global (tema claro/escuro)

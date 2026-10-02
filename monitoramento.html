@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Monitoramento - Calendário de Postagens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Space+Grotesk:wght@500;600;700&family=Urbanist:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="auth.css" />
+  <script>document.documentElement.classList.add('auth-pending');</script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="auth-guard.js"></script>
+  <style>
+    .mon-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 20px }
+    .mon-stat { padding: 16px 18px }
+    .mon-stat strong { display: block; font-size: 26px; line-height: 1.1; color: var(--text) }
+    .mon-stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 700 }
+
+    .mon-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px }
+    .mon-filters select {
+      width: auto; height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px;
+      background: var(--card); color: var(--text); font: 700 12px inherit; cursor: pointer
+    }
+    .mon-filters select:hover, .mon-filters select:focus-visible { border-color: var(--accent); outline: none }
+
+    #monTableWrap { overflow: auto }
+    #monTableWrap table { border-collapse: collapse; width: 100% }
+    #monTableWrap th, #monTableWrap td { padding: 10px; border-bottom: 1px solid var(--border); font-size: 12.5px; text-align: left; vertical-align: middle }
+    #monTableWrap th { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em }
+    #monTableWrap tbody tr:hover { background: var(--surface-muted) }
+    #monTableWrap .mon-num { text-align: right; white-space: nowrap }
+    .mon-video { display: flex; align-items: center; gap: 12px; min-width: 280px }
+    .mon-video img { width: 96px; height: 54px; object-fit: cover; border-radius: 6px; flex: none; background: var(--surface-muted) }
+    .mon-video a { color: var(--text); font-weight: 700; text-decoration: none }
+    .mon-video a:hover { text-decoration: underline }
+    .mon-channel a { color: var(--muted); text-decoration: none }
+    .mon-channel a:hover { text-decoration: underline }
+    .mon-tag { display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 10px; font-weight: 800; background: var(--surface-muted); color: var(--muted); margin: 2px 4px 0 0 }
+    .mon-tag.is-new { background: var(--accent); color: var(--on-accent) }
+    .mon-tag.is-weak { background: transparent; border: 1px dashed var(--border-strong) }
+    .mon-unavailable { opacity: .55 }
+    .mon-prio-alta { background: var(--danger); color: #fff }
+    .mon-prio-media { background: var(--accent-weak); color: var(--accent-ink) }
+    .mon-neg { background: transparent; border: 1px solid var(--danger); color: var(--danger) }
+    .mon-delta { font-size: 11px; color: var(--success); font-weight: 700 }
+    .mon-stale { border-color: var(--danger); color: var(--danger); margin-bottom: 20px; padding: 16px 18px; font-size: 13px }
+    #monTableWrap select.mon-status { width: auto; height: 34px; padding: 0 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: 700 12px inherit; cursor: pointer }
+    #monTableWrap select.mon-status:disabled { opacity: .5; cursor: progress }
+  </style>
+</head>
+
+<body>
+  <div class="portal-shell">
+    <!-- Menu do portal (navegação entre ferramentas + seletor de marca), montado por portal-shell.js -->
+    <aside class="portal-sidebar" id="portalSidebar"></aside>
+    <div class="portal-main">
+      <div class="container">
+
+        <div class="page-header">
+          <div>
+            <h1>Monitoramento</h1>
+            <p class="page-subtitle">Vídeos de outros canais do YouTube que falam da marca, mesmo sem marcar o perfil (@).</p>
+          </div>
+          <div class="page-header-actions">
+            <span id="syncStatus" class="sync-status" title="Data/hora da última busca no YouTube"></span>
+          </div>
+        </div>
+
+        <div id="monNotConnected" class="card bg-empty" hidden>
+          O monitoramento de menções ainda não está configurado para esta marca.
+        </div>
+
+        <div id="monContent" hidden>
+          <!-- Coleta parada = falsa sensação de segurança: aparece em destaque, não só no canto. -->
+          <div id="monStale" class="card mon-stale" role="alert" hidden>
+            <strong>A coleta automática parece parada.</strong> A última busca foi em <span id="monStaleSince"></span>
+            (o normal é a cada 2 horas). Enquanto isso, esta lista pode estar desatualizada: avise a TI/Marketing e confira o
+            workflow "Monitorar menções no YouTube" no GitHub.
+          </div>
+          <div class="mon-stats">
+            <div class="card mon-stat"><strong id="statHigh">-</strong><span>Prioridade alta pendentes</span></div>
+            <div class="card mon-stat"><strong id="statNew">-</strong><span>Novos desde sua última visita</span></div>
+            <div class="card mon-stat"><strong id="stat24h">-</strong><span>Publicados nas últimas 24h</span></div>
+            <div class="card mon-stat"><strong id="stat7d">-</strong><span>Publicados nos últimos 7 dias</span></div>
+          </div>
+
+          <div class="card" style="padding:24px">
+            <div class="mon-filters">
+              <select id="monPeriod" aria-label="Período">
+                <option value="7">Últimos 7 dias</option>
+                <option value="30" selected>Últimos 30 dias</option>
+                <option value="0">Todo o histórico</option>
+              </select>
+              <select id="monSort" aria-label="Ordenar por">
+                <option value="priority">Por prioridade</option>
+                <option value="recent">Mais recentes</option>
+                <option value="growth">Maior crescimento (24h)</option>
+                <option value="views">Mais visualizados</option>
+                <option value="reach">Maior canal</option>
+              </select>
+              <select id="monMatch" aria-label="Relevância">
+                <option value="all">Todos os resultados</option>
+                <option value="direct">Marca no título, descrição ou tags</option>
+              </select>
+              <select id="monStatus" aria-label="Status">
+                <option value="pending">Pendentes</option>
+                <option value="all">Todos os status</option>
+              </select>
+              <span class="bg-section-desc" id="monSummary" style="margin:0 0 0 auto"></span>
+            </div>
+            <div id="monEmpty" class="bg-empty" hidden></div>
+            <div class="table-wrap" id="monTableWrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Vídeo</th>
+                    <th>Canal</th>
+                    <th class="mon-num">Inscritos</th>
+                    <th class="mon-num">Views</th>
+                    <th class="mon-num">Comentários</th>
+                    <th>Publicado em</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="monTableBody"></tbody>
+              </table>
+            </div>
+            <p class="page-subtitle" style="font-size:12px;margin-top:14px">
+              A busca cobre título, descrição e tags dos vídeos. Se alguém só citar a marca falando, o vídeo não aparece aqui.
+              Resultados marcados como "sem a marca no texto" vieram só por relevância da busca e podem ser ruído.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="sync-backend.js"></script>
+  <script src="portal-shell.js"></script>
+  <script src="monitoramento.js"></script>
+</body>
+
+</html>
