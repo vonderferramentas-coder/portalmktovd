@@ -27,6 +27,36 @@
       background: var(--card); color: var(--text); font: 700 12px inherit; cursor: pointer
     }
     .mon-filters select:hover, .mon-filters select:focus-visible { border-color: var(--accent); outline: none }
+    .mon-filters input[type="search"] {
+      width: 260px; max-width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px;
+      background: var(--card); color: var(--text); font: 600 12px inherit
+    }
+    .mon-filters input[type="search"]:hover, .mon-filters input[type="search"]:focus-visible { border-color: var(--accent); outline: none }
+
+    /* Cabeçalho clicável: seta minimalista ao lado do nome; fraca nas colunas inativas, forte
+       na coluna ordenada, e gira para cima quando a ordem é crescente. */
+    .mon-sort { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; cursor: pointer; white-space: nowrap }
+    #monTableWrap .mon-num .mon-sort { justify-content: flex-end }
+    .mon-sort:hover, .mon-sort:focus-visible { color: var(--text); outline: none }
+    .mon-sort:focus-visible { box-shadow: 0 0 0 2px var(--accent); border-radius: 4px }
+    .mon-sort-icon { width: 12px; height: 12px; flex: none; opacity: .35; transition: transform .15s, opacity .15s }
+    th.is-sorted .mon-sort { color: var(--text) }
+    th.is-sorted .mon-sort-icon { opacity: 1 }
+    th.is-asc .mon-sort-icon { transform: rotate(180deg) }
+
+    /* Paginação - mesmo padrão de .intel-pager em intelligence-center.html. */
+    .mon-pager { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px }
+    .chevron-btn {
+      width: 28px; height: 28px; padding: 0;
+      border: 1px solid var(--border-strong); border-radius: 50%;
+      background: var(--surface-muted); color: var(--text);
+      font-size: 15px; line-height: 1;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: background .15s, border-color .15s
+    }
+    .chevron-btn:hover, .chevron-btn:focus-visible { background: var(--accent-weak); border-color: var(--accent); outline: none }
+    .chevron-btn:disabled { opacity: .4; cursor: default }
+    .mon-page-label { font-size: 10px; font-weight: 800; color: var(--muted); background: var(--surface-muted); border-radius: 7px; padding: 5px 8px }
 
     #monTableWrap { overflow: auto }
     #monTableWrap table { border-collapse: collapse; width: 100% }
@@ -48,6 +78,7 @@
     .mon-prio-media { background: var(--accent-weak); color: var(--accent-ink) }
     .mon-neg { background: transparent; border: 1px solid var(--danger); color: var(--danger) }
     .mon-delta { font-size: 11px; color: var(--success); font-weight: 700 }
+    .mon-delta-hours { font-size: 10px; color: var(--muted); font-weight: 600 }
     .mon-stale { border-color: var(--danger); color: var(--danger); margin-bottom: 20px; padding: 16px 18px; font-size: 13px }
     #monTableWrap select.mon-status { width: auto; height: 34px; padding: 0 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: 700 12px inherit; cursor: pointer }
     #monTableWrap select.mon-status:disabled { opacity: .5; cursor: progress }
@@ -91,17 +122,11 @@
 
           <div class="card" style="padding:24px">
             <div class="mon-filters">
+              <input type="search" id="monSearch" placeholder="Buscar vídeo ou canal" aria-label="Buscar por nome do vídeo ou do canal" autocomplete="off">
               <select id="monPeriod" aria-label="Período">
                 <option value="7">Últimos 7 dias</option>
                 <option value="30" selected>Últimos 30 dias</option>
                 <option value="0">Todo o histórico</option>
-              </select>
-              <select id="monSort" aria-label="Ordenar por">
-                <option value="priority">Por prioridade</option>
-                <option value="recent">Mais recentes</option>
-                <option value="growth">Maior crescimento (24h)</option>
-                <option value="views">Mais visualizados</option>
-                <option value="reach">Maior canal</option>
               </select>
               <select id="monMatch" aria-label="Relevância">
                 <option value="all">Todos os resultados</option>
@@ -117,21 +142,19 @@
             <div class="table-wrap" id="monTableWrap">
               <table>
                 <thead>
-                  <tr>
-                    <th>Vídeo</th>
-                    <th>Canal</th>
-                    <th class="mon-num">Inscritos</th>
-                    <th class="mon-num">Views</th>
-                    <th class="mon-num">Comentários</th>
-                    <th>Publicado em</th>
-                    <th>Status</th>
-                  </tr>
+                  <!-- Cabeçalhos clicáveis (ordenação) montados por monitoramento.js a partir de COLUMNS. -->
+                  <tr id="monHead"></tr>
                 </thead>
                 <tbody id="monTableBody"></tbody>
               </table>
             </div>
+            <div class="mon-pager" id="monPager" hidden>
+              <button type="button" class="chevron-btn" id="monPagerPrev" aria-label="Página anterior">‹</button>
+              <span class="mon-page-label" id="monPagerLabel">Página 1 de 1</span>
+              <button type="button" class="chevron-btn" id="monPagerNext" aria-label="Próxima página">›</button>
+            </div>
             <p class="page-subtitle" style="font-size:12px;margin-top:14px">
-              A busca cobre título, descrição e tags dos vídeos. Se alguém só citar a marca falando, o vídeo não aparece aqui.
+              A coleta do YouTube cobre título, descrição e tags dos vídeos. Se alguém só citar a marca falando, o vídeo não aparece aqui.
               Resultados marcados como "sem a marca no texto" vieram só por relevância da busca e podem ser ruído.
             </p>
           </div>
