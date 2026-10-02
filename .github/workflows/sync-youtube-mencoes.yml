@@ -76,7 +76,7 @@ jobs:
           # YouTube também aproxima "von der". "-palavra" tira o vídeo da busca; o filtro
           # EXCLUDE_WORDS abaixo é a 2ª camada (descarta e limpa o que já estava guardado).
           # Surgiu outro homônimo? Acrescente a palavra nas duas listas.
-          EXCLUDE_WORDS = ['leyen', 'ursula']
+          EXCLUDE_WORDS = ['leyen', 'ursula', 'eyewear']
           NOT_TERMS = ' ' + ' '.join('-' + w for w in EXCLUDE_WORDS)
           # "vonder ferramentas" é o nome completo da marca: a busca por ele traz vídeos que a
           # busca só por "vonder" (ordenada por data) deixaria de fora.
