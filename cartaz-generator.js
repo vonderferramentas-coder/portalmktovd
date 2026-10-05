@@ -33,6 +33,7 @@
     S.linking = false; S.linkSel = [];
     S.page = 0; S.brand = S.pages[0]?.brand || ''; let photoCount = groups.filter(group => group.rows[0].ovd).length; if ($('photoInfo')) $('photoInfo').textContent = photoCount + ' foto' + (photoCount === 1 ? '' : 's') + ' vinculada' + (photoCount === 1 ? '' : 's') + ' pelo Código OVD'; updateDashboard(); $('work').hidden = false; $('printMenu').disabled = false; $('saveGrid').disabled = false; $('exportMenu').disabled = false; pages(); draw(); measureAllPages(); pages(); updateDashboard(); toast(groups.length + ' produto(s) distribuído(s) em ' + S.pages.length + ' página(s).') } catch (error) { toast(error.message) } }; reader.readAsArrayBuffer(file) } /* paginação e vínculo de marcas: cartaz-pagination.js (testado em tests/cartaz-pagination.test.html) */
     const { paginate, groupBrand, twoCodeColumns } = CartazPagination;
+
 /* Desfazer: guarda o estado das páginas (edições de título/foto, códigos de barras, vínculos, logos) antes de cada ação; Ctrl+Z ou botão "Desfazer" volta um passo.
        Rajadas da mesma ação (digitar um título, roda do mouse na foto) valem um passo só. ponytail: sem "refazer"; guarda 30 passos como texto JSON. */
     function snapshot(burst) {
@@ -54,6 +55,31 @@
     function unlinkBrands(key) {
         let result = CartazPagination.unlink(S.pages, key); if (!result) return;
         snapshot(); S.pages = result.pages; relayout(result.first); toast('Marcas desvinculadas.');
+    }
+    function splitBrandByTitle(brand, term, newBrand) {
+        let old = S.pages.filter(page => page.brand === brand), groups = old.flatMap(page => page.items.map(item => item.group)), key = n(term);
+        if (!key || !newBrand || !old.length) return 0;
+        let matching = groups.filter(group => n([group.title, ...group.rows.map(row => row.title)].join(' ')).includes(key));
+        if (!matching.length) return 0;
+        let previous = new Map(); old.forEach(page => page.items.forEach(item => previous.set(item.group, item)));
+        matching.forEach(group => group.rows.forEach(row => { row.brand = newBrand; }));
+        let rest = groups.filter(group => !matching.includes(group)), next = S.pages.filter(page => page.brand !== brand), first = S.pages.indexOf(old[0]);
+        next.splice(first, 0, ...paginate(brand, rest, null, previous), ...paginate(newBrand, matching, null, previous));
+        S.pages = next; relayout(newBrand); return matching.length;
+    }
+    function openSplitBrandDialog() {
+        let brand = S.brand, dialog = $('splitBrandDialog'), term = $('splitBrandTerm'), name = $('splitBrandName'), status = $('splitBrandStatus');
+        if (!brand || S.pages.find(page => page.brand === brand)?.brands) return;
+        $('splitBrandSource').value = brand; term.value = ''; name.value = brand + ' - '; status.textContent = '';
+        $('splitBrandApply').onclick = () => {
+            let newBrand = t(name.value);
+            if (!t(term.value) || !newBrand) { status.textContent = 'Informe a palavra do título e o nome da nova marca.'; return; }
+            if (newBrand === brand || S.pages.some(page => page.brand === newBrand)) { status.textContent = 'A nova marca precisa ter outro nome e ainda não pode existir na grade.'; return; }
+            snapshot(); let count = splitBrandByTitle(brand, t(term.value), newBrand);
+            if (!count) { S.undo.pop(); updateUndo(); status.textContent = 'Nenhum cartão dessa marca contém essa palavra no título.'; return; }
+            dialog.close(); toast(count + ' cartão(ões) movido(s) para ' + newBrand + '. Salve a grade para compartilhar.');
+        };
+        dialog.showModal(); term.focus();
     }
     /* Adicionar item manualmente: mesmo mecanismo de link/unlink acima - CartazPagination.insertItem() refaz a
        paginação da marca inteira, então o item novo entra respeitando formato A4/A3, colunas e última linha,
@@ -236,12 +262,13 @@
         menu.innerHTML = section('sort', 'Ordenar por', Object.entries(SORTS).map(([key, label]) => '<button type="button" role="menuitemradio" aria-checked="' + (S.sort.key === key) + '" class="pm-item" data-pm-sort="' + key + '">' + sortLabel(key) + arrow(key) + '</button>').join(''))
             + section('filter', 'Filtrar por' + (S.filter === 'all' ? '' : ' · ' + FILTERS[S.filter].label), Object.entries(FILTERS).map(([key, filter]) => '<button type="button" role="menuitemradio" aria-checked="' + (S.filter === key) + '" class="pm-item" data-pm-filter="' + key + '">' + filter.label + (S.filter === key ? '<span class="sort-arrow" aria-hidden="true">✓</span>' : '') + '</button>').join(''))
             + '<button type="button" role="menuitem" class="pm-item" data-pm-link' + (canLink ? '' : ' disabled title="Precisa de 2 ou mais marcas soltas"') + '>Vincular marcas</button>'
+            + '<button type="button" role="menuitem" class="pm-item" data-pm-split' + (S.brand && !S.pages.find(page => page.brand === S.brand)?.brands ? '' : ' disabled title="Selecione uma marca não vinculada"') + '>Dividir marca por título</button>'
             + '<button type="button" role="menuitem" class="pm-item pm-reset" data-pm-reset' + (isDefaultSort() && S.filter === 'all' ? ' disabled' : '') + '>Limpar filtro e ordenação</button>';
         menu.hidden = !S.menu; $('pagesMenuBtn').setAttribute('aria-expanded', String(S.menu)); Object.entries(METRIC_FILTERS).forEach(([id, key]) => { let box = $(id).parentElement; box.classList.toggle('active', S.filter === key); box.setAttribute('aria-pressed', String(S.filter === key)); });
         menu.querySelectorAll('[data-pm-section]').forEach(button => button.onclick = () => { S.menuSection = S.menuSection === button.dataset.pmSection ? '' : button.dataset.pmSection; renderPagesMenu(canLink); });
         menu.querySelectorAll('[data-pm-sort]').forEach(button => button.onclick = () => { let key = button.dataset.pmSort; S.sort = S.sort.key === key ? { key, dir: -S.sort.dir } : { key, dir: 1 }; pages(); });
         menu.querySelectorAll('[data-pm-filter]').forEach(button => button.onclick = () => { S.filter = button.dataset.pmFilter; S.menu = false; pages(); });
-        menu.querySelector('[data-pm-reset]').onclick = () => resetView('all'); menu.querySelector('[data-pm-link]').onclick = () => { S.menu = false; S.linking = true; S.linkSel = []; pages(); };
+        menu.querySelector('[data-pm-reset]').onclick = () => resetView('all'); menu.querySelector('[data-pm-link]').onclick = () => { S.menu = false; S.linking = true; S.linkSel = []; pages(); }; menu.querySelector('[data-pm-split]').onclick = () => { S.menu = false; pages(); openSplitBrandDialog(); };
     }
     /* cartões do Resumo viram atalhos de filtro (clicar de novo limpa o filtro) */
     const METRIC_FILTERS = { metricBarcodes: 'nobarcode', metricCodes: 'hidden', metricA4: 'a4', metricA3: 'a3' };
