@@ -161,7 +161,23 @@ jobs:
           path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
+      - name: Decidir se esta coleta vira commit no Git
+        id: gitGate
+        env:
+          FECHAR: ${{ steps.closeWindow.outputs.fechar }}
+          ROTINA: ${{ inputs.rotina }}
+        run: |
+          # O painel lê o Firestore; o JSON versionado é só backup. Por isso só o fechamento diário,
+          # um registro a cada 12h (00 e 12 UTC) e as execuções manuais viram commit - a coleta de
+          # rotina de hora em hora vai só para o Firestore (menos commits, repositório menor).
+          if [ "$FECHAR" = 'true' ] || [ "$(( 10#$(date -u +%H) % 12 ))" -eq 0 ] || { [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ] && [ "$ROTINA" != 'true' ]; }; then
+            echo "commitar=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "commitar=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publicar dados atualizados
+        if: steps.gitGate.outputs.commitar == 'true'
         run: |
           git add data/social-followers.json data/social-followers-live.json
           if git diff --cached --quiet -- data/social-followers.json data/social-followers-live.json; then
@@ -223,6 +239,9 @@ jobs:
           current_published = current_v.get('published') or {}
           current_live = current_v.get('live') or {}
 
+          # O JSON versionado pode estar até 12h defasado (coleta de rotina não vira commit), então só as
+          # redes coletadas aqui entram no Firestore; as do outro coletor (YouTube) ficam como estão lá.
+          OWN_PLATFORMS = ('Instagram', 'Facebook')
           history_by_date = {item['date']: item for item in published.get('history', []) if item.get('date')}
           for date, existing_entry in {item['date']: item for item in current_published.get('history', []) if item.get('date')}.items():
               entry = history_by_date.get(date)
@@ -230,12 +249,12 @@ jobs:
                   history_by_date[date] = existing_entry
                   continue
               merged_followers = dict(existing_entry.get('followers') or {})
-              merged_followers.update(entry.get('followers') or {})
+              merged_followers.update({k: v for k, v in (entry.get('followers') or {}).items() if k in OWN_PLATFORMS})
               entry['followers'] = merged_followers
           published['history'] = [history_by_date[date] for date in sorted(history_by_date)]
 
           live_platforms = dict(current_live.get('platforms') or {})
-          live_platforms.update(live.get('platforms') or {})
+          live_platforms.update({k: v for k, v in (live.get('platforms') or {}).items() if k in OWN_PLATFORMS})
           live['platforms'] = live_platforms
 
           # Mesmo formato gravado por migrate-followers.js (v/updated_at/updatedAt), para que
@@ -379,8 +398,23 @@ jobs:
           path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
+      - name: Decidir se esta coleta vira commit no Git (Ferramentas Gerais)
+        id: gitGateFg
+        env:
+          FECHAR: ${{ steps.closeWindowFg.outputs.fechar }}
+          ROTINA: ${{ inputs.rotina }}
+        run: |
+          # O painel lê o Firestore; o JSON versionado é só backup. Por isso só o fechamento diário,
+          # um registro a cada 12h (00 e 12 UTC) e as execuções manuais viram commit - a coleta de
+          # rotina de hora em hora vai só para o Firestore (menos commits, repositório menor).
+          if [ "$FECHAR" = 'true' ] || [ "$(( 10#$(date -u +%H) % 12 ))" -eq 0 ] || { [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ] && [ "$ROTINA" != 'true' ]; }; then
+            echo "commitar=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "commitar=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publicar dados atualizados (Ferramentas Gerais)
-        if: steps.metaFg.outcome == 'success'
+        if: steps.metaFg.outcome == 'success' && steps.gitGateFg.outputs.commitar == 'true'
         run: |
           git add data/social-followers-ferramentas-gerais.json data/social-followers-ferramentas-gerais-live.json
           if git diff --cached --quiet -- data/social-followers-ferramentas-gerais.json data/social-followers-ferramentas-gerais-live.json; then

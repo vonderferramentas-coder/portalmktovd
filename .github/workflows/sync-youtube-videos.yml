@@ -23,7 +23,7 @@ on:
     # tinham o mesmo minuto por coincidência, sem nenhum deslocamento entre si (diferente dos
     # pares de 15 em 15 min, que já são espaçados de propósito) — reduz a fila no grupo
     # compartilhado portal-dados-git-push, mesmo sem risco real (a fila já evita colisão).
-    - cron: '25 */6 * * *'
+    - cron: '25 */12 * * *'
   workflow_dispatch:
 
 permissions:
