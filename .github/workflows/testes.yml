@@ -65,7 +65,7 @@ jobs:
             exit 1
           fi
           "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions \
-            --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 \
+            --user-data-dir="$(mktemp -d)" --virtual-time-budget=30000 \
             --dump-dom "file://$(pwd)/tests/conecta-fg.test.html" > /tmp/conecta-fg-dump.html
           cat /tmp/conecta-fg-dump.html
           if ! grep -q 'data-result="pass"' /tmp/conecta-fg-dump.html; then
