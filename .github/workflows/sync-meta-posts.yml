@@ -12,7 +12,8 @@ name: Sincronizar posts do Instagram
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    # Minuto 10, não 0: o início da hora é o horário em que o GitHub mais atrasa agendamentos.
+    - cron: '10 */6 * * *'
   workflow_dispatch:
 
 permissions:
