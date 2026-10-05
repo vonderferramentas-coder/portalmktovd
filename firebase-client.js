@@ -6,7 +6,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js';
 import {
   getFirestore, doc, getDoc, addDoc, collection, serverTimestamp, updateDoc,
-  runTransaction, onSnapshot, writeBatch, query, where, deleteDoc
+  runTransaction, onSnapshot, writeBatch, query, where, deleteDoc, getCountFromServer, getDocs, limit
 } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
 
 const config = window.PORTAL_FIREBASE_CONFIG;
@@ -317,6 +317,25 @@ export async function recordUsageEvent(payload) {
     quantity: Math.max(1, Math.min(10000, Number(event.quantity) || 1)),
     createdAt: serverTimestamp()
   });
+}
+
+// Acessos por QR rastreável (qrHits é gravado pela página /redir pública; aqui só lemos). Testes (?t=1) ficam de fora.
+export async function countQrHits(ids) {
+  await currentContext();
+  const out = {};
+  await Promise.all(ids.map(async id => {
+    const snap = await getCountFromServer(query(collection(db, 'qrHits'), where('qr', '==', id), where('test', '==', false)));
+    out[id] = snap.data().count;
+  }));
+  return out;
+}
+
+// Acessos de um QR (sem testes) para a tela de métricas. ponytail: agrega no navegador, até 5000 registros;
+// acima disso, trocar por resumo diário gerado no servidor.
+export async function readQrHits(id) {
+  await currentContext();
+  const snap = await getDocs(query(collection(db, 'qrHits'), where('qr', '==', id), where('test', '==', false), limit(5000)));
+  return snap.docs.map(d => { const v = d.data(); return { t: v.t.toDate(), os: v.os, lang: v.lang }; });
 }
 
 export { app, auth, db, profileFor, audit };
