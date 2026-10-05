@@ -7,13 +7,8 @@ name: Sincronizar seguidores YouTube
 # senão um apagaria o dado do outro a cada execução.
 
 on:
-  schedule:
-    # Reserva: o disparo principal (de hora em hora e no fechamento exato) vem do Worker do
-    # Cloudflare, cloudflare-agendador.js, porque o GitHub entrega agendamentos com atraso de
-    # várias horas. Minuto 35, longe do 5 da Meta, para não publicarem no mesmo instante.
-    - cron: '35 * * * *'
-    # Fechamento diário 5 min antes do da Meta (23:50 de São Paulo = 02:50 UTC).
-    - cron: '50 2 * * *'
+  # Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js, horário em
+  # UTC). O cron do GitHub atrasa horas e, ao chegar tarde, cancelava runs na fila (ARQUITETURA, seção 23).
   workflow_dispatch:
     inputs:
       rotina:
@@ -98,7 +93,7 @@ jobs:
           PY
 
       - name: Fechar histórico diário
-        if: github.event.schedule == '50 2 * * *' || (github.event_name == 'workflow_dispatch' && !inputs.rotina)
+        if: github.event_name == 'workflow_dispatch' && !inputs.rotina
         env:
           SUBSCRIBERS: ${{ steps.youtube.outputs.subscribers }}
         run: |
@@ -130,7 +125,7 @@ jobs:
       - name: Decidir se esta coleta vira commit no Git
         id: gitGate
         env:
-          FECHAR: ${{ github.event.schedule == '50 2 * * *' || (github.event_name == 'workflow_dispatch' && !inputs.rotina) }}
+          FECHAR: ${{ (github.event_name == 'workflow_dispatch' && !inputs.rotina) }}
           ROTINA: ${{ inputs.rotina }}
         run: |
           # O painel lê o Firestore; o JSON versionado é só backup. Por isso só o fechamento diário,

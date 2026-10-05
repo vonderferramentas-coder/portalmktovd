@@ -26,10 +26,8 @@ name: Monitorar menções no YouTube
 # cobrir isso exige transcrição própria ou ferramenta paga de monitoramento.
 
 on:
-  schedule:
-    # A cada 2h, em minuto diferente dos demais coletores. O GitHub entrega esse agendamento com
-    # atraso (4 a 7h na prática); a busca diária por mais vistos não depende de hora exata.
-    - cron: '40 */2 * * *'
+  # Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js, horário em
+  # UTC). O cron do GitHub atrasa horas e, ao chegar tarde, cancelava runs na fila (ARQUITETURA, seção 23).
   workflow_dispatch:
     inputs:
       rotina:

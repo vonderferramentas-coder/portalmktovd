@@ -1,9 +1,7 @@
 name: Consolidar métricas de uso
 on:
-  schedule:
-    # Uma vez por dia, 00:17 em São Paulo (03:17 UTC): o painel de efetividade agrega por dia e a
-    # consolidação já reprocessa os últimos 2 dias, então o dia que acabou de fechar entra completo.
-    - cron: '17 3 * * *'
+  # Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js, horário em
+  # UTC). O cron do GitHub atrasa horas e, ao chegar tarde, cancelava runs na fila (ARQUITETURA, seção 23).
   workflow_dispatch:
 jobs:
   aggregate:

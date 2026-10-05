@@ -2,8 +2,8 @@
 //
 // Por quê: o GitHub entrega os agendamentos (`schedule`) com atraso de várias horas - até um cron
 // de 15 em 15 minutos roda de 3 em 3 ou de 5 em 5 horas, e os fechamentos diários chegaram a
-// falhar. Este Worker chama `workflow_dispatch` no horário certo; os crons dos workflows ficam
-// como reserva (atrasada) caso o Worker ou o token parem.
+// falhar, e um cron atrasado cancelava runs na fila. Este Worker chama `workflow_dispatch` no
+// horário certo e é o único disparo: os workflows não têm mais cron próprio.
 //
 // Configuração (Console do Cloudflare, nunca neste arquivo):
 //  - Cron Trigger único: `*/5 * * * *` (a agenda abaixo decide o que disparar em cada minuto;
@@ -11,7 +11,7 @@
 //  - Segredo `GITHUB_DISPATCH_TOKEN`: token fine-grained do GitHub, só neste repositório,
 //    permissão "Actions: Read and write". Se for revogado ou expirar, os disparos falham e o log mostra 401.
 //
-// Se todas as tentativas falharem, a reserva é o cron do próprio workflow (atrasado).
+// Se todas as tentativas falharem, aquela execução se perde até o próximo horário (sem reserva).
 
 const REPO = 'vonderferramentas-coder/portalmktovd';
 
@@ -33,11 +33,12 @@ export function agendaDoMomento(agora) {
   if (hora % 12 === 0 && minuto === 20) fila.push({ workflow: 'sync-meta-facebook-posts.yml' });
   if (hora % 12 === 0 && minuto === 25) fila.push({ workflow: 'sync-youtube-videos.yml' });
   // Rotinas diárias (UTC), no mesmo horário do cron de cada workflow, no múltiplo de 5 min mais
-  // próximo. A ordem importa: fechamentos (02:50/02:55) antes das reconstruções e do resto.
+  // próximo. As tendências (4 a 15 min) saem às 06:15 para terminar antes das coletas de :35/:40; os
+// fechamentos (02:50/02:55) saem antes das reconstruções e do resto.
   const diarias = {
     '3:15': 'aggregate-usage-metrics.yml',
     '4:30': 'sync-youtube-analytics-diario.yml',
-    '6:30': 'sync-google-trends.yml',
+    '6:15': 'sync-google-trends.yml',
     '7:0': 'backup-portalstore.yml',
     '11:40': 'reconstruir-historico.yml',
     '12:40': 'reconstruir-historico-facebook.yml'

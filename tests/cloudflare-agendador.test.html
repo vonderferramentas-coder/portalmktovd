@@ -20,6 +20,8 @@ try {
   eq(em('2026-10-06T00:25:00Z'), ['sync-youtube-videos.yml:undefined'], 'vídeos do YouTube às 00 UTC');
   eq(em('2026-10-06T06:10:00Z'), [], 'posts não rodam às 06 UTC');
   eq(em('2026-10-06T07:00:00Z'), ['backup-portalstore.yml:undefined'], 'backup às 04:00 SP');
+  eq(em('2026-10-06T06:15:00Z'), ['sync-google-trends.yml:undefined'], 'tendências antes da coleta das :35');
+  eq(em('2026-10-06T06:30:00Z'), [], 'nada às 06:30');
 
   // Dia inteiro (cron de 5 em 5 min): 24 Meta + 24 YouTube de rotina, 12 menções, 2 fechamentos.
   let total = {}, fechamentos = 0;
