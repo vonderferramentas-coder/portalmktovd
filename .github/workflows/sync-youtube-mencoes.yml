@@ -27,10 +27,15 @@ name: Monitorar menções no YouTube
 
 on:
   schedule:
-    # A cada 2h, em minuto diferente dos demais coletores. Roda em hora par UTC (a busca diária
-    # por mais vistos usa 10h UTC = 7h em São Paulo).
+    # A cada 2h, em minuto diferente dos demais coletores. O GitHub entrega esse agendamento com
+    # atraso (4 a 7h na prática); a busca diária por mais vistos não depende de hora exata.
     - cron: '40 */2 * * *'
   workflow_dispatch:
+    inputs:
+      rotina:
+        description: 'Execução de rotina (disparo automático do Worker): não força a busca por mais vistos'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -50,6 +55,7 @@ jobs:
       - name: Buscar menções e métricas
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          ROTINA: ${{ inputs.rotina }}
           # Canal próprio (não conta como menção externa).
           YOUTUBE_CHANNEL_ID: 'UCflcAVLpPmH-03R-njMSayw'
           # Opcional: URL de webhook de entrada do Teams ou Slack (recebe {"text": "..."}).
@@ -96,7 +102,9 @@ jobs:
           OVERLAP_HOURS = 6         # reabre um pouco a janela: o YouTube indexa vídeo novo com atraso
           MAX_PAGES = 3             # páginas (50 resultados cada) por termo
           DEEP_DAYS = 60            # janela da busca diária por mais vistos
-          DEEP_UTC_HOUR = 10
+          # A busca por mais vistos roda no 1º run do dia (UTC) a partir desta hora, e não "só às
+          # 10h": o GitHub atrasa/pula runs agendados e o run das 10h pode nunca acontecer.
+          DEEP_AFTER_UTC_HOUR = 10
           MAX_KEPT = 300            # teto do histórico (documento do Firestore tem limite de 1 MB)
           HISTORY_DAYS = 14         # só vídeos recentes guardam histórico de views
           HISTORY_POINTS = 36       # ~3 dias de pontos (1 a cada 2h)
@@ -160,7 +168,11 @@ jobs:
               for video_id in search(term, 'date', since):
                   found.setdefault(video_id, set()).add(term)
           # Busca diária por mais vistos: pega vídeo antigo que viralizou depois de publicado.
-          if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' or now.hour == DEEP_UTC_HOUR:
+          today = now.date().isoformat()
+          deep_done_on = previous.get('deepSearchedOn')
+          manual = os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' and os.environ.get('ROTINA') != 'true'
+          if manual or (now.hour >= DEEP_AFTER_UTC_HOUR and deep_done_on != today):
+              deep_done_on = today
               for term in SEARCH_TERMS:
                   result = get('search', part='id', type='video', q=term, order='viewCount', maxResults=50,
                                publishedAfter=iso(now - timedelta(days=DEEP_DAYS)), relevanceLanguage='pt')
@@ -307,6 +319,7 @@ jobs:
               'version': 2,
               'updatedAt': iso(now),
               'searchedAt': iso(now),
+              'deepSearchedOn': deep_done_on,
               'terms': SEARCH_TERMS,
               'mentions': mentions,
           }

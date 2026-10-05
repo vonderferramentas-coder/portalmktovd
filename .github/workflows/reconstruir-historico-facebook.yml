@@ -1,6 +1,8 @@
 name: Reconstruir histórico de seguidores do Facebook
 
-# Carga única. Ao contrário do Instagram (que só expõe saldo diário de entradas/saídas),
+# Carga completa sob demanda e, todo dia, uma reconstrução curta (só o último pedaço de 90 dias):
+# o Facebook, ao contrário do Instagram, não tinha recuperação automática de dias cujo fechamento
+# diário falhou. Ao contrário do Instagram (que só expõe saldo diário de entradas/saídas),
 # a métrica page_follows da Página do Facebook devolve o total acumulado de seguidores
 # por dia diretamente — não precisa "andar para trás" a partir de hoje. A Meta limita
 # cada chamada a no máximo 93 dias entre since/until (confirmado em
@@ -12,7 +14,14 @@ name: Reconstruir histórico de seguidores do Facebook
 # registro anterior são criados com "source": "reconstruido".
 
 on:
+  schedule:
+    # 09:40 em São Paulo (12:40 UTC), depois do reconstruir-historico.yml do Instagram.
+    - cron: '40 12 * * *'
   workflow_dispatch:
+
+env:
+  # Agendado: 1 pedaço (90 dias). Manual: histórico inteiro, como era a carga única original.
+  MAX_PEDACOS: ${{ github.event_name == 'schedule' && '1' || '20' }}
 
 permissions:
   contents: write
@@ -48,7 +57,7 @@ jobs:
           # Trava de segurança: no máximo 20 pedaços de 90 dias (~5 anos) — bem mais que o
           # necessário, evita loop infinito se a Meta um dia devolver dado vazio por engano
           # em vez de parar de vez.
-          max_pedacos=20
+          max_pedacos="$MAX_PEDACOS"
           i=0
           while [ "$i" -lt "$max_pedacos" ]; do
             i=$((i + 1))
@@ -161,7 +170,7 @@ jobs:
 
           echo '[]' > pontos-fg.json
           fim="$(date -u -d 'yesterday' +%s)"
-          max_pedacos=20
+          max_pedacos="$MAX_PEDACOS"
           i=0
           while [ "$i" -lt "$max_pedacos" ]; do
             i=$((i + 1))
