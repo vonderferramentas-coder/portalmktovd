@@ -1,7 +1,8 @@
 (() => {
   'use strict';
 
-  // O painel lê a série diária publicada pelo workflow (data/social-followers.json) e a
+  // O painel lê a série diária e o snapshot ao vivo gravados pelos workflows no Firestore
+  // (portalStore, followers-<marca>-v1; os JSON em data/ são só backup) e os
   // combina com números lançados à mão. O dado da API nunca é gravado no navegador: ele
   // é relido a cada carga, para que a página nunca mostre uma cópia velha do que a Meta
   // já corrigiu - foi exatamente esse tipo de cópia que fez a série de exemplo sobreviver
