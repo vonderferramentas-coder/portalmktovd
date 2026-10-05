@@ -1,0 +1,38 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Teste do agendador</title></head>
+<body data-result="running">RUNNING
+<script type="module">
+// Exige --allow-file-access-from-files no Chrome (import de módulo via file://).
+import { agendaDoMomento } from '../cloudflare-agendador.js';
+
+const em = iso => agendaDoMomento(new Date(iso)).map(i => `${i.workflow}:${i.rotina}`);
+const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${msg}: esperado ${JSON.stringify(b)}, veio ${JSON.stringify(a)}`); };
+
+try {
+  eq(em('2026-10-06T02:50:00Z'), ['sync-youtube-followers.yml:false'], 'fechamento YouTube 23:50 SP');
+  eq(em('2026-10-06T02:55:00Z'), ['sync-meta-followers.yml:false'], 'fechamento Meta 23:55 SP');
+  eq(em('2026-10-06T02:05:00Z'), ['sync-meta-followers.yml:true'], 'rotina Meta não fecha o dia');
+  eq(em('2026-10-06T03:35:00Z'), ['sync-youtube-followers.yml:true'], 'rotina YouTube');
+  eq(em('2026-10-06T04:40:00Z'), ['sync-youtube-mencoes.yml:true'], 'menções em hora par');
+  eq(em('2026-10-06T05:40:00Z'), [], 'menções não rodam em hora ímpar');
+  eq(em('2026-10-06T13:00:00Z'), [], 'minuto sem tarefa');
+
+  // Dia inteiro (cron de 5 em 5 min): 24 Meta + 24 YouTube de rotina, 12 menções, 2 fechamentos.
+  let total = {}, fechamentos = 0;
+  for (let t = Date.UTC(2026, 9, 6); t < Date.UTC(2026, 9, 7); t += 5 * 60000) {
+    for (const item of agendaDoMomento(new Date(t))) {
+      total[item.workflow] = (total[item.workflow] || 0) + 1;
+      if (!item.rotina) fechamentos++;
+    }
+  }
+  eq(total, { 'sync-meta-followers.yml': 25, 'sync-youtube-followers.yml': 25, 'sync-youtube-mencoes.yml': 12 }, 'disparos por dia');
+  eq(fechamentos, 2, 'fechamentos por dia');
+
+  document.body.dataset.result = 'pass';
+  document.body.textContent = 'PASS: agenda do Worker (rotina, fechamentos diários e menções).';
+} catch (error) {
+  document.body.dataset.result = 'fail';
+  document.body.textContent = 'FAIL: ' + error.message;
+}
+</script>
+</body></html>

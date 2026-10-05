@@ -8,12 +8,18 @@ name: Sincronizar seguidores YouTube
 
 on:
   schedule:
-    # Offset de 7 min em relação ao */15 da Meta para reduzir a chance de as duas
-    # execuções tentarem publicar no mesmo minuto exato.
-    - cron: '7,22,37,52 * * * *'
+    # Reserva: o disparo principal (de hora em hora e no fechamento exato) vem do Worker do
+    # Cloudflare, cloudflare-agendador.js, porque o GitHub entrega agendamentos com atraso de
+    # várias horas. Minuto 35, longe do 5 da Meta, para não publicarem no mesmo instante.
+    - cron: '35 * * * *'
     # Fechamento diário 5 min antes do da Meta (23:50 de São Paulo = 02:50 UTC).
     - cron: '50 2 * * *'
   workflow_dispatch:
+    inputs:
+      rotina:
+        description: 'Coleta de rotina (disparo automático do Worker): não fecha o dia'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -92,7 +98,7 @@ jobs:
           PY
 
       - name: Fechar histórico diário
-        if: github.event.schedule == '50 2 * * *' || github.event_name == 'workflow_dispatch'
+        if: github.event.schedule == '50 2 * * *' || (github.event_name == 'workflow_dispatch' && !inputs.rotina)
         env:
           SUBSCRIBERS: ${{ steps.youtube.outputs.subscribers }}
         run: |

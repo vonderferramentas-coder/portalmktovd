@@ -2,12 +2,18 @@ name: Sincronizar seguidores Meta
 
 on:
   schedule:
-    # Snapshot a cada 15 min. O dashboard mostra o horário efetivo, pois o
-    # GitHub pode atrasar uma execução agendada.
-    - cron: '*/15 * * * *'
+    # Reserva: o disparo principal (de hora em hora e no fechamento exato) vem do Worker do
+    # Cloudflare, cloudflare-agendador.js, porque o GitHub entrega agendamentos com atraso de
+    # várias horas. O dashboard mostra o horário efetivo de cada coleta.
+    - cron: '5 * * * *'
     # Fechamento diário às 23:55 de São Paulo (02:55 UTC).
     - cron: '55 2 * * *'
   workflow_dispatch:
+    inputs:
+      rotina:
+        description: 'Coleta de rotina (disparo automático do Worker): não fecha o dia'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -123,7 +129,7 @@ jobs:
           fi
 
       - name: Fechar histórico diário
-        if: steps.closeWindow.outputs.fechar == 'true' || github.event_name == 'workflow_dispatch'
+        if: steps.closeWindow.outputs.fechar == 'true' || (github.event_name == 'workflow_dispatch' && !inputs.rotina)
         env:
           FOLLOWERS: ${{ steps.meta.outputs.followers }}
           FB_FOLLOWERS: ${{ steps.metaFacebook.outputs.followers }}
@@ -342,7 +348,7 @@ jobs:
           fi
 
       - name: Fechar histórico diário (Ferramentas Gerais)
-        if: steps.metaFg.outcome == 'success' && (steps.closeWindowFg.outputs.fechar == 'true' || github.event_name == 'workflow_dispatch')
+        if: steps.metaFg.outcome == 'success' && (steps.closeWindowFg.outputs.fechar == 'true' || (github.event_name == 'workflow_dispatch' && !inputs.rotina))
         env:
           FOLLOWERS: ${{ steps.metaFg.outputs.followers }}
           FB_OUTCOME: ${{ steps.metaFacebookFg.outcome }}

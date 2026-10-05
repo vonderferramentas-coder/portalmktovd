@@ -31,6 +31,11 @@ on:
     # atraso (4 a 7h na prática); a busca diária por mais vistos não depende de hora exata.
     - cron: '40 */2 * * *'
   workflow_dispatch:
+    inputs:
+      rotina:
+        description: 'Execução de rotina (disparo automático do Worker): não força a busca por mais vistos'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -50,6 +55,7 @@ jobs:
       - name: Buscar menções e métricas
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          ROTINA: ${{ inputs.rotina }}
           # Canal próprio (não conta como menção externa).
           YOUTUBE_CHANNEL_ID: 'UCflcAVLpPmH-03R-njMSayw'
           # Opcional: URL de webhook de entrada do Teams ou Slack (recebe {"text": "..."}).
@@ -164,7 +170,8 @@ jobs:
           # Busca diária por mais vistos: pega vídeo antigo que viralizou depois de publicado.
           today = now.date().isoformat()
           deep_done_on = previous.get('deepSearchedOn')
-          if os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' or (now.hour >= DEEP_AFTER_UTC_HOUR and deep_done_on != today):
+          manual = os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' and os.environ.get('ROTINA') != 'true'
+          if manual or (now.hour >= DEEP_AFTER_UTC_HOUR and deep_done_on != today):
               deep_done_on = today
               for term in SEARCH_TERMS:
                   result = get('search', part='id', type='video', q=term, order='viewCount', maxResults=50,

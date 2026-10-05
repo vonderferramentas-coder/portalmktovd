@@ -1,7 +1,9 @@
 name: Consolidar métricas de uso
 on:
   schedule:
-    - cron: '17 * * * *'
+    # Uma vez por dia, 00:17 em São Paulo (03:17 UTC): o painel de efetividade agrega por dia e a
+    # consolidação já reprocessa os últimos 2 dias, então o dia que acabou de fechar entra completo.
+    - cron: '17 3 * * *'
   workflow_dispatch:
 jobs:
   aggregate:
