@@ -230,10 +230,10 @@ Todos usam o secret `META_PAGE_ACCESS_TOKEN` contra a Meta Graph API v26.0 para 
 
 | Workflow | Gatilho | Faz |
 |---|---|---|
-| `sync-meta-followers.yml` | cron 15min + 23:55 fechamento + manual | Snapshot live + histórico diário; grava direto no Firestore via Admin SDK (`FIREBASE_SERVICE_ACCOUNT_KEY`) |
-| `sync-meta-posts.yml` | cron 6h + manual | Snapshot de posts + insights; grava no Firestore via Admin SDK |
+| `sync-meta-followers.yml` | disparo do Worker de hora em hora (`cloudflare-agendador.js`) + fechamento 23:55 SP + cron de reserva + manual | Snapshot live + histórico diário; grava direto no Firestore via Admin SDK (`FIREBASE_SERVICE_ACCOUNT_KEY`) |
+| `sync-meta-posts.yml` | cron 12h + manual | Snapshot de posts + insights; grava no Firestore via Admin SDK |
 | `reconstruir-historico.yml` | cron diário (após coleta) + manual | Reconstrói histórico retroativo com conferência cruzada (rejeita se divergência >15%) |
-| `diagnostico-meta.yml` / `diagnostico-meta-posts.yml` | manual | Sondagem de escopos/métricas disponíveis na API (não grava nada) |
+| `cloudflare-agendador.js` (Cloudflare Worker) | Cron Trigger `*/5 * * * *` | Dispara por `workflow_dispatch` os coletores de seguidores (hora em hora), as menções (2h) e os fechamentos diários, porque o `schedule` do GitHub atrasa várias horas; ver seção 23 da ARQUITETURA |
 | `validar-documentacao-arquitetura.yml` | PR/push | Falha o check se arquivo de integração mudou sem `docs/ARQUITETURA-E-INTEGRACOES.md` mudar junto |
 | `backup-portalstore.yml` | cron diário 04:00 SP + manual | Despeja `portalStore`+`users` comprimido no repositório privado `portalmktovd-backups` (retenção 30 dias); **falha** (não só avisa) sem `BACKUP_REPO_TOKEN`/`FIREBASE_SERVICE_ACCOUNT_KEY` - ver `docs/ARQUITETURA-E-INTEGRACOES.md` seção 18 |
 | `testes.yml` | push + pull_request | Roda os 3 testes de `tests/` - checagem estática (`.ps1`), assert (`match_trends_catalog.test.py`) e `concurrent-post-sync.html` em Chrome headless - desde 15/09/2026; antes nenhum teste deste projeto rodava sozinho, só manual |
