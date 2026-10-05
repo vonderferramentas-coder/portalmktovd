@@ -1,13 +1,8 @@
 name: Sincronizar seguidores Meta
 
 on:
-  schedule:
-    # Reserva: o disparo principal (de hora em hora e no fechamento exato) vem do Worker do
-    # Cloudflare, cloudflare-agendador.js, porque o GitHub entrega agendamentos com atraso de
-    # várias horas. O dashboard mostra o horário efetivo de cada coleta.
-    - cron: '5 * * * *'
-    # Fechamento diário às 23:55 de São Paulo (02:55 UTC).
-    - cron: '55 2 * * *'
+  # Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js, horário em
+  # UTC). O cron do GitHub atrasa horas e, ao chegar tarde, cancelava runs na fila (ARQUITETURA, seção 23).
   workflow_dispatch:
     inputs:
       rotina:

@@ -11,9 +11,8 @@ name: Sincronizar tendências do Google
 # de publicar — o cruzamento roda uma vez por dia aqui, nunca no navegador (catálogo tem 12 MB).
 
 on:
-  schedule:
-    # 03:30 em São Paulo — depois dos fechamentos diários de Meta/YouTube (23:50/23:55 SP).
-    - cron: '30 6 * * *'
+  # Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js, horário em
+  # UTC). O cron do GitHub atrasa horas e, ao chegar tarde, cancelava runs na fila (ARQUITETURA, seção 23).
   workflow_dispatch:
 
 permissions:

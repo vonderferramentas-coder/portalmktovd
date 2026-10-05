@@ -17,8 +17,8 @@ name: Sincronizar posts do Facebook
 # só texto ou o anexo é foto/link/álbum.
 
 on:
-  schedule:
-    - cron: '20 */12 * * *'
+  # Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js, horário em
+  # UTC). O cron do GitHub atrasa horas e, ao chegar tarde, cancelava runs na fila (ARQUITETURA, seção 23).
   workflow_dispatch:
 
 permissions:

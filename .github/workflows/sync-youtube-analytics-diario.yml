@@ -20,10 +20,8 @@ name: Refinar histórico recente de inscritos do YouTube
 # Analytics, a próxima execução sobrescreve com o valor mais recente.
 
 on:
-  schedule:
-    # 04:30 UTC = 01:30 em São Paulo — depois dos dois fechamentos diários (23:50/23:55 SP),
-    # com folga para não brigar pelo mesmo commit.
-    - cron: '30 4 * * *'
+  # Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js, horário em
+  # UTC). O cron do GitHub atrasa horas e, ao chegar tarde, cancelava runs na fila (ARQUITETURA, seção 23).
   workflow_dispatch:
 
 permissions:

@@ -11,9 +11,8 @@ name: Sincronizar posts do Instagram
 # melhor.
 
 on:
-  schedule:
-    # Minuto 10, não 0: o início da hora é o horário em que o GitHub mais atrasa agendamentos.
-    - cron: '10 */12 * * *'
+  # Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js, horário em
+  # UTC). O cron do GitHub atrasa horas e, ao chegar tarde, cancelava runs na fila (ARQUITETURA, seção 23).
   workflow_dispatch:
 
 permissions:

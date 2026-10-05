@@ -5,8 +5,8 @@ name: Backup diário do portalStore
 # Grava num repositório PRIVADO separado (vonderferramentas-coder/portalmktovd-backups), nunca
 # neste repositório público — o backup contém dado interno (calendário, permissões, e-mails).
 on:
-  schedule:
-    - cron: '0 7 * * *'  # 04:00 em São Paulo (UTC-3)
+  # Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js, horário em
+  # UTC). O cron do GitHub atrasa horas e, ao chegar tarde, cancelava runs na fila (ARQUITETURA, seção 23).
   workflow_dispatch:
 
 concurrency:

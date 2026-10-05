@@ -1,6 +1,6 @@
 name: Reconstruir histórico de seguidores do Facebook
 
-# Carga completa sob demanda e, todo dia, uma reconstrução curta (só o último pedaço de 90 dias):
+# Carga completa sob demanda (entrada `completo`) e, todo dia, uma reconstrução curta (só o último pedaço de 90 dias):
 # o Facebook, ao contrário do Instagram, não tinha recuperação automática de dias cujo fechamento
 # diário falhou. Ao contrário do Instagram (que só expõe saldo diário de entradas/saídas),
 # a métrica page_follows da Página do Facebook devolve o total acumulado de seguidores
@@ -14,14 +14,19 @@ name: Reconstruir histórico de seguidores do Facebook
 # registro anterior são criados com "source": "reconstruido".
 
 on:
-  schedule:
-    # 09:40 em São Paulo (12:40 UTC), depois do reconstruir-historico.yml do Instagram.
-    - cron: '40 12 * * *'
+  # Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js, horário em
+  # UTC). O cron do GitHub atrasa horas e, ao chegar tarde, cancelava runs na fila (ARQUITETURA, seção 23).
   workflow_dispatch:
+    inputs:
+      completo:
+        description: 'Histórico inteiro (até 20 pedaços de 90 dias); sem marcar, só o último pedaço'
+        type: boolean
+        default: false
 
 env:
-  # Agendado: 1 pedaço (90 dias). Manual: histórico inteiro, como era a carga única original.
-  MAX_PEDACOS: ${{ github.event_name == 'schedule' && '1' || '20' }}
+  # Padrão: 1 pedaço (90 dias), que é o que o disparo diário do Worker usa. completo=true: histórico
+  # inteiro, como era a carga única original.
+  MAX_PEDACOS: ${{ inputs.completo && '20' || '1' }}
 
 permissions:
   contents: write

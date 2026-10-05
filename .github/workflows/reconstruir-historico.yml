@@ -11,10 +11,8 @@ name: Reconstruir histórico de seguidores
 # nunca sobrescrevem um dia que o coletor já mediu de fato.
 
 on:
-  # Roda depois da coleta diária. Refaz a janela dos últimos 29 dias, então dias que
-  # entraram estimados são substituídos por medição assim que a Meta libera o dado.
-  schedule:
-    - cron: '40 11 * * *'
+  # Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js, horário em
+  # UTC). O cron do GitHub atrasa horas e, ao chegar tarde, cancelava runs na fila (ARQUITETURA, seção 23).
   workflow_dispatch:
 
 permissions:
