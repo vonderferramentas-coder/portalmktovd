@@ -75,6 +75,7 @@
     .mon-unavailable { opacity: .55 }
     .mon-prio-alta { background: var(--danger); color: #fff }
     .mon-prio-media { background: var(--accent-weak); color: var(--accent-ink) }
+    .mon-fmt-short { background: var(--accent-weak); color: var(--accent-ink) }
     .mon-neg { background: transparent; border: 1px solid var(--danger); color: var(--danger) }
     .mon-delta { font-size: 11px; color: var(--success); font-weight: 700 }
     .mon-delta-hours { font-size: 10px; color: var(--muted); font-weight: 600 }
@@ -130,6 +131,11 @@
               <select id="monStatus" aria-label="Status">
                 <option value="pending">Pendentes</option>
                 <option value="all">Todos os status</option>
+              </select>
+              <select id="monFormat" aria-label="Formato">
+                <option value="">Vídeos e Shorts</option>
+                <option value="VIDEO">Só vídeos</option>
+                <option value="REELS">Só Shorts</option>
               </select>
               <span class="bg-section-desc" id="monSummary" style="margin:0 0 0 auto"></span>
             </div>

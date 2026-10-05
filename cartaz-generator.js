@@ -347,7 +347,15 @@
     function syncPagesHeight() {
         let previewBox = $('preview').closest('.box'), pagesBox = document.querySelector('.pages');
         if (!previewBox || !pagesBox) return;
-        pagesBox.style.maxHeight = previewBox.offsetHeight + 'px';
+        /* As duas caixas ficam na mesma linha de uma grade e esticam até a mesma altura: medir a prévia com a lista
+           de marcas solta devolve a altura da própria lista (sem limite nenhum, a lista nunca rolava). Encolhe a
+           caixa de marcas a 0 antes de medir para ler a altura natural da prévia; tudo no mesmo quadro, sem piscar. */
+        /* Encolher a caixa a 0 faz o navegador zerar o scrollTop da lista: guarda e devolve, senão cada redesenho joga a lista ao topo. */
+        let list = $('list'), scroll = list.scrollTop;
+        pagesBox.style.maxHeight = '0px';
+        let height = previewBox.offsetHeight;
+        pagesBox.style.maxHeight = height ? height + 'px' : '';
+        list.scrollTop = scroll;
     }
     window.addEventListener('resize', () => $('preview').closest('.box') && syncPagesHeight());
     function chooseBrandLogo(brand) { let options=logoCandidates(brand), dialog=$('brandLogoDialog'), list=$('brandLogoOptions'), upload=$('brandLogoUpload'), save=$('brandLogoSave'), saved=S.brandLogos[brand], pending=(saved&&(saved.startsWith('data:')||options.some(a=>a.file===saved)))?saved:(options[0]?.file||''); $('brandLogoDialogTitle').textContent='Logo · '+brand; list.replaceChildren(); upload.value=''; const select=(button,value)=>{pending=value;list.querySelectorAll('.brand-logo-option').forEach(item=>{item.classList.toggle('selected',item===button);item.setAttribute('aria-pressed',item===button)});save.disabled=!pending}; const add=(src,title,value)=>{let button=document.createElement('button'),image=document.createElement('img');button.type='button';button.className='brand-logo-option';button.title=title;image.src=src;image.alt=title;button.append(image);button.onclick=()=>select(button,value);list.append(button);if(value===pending)select(button,value);return button}; options.forEach(asset=>{let button=add('',asset.name,asset.file),image=button.querySelector('img');brandLogoDataUri(asset.file,uri=>image.src=uri);}); if(pending.startsWith('data:'))add(pending,'Logo enviada',pending); save.disabled=!pending; upload.onchange=()=>{let file=upload.files[0]; if(!file) return; if(!['image/svg+xml','image/png'].includes(file.type)||file.size>700000){upload.value='';toast('Envie um SVG ou PNG de até 700 KB.');return} let reader=new FileReader; reader.onload=()=>select(add(reader.result,file.name,reader.result),reader.result); reader.readAsDataURL(file)}; save.onclick=()=>{snapshot();S.brandLogos[brand]=pending;dialog.close();draw();toast(pending.startsWith('data:')?'Logo enviada para '+brand+'. Salve a grade para compartilhá-la.':'Logo atualizada para '+brand+'.')}; dialog.showModal(); } /* Template de fundo por formato: imagem única (fundo + cabeçalho) redimensionada no envio.

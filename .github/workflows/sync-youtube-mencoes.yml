@@ -104,6 +104,7 @@ jobs:
           # 10h": o GitHub atrasa/pula runs agendados e o run das 10h pode nunca acontecer.
           DEEP_AFTER_UTC_HOUR = 10
           MAX_KEPT = 300            # teto do histórico (documento do Firestore tem limite de 1 MB)
+          MAX_CLASSIFY = 120        # vídeos classificados em Short/vídeo por execução (o resto fica para as próximas)
           HISTORY_DAYS = 14         # só vídeos recentes guardam histórico de views
           HISTORY_POINTS = 36       # ~3 dias de pontos (1 a cada 2h)
           # Prioridade: ALTA = marca no texto E (palavra negativa OU pico de views OU canal grande).
@@ -123,6 +124,18 @@ jobs:
           def chunks(seq, n=50):
               for i in range(0, len(seq), n):
                   yield seq[i:i + n]
+
+          def eh_short(video_id):
+              # Mesmo método de sync-youtube-videos.yml: youtube.com/shorts/ID só NÃO redireciona
+              # para /watch?v=ID quando o vídeo é mesmo um Short (é o próprio site oficial decidindo;
+              # a duração sozinha não serve, vídeo comum também pode ter menos de 3 min).
+              request = urllib.request.Request(f'https://www.youtube.com/shorts/{video_id}',
+                                               headers={'User-Agent': 'Mozilla/5.0'}, method='HEAD')
+              try:
+                  with urllib.request.urlopen(request, timeout=10) as resp:
+                      return '/shorts/' in resp.geturl()
+              except Exception:
+                  return None  # rede falhou: fica sem classificar e tenta de novo na próxima execução
 
           def has_word(word, text):
               return re.search(rf'\b{re.escape(word)}\b', text) is not None
@@ -212,6 +225,7 @@ jobs:
               return 'baixa'
 
           new_count = 0
+          classified = 0
           for video_id in ids:
               item = details.get(video_id)
               entry = by_id.get(video_id)
@@ -262,6 +276,13 @@ jobs:
               })
               if video_id in found:
                   entry['terms'] = sorted(set(entry.get('terms', [])) | found[video_id])
+              # Short ou vídeo: classifica uma vez e guarda (mesmo nome/valores do resto do portal:
+              # 'REELS' = Short, 'VIDEO' = vídeo comum). Sem a chave quando não foi possível.
+              if entry.get('mediaProductType') is None and classified < MAX_CLASSIFY:
+                  classified += 1
+                  resultado = eh_short(video_id)
+                  if resultado is not None:
+                      entry['mediaProductType'] = 'REELS' if resultado else 'VIDEO'
 
               published = datetime.fromisoformat(entry['publishedAt'].replace('Z', '+00:00'))
               if now - published <= timedelta(days=HISTORY_DAYS):

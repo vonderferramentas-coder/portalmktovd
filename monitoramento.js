@@ -23,6 +23,9 @@
   const PENDING = ['', 'acompanhando', 'crise'];
   const PRIORITY_RANK = { alta: 3, media: 2, baixa: 1 };
   const PRIORITY_LABEL = { alta: 'Alta', media: 'Média', baixa: 'Baixa' };
+  // mediaProductType vem do coletor (mesmos valores do resto do portal): REELS = Short, VIDEO = vídeo comum.
+  // Ausente = ainda não classificado (o coletor classifica aos poucos).
+  const FORMAT_LABEL = { REELS: 'Short', VIDEO: 'Vídeo' };
 
   const el = id => document.getElementById(id);
   const escapeHtml = text => String(text ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -51,6 +54,7 @@
   // Valor ausente (null) vai sempre para o fim, em qualquer sentido (ver compare()).
   const COLUMNS = [
     { key: 'title', label: 'Vídeo', first: 'asc', value: m => plain(m.title) },
+    { key: 'format', label: 'Formato', first: 'asc', value: m => (FORMAT_LABEL[m.mediaProductType] ? plain(FORMAT_LABEL[m.mediaProductType]) : null) },
     { key: 'priority', label: 'Prioridade', first: 'desc', value: m => PRIORITY_RANK[priorityOf(m)] },
     { key: 'channel', label: 'Canal', first: 'asc', value: m => plain(m.channelTitle) },
     { key: 'subs', label: 'Inscritos', first: 'desc', num: true, value: m => m.channelSubscribers },
@@ -120,6 +124,7 @@
     const options = STATUSES.map(s => `<option value="${s.value}"${s.value === statusOf(m) ? ' selected' : ''}>${s.label}</option>`).join('');
     return `<tr class="${m.unavailable ? 'mon-unavailable' : ''}">
       <td><div class="mon-video">${thumb}<div><a href="${escapeHtml(m.permalink)}" target="_blank" rel="noopener noreferrer">${escapeHtml(m.title)}</a><div>${tags}</div></div></div></td>
+      <td>${m.mediaProductType === 'REELS' ? '<span class="mon-tag mon-fmt-short">Short</span>' : m.mediaProductType === 'VIDEO' ? '<span class="mon-tag">Vídeo</span>' : '-'}</td>
       <td><span class="mon-tag mon-prio-${priorityOf(m)}">${PRIORITY_LABEL[priorityOf(m)]}</span></td>
       <td class="mon-channel"><a href="${escapeHtml(m.channelUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(m.channelTitle)}</a></td>
       <td class="mon-num">${fmt(m.channelSubscribers)}</td>
@@ -136,10 +141,11 @@
     renderHead();
     const days = Number(el('monPeriod').value);
     const pendingOnly = el('monStatus').value === 'pending';
+    const format = el('monFormat').value;
     const query = plain(el('monSearch').value).trim();
     const cutoff = days ? Date.now() - days * DAY_MS : 0;
     const rows = MENTIONS
-      .filter(m => time(m.publishedAt) >= cutoff && (!pendingOnly || PENDING.includes(statusOf(m)))
+      .filter(m => time(m.publishedAt) >= cutoff && (!pendingOnly || PENDING.includes(statusOf(m))) && (!format || m.mediaProductType === format)
         && (!query || plain(m.title).includes(query) || plain(m.channelTitle).includes(query)))
       // Desempate sempre pelo mais recente, para a ordem não "pular" entre linhas iguais.
       .sort((a, b) => compare(a, b) || time(b.publishedAt) - time(a.publishedAt));
@@ -147,9 +153,11 @@
     const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
     page = Math.min(page, pages - 1);
     const start = page * PAGE_SIZE;
-    el('monSummary').textContent = rows.length
+    // Sem formato = ainda não classificado pelo coletor; só aparece em "Vídeos e Shorts".
+    const unclassified = MENTIONS.filter(m => !FORMAT_LABEL[m.mediaProductType]).length;
+    el('monSummary').textContent = (rows.length
       ? `${start + 1}-${Math.min(start + PAGE_SIZE, rows.length)} de ${rows.length} (histórico: ${MENTIONS.length})`
-      : `0 de ${MENTIONS.length} vídeo(s)`;
+      : `0 de ${MENTIONS.length} vídeo(s)`) + (unclassified ? ` · ${unclassified} sem formato ainda` : '');
     el('monTableBody').innerHTML = rows.slice(start, start + PAGE_SIZE).map(rowHtml).join('');
     el('monTableWrap').hidden = !rows.length;
     el('monPager').hidden = pages <= 1;
@@ -158,7 +166,9 @@
     el('monPagerNext').disabled = page >= pages - 1;
     const empty = el('monEmpty');
     empty.hidden = !!rows.length;
-    empty.textContent = MENTIONS.length ? 'Nenhum vídeo nos filtros selecionados.' : 'Nenhuma menção encontrada até agora.';
+    empty.textContent = !MENTIONS.length ? 'Nenhuma menção encontrada até agora.'
+      : format && unclassified ? `Nenhum vídeo classificado nos filtros selecionados. ${unclassified} vídeo(s) ainda aguardam a classificação de formato pelo coletor (feita aos poucos, a cada rodada).`
+      : 'Nenhum vídeo nos filtros selecionados.';
   }
 
   // Triagem: lê-modifica-grava com a versão otimista do portalStore; em conflito (outra pessoa
@@ -222,7 +232,7 @@
     if (brandId !== 'default') { el('monNotConnected').hidden = false; return; }
     el('monContent').hidden = false;
     // Mudar qualquer filtro ou a busca volta para a página 1.
-    ['monSearch', 'monPeriod', 'monStatus'].forEach(id => {
+    ['monSearch', 'monPeriod', 'monStatus', 'monFormat'].forEach(id => {
       el(id).addEventListener(id === 'monSearch' ? 'input' : 'change', () => { page = 0; render(); });
     });
     el('monHead').addEventListener('click', onSortClick);
