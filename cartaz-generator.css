@@ -2177,8 +2177,8 @@ button:disabled {
 .cg-validator-card li { align-items: flex-start !important; gap: 14px !important; padding: 10px 0; border-top: 1px solid var(--cg-line); }
 .cg-validator-card li:first-child { border-top: 0; }
 .cg-vissue { flex: 1; min-width: 0; }
-.cg-vissue-tags { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.cg-vissue p { margin: 0 0 6px !important; font-size: 14px; color: var(--cg-ink) !important; }
+.cg-vissue-tags { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.cg-vissue p { margin: 0 0 10px !important; font-size: 14px; color: var(--cg-ink) !important; }
 .cg-vissue-actions { display: flex; gap: 6px; flex: none; }
 .cg-vissue-actions .cg-vprimary { background: #f6be00; border-color: #f6be00; color: #1a1a1a; font-weight: 800; }
 .cg-diff { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
