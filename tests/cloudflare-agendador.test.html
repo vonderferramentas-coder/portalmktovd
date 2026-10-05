@@ -3,7 +3,7 @@
 <body data-result="running">RUNNING
 <script type="module">
 // Exige --allow-file-access-from-files no Chrome (import de módulo via file://).
-import { agendaDoMomento } from '../cloudflare-agendador.js';
+import { agendaDoMomento, disparar } from '../cloudflare-agendador.js';
 
 const em = iso => agendaDoMomento(new Date(iso)).map(i => `${i.workflow}:${i.rotina}`);
 const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${msg}: esperado ${JSON.stringify(b)}, veio ${JSON.stringify(a)}`); };
@@ -28,8 +28,33 @@ try {
   eq(total, { 'sync-meta-followers.yml': 25, 'sync-youtube-followers.yml': 25, 'sync-youtube-mencoes.yml': 12 }, 'disparos por dia');
   eq(fechamentos, 2, 'fechamentos por dia');
 
+  // Repetição do disparo: fetch simulado, sem esperar de verdade.
+  const item = { workflow: 'sync-meta-followers.yml', rotina: false };
+  const semEspera = () => Promise.resolve();
+  const tentativas = async respostas => {
+    let chamadas = 0, ultimo = null;
+    globalThis.fetch = async (url, init) => {
+      ultimo = JSON.parse(init.body);
+      const r = respostas[chamadas++];
+      if (r === 'rede') throw new Error('sem rede');
+      return { status: r, text: async () => '' };
+    };
+    const log = console.error; console.error = () => {};
+    await disparar({ GITHUB_DISPATCH_TOKEN: 'x' }, item, semEspera);
+    console.error = log;
+    return { chamadas, ultimo };
+  };
+  eq((await tentativas([204])).chamadas, 1, 'sucesso de primeira');
+  eq((await tentativas([500, 500, 204])).chamadas, 3, '5xx repete até dar certo');
+  eq((await tentativas(['rede', 204])).chamadas, 2, 'falha de rede repete');
+  eq((await tentativas([429, 204])).chamadas, 2, '429 repete');
+  eq((await tentativas([500, 500, 500, 204])).chamadas, 3, 'no máximo 3 tentativas');
+  eq((await tentativas([401, 204])).chamadas, 1, '401 não repete');
+  eq((await tentativas([422, 204])).chamadas, 1, '422 não repete');
+  eq((await tentativas([204])).ultimo, { ref: 'main', inputs: { rotina: 'false' } }, 'corpo do disparo');
+
   document.body.dataset.result = 'pass';
-  document.body.textContent = 'PASS: agenda do Worker (rotina, fechamentos diários e menções).';
+  document.body.textContent = 'PASS: agenda do Worker (rotina, fechamentos diários e menções) e repetição do disparo.';
 } catch (error) {
   document.body.dataset.result = 'fail';
   document.body.textContent = 'FAIL: ' + error.message;

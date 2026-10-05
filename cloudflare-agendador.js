@@ -8,9 +8,9 @@
 // Configuração (Console do Cloudflare, nunca neste arquivo):
 //  - Cron Trigger único: `*/5 * * * *` (a agenda abaixo decide o que disparar em cada minuto);
 //  - Segredo `GITHUB_DISPATCH_TOKEN`: token fine-grained do GitHub, só neste repositório,
-//    permissão "Actions: Read and write". Quando expirar, os disparos falham e o log mostra 401.
+//    permissão "Actions: Read and write". Se for revogado ou expirar, os disparos falham e o log mostra 401.
 //
-// ponytail: sem repetição em caso de falha do disparo; a reserva é o cron do próprio workflow.
+// Se todas as tentativas falharem, a reserva é o cron do próprio workflow (atrasado).
 
 const REPO = 'vonderferramentas-coder/portalmktovd';
 
@@ -29,20 +29,29 @@ export function agendaDoMomento(agora) {
   return fila;
 }
 
-async function disparar(env, { workflow, rotina }) {
-  const resposta = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${workflow}/dispatches`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
-      Accept: 'application/vnd.github+json',
-      'Content-Type': 'application/json',
-      'User-Agent': 'portal-mkt-agendador',
-      'X-GitHub-Api-Version': '2022-11-28'
-    },
-    body: JSON.stringify({ ref: 'main', inputs: { rotina: String(rotina) } })
-  });
-  if (resposta.status !== 204) {
-    console.error(`Falha ao disparar ${workflow}: HTTP ${resposta.status} ${await resposta.text()}`);
+// Até 3 tentativas em falha de rede, HTTP 5xx ou 429; erro 4xx (token, permissão, entrada
+// inválida) não se resolve repetindo, então só registra no log.
+export async function disparar(env, { workflow, rotina }, esperar = ms => new Promise(resolve => setTimeout(resolve, ms))) {
+  for (let tentativa = 1; tentativa <= 3; tentativa++) {
+    try {
+      const resposta = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${workflow}/dispatches`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${env.GITHUB_DISPATCH_TOKEN}`,
+          Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'portal-mkt-agendador',
+          'X-GitHub-Api-Version': '2022-11-28'
+        },
+        body: JSON.stringify({ ref: 'main', inputs: { rotina: String(rotina) } })
+      });
+      if (resposta.status === 204) return;
+      console.error(`Falha ao disparar ${workflow} (tentativa ${tentativa}): HTTP ${resposta.status} ${await resposta.text()}`);
+      if (resposta.status < 500 && resposta.status !== 429) return;
+    } catch (erro) {
+      console.error(`Falha ao disparar ${workflow} (tentativa ${tentativa}): ${erro}`);
+    }
+    if (tentativa < 3) await esperar(2000 * tentativa);
   }
 }
 
