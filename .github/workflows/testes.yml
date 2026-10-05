@@ -86,3 +86,10 @@ jobs:
           "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 --dump-dom "file://$(pwd)/tests/cartaz-pagination.test.html" > /tmp/cartaz-pagination-dump.html
           cat /tmp/cartaz-pagination-dump.html
           grep -q 'data-result="pass"' /tmp/cartaz-pagination-dump.html
+
+      - name: Gerador de Cartazes - validador de textos (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 --dump-dom "file://$(pwd)/tests/cartaz-validator.test.html" > /tmp/cartaz-validator-dump.html
+          cat /tmp/cartaz-validator-dump.html
+          grep -q 'data-result="pass"' /tmp/cartaz-validator-dump.html
