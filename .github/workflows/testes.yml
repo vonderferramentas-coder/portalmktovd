@@ -64,10 +64,16 @@ jobs:
             echo '::error::Nenhum Chrome/Chromium encontrado no runner.'
             exit 1
           fi
-          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions \
-            --user-data-dir="$(mktemp -d)" --virtual-time-budget=30000 \
-            --dump-dom "file://$(pwd)/tests/conecta-fg.test.html" > /tmp/conecta-fg-dump.html
-          cat /tmp/conecta-fg-dump.html
+          # O teste usa CompressionStream (assíncrono de verdade) e o Chrome às vezes fotografa a página
+          # ainda em "running" antes de ele terminar; repete só enquanto o resultado for "running".
+          for tentativa in 1 2 3 4 5; do
+            "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions \
+              --user-data-dir="$(mktemp -d)" --virtual-time-budget=30000 \
+              --dump-dom "file://$(pwd)/tests/conecta-fg.test.html" > /tmp/conecta-fg-dump.html
+            cat /tmp/conecta-fg-dump.html
+            grep -q 'data-result="running"' /tmp/conecta-fg-dump.html || break
+            echo "Tentativa $tentativa terminou em running; repetindo."
+          done
           if ! grep -q 'data-result="pass"' /tmp/conecta-fg-dump.html; then
             echo '::error::Teste do Conecta FG falhou — ver o corpo da página acima (data-result != "pass").'
             exit 1
