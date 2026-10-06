@@ -70,7 +70,15 @@ async function productLink(request){
 // /api/catalog_system/pub/brand/list). O filtro por nome da marca é a 2ª barreira: nada de outra marca passa.
 const VONDER_BRAND_FQ=[2959,29859,29360,29639,37264].map(id=>'fq=B:'+id).join('&');
 const isVonderBrand=product=>/^vonder\b/i.test(String(product&&product.brand||''));
+// Consultas ao site FG pelas rotas novas: cache de borda de 10 min (mesma URL = mesma resposta, sem nova ida ao site; acelera buscas
+// repetidas e protege o site e a cota do Worker). Barreira de origem: só o portal chama (o Origin é falsificável fora de um navegador,
+// então isto só barra uso casual; contra abuso de verdade há a regra de limite de requisições do Cloudflare, ver ARQUITETURA seção do Worker).
+const vtexFetch=url=>fetch(url,{headers:{Accept:'application/json'},cf:{cacheTtl:600,cacheEverything:true}});
+const originAllowed=request=>ALLOWED_ORIGINS.has(request.headers.get('Origin')||'');
 const formatCode=digits=>digits.length===10?digits.replace(/^(\d{2})(\d{2})(\d{3})(\d{3})$/,'$1.$2.$3.$4'):digits;
+// Tabela de especificações do site (descrição do produto): linhas [rótulo, valor] em texto limpo.
+const specRows=product=>[...String(product.description||'').matchAll(/<th[^>]*>([\s\S]*?)<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>[plainText(m[1]),plainText(m[2])]);
+const specTake=rows=>pattern=>(rows.find(([label])=>pattern.test(label))||['',''])[1];
 // Produto fora do catálogo.json (portal: post-editor.js, "Buscar no site da FG"): devolve os mesmos campos
 // de data/catalog-*.json a partir da tabela de especificações do site FG, achada pela REFERÊNCIA
 // (código OVD, 10 dígitos; é o RefId do SKU, por isso o filtro alternateIds_RefId e não productId). A foto
@@ -80,12 +88,12 @@ const formatCode=digits=>digits.length===10?digits.replace(/^(\d{2})(\d{2})(\d{3
 async function productCatalog(request){
  const code=(new URL(request.url).searchParams.get('code')||'').replace(/\D/g,'');
  if(code.length<5||code.length>20)return json(request,{error:'Informe um código de 5 a 20 dígitos.'},400);
- const upstream=await fetch('https://www.fg.com.br/api/catalog_system/pub/products/search?fq=alternateIds_RefId:'+code,{headers:{Accept:'application/json'}});
+ if(!originAllowed(request))return json(request,{error:'Origem não permitida.'},403);
+ const upstream=await vtexFetch('https://www.fg.com.br/api/catalog_system/pub/products/search?fq=alternateIds_RefId:'+code);
  if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
  const product=(await upstream.json()).find(isVonderBrand);
  if(!product)return json(request,{error:'Produto não encontrado no site FG.',notFound:true},404);
- const rows=[...String(product.description||'').matchAll(/<th[^>]*>([\s\S]*?)<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>[plainText(m[1]),plainText(m[2])]);
- const take=pattern=>(rows.find(([label])=>pattern.test(label))||['',''])[1];
+ const rows=specRows(product),take=specTake(rows);
  const named=/^(descri[cç][aã]o completa|refer[eê]ncia|conte[uú]do da embalagem|aplica[cç][oõ]es|destaques)/i;
  // O código buscado pode ser de uma variação (SKU) do produto; vale o que foi pedido, não o do 1º SKU.
  const skuMatch=(product.items||[]).some(item=>(item.referenceId||[]).some(ref=>String(ref.Value||'').replace(/\D/g,'')===code)),ref=(((product.items||[])[0]||{}).referenceId||[]).find(r=>r.Key==='RefId'),digits=skuMatch?code:String((ref&&ref.Value)||code).replace(/\D/g,'');
@@ -93,6 +101,7 @@ async function productCatalog(request){
   name:take(/^descri[cç][aã]o completa/i)||product.productName,
   code:formatCode(digits),
   codeFG:String(product.productId),
+  brand:product.brand,
   destaques:take(/^destaques/i),aplicacoes:take(/^aplica[cç][oõ]es/i),conteudoEmbalagem:take(/^conte[uú]do da embalagem/i),
   qualificacaoTecnica:rows.filter(([label,value])=>value&&!named.test(label)).map(([label,value])=>label+': '+value).join(' | '),
  });
@@ -107,9 +116,10 @@ async function productSearch(request){
  const q=(new URL(request.url).searchParams.get('q')||'').trim().slice(0,60),digits=q.replace(/\D/g,''),byCode=digits.length>=5&&/^[\d.\s-]+$/.test(q);
  if(!byCode&&q.length<3)return json(request,{error:'Digite ao menos 3 letras ou um código.'},400);
  const query=byCode?'?fq=alternateIds_RefId:'+digits:'?ft='+encodeURIComponent(q)+'&'+VONDER_BRAND_FQ+'&_from=0&_to=14';
- const upstream=await fetch('https://www.fg.com.br/api/catalog_system/pub/products/search'+query,{headers:{Accept:'application/json'}});
+ if(!originAllowed(request))return json(request,{error:'Origem não permitida.'},403);
+ const upstream=await vtexFetch('https://www.fg.com.br/api/catalog_system/pub/products/search'+query);
  if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
- const items=(await upstream.json()).filter(isVonderBrand).slice(0,12).map(product=>({name:product.productName,code:formatCode(String(product.productReference||'').replace(/\D/g,'')),thumb:thumbUrl(product)})).filter(item=>item.code);
+ const items=(await upstream.json()).filter(isVonderBrand).slice(0,12).map(product=>({name:specTake(specRows(product))(/^descri[cç][aã]o completa/i)||product.productName,brand:product.brand,code:formatCode(String(product.productReference||'').replace(/\D/g,'')),thumb:thumbUrl(product)})).filter(item=>item.code);
  return json(request,{items});
 }
 // Miniaturas (3 KB) de vários produtos do catálogo de uma vez, para a lista do editor de posts: a foto do app.ovd tem de 2 a 15 MB e
@@ -118,7 +128,8 @@ async function productSearch(request){
 async function productThumbs(request){
  const codes=[...new Set((new URL(request.url).searchParams.get('codes')||'').split(',').map(code=>code.replace(/\D/g,'')).filter(code=>code.length>=5&&code.length<=20))].slice(0,20);
  if(!codes.length)return json(request,{error:'Informe os códigos separados por vírgula.'},400);
- const upstream=await fetch('https://www.fg.com.br/api/catalog_system/pub/products/search?'+codes.map(code=>'fq=alternateIds_RefId:'+code).join('&')+'&_from=0&_to=19',{headers:{Accept:'application/json'}});
+ if(!originAllowed(request))return json(request,{error:'Origem não permitida.'},403);
+ const upstream=await vtexFetch('https://www.fg.com.br/api/catalog_system/pub/products/search?'+codes.map(code=>'fq=alternateIds_RefId:'+code).join('&')+'&_from=0&_to=19');
  if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
  const thumbs={};
  // Variações (127 V / 220 V...) são SKUs do mesmo produto: cada uma tem a sua referência e as suas fotos.

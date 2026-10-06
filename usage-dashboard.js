@@ -4,6 +4,8 @@ import { collection, getDocs, query, where } from 'https://www.gstatic.com/fireb
 const $ = id => document.getElementById(id);
 const toolNames = {
   'post-editor': 'Editor de Posts',
+  'post-editor-busca-sem-resultado': 'Editor de Posts - buscas sem resultado no catálogo',
+  'post-editor-produto-do-site': 'Editor de Posts - produtos escolhidos pelo site',
   'cartaz-generator': 'Gerador de Cartazes',
   'business-card-generator': 'Gerador de Cartões',
   'conecta-fg': 'Conecta FG',

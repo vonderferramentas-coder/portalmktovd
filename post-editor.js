@@ -232,7 +232,7 @@ function chooseEditoria(editoria){
  var brandBadgeColorField=$('#brandBadgeColorField');if(brandBadgeColorField)brandBadgeColorField.hidden=preset.supportsBrandBadgeColor===false;
  var suggestionsSection=$('#compositionSuggestionsSection');if(suggestionsSection)suggestionsSection.hidden=preset.supportsCompositionSuggestions===false;
  var usesCodes=preset.supportsCodes!==false,usesCutout=preset.supportsProductCutout!==false,isCommemorative=!!preset.commemorative;
- $('#codeControls').hidden=!usesCodes;$('#selectedProductCode').hidden=!usesCodes;$('#productDrop').hidden=!usesCutout;$('#removeWhiteField').hidden=!usesCutout;var ecommerceField=$('#ecommercePricing');if(ecommerceField)ecommerceField.hidden=!preset.ecommerce;var fgEcommerce=BRAND_SUFFIX==='__ferramentas-gerais'&&preset.ecommerce,fgOfferImport=$('#fgOfferProductImport');if(fgOfferImport)fgOfferImport.hidden=!fgEcommerce;['#catalogSearchArea','#catalogMeta','#catalogResults'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});['#layoutModeField','#moveTargetField','#moveModeControls'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});state.moveEnabled=true;state.priceMoveOnly=fgEcommerce;var stageMoveHint=$('#stageMoveHint');if(stageMoveHint)stageMoveHint.textContent=fgEcommerce?'Arraste a box de preço ou a foto de fundo para reposicionar':'Arraste direto sobre a arte para reposicionar';var chooserDescription=$('#productChooserDescription');if(chooserDescription)chooserDescription.textContent=fgEcommerce?'Cole o link da oferta da FG para preencher os dados comerciais automaticamente.':'Busque no catálogo ou cole o link da oferta da FG para preencher os dados comerciais automaticamente.';
+ $('#codeControls').hidden=!usesCodes;$('#selectedProductCode').hidden=!usesCodes;$('#productDrop').hidden=!usesCutout;$('#removeWhiteField').hidden=!usesCutout;var ecommerceField=$('#ecommercePricing');if(ecommerceField)ecommerceField.hidden=!preset.ecommerce;var fgEcommerce=BRAND_SUFFIX==='__ferramentas-gerais'&&preset.ecommerce,fgOfferImport=$('#fgOfferProductImport');if(fgOfferImport)fgOfferImport.hidden=!fgEcommerce;['#catalogSearchArea','#catalogMeta','#catalogResults'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});['#layoutModeField','#moveTargetField','#moveModeControls'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});state.moveEnabled=true;state.priceMoveOnly=fgEcommerce;var stageMoveHint=$('#stageMoveHint');if(stageMoveHint)stageMoveHint.textContent=fgEcommerce?'Arraste a box de preço ou a foto de fundo para reposicionar':'Arraste direto sobre a arte para reposicionar';var chooserDescription=$('#productChooserDescription');if(chooserDescription)chooserDescription.textContent=fgEcommerce?'Cole o link da oferta da FG para preencher os dados comerciais automaticamente.':'Busque pelo nome ou código do produto para preencher os dados automaticamente.';
  $('#commemorativeFields').hidden=!isCommemorative;if($('#eventPrefixField'))$('#eventPrefixField').hidden=!!preset.singleCommemorativeText;if($('#eventTitleSizeField')){$('#eventTitleSizeField').hidden=!preset.titleSizeControl;if(preset.titleSizeControl){['Feed','Story'].forEach(function(format){var input=$('#eventTitleSize'+format),output=$('#eventTitleSize'+format+'Out');if(input)input.value=100;if(output)output.value='100%'})}}$('#selectedProductSummary').hidden=isCommemorative;$('#productNameLabel').textContent=isCommemorative?(preset.singleCommemorativeText?'Texto da data comemorativa':'Título da data comemorativa'):'Nome completo';
  $('#detailsSectionTitle').textContent=isCommemorative?'Data comemorativa':'Produto';$('#detailsSectionHint').textContent=isCommemorative?(preset.singleCommemorativeText?'Data, mês e texto editáveis':'Data, mês e título editáveis'):'Dados preenchidos pelo catálogo, mas editáveis';var imageHint=$('#imageSectionHint');if(imageHint)imageHint.textContent=usesCutout?'Envie a cena e, se tiver, o produto recortado':'A imagem oficial do produto é carregada junto com a oferta';
  // Editorias com skipProductChooser (ex: Datas comemorativas) nunca passam pela etapa "Escolher
@@ -269,7 +269,7 @@ function chooseManualProduct(){
  selectedProduct=null;$('#productName').value='';$('#productCode').value='';$('#productCode2').value='';$('#codeCount').value='1';selectBrandLogo('VONDER');state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;setProductFilePreview('','PNG transparente ou foto em fundo branco');$('#backgroundFileName').textContent='Clique ou arraste uma imagem';syncCodeFields();showEditor({},true);drawAll();status('Preencha os dados e envie as imagens',false)
 }
 function chooseCatalogProduct(item){
- selectedProduct=item;var codes=editorCodes(item);$('#productName').value=editorNameFor(item);$('#productCode').value=codes[0]?codes[0].code:'';$('#productCode2').value=codes[1]?codes[1].code:'';$('#codeVariant1').value=(codes[0]&&codes[0].label)||'110 V~';$('#codeVariant2').value=(codes[1]&&codes[1].label)||'220 V~';$('#codeCount').value=codes.length>1?'2':'1';syncCodeFields();
+ rememberProduct(item);selectedProduct=item;var codes=editorCodes(item);$('#productName').value=editorNameFor(item);$('#productCode').value=codes[0]?codes[0].code:'';$('#productCode2').value=codes[1]?codes[1].code:'';$('#codeVariant1').value=(codes[0]&&codes[0].label)||'110 V~';$('#codeVariant2').value=(codes[1]&&codes[1].label)||'220 V~';$('#codeCount').value=codes.length>1?'2':'1';syncCodeFields();
  selectBrandLogo(normalizeBrandVariant(item.brandVariant)||(/vonder\s*plus/i.test(item.name||'')?'Vonder_plus':'VONDER'));
  state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};var thumbUrls=itemThumbnailUrls(item);setProductFilePreview(thumbUrls[0],'Carregada automaticamente · clique para alterar',thumbUrls.slice(1));showEditor(item,false);drawAll();
  var bgUrl=itemBackgroundUrl(item);if(bgUrl){$('#backgroundFileName').textContent='Foto de aplicação do catálogo';loadImage(bgUrl).then(function(im){if(selectedProduct!==item)return;
@@ -284,54 +284,90 @@ function chooseCatalogProduct(item){
 // resultados que começam pelo termo buscado (no nome ou em algum código) vêm antes dos que só
 // contêm o termo em outro ponto - ex.: buscar "aspirador" mostra "Aspirador de pó..." antes de
 // "Escova para aspirador"
-function productMatchRank(item,q,qc){
- if(q&&nameKey(item).indexOf(q)===0)return 0;
- if(qc&&catalogCodes(item).some(function(v){return normalizeCode(v.code).indexOf(qc)===0}))return 0;
- if(qc&&item.codeFG&&normalizeCode(item.codeFG).indexOf(qc)===0)return 0;
- return 1;
+// Busca por palavras soltas, em qualquer ordem ("aspirador 1200" acha "Aspirador de pó 1.200 W"; "1.200" e "1200" são o mesmo
+// número). Texto só de números/pontos é tratado como código. O nome normalizado fica guardado no item (10 mil itens x normalize()
+// a cada tecla travava a digitação) e a última busca fica memorizada.
+function nameKey(item){return item._n||(item._n=normalizeText(item.name||'').replace(/(\d)[.,](\d)/g,'$1$2'))}
+function queryTokens(query){return normalizeText(query).replace(/(\d)[.,](\d)/g,'$1$2').split(/[^a-z0-9\/+]+/).filter(Boolean)}
+function productMatchRank(item,phrase,qc){
+ var key=nameKey(item);
+ if(phrase&&key.indexOf(phrase)===0)return 0;
+ if(qc&&(catalogCodes(item).some(function(v){return normalizeCode(v.code).indexOf(qc)===0})||(item.codeFG&&normalizeCode(item.codeFG).indexOf(qc)===0)))return 0;
+ return phrase&&key.indexOf(phrase)>0?1:2
 }
-// Nome normalizado guardado no item (10 mil itens x normalize() a cada tecla travava a digitação) e última busca memorizada.
-function nameKey(item){return item._n||(item._n=normalizeText(item.name||''))}
 var matchMemo={query:null,catalog:null,results:[]};
 function matchingProducts(query){if(matchMemo.query===query&&matchMemo.catalog===catalog)return matchMemo.results;var results=computeMatchingProducts(query);matchMemo={query:query,catalog:catalog,results:results};return results}
-function computeMatchingProducts(query){var q=normalizeText(query.trim()),qc=normalizeCode(query);var results=catalog.filter(function(item){var codeHit=qc&&(catalogCodes(item).some(function(v){return normalizeCode(v.code).includes(qc)})||(item.codeFG&&normalizeCode(item.codeFG).includes(qc)));return!q||nameKey(item).includes(q)||codeHit}).sort(function(a,b){return productMatchRank(a,q,qc)-productMatchRank(b,q,qc)});return q?results:results.slice(0,10)}
+function computeMatchingProducts(query){
+ var raw=query.trim(),qc=normalizeCode(raw),tokens=queryTokens(raw),phrase=tokens.join(' '),codeQuery=/^[\d.\-\s]+$/.test(raw)&&qc.length>0;
+ if(!raw)return catalog.slice(0,10);
+ return catalog.filter(function(item){
+  if(codeQuery)return catalogCodes(item).some(function(v){return normalizeCode(v.code).includes(qc)})||(item.codeFG&&normalizeCode(item.codeFG).includes(qc))||nameKey(item).includes(phrase);
+  return tokens.length>0&&tokens.every(function(token){return nameKey(item).includes(token)})
+ }).sort(function(a,b){return productMatchRank(a,phrase,codeQuery?qc:'')-productMatchRank(b,phrase,codeQuery?qc:'')})
+}
 // Busca no site (só perfil VONDER): complementa o catálogo quando ele não tem o produto. Lista nome+código via worker
 // (/product-search); ao escolher, /product-catalog traz os mesmos campos do catalog.json e a foto vem do app.ovd pelo código.
-var SITE_API='https://ecommerce-fg.vonderferramentas.workers.dev',siteSearch={q:'',status:'idle',items:[]},siteTimer=0,siteToken=0;
+var SITE_API='https://ecommerce-fg.vonderferramentas.workers.dev',siteSearch={q:'',status:'idle',items:[]},siteTimer=0,siteToken=0,siteAbort=null,siteCache={};
+// O editor escolhe a logo pelo nome do produto; as linhas VONDER do site têm marca própria (VONDER AT e VONDER/TMX não têm logo própria).
+var SITE_BRAND_LOGO={'VONDER':'VONDER','VONDER PLUS':'Vonder_plus','VONDER CONSTRUTOR':'vonder_construtor','VONDER AT':'VONDER','VONDER/TMX':'VONDER'};
 function siteEligible(query){return CATALOG_SLUG==='vonder'&&query.trim().length>=3}
+function usageTrack(tool,action,key){try{window.PortalUsage&&window.PortalUsage.track(tool,action,key?{dedupeKey:key}:{})}catch(e){}}
+// Cancela a consulta ao site em andamento e a espera pendente (o usuário continuou digitando).
+function abortSite(){siteToken++;clearTimeout(siteTimer);if(siteAbort){siteAbort.abort();siteAbort=null}}
 function runSiteSearch(query){
- var q=query.trim(),token=++siteToken;siteSearch={q:q,status:'loading',items:[]};renderCatalogResults();
- fetch(SITE_API+'/product-search?q='+encodeURIComponent(q)).then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data}})}).then(function(r){
-  if(token!==siteToken)return;siteSearch.status=r.ok?'done':'error';siteSearch.items=(r.ok&&r.data.items)||[];renderCatalogResults()
+ var q=query.trim(),token=++siteToken;
+ if(siteCache[q]){siteSearch={q:q,status:'done',items:siteCache[q]};renderCatalogResults();return}
+ if(siteAbort)siteAbort.abort();siteAbort=window.AbortController?new AbortController():null;
+ siteSearch={q:q,status:'loading',items:[]};renderCatalogResults();
+ fetch(SITE_API+'/product-search?q='+encodeURIComponent(q),siteAbort?{signal:siteAbort.signal}:{}).then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data}})}).then(function(r){
+  if(token!==siteToken)return;if(r.ok)siteCache[q]=r.data.items||[];siteSearch.status=r.ok?'done':'error';siteSearch.items=(r.ok&&r.data.items)||[];renderCatalogResults()
  }).catch(function(){if(token!==siteToken)return;siteSearch.status='error';renderCatalogResults()})
 }
 // Só dispara sozinho quando o catálogo não tem nada para o termo; com resultados locais fica o link "Buscar no site".
-function scheduleSiteSearch(value){clearTimeout(siteTimer);if(siteEligible(value)&&!matchingProducts(value).length&&siteSearch.q!==value.trim())siteTimer=setTimeout(function(){runSiteSearch(value)},500)}
+function scheduleSiteSearch(value){
+ clearTimeout(siteTimer);
+ if(siteEligible(value)&&!matchingProducts(value).length&&siteSearch.q!==value.trim())siteTimer=setTimeout(function(){
+  // Medida de lacuna do catálogo: só a contagem (sem o texto buscado), uma vez por termo na sessão.
+  usageTrack('post-editor-busca-sem-resultado','sem_resultado','miss:'+normalizeText(value.trim()));runSiteSearch(value)
+ },500)
+}
 function openSiteProduct(code,button){
  var note=button.querySelector('small'),label=note.textContent;button.disabled=true;note.textContent='Consultando o site…';
  fetch(SITE_API+'/product-catalog?code='+encodeURIComponent(normalizeCode(code))).then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data}})}).then(function(r){
   if(!r.ok){button.disabled=false;note.textContent=label+' · não foi possível carregar este produto';return}
-  var item=r.data;item.imageUrl='https://app.ovd.com.br/fotos/produto?codigo='+normalizeCode(item.code);item.fromSite=true;chooseCatalogProduct(item);status('Produto vindo do site, fora do catálogo: revise os dados antes de usar.',false)
+  var item=r.data;item.imageUrl='https://app.ovd.com.br/fotos/produto?codigo='+normalizeCode(item.code);item.fromSite=true;item.brandVariant=SITE_BRAND_LOGO[String(item.brand||'').toUpperCase()]||item.brandVariant;
+  usageTrack('post-editor-produto-do-site','escolhido','site:'+normalizeCode(item.code));chooseCatalogProduct(item);status('Produto vindo do site, fora do catálogo: revise os dados antes de usar.',false)
  }).catch(function(){button.disabled=false;note.textContent=label+' · não foi possível consultar o site agora'})
 }
-function siteResultsHtml(query,hasLocal){
+function skeletonHtml(){return'<div class="pe-catalog-group">Buscando no site…</div>'+'<div class="pe-catalog-item pe-skeleton" aria-hidden="true"><span class="pe-selected-thumb"></span><span><strong>&nbsp;</strong><small>&nbsp;</small></span></div>'.repeat(4)}
+function visibleSiteItems(query){return siteEligible(query)&&siteSearch.q===query.trim()&&siteSearch.status==='done'?siteSearch.items:[]}
+function siteResultsHtml(query,hasLocal,localCount){
  var state=siteSearch.q===query.trim()?siteSearch.status:'idle',note=function(title,text,action){return'<div class="pe-catalog-empty"><strong>'+title+'</strong>'+(text?'<p>'+text+'</p>':'')+(action||'')+'</div>'};
- if(state==='idle')return hasLocal?'<button type="button" class="pe-catalog-more" id="siteMore">Não encontrou? Buscar no site</button>':note('Buscando no site…','Este produto não está no catálogo.');
- if(state==='loading')return note('Buscando no site…','');
+ if(state==='idle')return hasLocal?'<button type="button" class="pe-catalog-more" id="siteMore">Não encontrou? Buscar no site</button>':skeletonHtml();
+ if(state==='loading')return hasLocal?'<div class="pe-catalog-group">Buscando no site…</div>':skeletonHtml();
  if(state==='error')return note('Não foi possível consultar o site agora','Tente novamente ou use "Continuar sem catálogo".','<button type="button" class="pe-catalog-site" id="siteRetry">Tentar novamente</button>');
  if(!siteSearch.items.length)return note('Nenhum produto encontrado no site','Confira o nome ou o código, ou use "Continuar sem catálogo".');
- return'<div class="pe-catalog-group">Encontrados no site</div>'+siteSearch.items.map(function(item,index){return'<button type="button" class="pe-catalog-item" data-site-index="'+index+'" role="option">'+(item.thumb?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(item.code)+'</small></span><span>›</span></button>'}).join('')
+ return'<div class="pe-catalog-group">Encontrados no site</div>'+siteSearch.items.map(function(item,index){var focused=localCount+index===catalogFocus;return'<button type="button" class="pe-catalog-item'+(focused?' is-focused':'')+'" data-site-index="'+index+'" role="option" aria-selected="'+focused+'">'+(item.thumb?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(item.code)+'</small></span><span>›</span></button>'}).join('')
 }
+// Usados recentemente (neste navegador, por marca): aparecem quando o campo está vazio. Guarda o produto inteiro, sem os campos internos "_".
+var RECENT_KEY='pe_recent_products_v1'+BRAND_SUFFIX,RECENT_MAX=6;
+function recentProducts(){try{var list=JSON.parse(localStorage.getItem(RECENT_KEY)||'[]');return Array.isArray(list)?list:[]}catch(e){return[]}}
+function rememberProduct(item){try{var list=recentProducts().filter(function(r){return r.code!==item.code});list.unshift(item);localStorage.setItem(RECENT_KEY,JSON.stringify(list.slice(0,RECENT_MAX),function(key,value){return key.charAt(0)==='_'?undefined:value}))}catch(e){}}
 var CATALOG_VISIBLE=40;
+function resultList(query){
+ var base=matchingProducts(query),recents=query.trim()?[]:recentProducts(),all=recents.length?recents.concat(base.filter(function(item){return!recents.some(function(r){return r.code===item.code})})).slice(0,10):base;
+ return{all:all,recents:recents.length,local:all.slice(0,CATALOG_VISIBLE)}
+}
 function renderCatalogResults(){
- var query=$('#catalogSearch').value,all=matchingProducts(query),matches=all.slice(0,CATALOG_VISIBLE),box=$('#catalogResults');
- catalogFocus=Math.min(catalogFocus,Math.max(0,matches.length-1));
+ var query=$('#catalogSearch').value,rl=resultList(query),matches=rl.local,all=rl.all,box=$('#catalogResults'),siteItems=visibleSiteItems(query);
+ catalogFocus=Math.min(catalogFocus,Math.max(0,matches.length+siteItems.length-1));
  if(catalogLoading){$('#catalogStatus').textContent='Carregando catálogo…';box.innerHTML='<div class="pe-catalog-empty"><strong>Carregando catálogo…</strong>Buscando os produtos disponíveis.</div>';return}
- $('#catalogStatus').textContent=catalog.length?(query?matches.length+' produto'+(matches.length===1?' encontrado':'s encontrados'):catalog.length.toLocaleString('pt-BR')+' produtos disponíveis'):'Nenhum produto cadastrado nesta marca';
+ var siteState=siteEligible(query)&&siteSearch.q===query.trim()?siteSearch.status:'idle',found=matchingProducts(query).length;
+ $('#catalogStatus').textContent=catalog.length?(query.trim()?(found?found+' produto'+(found===1?' encontrado':'s encontrados'):siteState==='loading'?'Buscando no site…':siteState==='done'?siteSearch.items.length+' no site':'0 produtos no catálogo'):catalog.length.toLocaleString('pt-BR')+' produtos disponíveis'):'Nenhum produto cadastrado nesta marca';
  if(!catalog.length){box.innerHTML='<div class="pe-catalog-empty"><strong>O catálogo ainda está vazio</strong>Cadastre produtos em Configurações no calendário ou continue sem catálogo.</div>';return}
- var site=siteEligible(query)?siteResultsHtml(query,matches.length>0):'';
+ var site=siteEligible(query)?siteResultsHtml(query,matches.length>0,matches.length):'';
  if(!matches.length&&!site){box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong><p>Tente buscar apenas uma parte do nome ou os números do código.</p></div>';return}
- box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length;return'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb" data-thumb="'+thumbKey(item)+'">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(editorCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('')+(all.length>matches.length?'<div class="pe-catalog-group">Mostrando os '+matches.length+' primeiros de '+all.length+' · refine a busca</div>':'')+site;
+ box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length,heading=rl.recents&&index===0?'<div class="pe-catalog-group">Usados recentemente</div>':rl.recents&&index===rl.recents?'<div class="pe-catalog-group">Catálogo</div>':'';return heading+'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb" data-thumb="'+thumbKey(item)+'">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(editorCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('')+(all.length>matches.length?'<div class="pe-catalog-group">Mostrando os '+matches.length+' primeiros de '+all.length+' · refine a busca</div>':'')+site;
  if(hostedThumbs()){applyThumbs();loadThumbs(matches);queueHeavy(matches.map(thumbKey).filter(function(key){return key&&thumbCache[key]===''}))}
  $$('#catalogResults [data-catalog-index]').forEach(function(btn){
   var item=matches[Number(btn.dataset.catalogIndex)];
@@ -652,8 +688,12 @@ Object.keys(canvases).forEach(function(format){
  },{passive:false});
 });
 $('#downloadFeed').onclick=function(){download('feed')};$('#downloadStory').onclick=function(){download('story')};$('#downloadBoth').onclick=downloadZip;$$('[data-download]').forEach(function(b){b.onclick=function(){download(b.dataset.download)}});
-$('#catalogSearch').addEventListener('input',function(){catalogFocus=0;siteToken++;siteSearch={q:'',status:'idle',items:[]};renderCatalogResults();scheduleSiteSearch(this.value)});
-$('#catalogSearch').addEventListener('keydown',function(ev){var matches=matchingProducts(this.value);if(ev.key==='ArrowDown'&&matches.length){catalogFocus=Math.min(Math.min(matches.length,CATALOG_VISIBLE)-1,catalogFocus+1);renderCatalogResults();ev.preventDefault()}else if(ev.key==='ArrowUp'&&matches.length){catalogFocus=Math.max(0,catalogFocus-1);renderCatalogResults();ev.preventDefault()}else if(ev.key==='Enter'&&matches.length){chooseCatalogProduct(matches[catalogFocus]||matches[0]);ev.preventDefault()}});
+$('#catalogSearch').addEventListener('input',function(){catalogFocus=0;abortSite();siteSearch={q:'',status:'idle',items:[]};renderCatalogResults();scheduleSiteSearch(this.value)});
+$('#catalogSearch').addEventListener('keydown',function(ev){
+ var q=this.value,rl=resultList(q),n=rl.local.length,sites=visibleSiteItems(q),total=n+sites.length;if(!total)return;
+ if(ev.key==='ArrowDown'||ev.key==='ArrowUp'){catalogFocus=ev.key==='ArrowDown'?Math.min(total-1,catalogFocus+1):Math.max(0,catalogFocus-1);renderCatalogResults();var focused=$('#catalogResults .is-focused');if(focused)focused.scrollIntoView({block:'nearest'});ev.preventDefault()}
+ else if(ev.key==='Enter'){if(catalogFocus<n)chooseCatalogProduct(rl.local[catalogFocus]||rl.local[0]);else{var idx=catalogFocus-n,btn=$('#catalogResults [data-site-index="'+idx+'"]');if(btn)openSiteProduct(sites[idx].code,btn)}ev.preventDefault()}
+});
 $('#manualProduct').addEventListener('click',chooseManualProduct);$('#changeProduct').addEventListener('click',function(){goToStep('choose')});
 if($('#changeBrandLogo'))$('#changeBrandLogo').addEventListener('click',function(){$('#brandLogoSummary').hidden=true;$('#brandLogoPicker').hidden=false;$('#brandLogoSearch').value='';renderBrandLogoResults();setTimeout(function(){$('#brandLogoSearch').focus()},20)});
 if($('#brandLogoSearch'))$('#brandLogoSearch').addEventListener('input',renderBrandLogoResults);
