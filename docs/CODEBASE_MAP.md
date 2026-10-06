@@ -40,10 +40,8 @@ graph TB
         ApiPhp[api.php + SQLite]
     end
 
-    subgraph Proxies["Proxies de imagem/oferta (3 implementações redundantes)"]
+    subgraph Proxies["Proxy de imagem/oferta/catálogo"]
         Worker[Cloudflare Worker<br/>ecommerce-fg.vonderferramentas.workers.dev]
-        PhpProxy[product-image.php]
-        LocalProxy[scripts/product-image-proxy.ps1 + scripts/fg-offer-proxy.ps1<br/>127.0.0.1:8765/8766]
     end
 
     subgraph Externo["Serviços externos"]
@@ -124,8 +122,6 @@ graph TB
 ├── import-legacy-calendar.html                 Ferramenta one-off de importação de planilha
 ├── _pilar-*.html                                Harnesses de QA visual (screenshot headless), não são páginas do produto
 ├── cloudflare-worker.js                        Worker (proxy CORS: fotos + scraping oferta FG)
-├── product-image.php / scripts/product-image-proxy.ps1 / scripts/fg-offer-proxy.ps1   Implementações redundantes do mesmo proxy
-├── "Abrir Calendario.cmd"                       Launcher local (sobe os proxies PS1 + abre index.html)
 ├── data/
 │   ├── social-posts.json                       Snapshot CI (auditoria; consumidor real é o Firestore)
 │   ├── social-followers.json                   Histórico diário/mensal de seguidores (snapshot CI)
@@ -187,7 +183,7 @@ graph TB
 | `calendar-recovery-20260821-1032.json` | Backup forense manual (localStorage), não referenciado em código | 8698 |
 | `data/catalog-vonder.backup-20260825.json` | Backup pontual do catálogo (não referenciado em código) | 4117 |
 
-**Como se conecta**: cada `post-editor-*.js` se auto-registra em `window.POST_EDITOR_CUSTOM_PRESETS[marca][editoria]` (ordem de `<script>` no HTML é crítica - presets antes de `post-editor.js`). `post-editor.js` lê `CatalogProvider.load(slug)` para o catálogo de produtos e resolve fotos via cascata: Cloudflare Worker → `product-image.php` → proxy local `127.0.0.1:8765`.
+**Como se conecta**: cada `post-editor-*.js` se auto-registra em `window.POST_EDITOR_CUSTOM_PRESETS[marca][editoria]` (ordem de `<script>` no HTML é crítica - presets antes de `post-editor.js`). `post-editor.js` lê `CatalogProvider.load(slug)` para o catálogo de produtos e resolve a foto do produto pelo Cloudflare Worker (`/product-image`), único caminho (o portal só fala com a web).
 
 **Gotchas críticos**:
 - Cada preset de marca é um "clone" deliberadamente isolado - nenhum código, cor ou asset é compartilhado entre marcas; um bug corrigido numa marca não se propaga para as outras.
@@ -216,13 +212,11 @@ graph TB
 
 Três implementações independentes do mesmo contrato (`?code=&w=` para foto de produto; `?url=` para scraping de oferta FG), sem código compartilhado entre si:
 
-| Implementação | Ambiente | Porta/rota |
+| Implementação | Ambiente | Rotas |
 |---|---|---|
-| `cloudflare-worker.js` | Produção | `ecommerce-fg.vonderferramentas.workers.dev/product-image` e `/product-offer` |
-| `product-image.php` | Hospedagem PHP própria (fallback) | mesma rota, via cURL/GD |
-| `scripts/product-image-proxy.ps1` + `scripts/fg-offer-proxy.ps1` | Local/offline (`Abrir Calendario.cmd`) | `127.0.0.1:8765` / `:8766` |
+| `cloudflare-worker.js` | Produção e HML | `ecommerce-fg.vonderferramentas.workers.dev`: `/product-image`, `/product-offer`, `/product-link`, `/product-catalog`, `/product-search`, `/product-thumbs` |
 
-Upstream real das fotos: `app.ovd.com.br/fotos/produto`. Upstream de oferta: `fg.com.br` (parser de objeto `skuJson_0` embutido no HTML, duplicado em JS e PowerShell).
+Upstream real das fotos: `app.ovd.com.br/fotos/produto`. Upstream de oferta: `fg.com.br` (parser de objeto `skuJson_0` embutido no HTML, só no Worker).
 
 ### CI/CD - GitHub Actions (`.github/workflows/`)
 
@@ -287,31 +281,17 @@ sequenceDiagram
     Sync->>FS: get/put brands
 ```
 
-### Produção de arte com foto de produto (cascata de proxy)
+### Produção de arte com foto de produto
 
 ```mermaid
 sequenceDiagram
     participant Editor as post-editor.js
     participant Worker as Cloudflare Worker
-    participant Php as product-image.php
-    participant Local as proxy local :8765
     participant Ovd as app.ovd.com.br
 
     Editor->>Worker: GET /product-image?code=
-    alt Worker OK
-        Worker->>Ovd: fetch imagem
-        Worker-->>Editor: imagem (CORS *)
-    else Worker falhou
-        Editor->>Php: GET product-image.php?code=
-        alt Php OK
-            Php->>Ovd: cURL/stream
-            Php-->>Editor: imagem
-        else Php falhou (ou ambiente sem PHP)
-            Editor->>Local: GET 127.0.0.1:8765/product-image (retry c/ backoff) - só em file:// ou localhost, nunca em site publicado
-            Local->>Ovd: fetch imagem
-            Local-->>Editor: imagem
-        end
-    end
+    Worker->>Ovd: fetch imagem
+    Worker-->>Editor: imagem (CORS *)
 ```
 
 ### Pipeline de seguidores/posts (Instagram → Firestore → Dashboard)
@@ -356,7 +336,7 @@ sequenceDiagram
 - **`business-card-generator.js` é 100% local** (`localStorage` por marca) - trocar de máquina/navegador perde os cartões em edição; não há backup automático.
 - **Central de Inteligência não usa IA/LLM real** - o "DNA de editoria" é heurística de texto/imagem local (frequência de palavras, regex de CTA, cor média), documentado explicitamente no código para não criar expectativa errada.
 - **Cruzamento Trends x catálogo (15/09/2026) também é heurística simples, não IA/LLM** - `scripts/match_trends_catalog.py` casa por palavra normalizada no nome do produto (sem sinônimo, sem categoria própria do catálogo), calculado uma vez por dia dentro de `sync-google-trends.yml`, nunca no navegador (catálogo tem 10.001 produtos/12 MB). Ver `docs/ARQUITETURA-E-INTEGRACOES.md` seção 16.
-- **Três implementações redundantes e não compartilhadas** do proxy de imagem/oferta (Worker, PHP, PowerShell local) - corrigir um bug de parsing (`skuJson_0`) exige repetir a correção nos três. Já aconteceu de verdade (15/09/2026): `scripts/fg-offer-proxy.ps1` arredondava o desconto diferente do Worker (`Floor` vs `Round`) e não devolvia `offerCta`; `product-image.php` podia mandar `Content-Type: image/webp` com bytes JPEG dentro. Corrigido; os quatro arquivos ganharam comentário `ponytail:` apontando os gêmeos, ver `docs/ARQUITETURA-E-INTEGRACOES.md` seção 7.
+- **Um único proxy (Cloudflare Worker):** o PHP e os proxies PowerShell que duplicavam a lógica foram removidos em 06/10/2026; qualquer mudança de parsing ou de foto é feita só em `cloudflare-worker.js` e precisa ser republicada no Cloudflare.
 - **Arquivos de backup/snapshot na raiz** (`calendar-recovery-*.json`, `data/catalog-vonder.backup-*.json`, `data/social-posts.json`) não são dados ativos - nenhum tem referência em código; não confundir com os arquivos "vivos" de mesmo prefixo.
 - **Cobertura de teste era praticamente nula pra uma área que já teve bug real de concorrência** (calendário multi-marca, revisão transacional por card). Até 15/09/2026, nenhum dos 3 arquivos em `tests/` rodava sozinho. `testes.yml` passou a rodar os três a cada push/PR: `concurrent-post-storage.test.ps1` (checagem estática de nomes de função, não comportamento real), `match_trends_catalog.test.py` (assert de verdade) e `concurrent-post-sync.html` (o único que simula concorrência de verdade) em Chrome headless com `--virtual-time-budget`/`--dump-dom`, lendo `document.body.dataset.result`.
 
@@ -370,7 +350,7 @@ sequenceDiagram
 
 **Para restringir uma página a certas marcas**: adicionar `brands:['<id-da-marca>']` ao item em `NAV_ITEMS` (`portal-shell.js`, hoje Conecta FG → `ferramentas-gerais` e Gerador de Cartazes → `grupo-ovd`). `auth-guard.js` tira essa página da lista liberada nas outras marcas, para qualquer perfil (inclusive admin): some do menu e dos cards da Início, e abrir a URL direto avisa e volta à Início. É só interface, como a permissão por página. A regra é reavaliada por `window.PortalAccess.refresh()` - a Início chama isso ao trocar o perfil, sem recarregar (junto com `PortalShell.setActiveBrand`).
 
-**Para adicionar/trocar o proxy de imagem de produto**: replicar a mudança nos três locais (`cloudflare-worker.js`, `product-image.php`, `scripts/product-image-proxy.ps1`) - não há código compartilhado entre eles.
+**Para adicionar/trocar o proxy de imagem de produto**: mudar só `cloudflare-worker.js` e republicar no Cloudflare (o PHP e os proxies PowerShell foram removidos em 06/10/2026).
 
 **Para investigar segredos/integrações**: consultar `docs/ARQUITETURA-E-INTEGRACOES.md` (fonte de verdade mantida manualmente) - toda mudança de integração externa deve atualizar esse arquivo na mesma alteração (reforçado por `validar-documentacao-arquitetura.yml`).
 

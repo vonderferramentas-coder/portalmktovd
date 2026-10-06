@@ -84,22 +84,14 @@
       supportsBrandVariant:true,
       supportsCodes:false,
       supportsProductCutout:false,
-      // Embutidos em base64 (post-editor-assets/fg-lancamentos-assets.js) em vez de carregados
-      // por caminho relativo: sob file://, uma imagem relativa "contamina" o canvas e impede a
-      // exportação (toDataURL/toBlob), mesmo marcada como exportSafe pela checagem ingênua de
-      // mesma origem em loadImage(). Uma data: URI nunca contamina. O caminho relativo permanece
-      // só como fallback, caso o arquivo de assets embutidos não tenha carregado.
-      assetSources:(function(){
-        var embedded=window.POST_EDITOR_FG_LANCAMENTOS_ASSETS||{};
-        return{
-          headerVonder:embedded.headerVonder||'post-editor-assets/fg-lancamentos/header-vonder.png',
-          headerPlus:embedded.headerPlus||'post-editor-assets/fg-lancamentos/header-vonder-plus.png',
-          headerGradient:embedded.headerGradient||'post-editor-assets/fg-lancamentos/header-gradient.png',
-          footer:embedded.footer||'post-editor-assets/fg-lancamentos/footer-lancamentos.png',
-          footerBadge:embedded.footerBadge||'post-editor-assets/fg-lancamentos/footer-badge.png',
-          footerFg:embedded.footerFg||'post-editor-assets/fg-lancamentos/footer-fg.png'
-        }
-      })(),
+      assetSources:{
+        headerVonder:'post-editor-assets/fg-lancamentos/header-vonder.png',
+        headerPlus:'post-editor-assets/fg-lancamentos/header-vonder-plus.png',
+        headerGradient:'post-editor-assets/fg-lancamentos/header-gradient.png',
+        footer:'post-editor-assets/fg-lancamentos/footer-lancamentos.png',
+        footerBadge:'post-editor-assets/fg-lancamentos/footer-badge.png',
+        footerFg:'post-editor-assets/fg-lancamentos/footer-fg.png'
+      },
       renderer:renderer
     }
   });

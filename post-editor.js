@@ -83,8 +83,8 @@ var EDITORIA_PRESETS_BY_BRAND={
  '':{ // VONDER (marca padrão)
   'Destaques':{
    footerColor:'#FFBE00',
-   badgeFeed:(window.POST_EDITOR_ASSETS&&window.POST_EDITOR_ASSETS.feed)||'post-editor-assets/destaques-feed.png',
-   badgeStory:(window.POST_EDITOR_ASSETS&&window.POST_EDITOR_ASSETS.story)||'post-editor-assets/destaques-story.png'
+   badgeFeed:'post-editor-assets/destaques-feed.png',
+   badgeStory:'post-editor-assets/destaques-story.png'
   }
  }
 };
@@ -711,7 +711,7 @@ if($('#brandLogoSearch'))$('#brandLogoSearch').addEventListener('input',renderBr
 $('#changeEditoriaChoose').addEventListener('click',function(){goToStep('editoria')});$('#changeEditoriaEdit').addEventListener('click',function(){goToStep('editoria')});
 setFlow('editoria');renderEditoriaGrid();loadCatalog();refreshEditoriasFromServer();
 if(INCOMING_COMM){var incomingEditoria=EDITORIAS.filter(function(e){return /comemorat/i.test(e.name||'')})[0];if(incomingEditoria&&EDITORIA_PRESETS[incomingEditoria.name])chooseEditoria(incomingEditoria)}
-var embedded=window.POST_EDITOR_ASSETS||{};loadImage(embedded.product||'post-editor-assets/demo-product.png').then(function(im){if(!selectedProduct&&!state.product&&$('#editorWorkspace').hidden)state.productDrawable=im;drawAll();try{canvases.feed.toDataURL('image/jpeg',.1);document.body.dataset.exportReady='true';status('Editor pronto',false)}catch(e){document.body.dataset.exportReady='false';status('Prévia pronta; exportação bloqueada pelo navegador',false)}}).catch(function(){drawAll();status('Editor aberto; alguns elementos não carregaram',false)});
+loadImage('post-editor-assets/demo-product.png').then(function(im){if(!selectedProduct&&!state.product&&$('#editorWorkspace').hidden)state.productDrawable=im;drawAll();try{canvases.feed.toDataURL('image/jpeg',.1);document.body.dataset.exportReady='true';status('Editor pronto',false)}catch(e){document.body.dataset.exportReady='false';status('Prévia pronta; exportação bloqueada pelo navegador',false)}}).catch(function(){drawAll();status('Editor aberto; alguns elementos não carregaram',false)});
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawAll);else drawAll();
 window.PostEditor={redraw:drawAll,state:state,chooseProduct:chooseCatalogProduct,getCatalog:function(){return catalog.slice()},makeZip:makeZip,exportBaseName:exportBaseName};
 
@@ -721,8 +721,8 @@ window.PostEditor={redraw:drawAll,state:state,chooseProduct:chooseCatalogProduct
 
 
 
-// Importação de ofertas FG: o site é estático, então consulta exclusivamente o auxiliar local
-// iniciado pelo "Abrir Calendario.cmd". O resultado é sempre revisável nos campos da oferta.
+// Importação de ofertas FG: o site é estático, então consulta o Worker do Cloudflare (/product-offer).
+// O resultado é sempre revisável nos campos da oferta.
 (function(){
  var button=$('#importEcommerceOffer'),urlField=$('#ecommerceProductUrl'),modal=$('#offerSkuModal');if(!button||!urlField||!modal)return;
  function money(value){return Number(value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}

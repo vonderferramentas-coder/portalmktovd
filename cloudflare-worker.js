@@ -1,9 +1,5 @@
 // Cloudflare Worker - coletor público de ofertas da Ferramentas Gerais.
-// ponytail: /product-image e /product-offer têm gêmeos sem código compartilhado em
-// product-image.php e scripts/{product-image-proxy,fg-offer-proxy}.ps1 (3 runtimes distintos,
-// sem build step neste projeto pra unificar). Já divergiram de verdade uma vez (arredondamento
-// de desconto e campo offerCta ausente no PowerShell, corrigido em 15/09/2026) - ao mudar regra
-// de parsing/cálculo aqui, replicar nos outros arquivos.
+// Único proxy de foto/oferta/catálogo do portal (o PHP e os proxies PowerShell locais foram removidos em 06/10/2026: o portal só fala com a web).
 const ALLOWED_ORIGINS=new Set(['https://vonderferramentas-coder.github.io','https://portalmktovd.pages.dev','https://hml.portalmktovd.pages.dev','http://localhost:5500','http://127.0.0.1:5500']);
 const FG_HOST=/(^|\.)fg\.com\.br$/i;
 function cors(request){const origin=request.headers.get('Origin')||'';const allowed=ALLOWED_ORIGINS.has(origin)?origin:'https://vonderferramentas-coder.github.io';return {'Access-Control-Allow-Origin':allowed,'Access-Control-Allow-Methods':'GET, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Vary':'Origin'};}
@@ -48,9 +44,7 @@ async function offer(request){const url=productUrl(new URL(request.url).searchPa
 // CORS, então o navegador só chega nela por aqui. O código do texto é o do produto ou o do SKU
 // (iguais nos produtos de SKU único), por isso tenta os dois filtros. Por link, a busca é pelo
 // "slug" da página (/{slug}/p); o host do link é validado por productUrl (só fg.com.br).
-// ponytail: sem gêmeo em product-image.php/scripts/*.ps1 - só o Conecta FG usa, e ele cai num link
-// deduzido do nome do produto quando o Worker não responde; se um dia precisar rodar sem o Worker,
-// replicar aqui e lá.
+// ponytail: só o Conecta FG usa; ele cai num link deduzido do nome do produto quando o Worker não responde.
 async function productLink(request){
  const params=new URL(request.url).searchParams;
  const code=(params.get('code')||'').replace(/\D/g,'');
@@ -83,7 +77,7 @@ const specTake=rows=>pattern=>(rows.find(([label])=>pattern.test(label))||['',''
 // de data/catalog-*.json a partir da tabela de especificações do site FG, achada pela REFERÊNCIA
 // (código OVD, 10 dígitos; é o RefId do SKU, por isso o filtro alternateIds_RefId e não productId). A foto
 // NÃO vem daqui: o portal a busca em /product-image pelo mesmo código (app.ovd.com.br).
-// ponytail: sem gêmeo em product-image.php/scripts/*.ps1 - só o editor publicado usa; "qualificacaoTecnica" junta
+// ponytail: "qualificacaoTecnica" junta
 // as linhas técnicas do site e pode divergir do catálogo (que tem linhas comerciais a mais).
 async function productCatalog(request){
  const code=(new URL(request.url).searchParams.get('code')||'').replace(/\D/g,'');
