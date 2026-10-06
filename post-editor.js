@@ -173,7 +173,7 @@ function setFlow(mode){
  $('#editorIntro').textContent=mode==='editoria'?'Primeiro, escolha qual editoria você vai postar.':mode==='choose'?'Agora, escolha qual produto será usado na arte.':'Dados carregados. Revise a arte e ajuste o que precisar.';
  var cur=FLOW_STEP_ORDER[mode];
  $$('[data-flow-step]').forEach(function(el){var own=FLOW_STEP_ORDER[el.dataset.flowStep];el.classList.toggle('is-active',own===cur);el.classList.toggle('is-complete',own<cur);el.classList.toggle('is-clickable',own!==cur&&own<=maxFlowOrder)});
- if(mode==='choose'){renderCatalogResults();setTimeout(function(){$('#catalogSearch').focus()},20)}
+ if(mode==='choose'){renderCatalogResults();scheduleSiteSearch($('#catalogSearch').value);setTimeout(function(){$('#catalogSearch').focus()},20)}
 }
 // navegação entre etapas iniciada pelo usuário (clique nos passos do topo ou nos botões
 // "Trocar") - sair da etapa "Editar e baixar" pede confirmação, porque a composição em tela
@@ -271,12 +271,32 @@ function productMatchRank(item,q,qc){
  return 1;
 }
 function matchingProducts(query){var q=normalizeText(query.trim()),qc=normalizeCode(query);var results=catalog.filter(function(item){var codeHit=qc&&(catalogCodes(item).some(function(v){return normalizeCode(v.code).includes(qc)})||(item.codeFG&&normalizeCode(item.codeFG).includes(qc)));return!q||normalizeText(item.name).includes(q)||codeHit}).sort(function(a,b){return productMatchRank(a,q,qc)-productMatchRank(b,q,qc)});return q?results:results.slice(0,10)}
-function lookupProductOnSite(code,button){
- var msg=$('#siteLookupMsg');button.disabled=true;msg.textContent='Consultando o site…';
- fetch('https://ecommerce-fg.vonderferramentas.workers.dev/product-catalog?code='+encodeURIComponent(code)).then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data}})}).then(function(r){
-  if(!r.ok){button.disabled=false;msg.textContent=r.data&&r.data.notFound?'Este código também não foi encontrado no site. Use "Continuar sem catálogo".':'Não foi possível consultar o site agora.';return}
+// Busca no site (só perfil VONDER): complementa o catálogo quando ele não tem o produto. Lista nome+código via worker
+// (/product-search); ao escolher, /product-catalog traz os mesmos campos do catalog.json e a foto vem do app.ovd pelo código.
+var SITE_API='https://ecommerce-fg.vonderferramentas.workers.dev',siteSearch={q:'',status:'idle',items:[]},siteTimer=0,siteToken=0;
+function siteEligible(query){return CATALOG_SLUG==='vonder'&&query.trim().length>=3}
+function runSiteSearch(query){
+ var q=query.trim(),token=++siteToken;siteSearch={q:q,status:'loading',items:[]};renderCatalogResults();
+ fetch(SITE_API+'/product-search?q='+encodeURIComponent(q)).then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data}})}).then(function(r){
+  if(token!==siteToken)return;siteSearch.status=r.ok?'done':'error';siteSearch.items=(r.ok&&r.data.items)||[];renderCatalogResults()
+ }).catch(function(){if(token!==siteToken)return;siteSearch.status='error';renderCatalogResults()})
+}
+// Só dispara sozinho quando o catálogo não tem nada para o termo; com resultados locais fica o link "Buscar no site".
+function scheduleSiteSearch(value){clearTimeout(siteTimer);if(siteEligible(value)&&!matchingProducts(value).length&&siteSearch.q!==value.trim())siteTimer=setTimeout(function(){runSiteSearch(value)},500)}
+function openSiteProduct(code,button){
+ var note=button.querySelector('small'),label=note.textContent;button.disabled=true;note.textContent='Consultando o site…';
+ fetch(SITE_API+'/product-catalog?code='+encodeURIComponent(normalizeCode(code))).then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data}})}).then(function(r){
+  if(!r.ok){button.disabled=false;note.textContent=label+' · não foi possível carregar este produto';return}
   var item=r.data;item.imageUrl='https://app.ovd.com.br/fotos/produto?codigo='+normalizeCode(item.code);item.fromSite=true;chooseCatalogProduct(item);status('Produto vindo do site, fora do catálogo: revise os dados antes de usar.',false)
- }).catch(function(){button.disabled=false;msg.textContent='Não foi possível consultar o site agora.'})
+ }).catch(function(){button.disabled=false;note.textContent=label+' · não foi possível consultar o site agora'})
+}
+function siteResultsHtml(query,hasLocal){
+ var state=siteSearch.q===query.trim()?siteSearch.status:'idle',note=function(title,text,action){return'<div class="pe-catalog-empty"><strong>'+title+'</strong>'+(text?'<p>'+text+'</p>':'')+(action||'')+'</div>'};
+ if(state==='idle')return hasLocal?'<button type="button" class="pe-catalog-more" id="siteMore">Não encontrou? Buscar no site</button>':note('Buscando no site…','Este produto não está no catálogo.');
+ if(state==='loading')return note('Buscando no site…','');
+ if(state==='error')return note('Não foi possível consultar o site agora','Tente novamente ou use "Continuar sem catálogo".','<button type="button" class="pe-catalog-site" id="siteRetry">Tentar novamente</button>');
+ if(!siteSearch.items.length)return note('Nenhum produto encontrado no site','Confira o nome ou o código, ou use "Continuar sem catálogo".');
+ return'<div class="pe-catalog-group">Encontrados no site</div>'+siteSearch.items.map(function(item,index){return'<button type="button" class="pe-catalog-item" data-site-index="'+index+'" role="option"><span class="pe-selected-thumb">＋</span><span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(item.code)+'</small></span><span>›</span></button>'}).join('')
 }
 function renderCatalogResults(){
  var query=$('#catalogSearch').value,matches=matchingProducts(query),box=$('#catalogResults');
@@ -284,19 +304,16 @@ function renderCatalogResults(){
  if(catalogLoading){$('#catalogStatus').textContent='Carregando catálogo…';box.innerHTML='<div class="pe-catalog-empty"><strong>Carregando catálogo…</strong>Buscando os produtos disponíveis.</div>';return}
  $('#catalogStatus').textContent=catalog.length?(query?matches.length+' produto'+(matches.length===1?' encontrado':'s encontrados'):catalog.length.toLocaleString('pt-BR')+' produtos disponíveis'):'Nenhum produto cadastrado nesta marca';
  if(!catalog.length){box.innerHTML='<div class="pe-catalog-empty"><strong>O catálogo ainda está vazio</strong>Cadastre produtos em Configurações no calendário ou continue sem catálogo.</div>';return}
- if(!matches.length){
-  // Fora do catálogo: um código completo pode ser buscado no site da FG (mesmos campos do catalog.json; a foto vem do app.ovd pelo código).
-  var siteCode=normalizeCode(query),canSite=CATALOG_PHOTO_SLUG==='vonder'&&siteCode.length>=5&&siteCode.length<=20;
-  box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong><p>Tente buscar apenas uma parte do nome ou os números do código.</p>'+(canSite?'<button type="button" class="pe-catalog-site" id="siteLookup">Buscar no site</button><span class="pe-catalog-site-note" id="siteLookupMsg" role="status">Consulta o código '+escapeHtml(siteCode)+' no site.</span>':'')+'</div>';
-  if(canSite)$('#siteLookup').addEventListener('click',function(){lookupProductOnSite(siteCode,this)});
-  return
- }
- box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length;return'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(editorCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('');
+ var site=siteEligible(query)?siteResultsHtml(query,matches.length>0):'';
+ if(!matches.length&&!site){box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong><p>Tente buscar apenas uma parte do nome ou os números do código.</p></div>';return}
+ box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length;return'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(editorCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('')+site;
  $$('#catalogResults [data-catalog-index]').forEach(function(btn){
   var item=matches[Number(btn.dataset.catalogIndex)];
   btn.addEventListener('click',function(){chooseCatalogProduct(item)});
   var img=btn.querySelector('img');if(img)setImgWithFallback(img,itemThumbnailUrls(item))
- })
+ });
+ $$('#catalogResults [data-site-index]').forEach(function(btn){btn.addEventListener('click',function(){openSiteProduct(siteSearch.items[Number(btn.dataset.siteIndex)].code,btn)})});
+ var more=$('#siteMore'),retry=$('#siteRetry');if(more)more.addEventListener('click',function(){runSiteSearch(query)});if(retry)retry.addEventListener('click',function(){runSiteSearch(query)})
 }
 // carrega o catálogo desta marca via CatalogProvider (ver catalog-provider.js) - nunca lê
 // JSON nem localStorage diretamente aqui, só consome a Promise; assim, se a origem do
@@ -609,7 +626,7 @@ Object.keys(canvases).forEach(function(format){
  },{passive:false});
 });
 $('#downloadFeed').onclick=function(){download('feed')};$('#downloadStory').onclick=function(){download('story')};$('#downloadBoth').onclick=downloadZip;$$('[data-download]').forEach(function(b){b.onclick=function(){download(b.dataset.download)}});
-$('#catalogSearch').addEventListener('input',function(){catalogFocus=0;renderCatalogResults()});
+$('#catalogSearch').addEventListener('input',function(){catalogFocus=0;siteToken++;siteSearch={q:'',status:'idle',items:[]};renderCatalogResults();scheduleSiteSearch(this.value)});
 $('#catalogSearch').addEventListener('keydown',function(ev){var matches=matchingProducts(this.value);if(ev.key==='ArrowDown'&&matches.length){catalogFocus=Math.min(matches.length-1,catalogFocus+1);renderCatalogResults();ev.preventDefault()}else if(ev.key==='ArrowUp'&&matches.length){catalogFocus=Math.max(0,catalogFocus-1);renderCatalogResults();ev.preventDefault()}else if(ev.key==='Enter'&&matches.length){chooseCatalogProduct(matches[catalogFocus]||matches[0]);ev.preventDefault()}});
 $('#manualProduct').addEventListener('click',chooseManualProduct);$('#changeProduct').addEventListener('click',function(){goToStep('choose')});
 if($('#changeBrandLogo'))$('#changeBrandLogo').addEventListener('click',function(){$('#brandLogoSummary').hidden=true;$('#brandLogoPicker').hidden=false;$('#brandLogoSearch').value='';renderBrandLogoResults();setTimeout(function(){$('#brandLogoSearch').focus()},20)});

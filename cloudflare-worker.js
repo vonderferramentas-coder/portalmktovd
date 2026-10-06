@@ -65,6 +65,12 @@ async function productLink(request){
  }
  return json(request,{error:'Produto não encontrado no site FG.',notFound:true},404);
 }
+// Perfil VONDER: só entram produtos das marcas VONDER do site FG (IDs fixos, ativas em 06/10/2026: VONDER, VONDER PLUS,
+// VONDER AT, VONDER/TMX, VONDER CONSTRUTOR). Marca nova com "VONDER" no nome precisa ser acrescentada aqui (lista de marcas:
+// /api/catalog_system/pub/brand/list). O filtro por nome da marca é a 2ª barreira: nada de outra marca passa.
+const VONDER_BRAND_FQ=[2959,29859,29360,29639,37264].map(id=>'fq=B:'+id).join('&');
+const isVonderBrand=product=>/^vonder\b/i.test(String(product&&product.brand||''));
+const formatCode=digits=>digits.length===10?digits.replace(/^(\d{2})(\d{2})(\d{3})(\d{3})$/,'$1.$2.$3.$4'):digits;
 // Produto fora do catálogo.json (portal: post-editor.js, "Buscar no site da FG"): devolve os mesmos campos
 // de data/catalog-*.json a partir da tabela de especificações do site FG, achada pela REFERÊNCIA
 // (código OVD, 10 dígitos; é o RefId do SKU, por isso o filtro alternateIds_RefId e não productId). A foto
@@ -76,7 +82,7 @@ async function productCatalog(request){
  if(code.length<5||code.length>20)return json(request,{error:'Informe um código de 5 a 20 dígitos.'},400);
  const upstream=await fetch('https://www.fg.com.br/api/catalog_system/pub/products/search?fq=alternateIds_RefId:'+code,{headers:{Accept:'application/json'}});
  if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
- const product=(await upstream.json())[0];
+ const product=(await upstream.json()).find(isVonderBrand);
  if(!product)return json(request,{error:'Produto não encontrado no site FG.',notFound:true},404);
  const rows=[...String(product.description||'').matchAll(/<th[^>]*>([\s\S]*?)<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>[plainText(m[1]),plainText(m[2])]);
  const take=pattern=>(rows.find(([label])=>pattern.test(label))||['',''])[1];
@@ -84,15 +90,27 @@ async function productCatalog(request){
  const ref=(((product.items||[])[0]||{}).referenceId||[]).find(r=>r.Key==='RefId'),digits=String((ref&&ref.Value)||code).replace(/\D/g,'');
  return json(request,{
   name:take(/^descri[cç][aã]o completa/i)||product.productName,
-  code:digits.length===10?digits.replace(/^(\d{2})(\d{2})(\d{3})(\d{3})$/,'$1.$2.$3.$4'):digits,
+  code:formatCode(digits),
   codeFG:String(product.productId),
   destaques:take(/^destaques/i),aplicacoes:take(/^aplica[cç][oõ]es/i),conteudoEmbalagem:take(/^conte[uú]do da embalagem/i),
   qualificacaoTecnica:rows.filter(([label,value])=>value&&!named.test(label)).map(([label,value])=>label+': '+value).join(' | '),
  });
 }
+// Busca por nome (ou código) de produto VONDER no site FG, para a lista "Encontrados no site" do editor de posts. Devolve só
+// nome e código (a foto e os demais dados vêm depois, em /product-catalog e /product-image, quando o usuário escolhe um item).
+// ponytail: sem gêmeo em PHP/PowerShell; no máximo 12 itens, sem paginação.
+async function productSearch(request){
+ const q=(new URL(request.url).searchParams.get('q')||'').trim().slice(0,60),digits=q.replace(/\D/g,''),byCode=digits.length>=5&&/^[\d.\s-]+$/.test(q);
+ if(!byCode&&q.length<3)return json(request,{error:'Digite ao menos 3 letras ou um código.'},400);
+ const query=byCode?'?fq=alternateIds_RefId:'+digits:'?ft='+encodeURIComponent(q)+'&'+VONDER_BRAND_FQ+'&_from=0&_to=14';
+ const upstream=await fetch('https://www.fg.com.br/api/catalog_system/pub/products/search'+query,{headers:{Accept:'application/json'}});
+ if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
+ const items=(await upstream.json()).filter(isVonderBrand).slice(0,12).map(product=>({name:product.productName,code:formatCode(String(product.productReference||'').replace(/\D/g,''))})).filter(item=>item.code);
+ return json(request,{items});
+}
 export default {async fetch(request){
  const path=new URL(request.url).pathname;
  if(path==='/product-image'){if(request.method==='OPTIONS')return imageReply(null,204);try{return await productImage(request);}catch{return imageReply('Não foi possível carregar a imagem do produto.',502,{'Content-Type':'text/plain; charset=utf-8'});}}
  if(request.method==='OPTIONS')return reply(request,null,204);
- try{if(path==='/product-offer')return offer(request);if(path==='/product-link')return await productLink(request);if(path==='/product-catalog')return await productCatalog(request);return json(request,{error:'Rota não encontrada.'},404);}catch{return json(request,{error:'Não foi possível consultar a oferta.'},502);}
+ try{if(path==='/product-offer')return offer(request);if(path==='/product-link')return await productLink(request);if(path==='/product-catalog')return await productCatalog(request);if(path==='/product-search')return await productSearch(request);return json(request,{error:'Rota não encontrada.'},404);}catch{return json(request,{error:'Não foi possível consultar a oferta.'},502);}
 }};
