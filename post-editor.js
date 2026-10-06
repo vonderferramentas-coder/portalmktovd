@@ -5,14 +5,14 @@
 var $=function(s){return document.querySelector(s)}, $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
 var canvases={feed:$('#feedCanvas'),story:$('#storyCanvas')};
 var templates={
- feed:{w:1080,h:1350,footerY:1184,footerH:166,textX:66,titleY:1227,subY:1278,titleMax:625,codeX:731,codeY:1228,dualCodeY:1227,codeW:390,codeH:49},
- story:{w:1080,h:1920,footerY:1458,footerH:173,textX:67,titleY:1504,subY:1557,titleMax:620,codeX:714,codeY:1520,dualCodeY:1503,codeW:410,codeH:49}
+ feed:{w:1080,h:1350,footerY:1184,footerH:166,textX:66,titleY:1227,subY:1278,titleMax:625,codeX:731,codeY:1228,dualCodeY:1227,codeW:390,codeH:49,safeX:66},
+ story:{w:1080,h:1920,footerY:1458,footerH:173,textX:67,titleY:1504,subY:1557,titleMax:620,codeX:714,codeY:1520,dualCodeY:1503,codeW:410,codeH:49,safeX:66}
 };
 var positions={
  feed:{left:{badge:[68,108,484,313],product:[458,128,410,333]},stacked:{badge:[42,338,484,313],product:[92,147,340,276]},right:{badge:[528,108,484,313],product:[212,128,410,333]}},
  story:{left:{badge:[64,246,471,306],product:[450,286,430,349]},stacked:{badge:[42,548,471,306],product:[88,333,370,300]},right:{badge:[545,246,471,306],product:[200,286,430,349]}}
 };
-var state={editoriaName:null,editoriaColor:null,footerColor:'#FFBE00',brandBadgeColor:'#fbc400',background:null,product:null,productDrawable:null,productHasCircle:true,circleOverBadge:false,productScale:1,circleStyle:'yellow',badgeFeed:null,badgeStory:null,customAssets:{},autoLayout:'left',bgZoom:{feed:1,story:1},overlayScale:1,format:{feed:{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0},story:{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0}}};
+var state={editoriaName:null,editoriaColor:null,footerColor:'#FFBE00',brandBadgeColor:'#fbc400',background:null,product:null,productDrawable:null,productHasCircle:true,circleOverBadge:false,guides:{feed:false,story:false},productScale:1,circleStyle:'yellow',badgeFeed:null,badgeStory:null,customAssets:{},autoLayout:'left',bgZoom:{feed:1,story:1},overlayScale:1,format:{feed:{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0},story:{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0}}};
 var lastProductBox={feed:null,story:null},lastBadgeBox={feed:null,story:null};
 var INCOMING_COMM=(function(){
  var q=new URLSearchParams(location.search);if(!q.get('eventTitle'))return null;
@@ -527,19 +527,25 @@ function drawProduct(ctx,box){
  if(style==='white-border'){var bw=r*.08;ctx.strokeStyle='#F6BE00';ctx.lineWidth=bw;ctx.beginPath();ctx.arc(cx,cy,r-bw/2,0,Math.PI*2);ctx.stroke()}
  ctx.shadowColor='rgba(0,0,0,.38)';ctx.shadowBlur=18;ctx.shadowOffsetY=12;var k=state.productScale,iw=box[2]*.84*k,ih=box[3]*.84*k;contain(ctx,im,[box[0]+box[2]*.5-iw/2,box[1]+box[3]*.47-ih/2,iw,ih]);ctx.restore()
 }
-function drawDualCode(ctx,t,y,label,code){
- var h=42;roundRect(ctx,t.codeX,y,t.codeW,h,22);ctx.fillStyle='#fff';ctx.fill();label=(label||'').toUpperCase();code=code||'';var size=29,labelFont='',codeFont='',labelW=0,codeW=0;
- do{labelFont='700 italic '+size+'px "Swiss721Editor","Arial Narrow",Impact,sans-serif';codeFont='400 italic '+size+'px "Swiss721Editor","Arial Narrow",Arial,sans-serif';ctx.font=labelFont;labelW=ctx.measureText(label).width;ctx.font=codeFont;codeW=ctx.measureText(code).width;size--}while(size>20&&labelW+codeW+48>t.codeW-38);
- var x=t.codeX+20;ctx.fillStyle='#080808';ctx.textBaseline='middle';ctx.textAlign='left';ctx.font=labelFont;ctx.fillText(label,x,y+h/2+1);x+=labelW+16;ctx.font='700 18px Arial,sans-serif';ctx.fillText('•',x,y+h/2);x+=20;ctx.font=codeFont;ctx.fillText(code,x,y+h/2+1)
+// 2 códigos: as pastilhas seguem sangrando até a borda direita da arte (como a de 1 código), mas o texto
+// termina na margem lateral (t.w-safeX); a borda esquerda nunca chega no nome do produto (minLeft) e, se
+// não couber, a fonte reduz até 20px.
+function drawDualCodes(ctx,t,y,rows,minLeft){
+ var h=42,right=t.w-t.safeX,size=29,labelFont,codeFont,m,left;rows=rows.map(function(r){return{label:(r[0]||'').toUpperCase(),code:r[1]||''}});
+ do{labelFont='700 italic '+size+'px "Swiss721Editor","Arial Narrow",Impact,sans-serif';codeFont='400 italic '+size+'px "Swiss721Editor","Arial Narrow",Arial,sans-serif';
+  m=rows.map(function(r){ctx.font=labelFont;var lw=ctx.measureText(r.label).width;ctx.font=codeFont;return{lw:lw,total:lw+16+20+ctx.measureText(r.code).width}});
+  left=right-(Math.max.apply(null,m.map(function(v){return v.total}))+20);size--}while(size>=20&&left<minLeft);
+ rows.forEach(function(r,i){var ry=y+i*49;roundRect(ctx,left,ry,t.w+40-left,h,22);ctx.fillStyle='#fff';ctx.fill();
+  var x=left+20;ctx.fillStyle='#080808';ctx.textBaseline='middle';ctx.textAlign='left';ctx.font=labelFont;ctx.fillText(r.label,x,ry+h/2+1);x+=m[i].lw+16;ctx.font='700 18px Arial,sans-serif';ctx.fillText('•',x,ry+h/2);x+=20;ctx.font=codeFont;ctx.fillText(r.code,x,ry+h/2+1)})
 }
 function drawFooter(ctx,t){
  var txt=splitName($('#productName').value),code=($('#productCode').value||'').trim(),dual=$('#codeCount').value==='2';ctx.fillStyle=state.footerColor||'#FFBE00';ctx.fillRect(0,t.footerY,t.w,t.footerH);
- ctx.fillStyle='#050505';ctx.textBaseline='top';ctx.textAlign='left';ctx.font=font(fitFont(ctx,txt.title.toUpperCase(),t.titleMax,48,28));ctx.fillText(txt.title.toUpperCase(),t.textX,t.titleY);
- if(txt.sub){ctx.font=font(fitFont(ctx,txt.sub.toUpperCase(),t.titleMax,30,20));ctx.fillText(txt.sub.toUpperCase(),t.textX,t.subY)}
- if(dual){var firstY=t.dualCodeY;drawDualCode(ctx,t,firstY,$('#codeVariant1').value,code);drawDualCode(ctx,t,firstY+49,$('#codeVariant2').value,($('#productCode2').value||'').trim())}
- else{roundRect(ctx,t.codeX,t.codeY,t.codeW,t.codeH,25);ctx.fillStyle='#fff';ctx.fill();ctx.fillStyle='#080808';ctx.textBaseline='middle';ctx.textAlign='left';ctx.font=font(30);ctx.fillText('CÓD.:',t.codeX+45,t.codeY+t.codeH/2+1);var labelEnd=t.codeX+45+ctx.measureText('CÓD.:').width;ctx.font='400 italic 30px "Swiss721Editor","Arial Narrow",Arial,sans-serif';ctx.fillText(code,labelEnd+8,t.codeY+t.codeH/2+1)}
+ ctx.fillStyle='#050505';ctx.textBaseline='top';ctx.textAlign='left';ctx.font=font(fitFont(ctx,txt.title.toUpperCase(),t.titleMax,48,28));ctx.fillText(txt.title.toUpperCase(),t.textX,t.titleY);var textEnd=t.textX+ctx.measureText(txt.title.toUpperCase()).width;
+ if(txt.sub){ctx.font=font(fitFont(ctx,txt.sub.toUpperCase(),t.titleMax,30,20));ctx.fillText(txt.sub.toUpperCase(),t.textX,t.subY);textEnd=Math.max(textEnd,t.textX+ctx.measureText(txt.sub.toUpperCase()).width)}
+ if(dual)drawDualCodes(ctx,t,t.dualCodeY,[[$('#codeVariant1').value,code],[$('#codeVariant2').value,($('#productCode2').value||'').trim()]],textEnd+28);
+ else{roundRect(ctx,t.codeX,t.codeY,t.codeW,t.codeH,25);ctx.fillStyle='#fff';ctx.fill();ctx.fillStyle='#080808';ctx.textBaseline='middle';ctx.textAlign='left';ctx.font=font(30);var labelW=ctx.measureText('CÓD.:').width;ctx.font='400 italic 30px "Swiss721Editor","Arial Narrow",Arial,sans-serif';var codeW=ctx.measureText(code).width,startX=Math.max(t.codeX+20,t.w-t.safeX-(labelW+8+codeW));ctx.font=font(30);ctx.fillText('CÓD.:',startX,t.codeY+t.codeH/2+1);ctx.font='400 italic 30px "Swiss721Editor","Arial Narrow",Arial,sans-serif';ctx.fillText(code,startX+labelW+8,t.codeY+t.codeH/2+1)}
 }
-function draw(format){
+function drawArt(format){
  var c=canvases[format],ctx=c.getContext('2d'),t=templates[format],pos=positions[format][layout()];ctx.clearRect(0,0,t.w,t.h);
  var activePreset=EDITORIA_PRESETS[state.editoriaName];
  if(activePreset&&typeof activePreset.renderer==='function'){
@@ -560,7 +566,51 @@ function draw(format){
  if(state.circleOverBadge){drawBadge();drawProduct(ctx,productBox)}else{drawProduct(ctx,productBox);drawBadge()}
  ctx.restore();
  drawFooter(ctx,t)
-}function drawAll(){draw('feed');draw('story')}
+}
+// Guias de margem de segurança (ciano, como as do Photoshop): só aparecem enquanto o usuário arrasta ou
+// redimensiona o destaque (state.guides[format]) e só a(s) borda(s) que o elemento tocou/ultrapassou,
+// igual às guias do Instagram. Ficam fora da arte exportada porque somem quando a interação termina.
+var SAFE_MARGINS={feed:{top:135,side:templates.feed.safeX,bottom:190},story:{top:190,side:templates.story.safeX,bottom:190}};
+// Bordas VISÍVEIS do destaque (não da caixa de layout): o PNG do selo tem margem transparente e o círculo
+// do produto é menor que a caixa dele, então travar na caixa deixava o elemento parado longe das guias.
+function alphaBox(im){
+ if(im._alphaBox)return im._alphaBox;var box=[0,0,1,1];
+ try{var w=320,h=Math.max(1,Math.round(320*im.height/im.width)),c=document.createElement('canvas');c.width=w;c.height=h;var x=c.getContext('2d');x.drawImage(im,0,0,w,h);var d=x.getImageData(0,0,w,h).data,x0=w,y0=h,x1=-1,y1=-1;
+  for(var j=0;j<h;j++)for(var i=0;i<w;i++)if(d[(j*w+i)*4+3]>16){if(i<x0)x0=i;if(i>x1)x1=i;if(j<y0)y0=j;if(j>y1)y1=j}
+  if(x1>=0)box=[x0/w,y0/h,(x1+1-x0)/w,(y1+1-y0)/h]}catch(e){}
+ return im._alphaBox=box
+}
+function fitRect(im,box){var s=Math.min(box[2]/im.width,box[3]/im.height),w=im.width*s,h=im.height*s,x=box[0]+(box[2]-w)/2,y=box[1]+(box[3]-h)/2,a=alphaBox(im);return[x+w*a[0],y+h*a[1],w*a[2],h*a[3]]}
+function visibleBox(format){
+ var pb=lastProductBox[format],bb=lastBadgeBox[format],preset=EDITORIA_PRESETS[state.editoriaName];
+ if(!pb||!bb||(preset&&typeof preset.renderer==='function'))return unionBox(pb,bb);
+ var badge=format==='feed'?state.badgeFeed:state.badgeStory,im=state.productDrawable,vb=bb,vp=pb;
+ if(badge){var a=alphaBox(badge);vb=[bb[0]+bb[2]*a[0],bb[1]+bb[3]*a[1],bb[2]*a[2],bb[3]*a[3]]}
+ if(im){if(state.productHasCircle)vp=fitRect(im,pb);else{var r=Math.min(pb[2],pb[3])*.48,cx=pb[0]+pb[2]/2,cy=pb[1]+pb[3]/2,k=state.productScale,iw=pb[2]*.84*k,ih=pb[3]*.84*k;vp=unionBox([cx-r,cy-r,2*r,2*r],fitRect(im,[cx-iw/2,pb[1]+pb[3]*.47-ih/2,iw,ih]))}}
+ return unionBox(vb,vp)
+}
+function drawGuides(format){
+ var box=visibleBox(format);if(!state.guides[format]||!box)return;
+ var ctx=canvases[format].getContext('2d'),t=templates[format],m=SAFE_MARGINS[format],edges=[];
+ if(box[1]<=m.top+.5)edges.push([0,m.top,t.w,m.top]);
+ if(box[1]+box[3]>=t.h-m.bottom-.5)edges.push([0,t.h-m.bottom,t.w,t.h-m.bottom]);
+ if(box[0]<=m.side+.5)edges.push([m.side,0,m.side,t.h]);
+ if(box[0]+box[2]>=t.w-m.side-.5)edges.push([t.w-m.side,0,t.w-m.side,t.h]);
+ if(!edges.length)return;ctx.save();ctx.strokeStyle='#00E5FF';ctx.lineWidth=3;ctx.beginPath();edges.forEach(function(e){ctx.moveTo(e[0],e[1]);ctx.lineTo(e[2],e[3])});ctx.stroke();ctx.restore()
+}
+// Barra o avanço do elemento na guia (como no Instagram): ao encostar na margem ele para; empurrar mais
+// GUIDE_PUSH px (acumulados em push[axis]) na mesma direção solta o elemento pra passar da guia.
+// Voltar na direção oposta também solta. Só barra quem vem de dentro da margem.
+var GUIDE_PUSH=40;
+function guideResist(push,axis,lo,hi,d,minLimit,maxLimit){
+ var held=push[axis];
+ if(held){var total=held+d;if(total===0||(total>0)!==(held>0)||Math.abs(total)>=GUIDE_PUSH){push[axis]=0;return total}push[axis]=total;return 0}
+ if(d<0&&lo>=minLimit-.5&&lo+d<minLimit){push[axis]=lo+d-minLimit;return minLimit-lo}
+ if(d>0&&hi<=maxLimit+.5&&hi+d>maxLimit){push[axis]=hi+d-maxLimit;return maxLimit-hi}
+ return d
+}
+function draw(format){drawArt(format);drawGuides(format)}
+function drawAll(){draw('feed');draw('story')}
 function regionScore(img,rect){
  var c=document.createElement('canvas');c.width=120;c.height=120;var x=c.getContext('2d');x.drawImage(img,rect[0]*img.width,rect[1]*img.height,rect[2]*img.width,rect[3]*img.height,0,0,120,120);
  var d=x.getImageData(0,0,120,120).data,total=0,count=0;for(var y=1;y<119;y+=3)for(var q=1;q<119;q+=3){var i=(y*120+q)*4,j=i+4,k=i+480;total+=Math.abs(d[i]-d[j])+Math.abs(d[i+1]-d[j+1])+Math.abs(d[i+2]-d[j+2])+Math.abs(d[i]-d[k])+Math.abs(d[i+1]-d[k+1])+Math.abs(d[i+2]-d[k+2]);count++}return total/count
@@ -681,7 +731,7 @@ setupDrop('#productDrop','#productFile','#productFileName',function(file,name){s
 ['#productName','#productCode','#productCode2','#codeVariant1','#codeVariant2','#eventDay','#eventMonth','#eventPrefix','#ecommerceDiscount','#ecommerceCta','#ecommerceValidity'].forEach(function(s){var el=$(s);if(el)el.addEventListener('input',drawAll)});
 function formatCurrencyInput(el){var digits=el.value.replace(/\D/g,'');if(!digits){el.value='';return}digits=digits.replace(/^0+(?=\d)/,'');while(digits.length<3)digits='0'+digits;var cents=digits.slice(-2),intPart=(digits.slice(0,-2).replace(/^0+(?=\d)/,'')||'0').replace(/\B(?=(\d{3})+(?!\d))/g,'.');el.value=intPart+','+cents}
 ['#ecommerceOldPrice','#ecommercePrice'].forEach(function(s){var el=$(s);if(el)el.addEventListener('input',function(){formatCurrencyInput(this);drawAll()})});if($('#eventMonth'))$('#eventMonth').addEventListener('blur',function(){var month=this.value.trim().toLocaleLowerCase('pt-BR');this.value=month?month.charAt(0).toLocaleUpperCase('pt-BR')+month.slice(1):'';drawAll()});function syncCodeFields(){var dual=$('#codeCount').value==='2';$('#codeVariantField1').hidden=!dual;$('#codeRow1').classList.toggle('is-dual',dual);$('#codeRow2').hidden=!dual;$('#productCodeLabel').textContent=dual?'Código 1':'Código';drawAll()}$('#codeCount').addEventListener('change',syncCodeFields);if($('#ecommercePriceMode'))$('#ecommercePriceMode').addEventListener('change',function(){var mode=this.value;$('#ecommerceOldPriceField').hidden=mode!=='de-por';$('#ecommerceDiscountField').hidden=mode!=='desconto';drawAll()});syncCodeFields();$('#layoutMode').addEventListener('change',drawAll);$('#removeWhite').addEventListener('change',updateProduct);$('#removeHoles').addEventListener('change',updateProduct);['Feed','Story'].forEach(function(format){var input=$('#eventTitleSize'+format),output=$('#eventTitleSize'+format+'Out');if(input)input.addEventListener('input',function(){if(output)output.value=this.value+'%';draw(format.toLowerCase())})});
-['feed','story'].forEach(function(format){var cap=format[0].toUpperCase()+format.slice(1),input=$('#backgroundZoom'+cap),output=$('#backgroundZoom'+cap+'Out');input.addEventListener('input',function(){state.bgZoom[format]=this.value/100;output.value=this.value+'%';draw(format)})});$('#overlayScale').addEventListener('input',function(){state.overlayScale=this.value/100;$('#overlayScaleOut').value=this.value+'%';drawAll()});
+['feed','story'].forEach(function(format){var cap=format[0].toUpperCase()+format.slice(1),input=$('#backgroundZoom'+cap),output=$('#backgroundZoom'+cap+'Out');input.addEventListener('input',function(){state.bgZoom[format]=this.value/100;output.value=this.value+'%';draw(format)})});$('#overlayScale').addEventListener('change',function(){state.guides.feed=state.guides.story=false;drawAll()});$('#overlayScale').addEventListener('input',function(){state.guides.feed=state.guides.story=true;state.overlayScale=this.value/100;$('#overlayScaleOut').value=this.value+'%';drawAll()});
 if($('#brandBadgeColor'))$('#brandBadgeColor').addEventListener('input',function(){state.brandBadgeColor=this.value;drawAll()});
 $('#circleLayer').addEventListener('change',function(){state.circleOverBadge=this.value==='front';drawAll()});$('#productScale').addEventListener('input',function(){state.productScale=this.value/100;$('#productScaleOut').value=this.value+'%';drawAll()});$('#circleStyle').addEventListener('change',function(){state.circleStyle=this.value;drawAll()});
 $('#autoCompose').addEventListener('click',analyze);$('#generateCompositions').addEventListener('click',generateCompositions);$$('[data-composition]').forEach(function(button){button.addEventListener('click',function(){applyComposition(button.dataset.composition)})});$('#resetPosition').addEventListener('click',function(){state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};drawAll();status('Posições centralizadas',false)});
@@ -700,11 +750,11 @@ function flashMoveTarget(format,cap,hit,canvasRect,box){
 $$('[data-move-mode]').forEach(function(b){b.addEventListener('click',function(){setMoveMode(b.dataset.moveMode)})});$('#moveTarget').addEventListener('change',function(){setMoveMode($('#moveTarget').value)});
 Object.keys(canvases).forEach(function(format){
  var c=canvases[format],cap=format[0].toUpperCase()+format.slice(1),zoomInput=$('#backgroundZoom'+cap),zoomOut=$('#backgroundZoom'+cap+'Out'),drag=null,dragTarget=null;
- c.addEventListener('pointerdown',function(e){if(!state.moveEnabled)return;dragSnapshot=JSON.stringify(state.format);drag={x:e.clientX,y:e.clientY};dragTarget=$('#moveTarget').value;c.setPointerCapture(e.pointerId)});
- c.addEventListener('pointermove',function(e){if(!drag)return;var scale=c.width/c.getBoundingClientRect().width,dx=(e.clientX-drag.x)*scale,dy=(e.clientY-drag.y)*scale;drag={x:e.clientX,y:e.clientY};if(dragTarget==='background'){state.format[format].bgDx+=dx;state.format[format].bgDy+=dy}else{state.format[format].overlayDx+=dx;state.format[format].overlayDy+=dy}drawAll()});
- ['pointerup','pointercancel'].forEach(function(ev){c.addEventListener(ev,function(){commitDrag();drag=null;dragTarget=null})});
+ c.addEventListener('pointerdown',function(e){if(!state.moveEnabled)return;dragSnapshot=JSON.stringify(state.format);drag={x:e.clientX,y:e.clientY,push:{x:0,y:0}};dragTarget=$('#moveTarget').value;state.guides[format]=dragTarget!=='background';c.setPointerCapture(e.pointerId)});
+ c.addEventListener('pointermove',function(e){if(!drag)return;var scale=c.width/c.getBoundingClientRect().width,dx=(e.clientX-drag.x)*scale,dy=(e.clientY-drag.y)*scale;drag={x:e.clientX,y:e.clientY,push:drag.push};if(dragTarget==='background'){state.format[format].bgDx+=dx;state.format[format].bgDy+=dy}else{var gb=visibleBox(format);if(gb){var gm=SAFE_MARGINS[format],gt=templates[format];dx=guideResist(drag.push,'x',gb[0],gb[0]+gb[2],dx,gm.side,gt.w-gm.side);dy=guideResist(drag.push,'y',gb[1],gb[1]+gb[3],dy,gm.top,gt.h-gm.bottom)}state.format[format].overlayDx+=dx;state.format[format].overlayDy+=dy}drawAll()});
+ ['pointerup','pointercancel'].forEach(function(ev){c.addEventListener(ev,function(){commitDrag();drag=null;dragTarget=null;state.guides[format]=false;draw(format)})});
  c.addEventListener('dblclick',function(e){
-  if(!state.moveEnabled)return;var rect=c.getBoundingClientRect(),scaleX=c.width/rect.width,scaleY=c.height/rect.height,px=(e.clientX-rect.left)*scaleX,py=(e.clientY-rect.top)*scaleY,destaqueBox=state.priceMoveOnly?lastProductBox[format]:unionBox(lastProductBox[format],lastBadgeBox[format]),hit=boxHit(destaqueBox,px,py);
+  if(!state.moveEnabled)return;var rect=c.getBoundingClientRect(),scaleX=c.width/rect.width,scaleY=c.height/rect.height,px=(e.clientX-rect.left)*scaleX,py=(e.clientY-rect.top)*scaleY,destaqueBox=state.priceMoveOnly?lastProductBox[format]:visibleBox(format),hit=boxHit(destaqueBox,px,py);
   setMoveMode(hit?'overlay':'background');status(hit?'Box de preço selecionada para mover':'Fundo selecionado para mover',false);
   flashMoveTarget(format,cap,hit,rect,destaqueBox)
  });
