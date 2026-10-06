@@ -128,10 +128,7 @@ function itemImageUrls(item,width){
  if(CATALOG_PHOTO_SLUG==='vonder'&&code){
   if(width===CATALOG_PRODUCT_WIDTH)urls.push(workerProductImageUrl(code));
   if(location.protocol==='file:')urls.push(localProductImageUrl(code,width));else urls.push(productImageUrl(code,width));
-  if(location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))urls.push(localProductImageUrl(code,width));
-  // Miniaturas: o worker não redimensiona (foto inteira), mas é o único caminho público quando o host
-  // não executa PHP (Cloudflare Pages).
-  if(width!==CATALOG_PRODUCT_WIDTH)urls.push(workerProductImageUrl(code))
+  if(location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))urls.push(localProductImageUrl(code,width))
  }
  // app.ovd.com.br resolve para IP privado (10.x) na rede da empresa: carregá-lo direto num site
  // publicado faz o Chrome pedir "Acessar outros dispositivos na sua rede local". Só vale direto em
@@ -140,7 +137,21 @@ function itemImageUrls(item,width){
  if(direct&&!(CATALOG_PHOTO_SLUG==='vonder'&&code&&privateHost))urls.push(direct);
  return urls.filter(function(url,index){return url&&urls.indexOf(url)===index})
 }
-function itemThumbnailUrls(item){return(item&&item.thumbnail)?[item.thumbnail]:itemImageUrls(item,CATALOG_THUMB_WIDTH)}
+// Site publicado: a foto do app.ovd tem de 2 a 15 MB (via worker, 2-4 s cada), então a lista NÃO a carrega; as miniaturas leves
+// vêm em lote de /product-thumbs (applyThumbs). Em file:// e localhost continua a foto direta/auxiliar local.
+function hostedThumbs(){return CATALOG_PHOTO_SLUG==='vonder'&&location.protocol!=='file:'&&!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)}
+function itemThumbnailUrls(item){return(item&&item.thumbnail)?[item.thumbnail]:hostedThumbs()?[]:itemImageUrls(item,CATALOG_THUMB_WIDTH)}
+var thumbCache={},thumbPending={},thumbFailUntil=0;
+function thumbKey(item){var first=catalogCodes(item)[0];return first?normalizeCode(first.code):''}
+function applyThumbs(){$$('#catalogResults [data-thumb]').forEach(function(slot){var url=thumbCache[slot.dataset.thumb];if(!url)return;var img=document.createElement('img');img.alt='';img.decoding='async';img.src=url;img.onerror=function(){img.replaceWith(slot)};slot.replaceWith(img)})}
+function loadThumbs(items){
+ var need=items.map(thumbKey).filter(function(key){return key&&!(key in thumbCache)&&!thumbPending[key]}).slice(0,20);
+ if(!need.length||Date.now()<thumbFailUntil)return;
+ need.forEach(function(key){thumbPending[key]=1});
+ fetch(SITE_API+'/product-thumbs?codes='+need.join(',')).then(function(res){if(!res.ok)throw new Error('thumbs');return res.json()}).then(function(data){
+  need.forEach(function(key){delete thumbPending[key];thumbCache[key]=(data.thumbs&&data.thumbs[key])||''});applyThumbs()
+ }).catch(function(){need.forEach(function(key){delete thumbPending[key]});thumbFailUntil=Date.now()+30000})
+}
 // tenta cada URL da lista em sequência quando a anterior falhar (onerror) - usado pelas
 // miniaturas do catálogo pra cair pra foto original quando a miniatura do proxy não responde
 // (ex.: página aberta por um servidor estático que não executa o PHP do proxy nem tem o
@@ -265,12 +276,16 @@ function chooseCatalogProduct(item){
 // contêm o termo em outro ponto - ex.: buscar "aspirador" mostra "Aspirador de pó..." antes de
 // "Escova para aspirador"
 function productMatchRank(item,q,qc){
- if(q&&normalizeText(item.name||'').indexOf(q)===0)return 0;
+ if(q&&nameKey(item).indexOf(q)===0)return 0;
  if(qc&&catalogCodes(item).some(function(v){return normalizeCode(v.code).indexOf(qc)===0}))return 0;
  if(qc&&item.codeFG&&normalizeCode(item.codeFG).indexOf(qc)===0)return 0;
  return 1;
 }
-function matchingProducts(query){var q=normalizeText(query.trim()),qc=normalizeCode(query);var results=catalog.filter(function(item){var codeHit=qc&&(catalogCodes(item).some(function(v){return normalizeCode(v.code).includes(qc)})||(item.codeFG&&normalizeCode(item.codeFG).includes(qc)));return!q||normalizeText(item.name).includes(q)||codeHit}).sort(function(a,b){return productMatchRank(a,q,qc)-productMatchRank(b,q,qc)});return q?results:results.slice(0,10)}
+// Nome normalizado guardado no item (10 mil itens x normalize() a cada tecla travava a digitação) e última busca memorizada.
+function nameKey(item){return item._n||(item._n=normalizeText(item.name||''))}
+var matchMemo={query:null,catalog:null,results:[]};
+function matchingProducts(query){if(matchMemo.query===query&&matchMemo.catalog===catalog)return matchMemo.results;var results=computeMatchingProducts(query);matchMemo={query:query,catalog:catalog,results:results};return results}
+function computeMatchingProducts(query){var q=normalizeText(query.trim()),qc=normalizeCode(query);var results=catalog.filter(function(item){var codeHit=qc&&(catalogCodes(item).some(function(v){return normalizeCode(v.code).includes(qc)})||(item.codeFG&&normalizeCode(item.codeFG).includes(qc)));return!q||nameKey(item).includes(q)||codeHit}).sort(function(a,b){return productMatchRank(a,q,qc)-productMatchRank(b,q,qc)});return q?results:results.slice(0,10)}
 // Busca no site (só perfil VONDER): complementa o catálogo quando ele não tem o produto. Lista nome+código via worker
 // (/product-search); ao escolher, /product-catalog traz os mesmos campos do catalog.json e a foto vem do app.ovd pelo código.
 var SITE_API='https://ecommerce-fg.vonderferramentas.workers.dev',siteSearch={q:'',status:'idle',items:[]},siteTimer=0,siteToken=0;
@@ -298,15 +313,17 @@ function siteResultsHtml(query,hasLocal){
  if(!siteSearch.items.length)return note('Nenhum produto encontrado no site','Confira o nome ou o código, ou use "Continuar sem catálogo".');
  return'<div class="pe-catalog-group">Encontrados no site</div>'+siteSearch.items.map(function(item,index){return'<button type="button" class="pe-catalog-item" data-site-index="'+index+'" role="option">'+(item.thumb?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(item.code)+'</small></span><span>›</span></button>'}).join('')
 }
+var CATALOG_VISIBLE=40;
 function renderCatalogResults(){
- var query=$('#catalogSearch').value,matches=matchingProducts(query),box=$('#catalogResults');
+ var query=$('#catalogSearch').value,all=matchingProducts(query),matches=all.slice(0,CATALOG_VISIBLE),box=$('#catalogResults');
  catalogFocus=Math.min(catalogFocus,Math.max(0,matches.length-1));
  if(catalogLoading){$('#catalogStatus').textContent='Carregando catálogo…';box.innerHTML='<div class="pe-catalog-empty"><strong>Carregando catálogo…</strong>Buscando os produtos disponíveis.</div>';return}
  $('#catalogStatus').textContent=catalog.length?(query?matches.length+' produto'+(matches.length===1?' encontrado':'s encontrados'):catalog.length.toLocaleString('pt-BR')+' produtos disponíveis'):'Nenhum produto cadastrado nesta marca';
  if(!catalog.length){box.innerHTML='<div class="pe-catalog-empty"><strong>O catálogo ainda está vazio</strong>Cadastre produtos em Configurações no calendário ou continue sem catálogo.</div>';return}
  var site=siteEligible(query)?siteResultsHtml(query,matches.length>0):'';
  if(!matches.length&&!site){box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong><p>Tente buscar apenas uma parte do nome ou os números do código.</p></div>';return}
- box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length;return'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(editorCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('')+site;
+ box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length;return'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb" data-thumb="'+thumbKey(item)+'">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(editorCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('')+(all.length>matches.length?'<div class="pe-catalog-group">Mostrando os '+matches.length+' primeiros de '+all.length+' · refine a busca</div>':'')+site;
+ if(hostedThumbs()){applyThumbs();loadThumbs(matches)}
  $$('#catalogResults [data-catalog-index]').forEach(function(btn){
   var item=matches[Number(btn.dataset.catalogIndex)];
   btn.addEventListener('click',function(){chooseCatalogProduct(item)});
@@ -627,7 +644,7 @@ Object.keys(canvases).forEach(function(format){
 });
 $('#downloadFeed').onclick=function(){download('feed')};$('#downloadStory').onclick=function(){download('story')};$('#downloadBoth').onclick=downloadZip;$$('[data-download]').forEach(function(b){b.onclick=function(){download(b.dataset.download)}});
 $('#catalogSearch').addEventListener('input',function(){catalogFocus=0;siteToken++;siteSearch={q:'',status:'idle',items:[]};renderCatalogResults();scheduleSiteSearch(this.value)});
-$('#catalogSearch').addEventListener('keydown',function(ev){var matches=matchingProducts(this.value);if(ev.key==='ArrowDown'&&matches.length){catalogFocus=Math.min(matches.length-1,catalogFocus+1);renderCatalogResults();ev.preventDefault()}else if(ev.key==='ArrowUp'&&matches.length){catalogFocus=Math.max(0,catalogFocus-1);renderCatalogResults();ev.preventDefault()}else if(ev.key==='Enter'&&matches.length){chooseCatalogProduct(matches[catalogFocus]||matches[0]);ev.preventDefault()}});
+$('#catalogSearch').addEventListener('keydown',function(ev){var matches=matchingProducts(this.value);if(ev.key==='ArrowDown'&&matches.length){catalogFocus=Math.min(Math.min(matches.length,CATALOG_VISIBLE)-1,catalogFocus+1);renderCatalogResults();ev.preventDefault()}else if(ev.key==='ArrowUp'&&matches.length){catalogFocus=Math.max(0,catalogFocus-1);renderCatalogResults();ev.preventDefault()}else if(ev.key==='Enter'&&matches.length){chooseCatalogProduct(matches[catalogFocus]||matches[0]);ev.preventDefault()}});
 $('#manualProduct').addEventListener('click',chooseManualProduct);$('#changeProduct').addEventListener('click',function(){goToStep('choose')});
 if($('#changeBrandLogo'))$('#changeBrandLogo').addEventListener('click',function(){$('#brandLogoSummary').hidden=true;$('#brandLogoPicker').hidden=false;$('#brandLogoSearch').value='';renderBrandLogoResults();setTimeout(function(){$('#brandLogoSearch').focus()},20)});
 if($('#brandLogoSearch'))$('#brandLogoSearch').addEventListener('input',renderBrandLogoResults);

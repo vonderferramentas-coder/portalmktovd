@@ -111,9 +111,21 @@ async function productSearch(request){
  const items=(await upstream.json()).filter(isVonderBrand).slice(0,12).map(product=>({name:product.productName,code:formatCode(String(product.productReference||'').replace(/\D/g,'')),thumb:thumbUrl(product)})).filter(item=>item.code);
  return json(request,{items});
 }
+// Miniaturas (3 KB) de vários produtos do catálogo de uma vez, para a lista do editor de posts: a foto do app.ovd tem de 2 a 15 MB e
+// travava a busca. A consulta é uma só (várias referências em OU). Produto que o site não tem volta sem miniatura.
+// ponytail: sem gêmeo em PHP/PowerShell; no máximo 20 códigos por chamada.
+async function productThumbs(request){
+ const codes=[...new Set((new URL(request.url).searchParams.get('codes')||'').split(',').map(code=>code.replace(/\D/g,'')).filter(code=>code.length>=5&&code.length<=20))].slice(0,20);
+ if(!codes.length)return json(request,{error:'Informe os códigos separados por vírgula.'},400);
+ const upstream=await fetch('https://www.fg.com.br/api/catalog_system/pub/products/search?'+codes.map(code=>'fq=alternateIds_RefId:'+code).join('&')+'&_from=0&_to=19',{headers:{Accept:'application/json'}});
+ if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
+ const thumbs={};
+ for(const product of await upstream.json()){const code=String(product.productReference||'').replace(/\D/g,'');if(codes.includes(code)&&thumbUrl(product))thumbs[code]=thumbUrl(product);}
+ return json(request,{thumbs});
+}
 export default {async fetch(request){
  const path=new URL(request.url).pathname;
  if(path==='/product-image'){if(request.method==='OPTIONS')return imageReply(null,204);try{return await productImage(request);}catch{return imageReply('Não foi possível carregar a imagem do produto.',502,{'Content-Type':'text/plain; charset=utf-8'});}}
  if(request.method==='OPTIONS')return reply(request,null,204);
- try{if(path==='/product-offer')return offer(request);if(path==='/product-link')return await productLink(request);if(path==='/product-catalog')return await productCatalog(request);if(path==='/product-search')return await productSearch(request);return json(request,{error:'Rota não encontrada.'},404);}catch{return json(request,{error:'Não foi possível consultar a oferta.'},502);}
+ try{if(path==='/product-offer')return offer(request);if(path==='/product-link')return await productLink(request);if(path==='/product-catalog')return await productCatalog(request);if(path==='/product-search')return await productSearch(request);if(path==='/product-thumbs')return await productThumbs(request);return json(request,{error:'Rota não encontrada.'},404);}catch{return json(request,{error:'Não foi possível consultar a oferta.'},502);}
 }};
