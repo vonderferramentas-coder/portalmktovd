@@ -52,6 +52,7 @@
           <h2>Qual produto será divulgado?</h2>
           <p id="productChooserDescription">Busque no catálogo ou cole o link da oferta da FG para preencher os dados
             comerciais automaticamente.</p>
+          <label class="pe-check pe-keep-layout" id="keepLayoutField" hidden><input id="keepLayout" type="checkbox" checked> Manter a posição dos elementos da arte anterior</label>
           <div class="pe-fg-offer-import" id="fgOfferProductImport" hidden><label for="ecommerceProductUrl">Link da
               oferta na FG</label>
             <div class="pe-offer-import"><input id="ecommerceProductUrl" type="url" inputmode="url"
@@ -165,7 +166,7 @@
                 hidden><span class="pe-drop-icon">＋</span><strong>Produto recortado <em>opcional</em></strong><small
                 id="productFileName">PNG transparente ou foto em fundo branco</small></label><label class="pe-check"
               id="removeWhiteField"><input id="removeWhite" type="checkbox" checked> Remover fundo branco do
-              produto</label><label class="pe-check" id="removeHolesField" title="Para produtos com alça ou furo em que o fundo branco aparece no meio do produto"><input id="removeHoles" type="checkbox"> Remover também o fundo dentro de alças e furos</label>
+              produto</label><label class="pe-check" id="removeHolesField" title="Para produtos com alça ou furo em que o fundo branco aparece no meio do produto"><input id="removeHoles" type="checkbox"> Remover também o fundo dentro de alças e furos</label><div class="pe-hint" id="holesHint" role="status" hidden><span>Há uma área branca cercada pelo produto. É fundo (alça ou furo)?</span><button type="button" id="holesHintYes">Sim, remover</button><button type="button" id="holesHintNo">Não, é do produto</button></div>
           </section>
           <section class="pe-section">
             <div class="pe-step"><span>3</span>
@@ -215,6 +216,7 @@
               ZIP</button><small class="pe-download-hint">Feed + Story com nomes padronizados</small>
             <div><button id="downloadFeed" type="button">Feed JPG</button><button id="downloadStory" type="button">Story
                 JPG</button></div>
+            <button id="nextProduct" type="button" class="pe-next-product" title="Escolhe outro produto mantendo editoria, logo e posição dos elementos">Outro produto, mesmo layout</button>
           </div>
           <div class="pe-status" id="editorStatus"><span class="pe-status-dot"></span><span>Editor pronto</span></div>
         </aside>
@@ -222,8 +224,13 @@
           <div class="pe-stage-toolbar">
             <div><strong>Pré-visualização</strong><small id="stageMoveHint">Arraste direto sobre a arte para
                 reposicionar</small></div>
-            <div class="pe-segmented" id="moveModeControls"><button class="is-active" data-move-mode="background"
-                type="button">Mover fundo</button><button data-move-mode="overlay" type="button">Mover destaque</button>
+            <div class="pe-toolbar-actions">
+              <div class="pe-segmented" id="positionControls"><button id="undoMove" type="button" disabled
+                  title="Desfaz o último movimento (Ctrl+Z)">Desfazer</button><button id="resetPositions" type="button"
+                  title="Volta fundo e destaque para a posição inicial">Restaurar posições</button></div>
+              <div class="pe-segmented" id="moveModeControls"><button class="is-active" data-move-mode="background"
+                  type="button">Mover fundo</button><button data-move-mode="overlay" type="button">Mover destaque</button>
+              </div>
             </div>
           </div>
           <div class="pe-previews">
@@ -275,12 +282,12 @@
   <script src="sync-backend.js"></script>
   <script src="portal-shell.js"></script>
   <script src="usage-analytics.js"></script>
-  <script src="post-editor-assets.js"></script>
+  <script>/* Assets embutidos em base64 (2,7 MB): só sob file://, onde imagem por caminho contamina o canvas. Em http(s) os mesmos arquivos vêm por caminho (cache, em paralelo, sem bloquear a página). */if(location.protocol==="file:")document.write('<script src="post-editor-assets.js"><\/script>')</script>
   <script src="post-editor-assets/brands-manifest.js"></script>
   <script src="post-editor-assets/brands-js/Osten_fundo_laranja.js"></script>
   <script src="post-editor-assets/brands-js/Dismatal.js"></script>
   <script src="post-editor-assets/brands-js/DWT SLOGAN B.js"></script>
-  <script src="post-editor-assets/fg-lancamentos-assets.js"></script>
+  <script>if(location.protocol==="file:")document.write('<script src="post-editor-assets/fg-lancamentos-assets.js"><\/script>')</script>
   <script src="post-editor-fg-lancamentos.js"></script>
   <script src="post-editor-fg-ecommerce.js"></script>
   <script src="post-editor-osten-datas-comemorativas.js"></script>

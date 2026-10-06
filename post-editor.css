@@ -110,3 +110,14 @@
 .pe-fg-offer-import{padding:16px;border-color:var(--accent-ink);background:linear-gradient(135deg,var(--accent-weak),var(--surface-muted));box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}.pe-offer-import{align-items:center}.pe-offer-import input{width:100%;min-width:0;height:42px;border:1px solid var(--border);border-radius:9px;background:var(--surface-muted);color:var(--text);font:13px var(--font-ui);padding:0 12px;outline:none}.pe-offer-import input::placeholder{color:var(--muted)}.pe-offer-import input:focus{border-color:var(--accent-ink);box-shadow:0 0 0 3px var(--accent-weak)}.pe-offer-import button{min-height:42px;background:var(--accent-weak)}.pe-fg-offer-import small{color:var(--text-faint)}
 
 #layoutModeField[hidden],#moveTargetField[hidden],#moveModeControls[hidden]{display:none!important}
+
+.pe-toolbar-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.pe-segmented button:disabled{opacity:.4;cursor:default}
+.pe-next-product{width:100%;margin-top:8px;padding:9px 12px;border:1px dashed var(--border-strong);border-radius:10px;background:transparent;color:var(--text);font:700 12px var(--font-ui);cursor:pointer}
+.pe-next-product:hover{border-color:var(--accent-ink);background:var(--accent-weak)}
+.pe-keep-layout{margin:0 0 12px}
+.pe-hint{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0 0;padding:10px 12px;border:1px solid var(--accent-hover);border-radius:10px;background:var(--accent-weak);font-size:12px;line-height:1.4}
+.pe-hint[hidden]{display:none}
+.pe-hint span{flex:1 1 100%}
+.pe-hint button{padding:6px 12px;border:1px solid var(--border-strong);border-radius:999px;background:var(--card);color:var(--text);font:700 11px var(--font-ui);cursor:pointer}
+.pe-hint button#holesHintYes{background:var(--accent);border-color:var(--accent-hover);color:var(--on-accent)}

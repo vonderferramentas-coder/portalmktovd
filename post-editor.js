@@ -193,14 +193,14 @@ function setFlow(mode){
  $('#editorIntro').textContent=mode==='editoria'?'Primeiro, escolha qual editoria você vai postar.':mode==='choose'?'Agora, escolha qual produto será usado na arte.':'Dados carregados. Revise a arte e ajuste o que precisar.';
  var cur=FLOW_STEP_ORDER[mode];
  $$('[data-flow-step]').forEach(function(el){var own=FLOW_STEP_ORDER[el.dataset.flowStep];el.classList.toggle('is-active',own===cur);el.classList.toggle('is-complete',own<cur);el.classList.toggle('is-clickable',own!==cur&&own<=maxFlowOrder)});
- if(mode==='choose'){renderCatalogResults();scheduleSiteSearch($('#catalogSearch').value);setTimeout(function(){$('#catalogSearch').focus()},20)}
+ if(mode==='choose'){var moved=['feed','story'].some(function(f){var p=state.format[f];return p&&(p.overlayDx||p.overlayDy)});$('#keepLayoutField').hidden=!(maxFlowOrder>=2&&moved);renderCatalogResults();scheduleSiteSearch($('#catalogSearch').value);setTimeout(function(){$('#catalogSearch').focus()},20)}
 }
 // navegação entre etapas iniciada pelo usuário (clique nos passos do topo ou nos botões
 // "Trocar") - sair da etapa "Editar e baixar" pede confirmação, porque a composição em tela
 // nunca é salva automaticamente; indo pra frente (ou entre editoria/produto) não há nada a perder
 function goToStep(mode){
  if(mode===currentFlowMode)return;
- if(currentFlowMode==='edit'){pendingLeaveEditTarget=mode;$('#confirmLeaveEdit').hidden=false;return}
+ if(currentFlowMode==='edit'&&editDirty){pendingLeaveEditTarget=mode;$('#confirmLeaveEdit').hidden=false;return}
  setFlow(mode)
 }
 function closeConfirmLeaveEdit(){$('#confirmLeaveEdit').hidden=true;pendingLeaveEditTarget=null}
@@ -268,10 +268,16 @@ function showEditor(item,manual){updateSelectedSummary(item||{},!!manual);setFlo
 function chooseManualProduct(){
  selectedProduct=null;$('#productName').value='';$('#productCode').value='';$('#productCode2').value='';$('#codeCount').value='1';selectBrandLogo('VONDER');state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;setProductFilePreview('','PNG transparente ou foto em fundo branco');$('#backgroundFileName').textContent='Clique ou arraste uma imagem';syncCodeFields();showEditor({},true);drawAll();status('Preencha os dados e envie as imagens',false)
 }
+// Produto novo: fundo volta ao centro; o destaque só volta se a pessoa não pediu para manter a posição da arte anterior.
+function resetFormatForNewProduct(){
+ var keep=!$('#keepLayoutField').hidden&&$('#keepLayout').checked;
+ ['feed','story'].forEach(function(f){var p=state.format[f]||{};state.format[f]={bgDx:0,bgDy:0,overlayDx:keep?(p.overlayDx||0):0,overlayDy:keep?(p.overlayDy||0):0}});
+ undoStack=[];updateUndoButton();editDirty=false
+}
 function chooseCatalogProduct(item){
  rememberProduct(item);selectedProduct=item;var codes=editorCodes(item);$('#productName').value=editorNameFor(item);$('#productCode').value=codes[0]?codes[0].code:'';$('#productCode2').value=codes[1]?codes[1].code:'';$('#codeVariant1').value=(codes[0]&&codes[0].label)||'110 V~';$('#codeVariant2').value=(codes[1]&&codes[1].label)||'220 V~';$('#codeCount').value=codes.length>1?'2':'1';syncCodeFields();
  selectBrandLogo(normalizeBrandVariant(item.brandVariant)||(/vonder\s*plus/i.test(item.name||'')?'Vonder_plus':'VONDER'));
- state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};var thumbUrls=itemThumbnailUrls(item);setProductFilePreview(thumbUrls[0],'Carregada automaticamente · clique para alterar',thumbUrls.slice(1));showEditor(item,false);drawAll();
+ state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;resetFormatForNewProduct();var thumbUrls=itemThumbnailUrls(item);setProductFilePreview(thumbUrls[0],'Carregada automaticamente · clique para alterar',thumbUrls.slice(1));showEditor(item,false);drawAll();
  var bgUrl=itemBackgroundUrl(item);if(bgUrl){$('#backgroundFileName').textContent='Foto de aplicação do catálogo';loadImage(bgUrl).then(function(im){if(selectedProduct!==item)return;
   if(!im.exportSafe){$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Essa foto de aplicação não pode ser usada automaticamente (o servidor de origem não libera para exportação) - envie manualmente abaixo',false);return}
   state.background=trimBackgroundMargins(im);state.bgZoom.feed=1;state.bgZoom.story=1;$('#backgroundZoomFeed').value='100';$('#backgroundZoomStory').value='100';$('#backgroundZoomFeedOut').value='100%';$('#backgroundZoomStoryOut').value='100%';if(item.preferredLayout){state.autoLayout=item.preferredLayout;drawAll();status('Produto e foto de aplicação carregados',false)}else analyze()
@@ -615,7 +621,7 @@ function removeWhite(im,holes){
  // A primeira passagem alcança somente o fundo ligado às bordas. Esta segunda encontra
  // ilhas internas da mesma cor, como vãos de alças, cabos e estruturas vazadas.
  // Os limites preservam letras claras pequenas e grandes áreas de produtos brancos.
- var innerSeen=new Uint8Array(w*h),minArea=Math.max(24,Math.round(w*h*.00025)),maxArea=Math.round(w*h*.08);
+ var skippedHoles=0,innerSeen=new Uint8Array(w*h),minArea=Math.max(24,Math.round(w*h*.00025)),maxArea=Math.round(w*h*.08);
  for(var start=0;start<w*h;start++){
   if(innerSeen[start])continue;innerSeen[start]=1;if(d[start*4+3]===0||!isBackground(start,tol,62))continue;
   head=0;tail=0;queue[tail++]=start;var members=[],minX=w,maxX=0,minY=h,maxY=0,edgeLum=0,edgeCount=0;
@@ -623,12 +629,42 @@ function removeWhite(im,holes){
    var neighbors=[qx?q-1:-1,qx<w-1?q+1:-1,qy?q-w:-1,qy<h-1?q+w:-1];for(var n=0;n<4;n++){var next=neighbors[n];if(next<0||innerSeen[next])continue;innerSeen[next]=1;if(isBackground(next,tol,62))queue[tail++]=next;else if(d[next*4+3]>0){edgeLum+=(d[next*4]+d[next*4+1]+d[next*4+2])/3;edgeCount++}}
   }
   // Tolerância justa: só vira vão (alça, cabo) se cercado de região escura; branco cercado de claro é parte do produto (copos, bandeja).
-  if(members.length>=minArea&&members.length<=maxArea&&(maxX-minX)>=3&&(maxY-minY)>=3&&(!tight||holes||(edgeCount&&edgeLum/edgeCount<150)))for(var m=0;m<members.length;m++)d[members[m]*4+3]=0
+  if(members.length>=minArea&&members.length<=maxArea&&(maxX-minX)>=3&&(maxY-minY)>=3){if(!tight||holes||(edgeCount&&edgeLum/edgeCount<150))for(var m=0;m<members.length;m++)d[members[m]*4+3]=0;else skippedHoles++}
  }
- x.putImageData(data,0,0);return c
+ x.putImageData(data,0,0);c.skippedHoles=skippedHoles;return c
 }
+// Dica quando o recorte manteve uma área branca cercada pelo produto (pode ser alça/furo ou parte do produto: a pessoa decide).
+var holesDismissedFor=null;
+function updateHolesHint(){
+ var hint=$('#holesHint');if(!hint)return;
+ var skipped=(state.productDrawable&&state.productDrawable.skippedHoles)||0;
+ hint.hidden=!(skipped>0&&!$('#removeHoles').checked&&holesDismissedFor!==state.product)
+}
+$('#holesHintYes').addEventListener('click',function(){$('#removeHoles').checked=true;updateProduct()});
+$('#holesHintNo').addEventListener('click',function(){holesDismissedFor=state.product;updateHolesHint()});
+// Desfazer / restaurar posições (arraste de fundo e destaque). Pilha de até 30 estados do state.format.
+var undoStack=[];
+function updateUndoButton(){var b=$('#undoMove');if(b)b.disabled=!undoStack.length}
+function pushUndo(){undoStack.push(JSON.stringify(state.format));if(undoStack.length>30)undoStack.shift();updateUndoButton()}
+var dragSnapshot=null;
+function commitDrag(){if(dragSnapshot!==null&&JSON.stringify(state.format)!==dragSnapshot){undoStack.push(dragSnapshot);if(undoStack.length>30)undoStack.shift();updateUndoButton();editDirty=true}dragSnapshot=null}
+function undoMove(){if(!undoStack.length)return;state.format=JSON.parse(undoStack.pop());updateUndoButton();drawAll();status('Movimento desfeito',false)}
+function resetPositions(){
+ var empty=function(){return{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0}};
+ pushUndo();state.format.feed=empty();state.format.story=empty();drawAll();status('Posições restauradas',false)
+}
+$('#undoMove').addEventListener('click',undoMove);$('#resetPositions').addEventListener('click',resetPositions);
+document.addEventListener('keydown',function(ev){
+ if(!(ev.ctrlKey||ev.metaKey)||ev.key.toLowerCase()!=='z'||ev.shiftKey||currentFlowMode!=='edit')return;
+ var tag=(ev.target&&ev.target.tagName||'').toLowerCase();if(tag==='input'||tag==='textarea'||tag==='select'||(ev.target&&ev.target.isContentEditable))return;
+ ev.preventDefault();undoMove()
+});
+// Sair da etapa de edição só pede confirmação se algo mudou desde a última exportação (a composição não é salva sozinha).
+var editDirty=false;
+function markDirty(ev){if(ev&&ev.type==='click'&&ev.target.closest&&ev.target.closest('[data-download],#downloadBoth,#downloadFeed,#downloadStory,#nextProduct,#changeProduct,#changeEditoriaEdit'))return;editDirty=true}
+['input','change','click'].forEach(function(type){$('#editorWorkspace').addEventListener(type,markDirty,true)});
 function updateProduct(){
- if(!state.product){state.productDrawable=state.productHasCircle?state.productDrawable:null;drawAll();return}status('Preparando o produto…',true);setTimeout(function(){try{state.productDrawable=$('#removeWhite').checked?removeWhite(state.product,$('#removeHoles').checked):state.product;status('Produto pronto',false)}catch(e){state.productDrawable=state.product;status('Produto carregado sem recorte automático',false)}state.productHasCircle=false;drawAll()},30)
+ if(!state.product){state.productDrawable=state.productHasCircle?state.productDrawable:null;var holesHintEl=$('#holesHint');if(holesHintEl)holesHintEl.hidden=true;drawAll();return}status('Preparando o produto…',true);setTimeout(function(){try{state.productDrawable=$('#removeWhite').checked?removeWhite(state.product,$('#removeHoles').checked):state.product;updateHolesHint();status('Produto pronto',false)}catch(e){state.productDrawable=state.product;status('Produto carregado sem recorte automático',false)}state.productHasCircle=false;drawAll()},30)
 }
 function setupDrop(dropSel,inputSel,nameSel,handler){
  var drop=$(dropSel),input=$(inputSel),name=$(nameSel);input.addEventListener('change',function(){if(input.files[0])handler(input.files[0],name)});['dragenter','dragover'].forEach(function(e){drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.add('is-dragging')})});['dragleave','drop'].forEach(function(e){drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.remove('is-dragging')})});drop.addEventListener('drop',function(ev){var f=ev.dataTransfer.files[0];if(f)handler(f,name)})
@@ -645,13 +681,13 @@ function exportBaseName(){var title=splitName($('#productName').value||'produto'
 function exportFileName(format){return exportBaseName()+'_'+format.toUpperCase()+'.jpg'}
 function canvasBlob(format){return new Promise(function(resolve,reject){canvases[format].toBlob(function(blob){if(blob)resolve(blob);else reject(new Error('Falha ao gerar '+format))},'image/jpeg',.94)})}
 function triggerBlob(blob,name){var a=document.createElement('a'),u=URL.createObjectURL(blob);a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},1200)}
-function download(format){var name=exportFileName(format);status('Gerando '+name+'…',true);canvasBlob(format).then(function(blob){triggerBlob(blob,name);window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+exportBaseName()});status(name+' baixado',false)}).catch(function(){status('Não foi possível gerar '+name,false)})}
+function download(format){var name=exportFileName(format);status('Gerando '+name+'…',true);canvasBlob(format).then(function(blob){triggerBlob(blob,name);window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+exportBaseName()});editDirty=false;status(name+' baixado',false)}).catch(function(){status('Não foi possível gerar '+name,false)})}
 var ZIP_CRC_TABLE=(function(){var table=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=(c&1)?0xedb88320^(c>>>1):c>>>1;table[n]=c>>>0}return table})();
 function zipCrc(bytes){var crc=0xffffffff;for(var i=0;i<bytes.length;i++)crc=ZIP_CRC_TABLE[(crc^bytes[i])&255]^(crc>>>8);return(crc^0xffffffff)>>>0}
 function zipHeader(size){var bytes=new Uint8Array(size),view=new DataView(bytes.buffer);return{bytes:bytes,u16:function(offset,value){view.setUint16(offset,value,true)},u32:function(offset,value){view.setUint32(offset,value>>>0,true)}}}
 function zipDate(){var d=new Date(),year=Math.max(1980,d.getFullYear());return{time:(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1),date:((year-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate()}}
 function makeZip(files){var encoder=new TextEncoder(),stamp=zipDate(),locals=[],centrals=[],offset=0;files.forEach(function(file){var name=encoder.encode(file.name),data=file.data,crc=zipCrc(data),local=zipHeader(30);local.u32(0,0x04034b50);local.u16(4,20);local.u16(6,0x800);local.u16(8,0);local.u16(10,stamp.time);local.u16(12,stamp.date);local.u32(14,crc);local.u32(18,data.length);local.u32(22,data.length);local.u16(26,name.length);local.u16(28,0);locals.push(local.bytes,name,data);var central=zipHeader(46);central.u32(0,0x02014b50);central.u16(4,20);central.u16(6,20);central.u16(8,0x800);central.u16(10,0);central.u16(12,stamp.time);central.u16(14,stamp.date);central.u32(16,crc);central.u32(20,data.length);central.u32(24,data.length);central.u16(28,name.length);central.u16(30,0);central.u16(32,0);central.u16(34,0);central.u16(36,0);central.u32(38,0);central.u32(42,offset);centrals.push(central.bytes,name);offset+=30+name.length+data.length});var centralSize=centrals.reduce(function(total,part){return total+part.length},0),end=zipHeader(22);end.u32(0,0x06054b50);end.u16(4,0);end.u16(6,0);end.u16(8,files.length);end.u16(10,files.length);end.u32(12,centralSize);end.u32(16,offset);end.u16(20,0);return new Blob(locals.concat(centrals,[end.bytes]),{type:'application/zip'})}
-function downloadZip(){var base=exportBaseName();status('Montando pacote ZIP…',true);Promise.all([canvasBlob('feed'),canvasBlob('story')]).then(function(blobs){return Promise.all(blobs.map(function(blob){return blob.arrayBuffer()}))}).then(function(buffers){var zip=makeZip([{name:base+'_FEED.jpg',data:new Uint8Array(buffers[0])},{name:base+'_STORY.jpg',data:new Uint8Array(buffers[1])}]);triggerBlob(zip,base+'_FEED_STORY.zip');window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+base});status('Pacote ZIP baixado',false)}).catch(function(){status('Não foi possível gerar o pacote ZIP',false)})}
+function downloadZip(){var base=exportBaseName();status('Montando pacote ZIP…',true);Promise.all([canvasBlob('feed'),canvasBlob('story')]).then(function(blobs){return Promise.all(blobs.map(function(blob){return blob.arrayBuffer()}))}).then(function(buffers){var zip=makeZip([{name:base+'_FEED.jpg',data:new Uint8Array(buffers[0])},{name:base+'_STORY.jpg',data:new Uint8Array(buffers[1])}]);triggerBlob(zip,base+'_FEED_STORY.zip');window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+base});editDirty=false;status('Pacote ZIP baixado',false)}).catch(function(){status('Não foi possível gerar o pacote ZIP',false)})}
 setupDrop('#backgroundDrop','#backgroundFile','#backgroundFileName',function(file,name){name.textContent=file.name;status('Analisando a foto…',true);fileImage(file).then(function(im){state.background=im;state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};analyze()}).catch(function(){status('Não foi possível abrir a foto',false)})});
 setupDrop('#productDrop','#productFile','#productFileName',function(file,name){setProductFilePreviewFromFile(file);fileImage(file).then(function(im){state.product=im;updateProduct()}).catch(function(){status('Não foi possível abrir o produto',false)})});
 ['#productName','#productCode','#productCode2','#codeVariant1','#codeVariant2','#eventDay','#eventMonth','#eventPrefix','#ecommerceDiscount','#ecommerceCta','#ecommerceValidity'].forEach(function(s){var el=$(s);if(el)el.addEventListener('input',drawAll)});
@@ -675,9 +711,9 @@ function flashMoveTarget(format,cap,hit,canvasRect,box){
 $$('[data-move-mode]').forEach(function(b){b.addEventListener('click',function(){setMoveMode(b.dataset.moveMode)})});$('#moveTarget').addEventListener('change',function(){setMoveMode($('#moveTarget').value)});
 Object.keys(canvases).forEach(function(format){
  var c=canvases[format],cap=format[0].toUpperCase()+format.slice(1),zoomInput=$('#backgroundZoom'+cap),zoomOut=$('#backgroundZoom'+cap+'Out'),drag=null,dragTarget=null;
- c.addEventListener('pointerdown',function(e){if(!state.moveEnabled)return;drag={x:e.clientX,y:e.clientY};dragTarget=$('#moveTarget').value;c.setPointerCapture(e.pointerId)});
+ c.addEventListener('pointerdown',function(e){if(!state.moveEnabled)return;dragSnapshot=JSON.stringify(state.format);drag={x:e.clientX,y:e.clientY};dragTarget=$('#moveTarget').value;c.setPointerCapture(e.pointerId)});
  c.addEventListener('pointermove',function(e){if(!drag)return;var scale=c.width/c.getBoundingClientRect().width,dx=(e.clientX-drag.x)*scale,dy=(e.clientY-drag.y)*scale;drag={x:e.clientX,y:e.clientY};if(dragTarget==='background'){state.format[format].bgDx+=dx;state.format[format].bgDy+=dy}else{state.format[format].overlayDx+=dx;state.format[format].overlayDy+=dy}drawAll()});
- ['pointerup','pointercancel'].forEach(function(ev){c.addEventListener(ev,function(){drag=null;dragTarget=null})});
+ ['pointerup','pointercancel'].forEach(function(ev){c.addEventListener(ev,function(){commitDrag();drag=null;dragTarget=null})});
  c.addEventListener('dblclick',function(e){
   if(!state.moveEnabled)return;var rect=c.getBoundingClientRect(),scaleX=c.width/rect.width,scaleY=c.height/rect.height,px=(e.clientX-rect.left)*scaleX,py=(e.clientY-rect.top)*scaleY,destaqueBox=state.priceMoveOnly?lastProductBox[format]:unionBox(lastProductBox[format],lastBadgeBox[format]),hit=boxHit(destaqueBox,px,py);
   setMoveMode(hit?'overlay':'background');status(hit?'Box de preço selecionada para mover':'Fundo selecionado para mover',false);
@@ -696,7 +732,7 @@ $('#catalogSearch').addEventListener('keydown',function(ev){
  if(ev.key==='ArrowDown'||ev.key==='ArrowUp'){catalogFocus=ev.key==='ArrowDown'?Math.min(total-1,catalogFocus+1):Math.max(0,catalogFocus-1);renderCatalogResults();var focused=$('#catalogResults .is-focused');if(focused)focused.scrollIntoView({block:'nearest'});ev.preventDefault()}
  else if(ev.key==='Enter'){if(catalogFocus<n)chooseCatalogProduct(rl.local[catalogFocus]||rl.local[0]);else{var idx=catalogFocus-n,btn=$('#catalogResults [data-site-index="'+idx+'"]');if(btn)openSiteProduct(sites[idx].code,btn)}ev.preventDefault()}
 });
-$('#manualProduct').addEventListener('click',chooseManualProduct);$('#changeProduct').addEventListener('click',function(){goToStep('choose')});
+$('#manualProduct').addEventListener('click',chooseManualProduct);$('#changeProduct').addEventListener('click',function(){goToStep('choose')});$('#nextProduct').addEventListener('click',function(){goToStep('choose')});
 if($('#changeBrandLogo'))$('#changeBrandLogo').addEventListener('click',function(){$('#brandLogoSummary').hidden=true;$('#brandLogoPicker').hidden=false;$('#brandLogoSearch').value='';renderBrandLogoResults();setTimeout(function(){$('#brandLogoSearch').focus()},20)});
 if($('#brandLogoSearch'))$('#brandLogoSearch').addEventListener('input',renderBrandLogoResults);
 $('#changeEditoriaChoose').addEventListener('click',function(){goToStep('editoria')});$('#changeEditoriaEdit').addEventListener('click',function(){goToStep('editoria')});
