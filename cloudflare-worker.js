@@ -87,7 +87,8 @@ async function productCatalog(request){
  const rows=[...String(product.description||'').matchAll(/<th[^>]*>([\s\S]*?)<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>[plainText(m[1]),plainText(m[2])]);
  const take=pattern=>(rows.find(([label])=>pattern.test(label))||['',''])[1];
  const named=/^(descri[cç][aã]o completa|refer[eê]ncia|conte[uú]do da embalagem|aplica[cç][oõ]es|destaques)/i;
- const ref=(((product.items||[])[0]||{}).referenceId||[]).find(r=>r.Key==='RefId'),digits=String((ref&&ref.Value)||code).replace(/\D/g,'');
+ // O código buscado pode ser de uma variação (SKU) do produto; vale o que foi pedido, não o do 1º SKU.
+ const skuMatch=(product.items||[]).some(item=>(item.referenceId||[]).some(ref=>String(ref.Value||'').replace(/\D/g,'')===code)),ref=(((product.items||[])[0]||{}).referenceId||[]).find(r=>r.Key==='RefId'),digits=skuMatch?code:String((ref&&ref.Value)||code).replace(/\D/g,'');
  return json(request,{
   name:take(/^descri[cç][aã]o completa/i)||product.productName,
   code:formatCode(digits),
@@ -98,7 +99,7 @@ async function productCatalog(request){
 }
 // Miniatura da lista: a CDN pública da VTEX redimensiona pela URL (/arquivos/ids/ID-120-120/arquivo, ~3 KB). A foto oficial
 // do app.ovd tem vários MB e só é carregada depois que o usuário escolhe o produto.
-const thumbUrl=product=>{const image=(((product.items||[])[0]||{}).images||[])[0],match=image&&/^(https:\/\/[\w.-]+\.vteximg\.com\.br)\/arquivos\/ids\/(\d+)\/([^?]+)/.exec(image.imageUrl||'');return match?match[1]+'/arquivos/ids/'+match[2]+'-120-120/'+match[3]:'';};
+const thumbUrl=(product,item=(product.items||[])[0])=>{const image=((item||{}).images||[])[0],match=image&&/^(https:\/\/[\w.-]+\.vteximg\.com\.br)\/arquivos\/ids\/(\d+)\/([^?]+)/.exec(image.imageUrl||'');return match?match[1]+'/arquivos/ids/'+match[2]+'-120-120/'+match[3]:'';};
 // Busca por nome (ou código) de produto VONDER no site FG, para a lista "Encontrados no site" do editor de posts. Devolve só
 // nome e código (a foto e os demais dados vêm depois, em /product-catalog e /product-image, quando o usuário escolhe um item).
 // ponytail: sem gêmeo em PHP/PowerShell; no máximo 12 itens, sem paginação.
@@ -120,7 +121,8 @@ async function productThumbs(request){
  const upstream=await fetch('https://www.fg.com.br/api/catalog_system/pub/products/search?'+codes.map(code=>'fq=alternateIds_RefId:'+code).join('&')+'&_from=0&_to=19',{headers:{Accept:'application/json'}});
  if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
  const thumbs={};
- for(const product of await upstream.json()){const code=String(product.productReference||'').replace(/\D/g,'');if(codes.includes(code)&&thumbUrl(product))thumbs[code]=thumbUrl(product);}
+ // Variações (127 V / 220 V...) são SKUs do mesmo produto: cada uma tem a sua referência e as suas fotos.
+ for(const product of await upstream.json())for(const item of product.items||[])for(const ref of item.referenceId||[]){const code=String(ref.Value||'').replace(/\D/g,'');if(codes.includes(code)&&thumbUrl(product,item))thumbs[code]=thumbUrl(product,item);}
  return json(request,{thumbs});
 }
 export default {async fetch(request){

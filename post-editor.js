@@ -149,7 +149,7 @@ function loadThumbs(items){
  if(!need.length||Date.now()<thumbFailUntil)return;
  need.forEach(function(key){thumbPending[key]=1});
  fetch(SITE_API+'/product-thumbs?codes='+need.join(',')).then(function(res){if(!res.ok)throw new Error('thumbs');return res.json()}).then(function(data){
-  need.forEach(function(key){delete thumbPending[key];thumbCache[key]=(data.thumbs&&data.thumbs[key])||''});applyThumbs()
+  need.forEach(function(key){delete thumbPending[key];thumbCache[key]=(data.thumbs&&data.thumbs[key])||''});applyThumbs();loadThumbs(items)
  }).catch(function(){need.forEach(function(key){delete thumbPending[key]});thumbFailUntil=Date.now()+30000})
 }
 // tenta cada URL da lista em sequência quando a anterior falhar (onerror) - usado pelas
