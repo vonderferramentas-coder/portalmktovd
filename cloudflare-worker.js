@@ -96,6 +96,9 @@ async function productCatalog(request){
   qualificacaoTecnica:rows.filter(([label,value])=>value&&!named.test(label)).map(([label,value])=>label+': '+value).join(' | '),
  });
 }
+// Miniatura da lista: a CDN pública da VTEX redimensiona pela URL (/arquivos/ids/ID-120-120/arquivo, ~3 KB). A foto oficial
+// do app.ovd tem vários MB e só é carregada depois que o usuário escolhe o produto.
+const thumbUrl=product=>{const image=(((product.items||[])[0]||{}).images||[])[0],match=image&&/^(https:\/\/[\w.-]+\.vteximg\.com\.br)\/arquivos\/ids\/(\d+)\/([^?]+)/.exec(image.imageUrl||'');return match?match[1]+'/arquivos/ids/'+match[2]+'-120-120/'+match[3]:'';};
 // Busca por nome (ou código) de produto VONDER no site FG, para a lista "Encontrados no site" do editor de posts. Devolve só
 // nome e código (a foto e os demais dados vêm depois, em /product-catalog e /product-image, quando o usuário escolhe um item).
 // ponytail: sem gêmeo em PHP/PowerShell; no máximo 12 itens, sem paginação.
@@ -105,7 +108,7 @@ async function productSearch(request){
  const query=byCode?'?fq=alternateIds_RefId:'+digits:'?ft='+encodeURIComponent(q)+'&'+VONDER_BRAND_FQ+'&_from=0&_to=14';
  const upstream=await fetch('https://www.fg.com.br/api/catalog_system/pub/products/search'+query,{headers:{Accept:'application/json'}});
  if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
- const items=(await upstream.json()).filter(isVonderBrand).slice(0,12).map(product=>({name:product.productName,code:formatCode(String(product.productReference||'').replace(/\D/g,''))})).filter(item=>item.code);
+ const items=(await upstream.json()).filter(isVonderBrand).slice(0,12).map(product=>({name:product.productName,code:formatCode(String(product.productReference||'').replace(/\D/g,'')),thumb:thumbUrl(product)})).filter(item=>item.code);
  return json(request,{items});
 }
 export default {async fetch(request){

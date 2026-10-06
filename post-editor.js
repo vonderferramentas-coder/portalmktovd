@@ -296,7 +296,7 @@ function siteResultsHtml(query,hasLocal){
  if(state==='loading')return note('Buscando no site…','');
  if(state==='error')return note('Não foi possível consultar o site agora','Tente novamente ou use "Continuar sem catálogo".','<button type="button" class="pe-catalog-site" id="siteRetry">Tentar novamente</button>');
  if(!siteSearch.items.length)return note('Nenhum produto encontrado no site','Confira o nome ou o código, ou use "Continuar sem catálogo".');
- return'<div class="pe-catalog-group">Encontrados no site</div>'+siteSearch.items.map(function(item,index){return'<button type="button" class="pe-catalog-item" data-site-index="'+index+'" role="option"><span class="pe-selected-thumb">＋</span><span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(item.code)+'</small></span><span>›</span></button>'}).join('')
+ return'<div class="pe-catalog-group">Encontrados no site</div>'+siteSearch.items.map(function(item,index){return'<button type="button" class="pe-catalog-item" data-site-index="'+index+'" role="option">'+(item.thumb?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(item.code)+'</small></span><span>›</span></button>'}).join('')
 }
 function renderCatalogResults(){
  var query=$('#catalogSearch').value,matches=matchingProducts(query),box=$('#catalogResults');
@@ -312,7 +312,7 @@ function renderCatalogResults(){
   btn.addEventListener('click',function(){chooseCatalogProduct(item)});
   var img=btn.querySelector('img');if(img)setImgWithFallback(img,itemThumbnailUrls(item))
  });
- $$('#catalogResults [data-site-index]').forEach(function(btn){btn.addEventListener('click',function(){openSiteProduct(siteSearch.items[Number(btn.dataset.siteIndex)].code,btn)})});
+ $$('#catalogResults [data-site-index]').forEach(function(btn){var item=siteSearch.items[Number(btn.dataset.siteIndex)],img=btn.querySelector('img');btn.addEventListener('click',function(){openSiteProduct(item.code,btn)});if(img)setImgWithFallback(img,[item.thumb],function(){var ph=document.createElement('span');ph.className='pe-selected-thumb';ph.textContent='＋';img.replaceWith(ph)})});
  var more=$('#siteMore'),retry=$('#siteRetry');if(more)more.addEventListener('click',function(){runSiteSearch(query)});if(retry)retry.addEventListener('click',function(){runSiteSearch(query)})
 }
 // carrega o catálogo desta marca via CatalogProvider (ver catalog-provider.js) - nunca lê
