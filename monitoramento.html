@@ -17,7 +17,8 @@
   <script type="module" src="auth-guard.js"></script>
   <style>
     .mon-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 20px }
-    .mon-stat { padding: 16px 18px }
+    .mon-stat { padding: 16px 18px; cursor: pointer }
+    .mon-stat.is-active { outline: 2px solid var(--accent, currentColor); outline-offset: -2px }
     .mon-stat strong { display: block; font-size: 26px; line-height: 1.1; color: var(--text) }
     .mon-stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 700 }
 
@@ -81,6 +82,12 @@
     .mon-delta-hours { font-size: 10px; color: var(--muted); font-weight: 600 }
     .mon-stale { border-color: var(--danger); color: var(--danger); margin-bottom: 20px; padding: 16px 18px; font-size: 13px }
     #monTableWrap select.mon-status { width: auto; height: 34px; padding: 0 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: 700 12px inherit; cursor: pointer }
+    #monTableWrap select.mon-status[data-status=""] { background: #fef9c3; border-color: #eab308; color: #854d0e }
+    #monTableWrap select.mon-status[data-status="acompanhando"] { background: #dbeafe; border-color: #3b82f6; color: #1e40af }
+    #monTableWrap select.mon-status[data-status="crise"] { background: #fee2e2; border-color: #ef4444; color: #991b1b }
+    #monTableWrap select.mon-status[data-status="analisado"] { background: #dcfce7; border-color: #22c55e; color: #166534 }
+    #monTableWrap select.mon-status[data-status="ignorado"] { background: #f3f4f6; border-color: #d1d5db; color: #6b7280 }
+    #monTableWrap select.mon-status option { background: var(--card); color: var(--text) }
     #monTableWrap select.mon-status:disabled { opacity: .5; cursor: progress }
   </style>
 </head>
@@ -114,10 +121,10 @@
             workflow "Monitorar menções no YouTube" no GitHub.
           </div>
           <div class="mon-stats">
-            <div class="card mon-stat"><strong id="statHigh">-</strong><span>Prioridade alta pendentes</span></div>
-            <div class="card mon-stat"><strong id="statNew">-</strong><span>Novos desde sua última visita</span></div>
-            <div class="card mon-stat"><strong id="stat24h">-</strong><span>Publicados nas últimas 24h</span></div>
-            <div class="card mon-stat"><strong id="stat7d">-</strong><span>Publicados nos últimos 7 dias</span></div>
+            <div class="card mon-stat" data-card="statHigh" role="button" tabindex="0" aria-pressed="false" title="Clique para filtrar a tabela"><strong id="statHigh">-</strong><span>Prioridade alta em aberto</span></div>
+            <div class="card mon-stat" data-card="statNew" role="button" tabindex="0" aria-pressed="false" title="Clique para filtrar a tabela"><strong id="statNew">-</strong><span>Detectados nas últimas 24h</span></div>
+            <div class="card mon-stat" data-card="stat24h" role="button" tabindex="0" aria-pressed="false" title="Clique para filtrar a tabela"><strong id="stat24h">-</strong><span>Publicados nas últimas 24h</span></div>
+            <div class="card mon-stat" data-card="stat7d" role="button" tabindex="0" aria-pressed="false" title="Clique para filtrar a tabela"><strong id="stat7d">-</strong><span>Publicados nos últimos 7 dias</span></div>
           </div>
 
           <div class="card" style="padding:24px">
@@ -129,8 +136,13 @@
                 <option value="0">Todo o histórico</option>
               </select>
               <select id="monStatus" aria-label="Status">
-                <option value="pending">Pendentes</option>
-                <option value="all">Todos os status</option>
+                <option value="open">Em aberto (pendente, acompanhando, crise)</option>
+                <option value="all" selected>Todos os status</option>
+                <option value="none">Pendente</option>
+                <option value="acompanhando">Acompanhando</option>
+                <option value="crise">Crise</option>
+                <option value="analisado">Analisado</option>
+                <option value="ignorado">Ignorado</option>
               </select>
               <select id="monFormat" aria-label="Formato">
                 <option value="">Vídeos e Shorts</option>

@@ -110,6 +110,9 @@ jobs:
           # Prioridade: ALTA = marca no texto E (palavra negativa OU pico de views OU canal grande).
           HIGH_DELTA, HIGH_SUBS = 5000, 100000
           MID_DELTA, MID_SUBS, MID_VIEWS = 1000, 10000, 10000
+          # Comentários = vídeo gerando discussão, que vale abrir e entender do que se trata.
+          # ponytail: contagem total, não crescimento (o histórico guarda só views); evoluir para delta se ficar ruidoso.
+          MID_COMMENTS, HIGH_COMMENTS = 20, 100
           ALERT_MAX_AGE_DAYS = 7    # não avisa de vídeo antigo, a menos que esteja em pico agora
 
           def get(path, **params):
@@ -213,16 +216,21 @@ jobs:
                   return None, None
               return entry['views'] - recent[0]['v'], now_hour - recent[0]['h']
 
+          def n(value):
+              return f'{value:,}'.replace(',', '.')
+
           def priority(entry):
+              # Devolve (nível, motivos): os motivos aparecem na tela (tooltip da prioridade) e no aviso.
               if not entry['matchedIn']:
-                  return 'baixa'
+                  return 'baixa', []
               delta = entry.get('viewsDelta') or 0
               subs = entry.get('channelSubscribers') or 0
-              if entry['negative'] or delta >= HIGH_DELTA or subs >= HIGH_SUBS:
-                  return 'alta'
-              if subs >= MID_SUBS or entry['views'] >= MID_VIEWS or delta >= MID_DELTA:
-                  return 'media'
-              return 'baixa'
+              comments = entry.get('comments') or 0
+              high = ([f"palavras negativas: {', '.join(entry['negative'])}"] if entry['negative'] else [])                   + ([f"+{n(delta)} views em {entry['viewsDeltaHours']}h"] if delta >= HIGH_DELTA else [])                   + ([f"canal com {n(subs)} inscritos"] if subs >= HIGH_SUBS else [])                   + ([f"{n(comments)} comentários"] if comments >= HIGH_COMMENTS else [])
+              if high:
+                  return 'alta', high
+              mid = ([f"+{n(delta)} views em {entry['viewsDeltaHours']}h"] if delta >= MID_DELTA else [])                   + ([f"canal com {n(subs)} inscritos"] if subs >= MID_SUBS else [])                   + ([f"{n(entry['views'])} views"] if entry['views'] >= MID_VIEWS else [])                   + ([f"{n(comments)} comentários"] if comments >= MID_COMMENTS else [])
+              return ('media', mid) if mid else ('baixa', [])
 
           new_count = 0
           classified = 0
@@ -291,22 +299,9 @@ jobs:
               else:
                   entry.pop('history', None)
               entry['viewsDelta'], entry['viewsDeltaHours'] = views_growth(entry)
-              entry['priority'] = priority(entry)
+              entry['priority'], entry['priorityReasons'] = priority(entry)
 
           # 4) Aviso (opcional) dos vídeos de prioridade alta ainda não avisados.
-          def n(value):
-              return f'{value:,}'.replace(',', '.')
-
-          def alert_reasons(entry):
-              reasons = []
-              if entry['negative']:
-                  reasons.append('palavras negativas: ' + ', '.join(entry['negative']))
-              if (entry.get('viewsDelta') or 0) >= HIGH_DELTA:
-                  reasons.append(f"+{n(entry['viewsDelta'])} views em {entry['viewsDeltaHours']}h")
-              if (entry.get('channelSubscribers') or 0) >= HIGH_SUBS:
-                  reasons.append(f"canal com {n(entry['channelSubscribers'])} inscritos")
-              return reasons
-
           def alert_eligible(entry):
               if entry.get('unavailable') or entry.get('alertedAt') or entry.get('priority') != 'alta':
                   return False
@@ -320,7 +315,7 @@ jobs:
               lines = [f'Monitoramento YouTube: {len(to_alert)} vídeo(s) de prioridade ALTA sobre a Vonder.']
               for m in to_alert[:8]:
                   lines.append(f"- {m['title']} | canal {m['channelTitle']} | {n(m['views'])} views | "
-                               + '; '.join(alert_reasons(m)) + f" | {m['permalink']}")
+                               + '; '.join(m['priorityReasons']) + f" | {m['permalink']}")
               request = urllib.request.Request(webhook_url, data=json.dumps({'text': '\n'.join(lines)}).encode('utf-8'),
                                                headers={'Content-Type': 'application/json'}, method='POST')
               try:

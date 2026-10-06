@@ -128,9 +128,16 @@ function itemImageUrls(item,width){
  if(CATALOG_PHOTO_SLUG==='vonder'&&code){
   if(width===CATALOG_PRODUCT_WIDTH)urls.push(workerProductImageUrl(code));
   if(location.protocol==='file:')urls.push(localProductImageUrl(code,width));else urls.push(productImageUrl(code,width));
-  if(location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))urls.push(localProductImageUrl(code,width))
+  if(location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))urls.push(localProductImageUrl(code,width));
+  // Miniaturas: o worker não redimensiona (foto inteira), mas é o único caminho público quando o host
+  // não executa PHP (Cloudflare Pages).
+  if(width!==CATALOG_PRODUCT_WIDTH)urls.push(workerProductImageUrl(code))
  }
- if(direct)urls.push(direct);
+ // app.ovd.com.br resolve para IP privado (10.x) na rede da empresa: carregá-lo direto num site
+ // publicado faz o Chrome pedir "Acessar outros dispositivos na sua rede local". Só vale direto em
+ // file:/localhost; nos demais casos o worker acima entrega a mesma foto.
+ var privateHost=/^https:\/\/app\.ovd\.com\.br\//.test(direct)&&location.protocol!=='file:'&&!/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+ if(direct&&!(CATALOG_PHOTO_SLUG==='vonder'&&code&&privateHost))urls.push(direct);
  return urls.filter(function(url,index){return url&&urls.indexOf(url)===index})
 }
 function itemThumbnailUrls(item){return(item&&item.thumbnail)?[item.thumbnail]:itemImageUrls(item,CATALOG_THUMB_WIDTH)}
@@ -264,13 +271,26 @@ function productMatchRank(item,q,qc){
  return 1;
 }
 function matchingProducts(query){var q=normalizeText(query.trim()),qc=normalizeCode(query);var results=catalog.filter(function(item){var codeHit=qc&&(catalogCodes(item).some(function(v){return normalizeCode(v.code).includes(qc)})||(item.codeFG&&normalizeCode(item.codeFG).includes(qc)));return!q||normalizeText(item.name).includes(q)||codeHit}).sort(function(a,b){return productMatchRank(a,q,qc)-productMatchRank(b,q,qc)});return q?results:results.slice(0,10)}
+function lookupProductOnSite(code,button){
+ var msg=$('#siteLookupMsg');button.disabled=true;msg.textContent='Consultando o site da FG…';
+ fetch('https://ecommerce-fg.vonderferramentas.workers.dev/product-catalog?code='+encodeURIComponent(code)).then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data}})}).then(function(r){
+  if(!r.ok){button.disabled=false;msg.textContent=r.data&&r.data.notFound?'Este código também não está no site da FG. Use "Continuar sem catálogo".':'Não foi possível consultar o site da FG agora.';return}
+  var item=r.data;item.imageUrl='https://app.ovd.com.br/fotos/produto?codigo='+normalizeCode(item.code);item.fromSite=true;chooseCatalogProduct(item);status('Produto vindo do site da FG, fora do catálogo: revise os dados antes de usar.',false)
+ }).catch(function(){button.disabled=false;msg.textContent='Não foi possível consultar o site da FG agora.'})
+}
 function renderCatalogResults(){
  var query=$('#catalogSearch').value,matches=matchingProducts(query),box=$('#catalogResults');
  catalogFocus=Math.min(catalogFocus,Math.max(0,matches.length-1));
  if(catalogLoading){$('#catalogStatus').textContent='Carregando catálogo…';box.innerHTML='<div class="pe-catalog-empty"><strong>Carregando catálogo…</strong>Buscando os produtos disponíveis.</div>';return}
  $('#catalogStatus').textContent=catalog.length?(query?matches.length+' produto'+(matches.length===1?' encontrado':'s encontrados'):catalog.length.toLocaleString('pt-BR')+' produtos disponíveis'):'Nenhum produto cadastrado nesta marca';
  if(!catalog.length){box.innerHTML='<div class="pe-catalog-empty"><strong>O catálogo ainda está vazio</strong>Cadastre produtos em Configurações no calendário ou continue sem catálogo.</div>';return}
- if(!matches.length){box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong>Tente buscar apenas uma parte do nome ou os números do código.</div>';return}
+ if(!matches.length){
+  // Fora do catálogo: um código completo pode ser buscado no site da FG (mesmos campos do catalog.json; a foto vem do app.ovd pelo código).
+  var siteCode=normalizeCode(query),canSite=CATALOG_PHOTO_SLUG==='vonder'&&siteCode.length>=5&&siteCode.length<=20;
+  box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong>Tente buscar apenas uma parte do nome ou os números do código.'+(canSite?'<br><button type="button" id="siteLookup">Buscar o código '+escapeHtml(siteCode)+' no site da FG</button> <span id="siteLookupMsg" role="status"></span>':'')+'</div>';
+  if(canSite)$('#siteLookup').addEventListener('click',function(){lookupProductOnSite(siteCode,this)});
+  return
+ }
  box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length;return'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(editorCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('');
  $$('#catalogResults [data-catalog-index]').forEach(function(btn){
   var item=matches[Number(btn.dataset.catalogIndex)];
