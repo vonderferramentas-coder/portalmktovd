@@ -9,8 +9,8 @@
   // 'default' é o id fixo da VONDER (ver DEFAULT_BRANDS em portal-shell.js); só ela tem coleta.
   const STORE_KEY = 'youtube-mentions-vonder-v1';
   const TRIAGE_KEY = 'monitoramento-triagem-vonder-v1';
-  const LAST_VISIT_KEY = 'monitoramento_last_visit_v1';
   const DAY_MS = 86400000;
+  const NEW_MS = 24 * 3600000; // "Novo" = o coletor detectou o vídeo nas últimas 24h (firstSeenAt), igual para todo mundo
   const STALE_MS = 6 * 3600000; // o coletor roda a cada 2h; passou de 6h, algo parou
   const PAGE_SIZE = 50;
   const STATUSES = [
@@ -41,12 +41,11 @@
   let MENTIONS = [];
   let TRIAGE = {};          // { [videoId]: { status, by, at } }
   let triageVersion = 0;
-  let lastVisit = 0;
   let page = 0;
 
   const statusOf = m => (TRIAGE[m.id] && TRIAGE[m.id].status) || '';
-  const statusLabel = m => STATUSES.find(s => s.value === statusOf(m)).label;
-  const isNew = m => time(m.firstSeenAt) > lastVisit;
+  const statusLabel = m => (STATUSES.find(s => s.value === statusOf(m)) || STATUSES[0]).label;
+  const isNew = m => Date.now() - time(m.firstSeenAt) <= NEW_MS;
   const priorityOf = m => m.priority || 'baixa';
 
   // Uma linha por coluna: rótulo, valor usado para ordenar, sentido inicial ao primeiro clique
@@ -101,18 +100,37 @@
     node.className = 'sync-status' + (kind ? ' ' + kind : '');
   }
 
+  // Fonte única dos cards: o número exibido e o filtro da tabela ao clicar usam o mesmo critério.
+  const CARDS = {
+    statHigh: m => !m.unavailable && priorityOf(m) === 'alta' && PENDING.includes(statusOf(m)),
+    statNew: m => !m.unavailable && isNew(m),
+    stat24h: m => !m.unavailable && Date.now() - time(m.publishedAt) <= DAY_MS,
+    stat7d: m => !m.unavailable && Date.now() - time(m.publishedAt) <= 7 * DAY_MS,
+  };
+  let activeCard = '';      // card clicado: ignora os demais filtros para listar exatamente o que o número conta
+
   function renderStats() {
-    const now = Date.now();
-    const active = MENTIONS.filter(m => !m.unavailable);
-    el('statNew').textContent = lastVisit ? fmt(MENTIONS.filter(isNew).length) : '-';
-    el('statHigh').textContent = fmt(active.filter(m => priorityOf(m) === 'alta' && PENDING.includes(statusOf(m))).length);
-    el('stat24h').textContent = fmt(active.filter(m => now - time(m.publishedAt) <= DAY_MS).length);
-    el('stat7d').textContent = fmt(active.filter(m => now - time(m.publishedAt) <= 7 * DAY_MS).length);
+    Object.entries(CARDS).forEach(([id, test]) => {
+      el(id).textContent = fmt(MENTIONS.filter(test).length);
+      const card = el(id).closest('.mon-stat');
+      card.classList.toggle('is-active', id === activeCard);
+      card.setAttribute('aria-pressed', String(id === activeCard));
+    });
+  }
+
+  function onCardActivate(event) {
+    if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+    const card = event.target.closest('.mon-stat');
+    if (!card) return;
+    event.preventDefault();
+    activeCard = activeCard === card.dataset.card ? '' : card.dataset.card;
+    page = 0;
+    render();
   }
 
   function rowHtml(m) {
     const tags = [
-      isNew(m) && lastVisit ? '<span class="mon-tag is-new">Novo</span>' : '',
+      isNew(m) ? '<span class="mon-tag is-new">Novo</span>' : '',
       m.unavailable ? '<span class="mon-tag">Indisponível</span>' : '',
       (m.negative || []).length ? `<span class="mon-tag mon-neg">Palavras negativas: ${escapeHtml(m.negative.join(', '))}</span>` : '',
       `<span class="mon-tag">Marca em: ${escapeHtml((m.matchedIn || []).join(', '))}</span>`,
@@ -125,14 +143,14 @@
     return `<tr class="${m.unavailable ? 'mon-unavailable' : ''}">
       <td><div class="mon-video">${thumb}<div><a href="${escapeHtml(m.permalink)}" target="_blank" rel="noopener noreferrer">${escapeHtml(m.title)}</a><div>${tags}</div></div></div></td>
       <td>${m.mediaProductType === 'REELS' ? '<span class="mon-tag mon-fmt-short">Short</span>' : m.mediaProductType === 'VIDEO' ? '<span class="mon-tag">Vídeo</span>' : '-'}</td>
-      <td><span class="mon-tag mon-prio-${priorityOf(m)}">${PRIORITY_LABEL[priorityOf(m)]}</span></td>
+      <td><span class="mon-tag mon-prio-${priorityOf(m)}"${(m.priorityReasons || []).length ? ` title="${escapeHtml(m.priorityReasons.join('; '))}"` : ''}>${PRIORITY_LABEL[priorityOf(m)]}</span></td>
       <td class="mon-channel"><a href="${escapeHtml(m.channelUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(m.channelTitle)}</a></td>
       <td class="mon-num">${fmt(m.channelSubscribers)}</td>
       <td class="mon-num">${fmt(m.views)}</td>
       <td class="mon-num mon-delta">${delta}</td>
       <td class="mon-num">${fmt(m.comments)}</td>
       <td>${escapeHtml(formatDateTime(m.publishedAt))}</td>
-      <td><select class="mon-status" data-id="${escapeHtml(m.id)}" aria-label="Status de ${escapeHtml(m.title)}">${options}</select></td>
+      <td><select class="mon-status" data-status="${statusOf(m)}" data-id="${escapeHtml(m.id)}" aria-label="Status de ${escapeHtml(m.title)}">${options}</select></td>
     </tr>`;
   }
 
@@ -140,12 +158,16 @@
     renderStats();
     renderHead();
     const days = Number(el('monPeriod').value);
-    const pendingOnly = el('monStatus').value === 'pending';
+    const statusFilter = el('monStatus').value;
+    // "none" = coluna "Pendente" (sem triagem, valor ''); "open" = o que ainda exige ação.
+    const statusOk = m => statusFilter === 'all' || (statusFilter === 'open' ? PENDING : [statusFilter === 'none' ? '' : statusFilter]).includes(statusOf(m));
     const format = el('monFormat').value;
     const query = plain(el('monSearch').value).trim();
     const cutoff = days ? Date.now() - days * DAY_MS : 0;
+    // Vídeo em acompanhamento ou crise não some pelo período: ainda exige ação.
+    const periodOk = m => time(m.publishedAt) >= cutoff || ['acompanhando', 'crise'].includes(statusOf(m));
     const rows = MENTIONS
-      .filter(m => time(m.publishedAt) >= cutoff && (!pendingOnly || PENDING.includes(statusOf(m))) && (!format || m.mediaProductType === format)
+      .filter(activeCard ? CARDS[activeCard] : m => periodOk(m) && statusOk(m) && (!format || m.mediaProductType === format)
         && (!query || plain(m.title).includes(query) || plain(m.channelTitle).includes(query)))
       // Desempate sempre pelo mais recente, para a ordem não "pular" entre linhas iguais.
       .sort((a, b) => compare(a, b) || time(b.publishedAt) - time(a.publishedAt));
@@ -222,10 +244,7 @@
       TRIAGE = (record.v && record.v.items) || {};
       triageVersion = record.updated_at || 0;
     } catch (error) { /* sem triagem salva: tudo "Pendente" */ }
-    // "Novo" compara com a visita anterior; só depois de renderizar a visita atual é gravada.
-    try { lastVisit = Number(localStorage.getItem(LAST_VISIT_KEY)) || 0; } catch (error) { lastVisit = 0; }
     render();
-    try { localStorage.setItem(LAST_VISIT_KEY, String(Date.now())); } catch (error) { /* só conveniência */ }
   }
 
   function init() {
@@ -233,8 +252,10 @@
     el('monContent').hidden = false;
     // Mudar qualquer filtro ou a busca volta para a página 1.
     ['monSearch', 'monPeriod', 'monStatus', 'monFormat'].forEach(id => {
-      el(id).addEventListener(id === 'monSearch' ? 'input' : 'change', () => { page = 0; render(); });
+      el(id).addEventListener(id === 'monSearch' ? 'input' : 'change', () => { activeCard = ''; page = 0; render(); });
     });
+    document.querySelector('.mon-stats').addEventListener('click', onCardActivate);
+    document.querySelector('.mon-stats').addEventListener('keydown', onCardActivate);
     el('monHead').addEventListener('click', onSortClick);
     el('monTableBody').addEventListener('change', onStatusChange);
     el('monPagerPrev').addEventListener('click', () => { page -= 1; render(); });

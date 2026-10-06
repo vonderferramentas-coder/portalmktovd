@@ -116,6 +116,7 @@ button:disabled {
 .pages #list {
     flex: 1 1 auto;
     min-height: 0;
+    overflow-anchor: none; /* a lista é redesenhada várias vezes (logos chegando); sem isso o navegador "corrige" o scroll sozinho */
     overflow-y: auto;
     overflow-x: hidden;
     padding-right: 10px;

@@ -65,9 +65,34 @@ async function productLink(request){
  }
  return json(request,{error:'Produto não encontrado no site FG.',notFound:true},404);
 }
+// Produto fora do catálogo.json (portal: post-editor.js, "Buscar no site da FG"): devolve os mesmos campos
+// de data/catalog-*.json a partir da tabela de especificações do site FG, achada pela REFERÊNCIA
+// (código OVD, 10 dígitos; é o RefId do SKU, por isso o filtro alternateIds_RefId e não productId). A foto
+// NÃO vem daqui: o portal a busca em /product-image pelo mesmo código (app.ovd.com.br).
+// ponytail: sem gêmeo em product-image.php/scripts/*.ps1 - só o editor publicado usa; "qualificacaoTecnica" junta
+// as linhas técnicas do site e pode divergir do catálogo (que tem linhas comerciais a mais).
+async function productCatalog(request){
+ const code=(new URL(request.url).searchParams.get('code')||'').replace(/\D/g,'');
+ if(code.length<5||code.length>20)return json(request,{error:'Informe um código de 5 a 20 dígitos.'},400);
+ const upstream=await fetch('https://www.fg.com.br/api/catalog_system/pub/products/search?fq=alternateIds_RefId:'+code,{headers:{Accept:'application/json'}});
+ if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
+ const product=(await upstream.json())[0];
+ if(!product)return json(request,{error:'Produto não encontrado no site FG.',notFound:true},404);
+ const rows=[...String(product.description||'').matchAll(/<th[^>]*>([\s\S]*?)<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>[plainText(m[1]),plainText(m[2])]);
+ const take=pattern=>(rows.find(([label])=>pattern.test(label))||['',''])[1];
+ const named=/^(descri[cç][aã]o completa|refer[eê]ncia|conte[uú]do da embalagem|aplica[cç][oõ]es|destaques)/i;
+ const ref=(((product.items||[])[0]||{}).referenceId||[]).find(r=>r.Key==='RefId'),digits=String((ref&&ref.Value)||code).replace(/\D/g,'');
+ return json(request,{
+  name:take(/^descri[cç][aã]o completa/i)||product.productName,
+  code:digits.length===10?digits.replace(/^(\d{2})(\d{2})(\d{3})(\d{3})$/,'$1.$2.$3.$4'):digits,
+  codeFG:String(product.productId),
+  destaques:take(/^destaques/i),aplicacoes:take(/^aplica[cç][oõ]es/i),conteudoEmbalagem:take(/^conte[uú]do da embalagem/i),
+  qualificacaoTecnica:rows.filter(([label,value])=>value&&!named.test(label)).map(([label,value])=>label+': '+value).join(' | '),
+ });
+}
 export default {async fetch(request){
  const path=new URL(request.url).pathname;
  if(path==='/product-image'){if(request.method==='OPTIONS')return imageReply(null,204);try{return await productImage(request);}catch{return imageReply('Não foi possível carregar a imagem do produto.',502,{'Content-Type':'text/plain; charset=utf-8'});}}
  if(request.method==='OPTIONS')return reply(request,null,204);
- try{if(path==='/product-offer')return offer(request);if(path==='/product-link')return await productLink(request);return json(request,{error:'Rota não encontrada.'},404);}catch{return json(request,{error:'Não foi possível consultar a oferta.'},502);}
+ try{if(path==='/product-offer')return offer(request);if(path==='/product-link')return await productLink(request);if(path==='/product-catalog')return await productCatalog(request);return json(request,{error:'Rota não encontrada.'},404);}catch{return json(request,{error:'Não foi possível consultar a oferta.'},502);}
 }};
