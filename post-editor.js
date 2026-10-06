@@ -105,41 +105,23 @@ var CATALOG_THUMB_WIDTH=160;
 // cobre com folga - mas é uma fração do tamanho da foto original (que pode ter 4000px+),
 // então o recorte fica pronto bem mais rápido sem perda de qualidade perceptível.
 var CATALOG_PRODUCT_WIDTH=1600;
-function productImageUrl(code,width){var digits=normalizeCode(code);if(!digits)return'';return'product-image.php?code='+encodeURIComponent(digits)+'&v=4'+(width?'&w='+width:'')}
-function localProductImageUrl(code,width){var digits=normalizeCode(code);if(!digits)return'';return'http://127.0.0.1:8765/product-image?code='+encodeURIComponent(digits)+'&v=4'+(width?'&w='+width:'')}
 // mesmo proxy CORS público usado pelo coletor de ofertas FG (ver cloudflare-worker.js), com uma
-// rota extra pra foto de produto - funciona em qualquer origem (GitHub Pages incluído) sem
-// depender do auxiliar local nem de PHP no host. Não reduz o tamanho da foto (sem 'w'), então só
-// entra pro recorte automático (CATALOG_PRODUCT_WIDTH), nunca pras miniaturas do catálogo.
+// rota extra pra foto de produto. Não reduz o tamanho da foto (sem 'w'), então só entra pro
+// recorte automático (CATALOG_PRODUCT_WIDTH), nunca pras miniaturas do catálogo.
 function workerProductImageUrl(code){var digits=normalizeCode(code);if(!digits)return'';return'https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code='+encodeURIComponent(digits)}
-// o helper local (rodado pelo "Abrir Calendario.cmd") só é tentado quando o portal está aberto
-// pela pasta (file://) ou em localhost - NUNCA num site publicado (GitHub/Cloudflare Pages): ali
-// tentar 127.0.0.1 faria o Chrome pedir "Acessar outros dispositivos na sua rede local", e o
-// portal não deve tocar a máquina do usuário. (Até 21/09/2026 ele era o último fallback em
-// qualquer host, e o Chrome pedia essa permissão.)
+// Regra do portal: só web. Nenhuma requisição à máquina do usuário nem à rede local (endereços de loopback, IPs privados, nomes
+// internos como o do app de fotos): o Chrome pediria "Acessar outros dispositivos na sua rede local". A foto do produto vem do Worker
+// (HTTPS público), que busca no app.ovd. O workflow de testes barra a volta desses endereços no código das páginas.
 function itemImageUrls(item,width){
  var codes=catalogCodes(item),code=codes[0]&&codes[0].code,direct=(item&&(item.imageUrl||item.image||item.photo))||'',urls=[];
- // O worker (CORS público, funciona em qualquer origem) é a fonte principal do recorte
- // automático - só entra aqui pra essa largura porque ele não redimensiona (ver
- // workerProductImageUrl). Em file:// o PHP da pasta não é executado. O helper local devolve
- // a foto com CORS; quando há servidor web, o PHP continua sendo a próxima opção. A URL direta
- // (foto em tamanho real, sem redimensionar) fica como último fallback pra quando nenhum proxy
- // responder - e nunca será desenhada se contaminar o canvas.
- if(CATALOG_PHOTO_SLUG==='vonder'&&code){
-  if(width===CATALOG_PRODUCT_WIDTH)urls.push(workerProductImageUrl(code));
-  if(location.protocol==='file:')urls.push(localProductImageUrl(code,width));else urls.push(productImageUrl(code,width));
-  if(location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))urls.push(localProductImageUrl(code,width))
- }
- // app.ovd.com.br resolve para IP privado (10.x) na rede da empresa: carregá-lo direto num site
- // publicado faz o Chrome pedir "Acessar outros dispositivos na sua rede local". Só vale direto em
- // file:/localhost; nos demais casos o worker acima entrega a mesma foto.
- var privateHost=/^https:\/\/app\.ovd\.com\.br\//.test(direct)&&location.protocol!=='file:'&&!/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
- if(direct&&!(CATALOG_PHOTO_SLUG==='vonder'&&code&&privateHost))urls.push(direct);
+ if(CATALOG_PHOTO_SLUG==='vonder'&&code&&width===CATALOG_PRODUCT_WIDTH)urls.push(workerProductImageUrl(code));
+ // URL direta só quando não é do app.ovd (que resolve para IP interno na rede da empresa).
+ if(direct&&!/^https?:\/\/app\.ovd\.com\.br\//i.test(direct))urls.push(direct);
  return urls.filter(function(url,index){return url&&urls.indexOf(url)===index})
 }
-// Site publicado: a foto do app.ovd tem de 2 a 15 MB (via worker, 2-4 s cada), então a lista NÃO a carrega; as miniaturas leves
-// vêm em lote de /product-thumbs (applyThumbs). Em file:// e localhost continua a foto direta/auxiliar local.
-function hostedThumbs(){return CATALOG_PHOTO_SLUG==='vonder'&&location.protocol!=='file:'&&!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)}
+// A foto do app.ovd tem de 2 a 15 MB (via worker, 2-4 s cada), então a lista NÃO a carrega de cara; as miniaturas leves
+// vêm em lote de /product-thumbs (applyThumbs).
+function hostedThumbs(){return CATALOG_PHOTO_SLUG==='vonder'}
 function itemThumbnailUrls(item){return(item&&item.thumbnail)?[item.thumbnail]:hostedThumbs()?[]:itemImageUrls(item,CATALOG_THUMB_WIDTH)}
 var thumbCache={},thumbPending={},thumbFailUntil=0;
 function thumbKey(item){var first=catalogCodes(item)[0];return first?normalizeCode(first.code):''}
@@ -413,18 +395,9 @@ function loadImage(src){return new Promise(function(resolve,reject){
  try{var xhr=new XMLHttpRequest();xhr.open('GET',src,true);xhr.responseType='blob';xhr.onload=function(){if(!xhr.response||(xhr.status&&xhr.status>=400)){direct(false);return}var u=URL.createObjectURL(xhr.response),im=new Image();im.onload=function(){URL.revokeObjectURL(u);im.exportSafe=true;resolve(im)};im.onerror=function(){URL.revokeObjectURL(u);direct(false)};im.src=u};xhr.onerror=function(){direct(false)};xhr.send()}catch(e){direct(false)}
 })}
 function loadExportSafeImage(urls){return new Promise(function(resolve,reject){
- var list=(urls||[]).filter(Boolean),local=list.filter(function(url){return /^http:\/\/127\.0\.0\.1:8765\//.test(url)}),others=list.filter(function(url){return local.indexOf(url)<0}),round=0;
- function tryList(candidates){return new Promise(function(ok,fail){var index=0;function next(){if(index>=candidates.length){fail(new Error('Nenhuma origem exportável'));return}loadImage(candidates[index++]).then(function(im){if(im.exportSafe)ok(im);else next()}).catch(next)}next()})}
- // O worker/PHP (others) não dependem de nada rodando na máquina do usuário, então vão
- // primeiro e sem espera. O auxiliar local (127.0.0.1:8765, iniciado pelo "Abrir
- // Calendario.cmd") só entra como último recurso - com retentativas, porque o lançador abre
- // o navegador logo depois de iniciar o auxiliar, e em máquinas mais lentas o editor pode
- // pedir a foto durante essa pequena janela antes dele responder.
- function tryLocal(){
-  if(!local.length||round>=5)return Promise.reject(new Error('Nenhuma origem exportável'));
-  return tryList(local).catch(function(){var delay=[250,500,900,1400,2200][round++];return new Promise(function(done){setTimeout(done,delay)}).then(tryLocal)})
- }
- tryList(others).catch(tryLocal).then(resolve,reject)
+ var list=(urls||[]).filter(Boolean),index=0;
+ function next(){if(index>=list.length){reject(new Error('Nenhuma origem exportável'));return}loadImage(list[index++]).then(function(im){if(im.exportSafe)resolve(im);else next()}).catch(next)}
+ next()
 })}
 // ============================================================
 // MARCA NO CABEÇALHO - biblioteca de logos em post-editor-assets/brands/*.svg (centenas de

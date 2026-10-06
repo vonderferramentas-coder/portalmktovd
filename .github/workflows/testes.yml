@@ -106,3 +106,13 @@ jobs:
           "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --allow-file-access-from-files --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 --dump-dom "file://$(pwd)/tests/cloudflare-agendador.test.html" > /tmp/agendador-dump.html
           cat /tmp/agendador-dump.html
           grep -q 'data-result="pass"' /tmp/agendador-dump.html
+
+      # Regra do portal (06/10/2026): só web. Nenhuma página pode requisitar a máquina do usuário nem a rede local, senão o Chrome
+      # pede "Acessar outros dispositivos na sua rede local". Barra a volta de loopback/localhost/192.168 e do auxiliar local (porta
+      # 8765) no código servido. Fora da checagem: o Worker (lista de origens de desenvolvimento) e o firebase-config (só um comentário).
+      - name: Páginas sem acesso à máquina local
+        run: |
+          if grep -rnE '127\.0\.0\.1|localhost|192\.168\.|:8765' --include='*.js' --include='*.html' .             --exclude-dir=tests --exclude-dir=scripts --exclude-dir=docs --exclude-dir=.git --exclude-dir=.claude             --exclude-dir=downloads --exclude-dir=outputs --exclude=cloudflare-worker.js --exclude=firebase-config.js; then
+            echo '::error::Código de página com endereço local (127.0.0.1/localhost/192.168/:8765). O portal deve falar só com a web (HTTPS público); fotos e dados passam pelo Worker.'
+            exit 1
+          fi
