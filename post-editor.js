@@ -175,7 +175,7 @@ function setFlow(mode){
  $('#editorIntro').textContent=mode==='editoria'?'Primeiro, escolha qual editoria você vai postar.':mode==='choose'?'Agora, escolha qual produto será usado na arte.':'Dados carregados. Revise a arte e ajuste o que precisar.';
  var cur=FLOW_STEP_ORDER[mode];
  $$('[data-flow-step]').forEach(function(el){var own=FLOW_STEP_ORDER[el.dataset.flowStep];el.classList.toggle('is-active',own===cur);el.classList.toggle('is-complete',own<cur);el.classList.toggle('is-clickable',own!==cur&&own<=maxFlowOrder)});
- if(mode==='choose'){var moved=['feed','story'].some(function(f){var p=state.format[f];return p&&(p.overlayDx||p.overlayDy)});$('#keepLayoutField').hidden=!(maxFlowOrder>=2&&moved);renderCatalogResults();scheduleSiteSearch($('#catalogSearch').value);setTimeout(function(){$('#catalogSearch').focus()},20)}
+ if(mode==='choose'){renderCatalogResults();scheduleSiteSearch($('#catalogSearch').value);setTimeout(function(){$('#catalogSearch').focus()},20)}
 }
 // navegação entre etapas iniciada pelo usuário (clique nos passos do topo ou nos botões
 // "Trocar") - sair da etapa "Editar e baixar" pede confirmação, porque a composição em tela
@@ -250,10 +250,9 @@ function showEditor(item,manual){updateSelectedSummary(item||{},!!manual);setFlo
 function chooseManualProduct(){
  selectedProduct=null;$('#productName').value='';$('#productCode').value='';$('#productCode2').value='';$('#codeCount').value='1';selectBrandLogo('VONDER');state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;setProductFilePreview('','PNG transparente ou foto em fundo branco');$('#backgroundFileName').textContent='Clique ou arraste uma imagem';syncCodeFields();showEditor({},true);drawAll();status('Preencha os dados e envie as imagens',false)
 }
-// Produto novo: fundo volta ao centro; o destaque só volta se a pessoa não pediu para manter a posição da arte anterior.
+// Produto novo: fundo e destaque voltam ao centro.
 function resetFormatForNewProduct(){
- var keep=!$('#keepLayoutField').hidden&&$('#keepLayout').checked;
- ['feed','story'].forEach(function(f){var p=state.format[f]||{};state.format[f]={bgDx:0,bgDy:0,overlayDx:keep?(p.overlayDx||0):0,overlayDy:keep?(p.overlayDy||0):0}});
+ ['feed','story'].forEach(function(f){var p=state.format[f]||{};state.format[f]={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0}});
  undoStack=[];updateUndoButton();editDirty=false
 }
 function chooseCatalogProduct(item){
@@ -343,19 +342,30 @@ function recentProducts(){try{var list=JSON.parse(localStorage.getItem(RECENT_KE
 function rememberProduct(item){try{var list=recentProducts().filter(function(r){return r.code!==item.code});list.unshift(item);localStorage.setItem(RECENT_KEY,JSON.stringify(list.slice(0,RECENT_MAX),function(key,value){return key.charAt(0)==='_'?undefined:value}))}catch(e){}}
 var CATALOG_VISIBLE=40;
 function resultList(query){
- var base=matchingProducts(query),recents=query.trim()?[]:recentProducts(),all=recents.length?recents.concat(base.filter(function(item){return!recents.some(function(r){return r.code===item.code})})).slice(0,10):base;
+ var q=query.trim(),base=q?matchingProducts(query):[],recents=q?[]:recentProducts(),all=q?base:recents;
  return{all:all,recents:recents.length,local:all.slice(0,CATALOG_VISIBLE)}
+}
+// Sem texto digitado não lista produtos fixos (eram sempre os mesmos): mostra os recentes e atalhos por tipo de produto,
+// tirados da primeira palavra do nome (as mais frequentes do catálogo).
+var chipMemo={catalog:null,html:''};
+function categoryChipsHtml(){
+ if(chipMemo.catalog===catalog)return chipMemo.html;
+ var counts={},label={};
+ catalog.forEach(function(item){var word=(item.name||'').trim().split(/\s+/)[0]||'',key=nameKey({name:word});if(key.length<4||/\d/.test(key))return;counts[key]=(counts[key]||0)+1;label[key]=label[key]||word.charAt(0).toUpperCase()+word.slice(1).toLowerCase()});
+ var top=Object.keys(counts).filter(function(k){return counts[k]>=3}).sort(function(a,b){return counts[b]-counts[a]}).slice(0,14);
+ chipMemo={catalog:catalog,html:top.length?'<div class="pe-catalog-group">Explorar sugestões</div><div class="pe-catalog-chips">'+top.map(function(k){return'<button type="button" class="pe-catalog-chip" data-browse="'+escapeHtml(label[k])+'">'+escapeHtml(label[k])+'</button>'}).join('')+'</div>':''};
+ return chipMemo.html
 }
 function renderCatalogResults(){
  var query=$('#catalogSearch').value,rl=resultList(query),matches=rl.local,all=rl.all,box=$('#catalogResults'),siteItems=visibleSiteItems(query);
  catalogFocus=Math.min(catalogFocus,Math.max(0,matches.length+siteItems.length-1));
- if(catalogLoading){$('#catalogStatus').textContent='Carregando catálogo…';box.innerHTML='<div class="pe-catalog-empty"><strong>Carregando catálogo…</strong>Buscando os produtos disponíveis.</div>';return}
+ if(catalogLoading){box.innerHTML='<div class="pe-catalog-empty"><strong>Carregando catálogo…</strong>Buscando os produtos disponíveis.</div>';return}
  var siteState=siteEligible(query)&&siteSearch.q===query.trim()?siteSearch.status:'idle',found=matchingProducts(query).length;
- $('#catalogStatus').textContent=catalog.length?(query.trim()?(found?found+' produto'+(found===1?' encontrado':'s encontrados'):siteState==='loading'?'Buscando no site…':siteState==='done'?siteSearch.items.length+' no site':'0 produtos no catálogo'):catalog.length.toLocaleString('pt-BR')+' produtos disponíveis'):'Nenhum produto cadastrado nesta marca';
  if(!catalog.length){box.innerHTML='<div class="pe-catalog-empty"><strong>O catálogo ainda está vazio</strong>Cadastre produtos em Configurações no calendário ou continue sem catálogo.</div>';return}
  var site=siteEligible(query)?siteResultsHtml(query,matches.length>0,matches.length):'';
- if(!matches.length&&!site){box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong><p>Tente buscar apenas uma parte do nome ou os números do código.</p></div>';return}
- box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length,heading=rl.recents&&index===0?'<div class="pe-catalog-group">Usados recentemente</div>':rl.recents&&index===rl.recents?'<div class="pe-catalog-group">Catálogo</div>':'';return heading+'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb" data-thumb="'+thumbKey(item)+'">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(editorCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('')+(all.length>matches.length?'<div class="pe-catalog-group">Mostrando os '+matches.length+' primeiros de '+all.length+' · refine a busca</div>':'')+site;
+ var browse=query.trim()?'':categoryChipsHtml();
+ if(!matches.length&&!site&&!browse){box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong><p>Tente buscar apenas uma parte do nome ou os números do código.</p></div>';return}
+ box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length,heading=rl.recents&&index===0?'<div class="pe-catalog-group">Usados recentemente</div>':'';return heading+'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb" data-thumb="'+thumbKey(item)+'">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(editorCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('')+(all.length>matches.length?'<div class="pe-catalog-group">Mostrando os '+matches.length+' primeiros de '+all.length+' · refine a busca</div>':'')+site+browse;
  if(hostedThumbs()){applyThumbs();loadThumbs(matches);queueHeavy(matches.map(thumbKey).filter(function(key){return key&&thumbCache[key]===''}))}
  $$('#catalogResults [data-catalog-index]').forEach(function(btn){
   var item=matches[Number(btn.dataset.catalogIndex)];
@@ -363,6 +373,7 @@ function renderCatalogResults(){
   var img=btn.querySelector('img');if(img)setImgWithFallback(img,itemThumbnailUrls(item))
  });
  $$('#catalogResults [data-site-index]').forEach(function(btn){var item=siteSearch.items[Number(btn.dataset.siteIndex)],img=btn.querySelector('img');btn.addEventListener('click',function(){openSiteProduct(item.code,btn)});if(img)setImgWithFallback(img,[item.thumb],function(){var ph=document.createElement('span');ph.className='pe-selected-thumb';ph.textContent='＋';img.replaceWith(ph)})});
+ $$('#catalogResults [data-browse]').forEach(function(btn){btn.addEventListener('click',function(){var input=$('#catalogSearch');input.value=btn.dataset.browse;input.dispatchEvent(new Event('input'));input.focus()})});
  var more=$('#siteMore'),retry=$('#siteRetry');if(more)more.addEventListener('click',function(){runSiteSearch(query)});if(retry)retry.addEventListener('click',function(){runSiteSearch(query)})
 }
 // carrega o catálogo desta marca via CatalogProvider (ver catalog-provider.js) - nunca lê
@@ -743,4 +754,26 @@ window.PostEditor={redraw:drawAll,state:state,chooseProduct:chooseCatalogProduct
  button.addEventListener('click',function(){var url=urlField.value.trim();if(!url){urlField.focus();status('Cole o link da oferta da FG para continuar.',false);return};button.disabled=true;button.textContent='Consultando…';importStatus('Consultando a oferta no site da FG…');status('Consultando oferta no site da FG…',true);fetch('https://ecommerce-fg.vonderferramentas.workers.dev/product-offer?url='+encodeURIComponent(url)).then(function(res){return res.json().then(function(data){if(!res.ok)throw new Error(data.error||'Não foi possível consultar a oferta.');return data})}).then(function(offer){var skus=(offer.skus||[]).filter(function(s){return s.available});if(!skus.length)throw new Error('Nenhum SKU disponível foi encontrado.');offer.skus=skus;if(skus.length>1&&!skus.every(function(s){return sameCommercialOffer(s,skus[0])})){importStatus('Escolha um SKU para continuar.');chooseSku(offer)}else{applySku(offer,skus[0],skus.length>1)}}).catch(function(err){var message=err.message||'Não foi possível consultar a oferta.';importStatus(message);status(message,false)}).finally(function(){button.disabled=false;button.textContent='Puxar dados'})
  })
 })();
+})();
+// Módulos do painel esquerdo: seta no canto do cabeçalho recolhe/abre o conteúdo (abertos por padrão).
+document.querySelectorAll('.pe-panel .pe-section>.pe-step').forEach(function(step){
+ var section=step.parentNode,button=document.createElement('button'),body=document.createElement('div'),inner=document.createElement('div');
+ body.className='pe-collapse-body';inner.className='pe-collapse-inner';
+ while(step.nextSibling)inner.appendChild(step.nextSibling);
+ body.appendChild(inner);section.appendChild(body);
+ button.type='button';button.className='pe-collapse';button.setAttribute('aria-expanded','true');
+ button.setAttribute('aria-label','Recolher ou abrir: '+((step.querySelector('strong')||{}).textContent||'módulo'));
+ button.innerHTML='<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2 4.5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+ button.addEventListener('click',function(){
+  var closed=section.classList.toggle('is-collapsed');button.setAttribute('aria-expanded',closed?'false':'true');
+  // overflow só recorta durante a animação e quando fechado, para não cortar o foco dos campos quando aberto
+  section.classList.add('is-animating');clearTimeout(section._peAnim);section._peAnim=setTimeout(function(){section.classList.remove('is-animating')},300)
+ });
+ step.appendChild(button)
+});
+// Numeração dos módulos visíveis (Oferta só aparece em algumas editorias): 1, 2, 3...
+(function(){
+ var panel=document.querySelector('.pe-panel');
+ function renumber(){var n=0;panel.querySelectorAll('.pe-section>.pe-step>span').forEach(function(span){if(!span.closest('.pe-section').hidden)span.textContent=++n})}
+ renumber();new MutationObserver(renumber).observe(panel,{attributes:true,attributeFilter:['hidden'],subtree:true})
 })();
