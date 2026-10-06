@@ -272,11 +272,11 @@ function productMatchRank(item,q,qc){
 }
 function matchingProducts(query){var q=normalizeText(query.trim()),qc=normalizeCode(query);var results=catalog.filter(function(item){var codeHit=qc&&(catalogCodes(item).some(function(v){return normalizeCode(v.code).includes(qc)})||(item.codeFG&&normalizeCode(item.codeFG).includes(qc)));return!q||normalizeText(item.name).includes(q)||codeHit}).sort(function(a,b){return productMatchRank(a,q,qc)-productMatchRank(b,q,qc)});return q?results:results.slice(0,10)}
 function lookupProductOnSite(code,button){
- var msg=$('#siteLookupMsg');button.disabled=true;msg.textContent='Consultando o site da FG…';
+ var msg=$('#siteLookupMsg');button.disabled=true;msg.textContent='Consultando o site…';
  fetch('https://ecommerce-fg.vonderferramentas.workers.dev/product-catalog?code='+encodeURIComponent(code)).then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data}})}).then(function(r){
-  if(!r.ok){button.disabled=false;msg.textContent=r.data&&r.data.notFound?'Este código também não está no site da FG. Use "Continuar sem catálogo".':'Não foi possível consultar o site da FG agora.';return}
-  var item=r.data;item.imageUrl='https://app.ovd.com.br/fotos/produto?codigo='+normalizeCode(item.code);item.fromSite=true;chooseCatalogProduct(item);status('Produto vindo do site da FG, fora do catálogo: revise os dados antes de usar.',false)
- }).catch(function(){button.disabled=false;msg.textContent='Não foi possível consultar o site da FG agora.'})
+  if(!r.ok){button.disabled=false;msg.textContent=r.data&&r.data.notFound?'Este código também não foi encontrado no site. Use "Continuar sem catálogo".':'Não foi possível consultar o site agora.';return}
+  var item=r.data;item.imageUrl='https://app.ovd.com.br/fotos/produto?codigo='+normalizeCode(item.code);item.fromSite=true;chooseCatalogProduct(item);status('Produto vindo do site, fora do catálogo: revise os dados antes de usar.',false)
+ }).catch(function(){button.disabled=false;msg.textContent='Não foi possível consultar o site agora.'})
 }
 function renderCatalogResults(){
  var query=$('#catalogSearch').value,matches=matchingProducts(query),box=$('#catalogResults');
@@ -287,7 +287,7 @@ function renderCatalogResults(){
  if(!matches.length){
   // Fora do catálogo: um código completo pode ser buscado no site da FG (mesmos campos do catalog.json; a foto vem do app.ovd pelo código).
   var siteCode=normalizeCode(query),canSite=CATALOG_PHOTO_SLUG==='vonder'&&siteCode.length>=5&&siteCode.length<=20;
-  box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong><p>Tente buscar apenas uma parte do nome ou os números do código.</p>'+(canSite?'<button type="button" class="pe-catalog-site" id="siteLookup">Buscar no site</button><span class="pe-catalog-site-note" id="siteLookupMsg" role="status">Consulta o código '+escapeHtml(siteCode)+' no site da FG.</span>':'')+'</div>';
+  box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong><p>Tente buscar apenas uma parte do nome ou os números do código.</p>'+(canSite?'<button type="button" class="pe-catalog-site" id="siteLookup">Buscar no site</button><span class="pe-catalog-site-note" id="siteLookupMsg" role="status">Consulta o código '+escapeHtml(siteCode)+' no site.</span>':'')+'</div>';
   if(canSite)$('#siteLookup').addEventListener('click',function(){lookupProductOnSite(siteCode,this)});
   return
  }
