@@ -136,7 +136,7 @@ O Worker é uma ponte controlada: recebe o pedido, valida parâmetros e domínio
 - manutenção da validação de host para evitar que o Worker vire proxy aberto;
 - termos de uso das fontes, especialmente se a coleta de ofertas crescer.
 - **regra de limite de requisições (rate limiting) no Cloudflare para as rotas `/product-search`, `/product-thumbs` e `/product-catalog`:** o Worker só aceita essas rotas com `Origin` do portal (403 caso contrário) e guarda 10 min em cache de borda as respostas do site FG, mas o `Origin` é falsificável fora de um navegador; a proteção real contra uso abusivo da cota gratuita (cerca de 100 mil requisições por dia, compartilhada com a foto, a oferta e o Conecta FG) é uma regra de limite por IP, a configurar no painel;
-- uso da API pública do site FG (leitura de catálogo/miniaturas em lote, sem acordo formal): confirmar que é aceito e quem responde por ela.
+- uso da API pública de catálogo do site FG (`fg.com.br`, plataforma VTEX): o site é do Grupo, então não há terceiro a autorizar; vale o time de e-commerce saber que o portal consulta a API (leitura, com cache de 10 min) e conhecer o limite de requisições da plataforma.
 
 ### Divergência real encontrada entre as três implementações redundantes (15/09/2026)
 
