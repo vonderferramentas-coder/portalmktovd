@@ -52,7 +52,6 @@
           <h2>Qual produto será divulgado?</h2>
           <p id="productChooserDescription">Busque no catálogo ou cole o link da oferta da FG para preencher os dados
             comerciais automaticamente.</p>
-          <label class="pe-check pe-keep-layout" id="keepLayoutField" hidden><input id="keepLayout" type="checkbox" checked> Manter a posição dos elementos da arte anterior</label>
           <div class="pe-fg-offer-import" id="fgOfferProductImport" hidden><label for="ecommerceProductUrl">Link da
               oferta na FG</label>
             <div class="pe-offer-import"><input id="ecommerceProductUrl" type="url" inputmode="url"
@@ -60,10 +59,10 @@
                 dados</button></div><small id="fgOfferImportStatus">Importa nome, SKU, variação, preço e
               disponibilidade.</small>
           </div>
-          <div class="pe-catalog-search" id="catalogSearchArea"><span aria-hidden="true">⌕</span><input
+          <div class="pe-catalog-search" id="catalogSearchArea"><input
               id="catalogSearch" type="search" autocomplete="off" placeholder="Ex.: Lavadora ou 68.64.160.001"
-              aria-label="Buscar produto no catálogo"><kbd>Enter</kbd></div>
-          <div class="pe-catalog-meta" id="catalogMeta"><span id="catalogStatus" role="status" aria-live="polite">Carregando catálogo…</span><button
+              aria-label="Buscar produto no catálogo"><span aria-hidden="true">⌕</span></div>
+          <div class="pe-catalog-meta" id="catalogMeta"><span id="catalogStatus" role="status" aria-live="polite" hidden></span><button
               id="manualProduct" type="button">Continuar sem catálogo</button></div>
           <div class="pe-catalog-results" id="catalogResults" role="listbox" aria-label="Produtos encontrados"></div>
         </div>
@@ -155,7 +154,7 @@
               automaticamente.</small>
           </section>
           <section class="pe-section">
-            <div class="pe-step"><span>3</span>
+            <div class="pe-step"><span>2</span>
               <div><strong>Imagens</strong><small id="imageSectionHint">Envie a cena e, se tiver, o produto
                   recortado</small></div>
             </div><label class="pe-drop" id="backgroundDrop" for="backgroundFile"><input id="backgroundFile" type="file"
@@ -197,8 +196,7 @@
                 value="100"></div>
             <div class="pe-actions-row"><button id="autoCompose" type="button">✦ Recalcular composição</button><button
                 id="resetPosition" type="button">↺ Centralizar</button></div>
-          </section>
-          <section class="pe-section pe-suggestions-section" id="compositionSuggestionsSection">
+          <div class="pe-suggestions-section" id="compositionSuggestionsSection">
             <div class="pe-section-heading">
               <div><strong>Sugestões de composição</strong><small>Escolha um ponto de partida e continue
                   ajustando</small></div><button id="generateCompositions" type="button">✦ Gerar 3 opções</button>
@@ -211,12 +209,13 @@
                   visual</small></button><button type="button" data-composition="full"><span
                   class="pe-option-icon">▣</span><strong>Preenchimento total</strong><small>Story sem
                   bordas</small></button></div>
+          </div>
           </section>
           <div class="pe-downloads"><button class="pe-primary" id="downloadBoth" type="button">↓ Baixar pacote
               ZIP</button><small class="pe-download-hint">Feed + Story com nomes padronizados</small>
             <div><button id="downloadFeed" type="button">Feed JPG</button><button id="downloadStory" type="button">Story
                 JPG</button></div>
-            <button id="nextProduct" type="button" class="pe-next-product" title="Escolhe outro produto mantendo editoria, logo e posição dos elementos">Outro produto, mesmo layout</button>
+            <button id="nextProduct" type="button" class="pe-next-product" title="Escolhe outro produto mantendo a editoria">Outro produto</button>
           </div>
           <div class="pe-status" id="editorStatus"><span class="pe-status-dot"></span><span>Editor pronto</span></div>
         </aside>
