@@ -287,7 +287,7 @@ function renderCatalogResults(){
  if(!matches.length){
   // Fora do catálogo: um código completo pode ser buscado no site da FG (mesmos campos do catalog.json; a foto vem do app.ovd pelo código).
   var siteCode=normalizeCode(query),canSite=CATALOG_PHOTO_SLUG==='vonder'&&siteCode.length>=5&&siteCode.length<=20;
-  box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong>Tente buscar apenas uma parte do nome ou os números do código.'+(canSite?'<br><button type="button" id="siteLookup">Buscar o código '+escapeHtml(siteCode)+' no site da FG</button> <span id="siteLookupMsg" role="status"></span>':'')+'</div>';
+  box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong><p>Tente buscar apenas uma parte do nome ou os números do código.</p>'+(canSite?'<button type="button" class="pe-catalog-site" id="siteLookup">Buscar no site</button><span class="pe-catalog-site-note" id="siteLookupMsg" role="status">Consulta o código '+escapeHtml(siteCode)+' no site da FG.</span>':'')+'</div>';
   if(canSite)$('#siteLookup').addEventListener('click',function(){lookupProductOnSite(siteCode,this)});
   return
  }
@@ -510,20 +510,39 @@ function hasTransparency(im){
 function removeWhite(im){
  var max=900,s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);var x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);var data=x.getImageData(0,0,c.width,c.height),d=data.data,w=c.width,h=c.height,corners=[[0,0],[w-1,0],[0,h-1],[w-1,h-1]],avg=[0,0,0];
  corners.forEach(function(p){var i=(p[1]*w+p[0])*4;avg[0]+=d[i]/4;avg[1]+=d[i+1]/4;avg[2]+=d[i+2]/4});var seen=new Uint8Array(w*h),queue=new Int32Array(w*h),head=0,tail=0;
+ // Tolerância larga (78) dá conta de fundo cinza/sombreado, mas em foto de estúdio de fundo branco puro (cantos ~255) ela
+ // entra pela parte clara do próprio produto (ex.: bandeja branca do refrigerador, corpo prateado da pistola) e o parte
+ // em dois pedaços grandes. Se a tolerância larga deixa o produto fragmentado, usa a justa (15) + halo de 2 px.
+ function largestShare(t){
+  var gone=new Uint8Array(w*h),st=new Int32Array(w*h),hd=0,tl=0,i;
+  function push(px){if(px<0||px>=w*h||gone[px]||!isBackground(px,t,62))return;gone[px]=1;st[tl++]=px}
+  for(i=0;i<w;i++){push(i);push((h-1)*w+i)}for(i=0;i<h;i++){push(i*w);push(i*w+w-1)}
+  while(hd<tl){var p=st[hd++],px=p%w,py=(p/w)|0;if(px)push(p-1);if(px<w-1)push(p+1);if(py)push(p-w);if(py<h-1)push(p+w)}
+  var mark=new Uint8Array(w*h),total=0,biggest=0;
+  for(var s0=0;s0<w*h;s0++){if(gone[s0]||mark[s0])continue;hd=0;tl=0;mark[s0]=1;st[tl++]=s0;
+   while(hd<tl){var q=st[hd++],qx=q%w,qy=(q/w)|0,nb=[qx?q-1:-1,qx<w-1?q+1:-1,qy?q-w:-1,qy<h-1?q+w:-1];for(var k=0;k<4;k++){var nx=nb[k];if(nx>=0&&!gone[nx]&&!mark[nx]){mark[nx]=1;st[tl++]=nx}}}
+   total+=tl;if(tl>biggest)biggest=tl}
+  return total?biggest/total:1
+ }
+ var tight=avg[0]>=250&&avg[1]>=250&&avg[2]>=250&&largestShare(78)<.95,tol=tight?15:78;
  function isBackground(px,tolerance,spreadLimit){var i=px*4,dist=Math.sqrt((d[i]-avg[0])**2+(d[i+1]-avg[1])**2+(d[i+2]-avg[2])**2),spread=Math.max(d[i],d[i+1],d[i+2])-Math.min(d[i],d[i+1],d[i+2]);return d[i+3]>0&&dist<=tolerance&&spread<=spreadLimit}
  function add(px){if(px<0||px>=w*h||seen[px])return;seen[px]=1;queue[tail++]=px}for(var xx=0;xx<w;xx++){add(xx);add((h-1)*w+xx)}for(var yy=0;yy<h;yy++){add(yy*w);add(yy*w+w-1)}
- while(head<tail){var p=queue[head++];if(!isBackground(p,78,62))continue;d[p*4+3]=0;var px=p%w,py=(p/w)|0;if(px)add(p-1);if(px<w-1)add(p+1);if(py)add(p-w);if(py<h-1)add(p+w)}
+ while(head<tail){var p=queue[head++];if(!isBackground(p,tol,62))continue;d[p*4+3]=0;var px=p%w,py=(p/w)|0;if(px)add(p-1);if(px<w-1)add(p+1);if(py)add(p-w);if(py<h-1)add(p+w)}
+ // Tolerância justa: sobra um halo claro de 1-2 px de anti-aliasing em volta do recorte; apaga só os
+ // pixels de fundo (tolerância larga) colados no que já foi removido, sem entrar no produto.
+ if(tight)for(var pass=0;pass<2;pass++){var halo=[];for(var hp=0;hp<w*h;hp++){if(d[hp*4+3]===0||!isBackground(hp,78,62))continue;var hx=hp%w,hy=(hp/w)|0;if((hx&&d[(hp-1)*4+3]===0)||(hx<w-1&&d[(hp+1)*4+3]===0)||(hy&&d[(hp-w)*4+3]===0)||(hy<h-1&&d[(hp+w)*4+3]===0))halo.push(hp)}halo.forEach(function(hp){d[hp*4+3]=0})}
  // A primeira passagem alcança somente o fundo ligado às bordas. Esta segunda encontra
  // ilhas internas da mesma cor, como vãos de alças, cabos e estruturas vazadas.
  // Os limites preservam letras claras pequenas e grandes áreas de produtos brancos.
  var innerSeen=new Uint8Array(w*h),minArea=Math.max(24,Math.round(w*h*.00025)),maxArea=Math.round(w*h*.08);
  for(var start=0;start<w*h;start++){
-  if(innerSeen[start])continue;innerSeen[start]=1;if(d[start*4+3]===0||!isBackground(start,78,62))continue;
-  head=0;tail=0;queue[tail++]=start;var members=[],minX=w,maxX=0,minY=h,maxY=0;
+  if(innerSeen[start])continue;innerSeen[start]=1;if(d[start*4+3]===0||!isBackground(start,tol,62))continue;
+  head=0;tail=0;queue[tail++]=start;var members=[],minX=w,maxX=0,minY=h,maxY=0,edgeLum=0,edgeCount=0;
   while(head<tail){var q=queue[head++],qx=q%w,qy=(q/w)|0;members.push(q);if(qx<minX)minX=qx;if(qx>maxX)maxX=qx;if(qy<minY)minY=qy;if(qy>maxY)maxY=qy;
-   var neighbors=[qx?q-1:-1,qx<w-1?q+1:-1,qy?q-w:-1,qy<h-1?q+w:-1];for(var n=0;n<4;n++){var next=neighbors[n];if(next<0||innerSeen[next])continue;innerSeen[next]=1;if(isBackground(next,78,62))queue[tail++]=next}
+   var neighbors=[qx?q-1:-1,qx<w-1?q+1:-1,qy?q-w:-1,qy<h-1?q+w:-1];for(var n=0;n<4;n++){var next=neighbors[n];if(next<0||innerSeen[next])continue;innerSeen[next]=1;if(isBackground(next,tol,62))queue[tail++]=next;else if(d[next*4+3]>0){edgeLum+=(d[next*4]+d[next*4+1]+d[next*4+2])/3;edgeCount++}}
   }
-  if(members.length>=minArea&&members.length<=maxArea&&(maxX-minX)>=3&&(maxY-minY)>=3)for(var m=0;m<members.length;m++)d[members[m]*4+3]=0
+  // Tolerância justa: só vira vão (alça, cabo) se cercado de região escura; branco cercado de claro é parte do produto (copos, bandeja).
+  if(members.length>=minArea&&members.length<=maxArea&&(maxX-minX)>=3&&(maxY-minY)>=3&&(!tight||(edgeCount&&edgeLum/edgeCount<150)))for(var m=0;m<members.length;m++)d[members[m]*4+3]=0
  }
  x.putImageData(data,0,0);return c
 }
