@@ -83,8 +83,8 @@ var EDITORIA_PRESETS_BY_BRAND={
  '':{ // VONDER (marca padrão)
   'Destaques':{
    footerColor:'#FFBE00',
-   badgeFeed:(window.POST_EDITOR_ASSETS&&window.POST_EDITOR_ASSETS.feed)||'post-editor-assets/destaques-feed.png',
-   badgeStory:(window.POST_EDITOR_ASSETS&&window.POST_EDITOR_ASSETS.story)||'post-editor-assets/destaques-story.png'
+   badgeFeed:'post-editor-assets/destaques-feed.png',
+   badgeStory:'post-editor-assets/destaques-story.png'
   }
  }
 };
@@ -105,42 +105,44 @@ var CATALOG_THUMB_WIDTH=160;
 // cobre com folga - mas é uma fração do tamanho da foto original (que pode ter 4000px+),
 // então o recorte fica pronto bem mais rápido sem perda de qualidade perceptível.
 var CATALOG_PRODUCT_WIDTH=1600;
-function productImageUrl(code,width){var digits=normalizeCode(code);if(!digits)return'';return'product-image.php?code='+encodeURIComponent(digits)+'&v=4'+(width?'&w='+width:'')}
-function localProductImageUrl(code,width){var digits=normalizeCode(code);if(!digits)return'';return'http://127.0.0.1:8765/product-image?code='+encodeURIComponent(digits)+'&v=4'+(width?'&w='+width:'')}
 // mesmo proxy CORS público usado pelo coletor de ofertas FG (ver cloudflare-worker.js), com uma
-// rota extra pra foto de produto - funciona em qualquer origem (GitHub Pages incluído) sem
-// depender do auxiliar local nem de PHP no host. Não reduz o tamanho da foto (sem 'w'), então só
-// entra pro recorte automático (CATALOG_PRODUCT_WIDTH), nunca pras miniaturas do catálogo.
+// rota extra pra foto de produto. Não reduz o tamanho da foto (sem 'w'), então só entra pro
+// recorte automático (CATALOG_PRODUCT_WIDTH), nunca pras miniaturas do catálogo.
 function workerProductImageUrl(code){var digits=normalizeCode(code);if(!digits)return'';return'https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code='+encodeURIComponent(digits)}
-// o helper local (rodado pelo "Abrir Calendario.cmd") só é tentado quando o portal está aberto
-// pela pasta (file://) ou em localhost - NUNCA num site publicado (GitHub/Cloudflare Pages): ali
-// tentar 127.0.0.1 faria o Chrome pedir "Acessar outros dispositivos na sua rede local", e o
-// portal não deve tocar a máquina do usuário. (Até 21/09/2026 ele era o último fallback em
-// qualquer host, e o Chrome pedia essa permissão.)
+// Regra do portal: só web. Nenhuma requisição à máquina do usuário nem à rede local (endereços de loopback, IPs privados, nomes
+// internos como o do app de fotos): o Chrome pediria "Acessar outros dispositivos na sua rede local". A foto do produto vem do Worker
+// (HTTPS público), que busca no app.ovd. O workflow de testes barra a volta desses endereços no código das páginas.
 function itemImageUrls(item,width){
  var codes=catalogCodes(item),code=codes[0]&&codes[0].code,direct=(item&&(item.imageUrl||item.image||item.photo))||'',urls=[];
- // O worker (CORS público, funciona em qualquer origem) é a fonte principal do recorte
- // automático - só entra aqui pra essa largura porque ele não redimensiona (ver
- // workerProductImageUrl). Em file:// o PHP da pasta não é executado. O helper local devolve
- // a foto com CORS; quando há servidor web, o PHP continua sendo a próxima opção. A URL direta
- // (foto em tamanho real, sem redimensionar) fica como último fallback pra quando nenhum proxy
- // responder - e nunca será desenhada se contaminar o canvas.
- if(CATALOG_PHOTO_SLUG==='vonder'&&code){
-  if(width===CATALOG_PRODUCT_WIDTH)urls.push(workerProductImageUrl(code));
-  if(location.protocol==='file:')urls.push(localProductImageUrl(code,width));else urls.push(productImageUrl(code,width));
-  if(location.protocol==='file:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname))urls.push(localProductImageUrl(code,width));
-  // Miniaturas: o worker não redimensiona (foto inteira), mas é o único caminho público quando o host
-  // não executa PHP (Cloudflare Pages).
-  if(width!==CATALOG_PRODUCT_WIDTH)urls.push(workerProductImageUrl(code))
- }
- // app.ovd.com.br resolve para IP privado (10.x) na rede da empresa: carregá-lo direto num site
- // publicado faz o Chrome pedir "Acessar outros dispositivos na sua rede local". Só vale direto em
- // file:/localhost; nos demais casos o worker acima entrega a mesma foto.
- var privateHost=/^https:\/\/app\.ovd\.com\.br\//.test(direct)&&location.protocol!=='file:'&&!/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
- if(direct&&!(CATALOG_PHOTO_SLUG==='vonder'&&code&&privateHost))urls.push(direct);
+ if(CATALOG_PHOTO_SLUG==='vonder'&&code&&width===CATALOG_PRODUCT_WIDTH)urls.push(workerProductImageUrl(code));
+ // URL direta só quando não é do app.ovd (que resolve para IP interno na rede da empresa).
+ if(direct&&!/^https?:\/\/app\.ovd\.com\.br\//i.test(direct))urls.push(direct);
  return urls.filter(function(url,index){return url&&urls.indexOf(url)===index})
 }
-function itemThumbnailUrls(item){return(item&&item.thumbnail)?[item.thumbnail]:itemImageUrls(item,CATALOG_THUMB_WIDTH)}
+// A foto do app.ovd tem de 2 a 15 MB (via worker, 2-4 s cada), então a lista NÃO a carrega de cara; as miniaturas leves
+// vêm em lote de /product-thumbs (applyThumbs).
+function hostedThumbs(){return CATALOG_PHOTO_SLUG==='vonder'}
+function itemThumbnailUrls(item){return(item&&item.thumbnail)?[item.thumbnail]:hostedThumbs()?[]:itemImageUrls(item,CATALOG_THUMB_WIDTH)}
+var thumbCache={},thumbPending={},thumbFailUntil=0;
+function thumbKey(item){var first=catalogCodes(item)[0];return first?normalizeCode(first.code):''}
+function applyThumbs(){$$('#catalogResults [data-thumb]').forEach(function(slot){var url=thumbCache[slot.dataset.thumb];if(!url)return;var img=document.createElement('img');img.alt='';img.decoding='async';img.src=url;img.onerror=function(){img.replaceWith(slot)};slot.replaceWith(img)})}
+// Produto que o site não tem: a única foto é a do app.ovd (1 a 15 MB, via worker). Carrega só as das linhas ainda visíveis,
+// 2 por vez, e fica no cache do navegador (7 dias); enquanto não chega, a linha mostra o "+".
+var heavyQueue=[],heavyActive=0,heavyTried={};
+function queueHeavy(keys){keys.forEach(function(key){if(!heavyTried[key]&&heavyQueue.indexOf(key)<0)heavyQueue.push(key)});pumpHeavy()}
+function startHeavy(key){
+ var url=workerProductImageUrl(key),im=new Image(),done=function(ok){heavyActive--;if(ok){thumbCache[key]=url;applyThumbs()}pumpHeavy()};
+ heavyActive++;heavyTried[key]=1;im.decoding='async';im.onload=function(){done(true)};im.onerror=function(){done(false)};im.src=url
+}
+function pumpHeavy(){while(heavyActive<2&&heavyQueue.length){var key=heavyQueue.shift();if($('#catalogResults [data-thumb="'+key+'"]'))startHeavy(key)}}
+function loadThumbs(items){
+ var need=items.map(thumbKey).filter(function(key){return key&&!(key in thumbCache)&&!thumbPending[key]}).slice(0,20);
+ if(!need.length||Date.now()<thumbFailUntil)return;
+ need.forEach(function(key){thumbPending[key]=1});
+ fetch(SITE_API+'/product-thumbs?codes='+need.join(',')).then(function(res){if(!res.ok)throw new Error('thumbs');return res.json()}).then(function(data){
+  need.forEach(function(key){delete thumbPending[key];thumbCache[key]=(data.thumbs&&data.thumbs[key])||''});applyThumbs();queueHeavy(need.filter(function(key){return!thumbCache[key]}));loadThumbs(items)
+ }).catch(function(){need.forEach(function(key){delete thumbPending[key]});thumbFailUntil=Date.now()+30000})
+}
 // tenta cada URL da lista em sequência quando a anterior falhar (onerror) - usado pelas
 // miniaturas do catálogo pra cair pra foto original quando a miniatura do proxy não responde
 // (ex.: página aberta por um servidor estático que não executa o PHP do proxy nem tem o
@@ -173,14 +175,14 @@ function setFlow(mode){
  $('#editorIntro').textContent=mode==='editoria'?'Primeiro, escolha qual editoria você vai postar.':mode==='choose'?'Agora, escolha qual produto será usado na arte.':'Dados carregados. Revise a arte e ajuste o que precisar.';
  var cur=FLOW_STEP_ORDER[mode];
  $$('[data-flow-step]').forEach(function(el){var own=FLOW_STEP_ORDER[el.dataset.flowStep];el.classList.toggle('is-active',own===cur);el.classList.toggle('is-complete',own<cur);el.classList.toggle('is-clickable',own!==cur&&own<=maxFlowOrder)});
- if(mode==='choose'){renderCatalogResults();setTimeout(function(){$('#catalogSearch').focus()},20)}
+ if(mode==='choose'){var moved=['feed','story'].some(function(f){var p=state.format[f];return p&&(p.overlayDx||p.overlayDy)});$('#keepLayoutField').hidden=!(maxFlowOrder>=2&&moved);renderCatalogResults();scheduleSiteSearch($('#catalogSearch').value);setTimeout(function(){$('#catalogSearch').focus()},20)}
 }
 // navegação entre etapas iniciada pelo usuário (clique nos passos do topo ou nos botões
 // "Trocar") - sair da etapa "Editar e baixar" pede confirmação, porque a composição em tela
 // nunca é salva automaticamente; indo pra frente (ou entre editoria/produto) não há nada a perder
 function goToStep(mode){
  if(mode===currentFlowMode)return;
- if(currentFlowMode==='edit'){pendingLeaveEditTarget=mode;$('#confirmLeaveEdit').hidden=false;return}
+ if(currentFlowMode==='edit'&&editDirty){pendingLeaveEditTarget=mode;$('#confirmLeaveEdit').hidden=false;return}
  setFlow(mode)
 }
 function closeConfirmLeaveEdit(){$('#confirmLeaveEdit').hidden=true;pendingLeaveEditTarget=null}
@@ -212,7 +214,7 @@ function chooseEditoria(editoria){
  var brandBadgeColorField=$('#brandBadgeColorField');if(brandBadgeColorField)brandBadgeColorField.hidden=preset.supportsBrandBadgeColor===false;
  var suggestionsSection=$('#compositionSuggestionsSection');if(suggestionsSection)suggestionsSection.hidden=preset.supportsCompositionSuggestions===false;
  var usesCodes=preset.supportsCodes!==false,usesCutout=preset.supportsProductCutout!==false,isCommemorative=!!preset.commemorative;
- $('#codeControls').hidden=!usesCodes;$('#selectedProductCode').hidden=!usesCodes;$('#productDrop').hidden=!usesCutout;$('#removeWhiteField').hidden=!usesCutout;var ecommerceField=$('#ecommercePricing');if(ecommerceField)ecommerceField.hidden=!preset.ecommerce;var fgEcommerce=BRAND_SUFFIX==='__ferramentas-gerais'&&preset.ecommerce,fgOfferImport=$('#fgOfferProductImport');if(fgOfferImport)fgOfferImport.hidden=!fgEcommerce;['#catalogSearchArea','#catalogMeta','#catalogResults'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});['#layoutModeField','#moveTargetField','#moveModeControls'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});state.moveEnabled=true;state.priceMoveOnly=fgEcommerce;var stageMoveHint=$('#stageMoveHint');if(stageMoveHint)stageMoveHint.textContent=fgEcommerce?'Arraste a box de preço ou a foto de fundo para reposicionar':'Arraste direto sobre a arte para reposicionar';var chooserDescription=$('#productChooserDescription');if(chooserDescription)chooserDescription.textContent=fgEcommerce?'Cole o link da oferta da FG para preencher os dados comerciais automaticamente.':'Busque no catálogo ou cole o link da oferta da FG para preencher os dados comerciais automaticamente.';
+ $('#codeControls').hidden=!usesCodes;$('#selectedProductCode').hidden=!usesCodes;$('#productDrop').hidden=!usesCutout;$('#removeWhiteField').hidden=!usesCutout;$('#removeHolesField').hidden=!usesCutout;var ecommerceField=$('#ecommercePricing');if(ecommerceField)ecommerceField.hidden=!preset.ecommerce;var fgEcommerce=BRAND_SUFFIX==='__ferramentas-gerais'&&preset.ecommerce,fgOfferImport=$('#fgOfferProductImport');if(fgOfferImport)fgOfferImport.hidden=!fgEcommerce;['#catalogSearchArea','#catalogMeta','#catalogResults'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});['#layoutModeField','#moveTargetField','#moveModeControls'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});state.moveEnabled=true;state.priceMoveOnly=fgEcommerce;var stageMoveHint=$('#stageMoveHint');if(stageMoveHint)stageMoveHint.textContent=fgEcommerce?'Arraste a box de preço ou a foto de fundo para reposicionar':'Arraste direto sobre a arte para reposicionar';var chooserDescription=$('#productChooserDescription');if(chooserDescription)chooserDescription.textContent=fgEcommerce?'Cole o link da oferta da FG para preencher os dados comerciais automaticamente.':'Busque pelo nome ou código do produto para preencher os dados automaticamente.';
  $('#commemorativeFields').hidden=!isCommemorative;if($('#eventPrefixField'))$('#eventPrefixField').hidden=!!preset.singleCommemorativeText;if($('#eventTitleSizeField')){$('#eventTitleSizeField').hidden=!preset.titleSizeControl;if(preset.titleSizeControl){['Feed','Story'].forEach(function(format){var input=$('#eventTitleSize'+format),output=$('#eventTitleSize'+format+'Out');if(input)input.value=100;if(output)output.value='100%'})}}$('#selectedProductSummary').hidden=isCommemorative;$('#productNameLabel').textContent=isCommemorative?(preset.singleCommemorativeText?'Texto da data comemorativa':'Título da data comemorativa'):'Nome completo';
  $('#detailsSectionTitle').textContent=isCommemorative?'Data comemorativa':'Produto';$('#detailsSectionHint').textContent=isCommemorative?(preset.singleCommemorativeText?'Data, mês e texto editáveis':'Data, mês e título editáveis'):'Dados preenchidos pelo catálogo, mas editáveis';var imageHint=$('#imageSectionHint');if(imageHint)imageHint.textContent=usesCutout?'Envie a cena e, se tiver, o produto recortado':'A imagem oficial do produto é carregada junto com a oferta';
  // Editorias com skipProductChooser (ex: Datas comemorativas) nunca passam pela etapa "Escolher
@@ -248,55 +250,120 @@ function showEditor(item,manual){updateSelectedSummary(item||{},!!manual);setFlo
 function chooseManualProduct(){
  selectedProduct=null;$('#productName').value='';$('#productCode').value='';$('#productCode2').value='';$('#codeCount').value='1';selectBrandLogo('VONDER');state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;setProductFilePreview('','PNG transparente ou foto em fundo branco');$('#backgroundFileName').textContent='Clique ou arraste uma imagem';syncCodeFields();showEditor({},true);drawAll();status('Preencha os dados e envie as imagens',false)
 }
+// Produto novo: fundo volta ao centro; o destaque só volta se a pessoa não pediu para manter a posição da arte anterior.
+function resetFormatForNewProduct(){
+ var keep=!$('#keepLayoutField').hidden&&$('#keepLayout').checked;
+ ['feed','story'].forEach(function(f){var p=state.format[f]||{};state.format[f]={bgDx:0,bgDy:0,overlayDx:keep?(p.overlayDx||0):0,overlayDy:keep?(p.overlayDy||0):0}});
+ undoStack=[];updateUndoButton();editDirty=false
+}
 function chooseCatalogProduct(item){
- selectedProduct=item;var codes=editorCodes(item);$('#productName').value=editorNameFor(item);$('#productCode').value=codes[0]?codes[0].code:'';$('#productCode2').value=codes[1]?codes[1].code:'';$('#codeVariant1').value=(codes[0]&&codes[0].label)||'110 V~';$('#codeVariant2').value=(codes[1]&&codes[1].label)||'220 V~';$('#codeCount').value=codes.length>1?'2':'1';syncCodeFields();
+ rememberProduct(item);selectedProduct=item;var codes=editorCodes(item);$('#productName').value=editorNameFor(item);$('#productCode').value=codes[0]?codes[0].code:'';$('#productCode2').value=codes[1]?codes[1].code:'';$('#codeVariant1').value=(codes[0]&&codes[0].label)||'110 V~';$('#codeVariant2').value=(codes[1]&&codes[1].label)||'220 V~';$('#codeCount').value=codes.length>1?'2':'1';syncCodeFields();
  selectBrandLogo(normalizeBrandVariant(item.brandVariant)||(/vonder\s*plus/i.test(item.name||'')?'Vonder_plus':'VONDER'));
- state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};var thumbUrls=itemThumbnailUrls(item);setProductFilePreview(thumbUrls[0],'Carregada automaticamente · clique para alterar',thumbUrls.slice(1));showEditor(item,false);drawAll();
+ state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;resetFormatForNewProduct();var thumbUrls=itemThumbnailUrls(item);setProductFilePreview(thumbUrls[0],'Carregada automaticamente · clique para alterar',thumbUrls.slice(1));showEditor(item,false);drawAll();
  var bgUrl=itemBackgroundUrl(item);if(bgUrl){$('#backgroundFileName').textContent='Foto de aplicação do catálogo';loadImage(bgUrl).then(function(im){if(selectedProduct!==item)return;
   if(!im.exportSafe){$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Essa foto de aplicação não pode ser usada automaticamente (o servidor de origem não libera para exportação) - envie manualmente abaixo',false);return}
   state.background=trimBackgroundMargins(im);state.bgZoom.feed=1;state.bgZoom.story=1;$('#backgroundZoomFeed').value='100';$('#backgroundZoomStory').value='100';$('#backgroundZoomFeedOut').value='100%';$('#backgroundZoomStoryOut').value='100%';if(item.preferredLayout){state.autoLayout=item.preferredLayout;drawAll();status('Produto e foto de aplicação carregados',false)}else analyze()
  }).catch(function(){if(selectedProduct!==item)return;$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Produto carregado; a foto de aplicação não abriu',false)})}else{$('#backgroundFileName').textContent='Clique ou arraste uma imagem'}
  var urls=itemImageUrls(item,CATALOG_PRODUCT_WIDTH);if(!urls.length){status('Dados preenchidos; envie a foto do produto',false);return}status(bgUrl?'Carregando produto e foto de aplicação…':'Carregando e recortando a foto do catálogo…',true);$('#productFileName').textContent='Foto do catálogo · '+(codes[0]?codes[0].code:'produto')+' · clique para alterar';
  loadExportSafeImage(urls).then(function(im){if(selectedProduct!==item)return;
-  state.product=im;$('#productFileName').textContent='Foto do catálogo carregada · clique para alterar';$('#removeWhite').checked=!hasTransparency(im);updateProduct()
+  state.product=im;$('#productFileName').textContent='Foto do catálogo carregada · clique para alterar';$('#removeWhite').checked=!hasTransparency(im);$('#removeHoles').checked=false;updateProduct()
  }).catch(function(err){if(selectedProduct!==item)return;console.warn('[post-editor] recorte automático falhou para',codes[0]&&codes[0].code,'-',err&&err.message,urls);status('Dados preenchidos; não foi possível carregar a foto automaticamente. Verifique a conexão e tente novamente, ou envie a foto manualmente.',false);$('#productFileName').textContent='Foto visível, mas o recorte automático falhou'})
 }
 // resultados que começam pelo termo buscado (no nome ou em algum código) vêm antes dos que só
 // contêm o termo em outro ponto - ex.: buscar "aspirador" mostra "Aspirador de pó..." antes de
 // "Escova para aspirador"
-function productMatchRank(item,q,qc){
- if(q&&normalizeText(item.name||'').indexOf(q)===0)return 0;
- if(qc&&catalogCodes(item).some(function(v){return normalizeCode(v.code).indexOf(qc)===0}))return 0;
- if(qc&&item.codeFG&&normalizeCode(item.codeFG).indexOf(qc)===0)return 0;
- return 1;
+// Busca por palavras soltas, em qualquer ordem ("aspirador 1200" acha "Aspirador de pó 1.200 W"; "1.200" e "1200" são o mesmo
+// número). Texto só de números/pontos é tratado como código. O nome normalizado fica guardado no item (10 mil itens x normalize()
+// a cada tecla travava a digitação) e a última busca fica memorizada.
+function nameKey(item){return item._n||(item._n=normalizeText(item.name||'').replace(/(\d)[.,](\d)/g,'$1$2'))}
+function queryTokens(query){return normalizeText(query).replace(/(\d)[.,](\d)/g,'$1$2').split(/[^a-z0-9\/+]+/).filter(Boolean)}
+function productMatchRank(item,phrase,qc){
+ var key=nameKey(item);
+ if(phrase&&key.indexOf(phrase)===0)return 0;
+ if(qc&&(catalogCodes(item).some(function(v){return normalizeCode(v.code).indexOf(qc)===0})||(item.codeFG&&normalizeCode(item.codeFG).indexOf(qc)===0)))return 0;
+ return phrase&&key.indexOf(phrase)>0?1:2
 }
-function matchingProducts(query){var q=normalizeText(query.trim()),qc=normalizeCode(query);var results=catalog.filter(function(item){var codeHit=qc&&(catalogCodes(item).some(function(v){return normalizeCode(v.code).includes(qc)})||(item.codeFG&&normalizeCode(item.codeFG).includes(qc)));return!q||normalizeText(item.name).includes(q)||codeHit}).sort(function(a,b){return productMatchRank(a,q,qc)-productMatchRank(b,q,qc)});return q?results:results.slice(0,10)}
-function lookupProductOnSite(code,button){
- var msg=$('#siteLookupMsg');button.disabled=true;msg.textContent='Consultando o site…';
- fetch('https://ecommerce-fg.vonderferramentas.workers.dev/product-catalog?code='+encodeURIComponent(code)).then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data}})}).then(function(r){
-  if(!r.ok){button.disabled=false;msg.textContent=r.data&&r.data.notFound?'Este código também não foi encontrado no site. Use "Continuar sem catálogo".':'Não foi possível consultar o site agora.';return}
-  var item=r.data;item.imageUrl='https://app.ovd.com.br/fotos/produto?codigo='+normalizeCode(item.code);item.fromSite=true;chooseCatalogProduct(item);status('Produto vindo do site, fora do catálogo: revise os dados antes de usar.',false)
- }).catch(function(){button.disabled=false;msg.textContent='Não foi possível consultar o site agora.'})
+var matchMemo={query:null,catalog:null,results:[]};
+function matchingProducts(query){if(matchMemo.query===query&&matchMemo.catalog===catalog)return matchMemo.results;var results=computeMatchingProducts(query);matchMemo={query:query,catalog:catalog,results:results};return results}
+function computeMatchingProducts(query){
+ var raw=query.trim(),qc=normalizeCode(raw),tokens=queryTokens(raw),phrase=tokens.join(' '),codeQuery=/^[\d.\-\s]+$/.test(raw)&&qc.length>0;
+ if(!raw)return catalog.slice(0,10);
+ return catalog.filter(function(item){
+  if(codeQuery)return catalogCodes(item).some(function(v){return normalizeCode(v.code).includes(qc)})||(item.codeFG&&normalizeCode(item.codeFG).includes(qc))||nameKey(item).includes(phrase);
+  return tokens.length>0&&tokens.every(function(token){return nameKey(item).includes(token)})
+ }).sort(function(a,b){return productMatchRank(a,phrase,codeQuery?qc:'')-productMatchRank(b,phrase,codeQuery?qc:'')})
+}
+// Busca no site (só perfil VONDER): complementa o catálogo quando ele não tem o produto. Lista nome+código via worker
+// (/product-search); ao escolher, /product-catalog traz os mesmos campos do catalog.json e a foto vem do app.ovd pelo código.
+var SITE_API='https://ecommerce-fg.vonderferramentas.workers.dev',siteSearch={q:'',status:'idle',items:[]},siteTimer=0,siteToken=0,siteAbort=null,siteCache={};
+// O editor escolhe a logo pelo nome do produto; as linhas VONDER do site têm marca própria (VONDER AT e VONDER/TMX não têm logo própria).
+var SITE_BRAND_LOGO={'VONDER':'VONDER','VONDER PLUS':'Vonder_plus','VONDER CONSTRUTOR':'vonder_construtor','VONDER AT':'VONDER','VONDER/TMX':'VONDER'};
+function siteEligible(query){return CATALOG_SLUG==='vonder'&&query.trim().length>=3}
+function usageTrack(tool,action,key){try{window.PortalUsage&&window.PortalUsage.track(tool,action,key?{dedupeKey:key}:{})}catch(e){}}
+// Cancela a consulta ao site em andamento e a espera pendente (o usuário continuou digitando).
+function abortSite(){siteToken++;clearTimeout(siteTimer);if(siteAbort){siteAbort.abort();siteAbort=null}}
+function runSiteSearch(query){
+ var q=query.trim(),token=++siteToken;
+ if(siteCache[q]){siteSearch={q:q,status:'done',items:siteCache[q]};renderCatalogResults();return}
+ if(siteAbort)siteAbort.abort();siteAbort=window.AbortController?new AbortController():null;
+ siteSearch={q:q,status:'loading',items:[]};renderCatalogResults();
+ fetch(SITE_API+'/product-search?q='+encodeURIComponent(q),siteAbort?{signal:siteAbort.signal}:{}).then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data}})}).then(function(r){
+  if(token!==siteToken)return;if(r.ok)siteCache[q]=r.data.items||[];siteSearch.status=r.ok?'done':'error';siteSearch.items=(r.ok&&r.data.items)||[];renderCatalogResults()
+ }).catch(function(){if(token!==siteToken)return;siteSearch.status='error';renderCatalogResults()})
+}
+// Só dispara sozinho quando o catálogo não tem nada para o termo; com resultados locais fica o link "Buscar no site".
+function scheduleSiteSearch(value){
+ clearTimeout(siteTimer);
+ if(siteEligible(value)&&!matchingProducts(value).length&&siteSearch.q!==value.trim())siteTimer=setTimeout(function(){
+  // Medida de lacuna do catálogo: só a contagem (sem o texto buscado), uma vez por termo na sessão.
+  usageTrack('post-editor-busca-sem-resultado','sem_resultado','miss:'+normalizeText(value.trim()));runSiteSearch(value)
+ },500)
+}
+function openSiteProduct(code,button){
+ var note=button.querySelector('small'),label=note.textContent;button.disabled=true;note.textContent='Consultando o site…';
+ fetch(SITE_API+'/product-catalog?code='+encodeURIComponent(normalizeCode(code))).then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data}})}).then(function(r){
+  if(!r.ok){button.disabled=false;note.textContent=label+' · não foi possível carregar este produto';return}
+  var item=r.data;item.imageUrl='https://app.ovd.com.br/fotos/produto?codigo='+normalizeCode(item.code);item.fromSite=true;item.brandVariant=SITE_BRAND_LOGO[String(item.brand||'').toUpperCase()]||item.brandVariant;
+  usageTrack('post-editor-produto-do-site','escolhido','site:'+normalizeCode(item.code));chooseCatalogProduct(item);status('Produto vindo do site, fora do catálogo: revise os dados antes de usar.',false)
+ }).catch(function(){button.disabled=false;note.textContent=label+' · não foi possível consultar o site agora'})
+}
+function skeletonHtml(){return'<div class="pe-catalog-group">Buscando no site…</div>'+'<div class="pe-catalog-item pe-skeleton" aria-hidden="true"><span class="pe-selected-thumb"></span><span><strong>&nbsp;</strong><small>&nbsp;</small></span></div>'.repeat(4)}
+function visibleSiteItems(query){return siteEligible(query)&&siteSearch.q===query.trim()&&siteSearch.status==='done'?siteSearch.items:[]}
+function siteResultsHtml(query,hasLocal,localCount){
+ var state=siteSearch.q===query.trim()?siteSearch.status:'idle',note=function(title,text,action){return'<div class="pe-catalog-empty"><strong>'+title+'</strong>'+(text?'<p>'+text+'</p>':'')+(action||'')+'</div>'};
+ if(state==='idle')return hasLocal?'<button type="button" class="pe-catalog-more" id="siteMore">Não encontrou? Buscar no site</button>':skeletonHtml();
+ if(state==='loading')return hasLocal?'<div class="pe-catalog-group">Buscando no site…</div>':skeletonHtml();
+ if(state==='error')return note('Não foi possível consultar o site agora','Tente novamente ou use "Continuar sem catálogo".','<button type="button" class="pe-catalog-site" id="siteRetry">Tentar novamente</button>');
+ if(!siteSearch.items.length)return note('Nenhum produto encontrado no site','Confira o nome ou o código, ou use "Continuar sem catálogo".');
+ return'<div class="pe-catalog-group">Encontrados no site</div>'+siteSearch.items.map(function(item,index){var focused=localCount+index===catalogFocus;return'<button type="button" class="pe-catalog-item'+(focused?' is-focused':'')+'" data-site-index="'+index+'" role="option" aria-selected="'+focused+'">'+(item.thumb?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(item.code)+'</small></span><span>›</span></button>'}).join('')
+}
+// Usados recentemente (neste navegador, por marca): aparecem quando o campo está vazio. Guarda o produto inteiro, sem os campos internos "_".
+var RECENT_KEY='pe_recent_products_v1'+BRAND_SUFFIX,RECENT_MAX=6;
+function recentProducts(){try{var list=JSON.parse(localStorage.getItem(RECENT_KEY)||'[]');return Array.isArray(list)?list:[]}catch(e){return[]}}
+function rememberProduct(item){try{var list=recentProducts().filter(function(r){return r.code!==item.code});list.unshift(item);localStorage.setItem(RECENT_KEY,JSON.stringify(list.slice(0,RECENT_MAX),function(key,value){return key.charAt(0)==='_'?undefined:value}))}catch(e){}}
+var CATALOG_VISIBLE=40;
+function resultList(query){
+ var base=matchingProducts(query),recents=query.trim()?[]:recentProducts(),all=recents.length?recents.concat(base.filter(function(item){return!recents.some(function(r){return r.code===item.code})})).slice(0,10):base;
+ return{all:all,recents:recents.length,local:all.slice(0,CATALOG_VISIBLE)}
 }
 function renderCatalogResults(){
- var query=$('#catalogSearch').value,matches=matchingProducts(query),box=$('#catalogResults');
- catalogFocus=Math.min(catalogFocus,Math.max(0,matches.length-1));
+ var query=$('#catalogSearch').value,rl=resultList(query),matches=rl.local,all=rl.all,box=$('#catalogResults'),siteItems=visibleSiteItems(query);
+ catalogFocus=Math.min(catalogFocus,Math.max(0,matches.length+siteItems.length-1));
  if(catalogLoading){$('#catalogStatus').textContent='Carregando catálogo…';box.innerHTML='<div class="pe-catalog-empty"><strong>Carregando catálogo…</strong>Buscando os produtos disponíveis.</div>';return}
- $('#catalogStatus').textContent=catalog.length?(query?matches.length+' produto'+(matches.length===1?' encontrado':'s encontrados'):catalog.length.toLocaleString('pt-BR')+' produtos disponíveis'):'Nenhum produto cadastrado nesta marca';
+ var siteState=siteEligible(query)&&siteSearch.q===query.trim()?siteSearch.status:'idle',found=matchingProducts(query).length;
+ $('#catalogStatus').textContent=catalog.length?(query.trim()?(found?found+' produto'+(found===1?' encontrado':'s encontrados'):siteState==='loading'?'Buscando no site…':siteState==='done'?siteSearch.items.length+' no site':'0 produtos no catálogo'):catalog.length.toLocaleString('pt-BR')+' produtos disponíveis'):'Nenhum produto cadastrado nesta marca';
  if(!catalog.length){box.innerHTML='<div class="pe-catalog-empty"><strong>O catálogo ainda está vazio</strong>Cadastre produtos em Configurações no calendário ou continue sem catálogo.</div>';return}
- if(!matches.length){
-  // Fora do catálogo: um código completo pode ser buscado no site da FG (mesmos campos do catalog.json; a foto vem do app.ovd pelo código).
-  var siteCode=normalizeCode(query),canSite=CATALOG_PHOTO_SLUG==='vonder'&&siteCode.length>=5&&siteCode.length<=20;
-  box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong><p>Tente buscar apenas uma parte do nome ou os números do código.</p>'+(canSite?'<button type="button" class="pe-catalog-site" id="siteLookup">Buscar no site</button><span class="pe-catalog-site-note" id="siteLookupMsg" role="status">Consulta o código '+escapeHtml(siteCode)+' no site.</span>':'')+'</div>';
-  if(canSite)$('#siteLookup').addEventListener('click',function(){lookupProductOnSite(siteCode,this)});
-  return
- }
- box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length;return'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(editorCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('');
+ var site=siteEligible(query)?siteResultsHtml(query,matches.length>0,matches.length):'';
+ if(!matches.length&&!site){box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong><p>Tente buscar apenas uma parte do nome ou os números do código.</p></div>';return}
+ box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length,heading=rl.recents&&index===0?'<div class="pe-catalog-group">Usados recentemente</div>':rl.recents&&index===rl.recents?'<div class="pe-catalog-group">Catálogo</div>':'';return heading+'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb" data-thumb="'+thumbKey(item)+'">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(editorCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('')+(all.length>matches.length?'<div class="pe-catalog-group">Mostrando os '+matches.length+' primeiros de '+all.length+' · refine a busca</div>':'')+site;
+ if(hostedThumbs()){applyThumbs();loadThumbs(matches);queueHeavy(matches.map(thumbKey).filter(function(key){return key&&thumbCache[key]===''}))}
  $$('#catalogResults [data-catalog-index]').forEach(function(btn){
   var item=matches[Number(btn.dataset.catalogIndex)];
   btn.addEventListener('click',function(){chooseCatalogProduct(item)});
   var img=btn.querySelector('img');if(img)setImgWithFallback(img,itemThumbnailUrls(item))
- })
+ });
+ $$('#catalogResults [data-site-index]').forEach(function(btn){var item=siteSearch.items[Number(btn.dataset.siteIndex)],img=btn.querySelector('img');btn.addEventListener('click',function(){openSiteProduct(item.code,btn)});if(img)setImgWithFallback(img,[item.thumb],function(){var ph=document.createElement('span');ph.className='pe-selected-thumb';ph.textContent='＋';img.replaceWith(ph)})});
+ var more=$('#siteMore'),retry=$('#siteRetry');if(more)more.addEventListener('click',function(){runSiteSearch(query)});if(retry)retry.addEventListener('click',function(){runSiteSearch(query)})
 }
 // carrega o catálogo desta marca via CatalogProvider (ver catalog-provider.js) - nunca lê
 // JSON nem localStorage diretamente aqui, só consome a Promise; assim, se a origem do
@@ -328,18 +395,9 @@ function loadImage(src){return new Promise(function(resolve,reject){
  try{var xhr=new XMLHttpRequest();xhr.open('GET',src,true);xhr.responseType='blob';xhr.onload=function(){if(!xhr.response||(xhr.status&&xhr.status>=400)){direct(false);return}var u=URL.createObjectURL(xhr.response),im=new Image();im.onload=function(){URL.revokeObjectURL(u);im.exportSafe=true;resolve(im)};im.onerror=function(){URL.revokeObjectURL(u);direct(false)};im.src=u};xhr.onerror=function(){direct(false)};xhr.send()}catch(e){direct(false)}
 })}
 function loadExportSafeImage(urls){return new Promise(function(resolve,reject){
- var list=(urls||[]).filter(Boolean),local=list.filter(function(url){return /^http:\/\/127\.0\.0\.1:8765\//.test(url)}),others=list.filter(function(url){return local.indexOf(url)<0}),round=0;
- function tryList(candidates){return new Promise(function(ok,fail){var index=0;function next(){if(index>=candidates.length){fail(new Error('Nenhuma origem exportável'));return}loadImage(candidates[index++]).then(function(im){if(im.exportSafe)ok(im);else next()}).catch(next)}next()})}
- // O worker/PHP (others) não dependem de nada rodando na máquina do usuário, então vão
- // primeiro e sem espera. O auxiliar local (127.0.0.1:8765, iniciado pelo "Abrir
- // Calendario.cmd") só entra como último recurso - com retentativas, porque o lançador abre
- // o navegador logo depois de iniciar o auxiliar, e em máquinas mais lentas o editor pode
- // pedir a foto durante essa pequena janela antes dele responder.
- function tryLocal(){
-  if(!local.length||round>=5)return Promise.reject(new Error('Nenhuma origem exportável'));
-  return tryList(local).catch(function(){var delay=[250,500,900,1400,2200][round++];return new Promise(function(done){setTimeout(done,delay)}).then(tryLocal)})
- }
- tryList(others).catch(tryLocal).then(resolve,reject)
+ var list=(urls||[]).filter(Boolean),index=0;
+ function next(){if(index>=list.length){reject(new Error('Nenhuma origem exportável'));return}loadImage(list[index++]).then(function(im){if(im.exportSafe)resolve(im);else next()}).catch(next)}
+ next()
 })}
 // ============================================================
 // MARCA NO CABEÇALHO - biblioteca de logos em post-editor-assets/brands/*.svg (centenas de
@@ -507,7 +565,9 @@ function hasTransparency(im){
  var x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);
  try{var d=x.getImageData(0,0,c.width,c.height).data;for(var i=3;i<d.length;i+=4)if(d[i]<250)return true;return false}catch(e){return false}
 }
-function removeWhite(im){
+// holes: apaga também o branco enclausurado cercado de região clara (vão de alça/furo em produto branco). O recorte não consegue
+// distinguir esse fundo de uma superfície branca do próprio produto (copo, bandeja), então é escolha da pessoa, com a prévia na tela.
+function removeWhite(im,holes){
  var max=900,s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);var x=c.getContext('2d');x.drawImage(im,0,0,c.width,c.height);var data=x.getImageData(0,0,c.width,c.height),d=data.data,w=c.width,h=c.height,corners=[[0,0],[w-1,0],[0,h-1],[w-1,h-1]],avg=[0,0,0];
  corners.forEach(function(p){var i=(p[1]*w+p[0])*4;avg[0]+=d[i]/4;avg[1]+=d[i+1]/4;avg[2]+=d[i+2]/4});var seen=new Uint8Array(w*h),queue=new Int32Array(w*h),head=0,tail=0;
  // Tolerância larga (78) dá conta de fundo cinza/sombreado, mas em foto de estúdio de fundo branco puro (cantos ~255) ela
@@ -534,7 +594,7 @@ function removeWhite(im){
  // A primeira passagem alcança somente o fundo ligado às bordas. Esta segunda encontra
  // ilhas internas da mesma cor, como vãos de alças, cabos e estruturas vazadas.
  // Os limites preservam letras claras pequenas e grandes áreas de produtos brancos.
- var innerSeen=new Uint8Array(w*h),minArea=Math.max(24,Math.round(w*h*.00025)),maxArea=Math.round(w*h*.08);
+ var skippedHoles=0,innerSeen=new Uint8Array(w*h),minArea=Math.max(24,Math.round(w*h*.00025)),maxArea=Math.round(w*h*.08);
  for(var start=0;start<w*h;start++){
   if(innerSeen[start])continue;innerSeen[start]=1;if(d[start*4+3]===0||!isBackground(start,tol,62))continue;
   head=0;tail=0;queue[tail++]=start;var members=[],minX=w,maxX=0,minY=h,maxY=0,edgeLum=0,edgeCount=0;
@@ -542,12 +602,42 @@ function removeWhite(im){
    var neighbors=[qx?q-1:-1,qx<w-1?q+1:-1,qy?q-w:-1,qy<h-1?q+w:-1];for(var n=0;n<4;n++){var next=neighbors[n];if(next<0||innerSeen[next])continue;innerSeen[next]=1;if(isBackground(next,tol,62))queue[tail++]=next;else if(d[next*4+3]>0){edgeLum+=(d[next*4]+d[next*4+1]+d[next*4+2])/3;edgeCount++}}
   }
   // Tolerância justa: só vira vão (alça, cabo) se cercado de região escura; branco cercado de claro é parte do produto (copos, bandeja).
-  if(members.length>=minArea&&members.length<=maxArea&&(maxX-minX)>=3&&(maxY-minY)>=3&&(!tight||(edgeCount&&edgeLum/edgeCount<150)))for(var m=0;m<members.length;m++)d[members[m]*4+3]=0
+  if(members.length>=minArea&&members.length<=maxArea&&(maxX-minX)>=3&&(maxY-minY)>=3){if(!tight||holes||(edgeCount&&edgeLum/edgeCount<150))for(var m=0;m<members.length;m++)d[members[m]*4+3]=0;else skippedHoles++}
  }
- x.putImageData(data,0,0);return c
+ x.putImageData(data,0,0);c.skippedHoles=skippedHoles;return c
 }
+// Dica quando o recorte manteve uma área branca cercada pelo produto (pode ser alça/furo ou parte do produto: a pessoa decide).
+var holesDismissedFor=null;
+function updateHolesHint(){
+ var hint=$('#holesHint');if(!hint)return;
+ var skipped=(state.productDrawable&&state.productDrawable.skippedHoles)||0;
+ hint.hidden=!(skipped>0&&!$('#removeHoles').checked&&holesDismissedFor!==state.product)
+}
+$('#holesHintYes').addEventListener('click',function(){$('#removeHoles').checked=true;updateProduct()});
+$('#holesHintNo').addEventListener('click',function(){holesDismissedFor=state.product;updateHolesHint()});
+// Desfazer / restaurar posições (arraste de fundo e destaque). Pilha de até 30 estados do state.format.
+var undoStack=[];
+function updateUndoButton(){var b=$('#undoMove');if(b)b.disabled=!undoStack.length}
+function pushUndo(){undoStack.push(JSON.stringify(state.format));if(undoStack.length>30)undoStack.shift();updateUndoButton()}
+var dragSnapshot=null;
+function commitDrag(){if(dragSnapshot!==null&&JSON.stringify(state.format)!==dragSnapshot){undoStack.push(dragSnapshot);if(undoStack.length>30)undoStack.shift();updateUndoButton();editDirty=true}dragSnapshot=null}
+function undoMove(){if(!undoStack.length)return;state.format=JSON.parse(undoStack.pop());updateUndoButton();drawAll();status('Movimento desfeito',false)}
+function resetPositions(){
+ var empty=function(){return{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0}};
+ pushUndo();state.format.feed=empty();state.format.story=empty();drawAll();status('Posições restauradas',false)
+}
+$('#undoMove').addEventListener('click',undoMove);$('#resetPositions').addEventListener('click',resetPositions);
+document.addEventListener('keydown',function(ev){
+ if(!(ev.ctrlKey||ev.metaKey)||ev.key.toLowerCase()!=='z'||ev.shiftKey||currentFlowMode!=='edit')return;
+ var tag=(ev.target&&ev.target.tagName||'').toLowerCase();if(tag==='input'||tag==='textarea'||tag==='select'||(ev.target&&ev.target.isContentEditable))return;
+ ev.preventDefault();undoMove()
+});
+// Sair da etapa de edição só pede confirmação se algo mudou desde a última exportação (a composição não é salva sozinha).
+var editDirty=false;
+function markDirty(ev){if(ev&&ev.type==='click'&&ev.target.closest&&ev.target.closest('[data-download],#downloadBoth,#downloadFeed,#downloadStory,#nextProduct,#changeProduct,#changeEditoriaEdit'))return;editDirty=true}
+['input','change','click'].forEach(function(type){$('#editorWorkspace').addEventListener(type,markDirty,true)});
 function updateProduct(){
- if(!state.product){state.productDrawable=state.productHasCircle?state.productDrawable:null;drawAll();return}status('Preparando o produto…',true);setTimeout(function(){try{state.productDrawable=$('#removeWhite').checked?removeWhite(state.product):state.product;status('Produto pronto',false)}catch(e){state.productDrawable=state.product;status('Produto carregado sem recorte automático',false)}state.productHasCircle=false;drawAll()},30)
+ if(!state.product){state.productDrawable=state.productHasCircle?state.productDrawable:null;var holesHintEl=$('#holesHint');if(holesHintEl)holesHintEl.hidden=true;drawAll();return}status('Preparando o produto…',true);setTimeout(function(){try{state.productDrawable=$('#removeWhite').checked?removeWhite(state.product,$('#removeHoles').checked):state.product;updateHolesHint();status('Produto pronto',false)}catch(e){state.productDrawable=state.product;status('Produto carregado sem recorte automático',false)}state.productHasCircle=false;drawAll()},30)
 }
 function setupDrop(dropSel,inputSel,nameSel,handler){
  var drop=$(dropSel),input=$(inputSel),name=$(nameSel);input.addEventListener('change',function(){if(input.files[0])handler(input.files[0],name)});['dragenter','dragover'].forEach(function(e){drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.add('is-dragging')})});['dragleave','drop'].forEach(function(e){drop.addEventListener(e,function(ev){ev.preventDefault();drop.classList.remove('is-dragging')})});drop.addEventListener('drop',function(ev){var f=ev.dataTransfer.files[0];if(f)handler(f,name)})
@@ -564,18 +654,18 @@ function exportBaseName(){var title=splitName($('#productName').value||'produto'
 function exportFileName(format){return exportBaseName()+'_'+format.toUpperCase()+'.jpg'}
 function canvasBlob(format){return new Promise(function(resolve,reject){canvases[format].toBlob(function(blob){if(blob)resolve(blob);else reject(new Error('Falha ao gerar '+format))},'image/jpeg',.94)})}
 function triggerBlob(blob,name){var a=document.createElement('a'),u=URL.createObjectURL(blob);a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},1200)}
-function download(format){var name=exportFileName(format);status('Gerando '+name+'…',true);canvasBlob(format).then(function(blob){triggerBlob(blob,name);window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+exportBaseName()});status(name+' baixado',false)}).catch(function(){status('Não foi possível gerar '+name,false)})}
+function download(format){var name=exportFileName(format);status('Gerando '+name+'…',true);canvasBlob(format).then(function(blob){triggerBlob(blob,name);window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+exportBaseName()});editDirty=false;status(name+' baixado',false)}).catch(function(){status('Não foi possível gerar '+name,false)})}
 var ZIP_CRC_TABLE=(function(){var table=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=(c&1)?0xedb88320^(c>>>1):c>>>1;table[n]=c>>>0}return table})();
 function zipCrc(bytes){var crc=0xffffffff;for(var i=0;i<bytes.length;i++)crc=ZIP_CRC_TABLE[(crc^bytes[i])&255]^(crc>>>8);return(crc^0xffffffff)>>>0}
 function zipHeader(size){var bytes=new Uint8Array(size),view=new DataView(bytes.buffer);return{bytes:bytes,u16:function(offset,value){view.setUint16(offset,value,true)},u32:function(offset,value){view.setUint32(offset,value>>>0,true)}}}
 function zipDate(){var d=new Date(),year=Math.max(1980,d.getFullYear());return{time:(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1),date:((year-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate()}}
 function makeZip(files){var encoder=new TextEncoder(),stamp=zipDate(),locals=[],centrals=[],offset=0;files.forEach(function(file){var name=encoder.encode(file.name),data=file.data,crc=zipCrc(data),local=zipHeader(30);local.u32(0,0x04034b50);local.u16(4,20);local.u16(6,0x800);local.u16(8,0);local.u16(10,stamp.time);local.u16(12,stamp.date);local.u32(14,crc);local.u32(18,data.length);local.u32(22,data.length);local.u16(26,name.length);local.u16(28,0);locals.push(local.bytes,name,data);var central=zipHeader(46);central.u32(0,0x02014b50);central.u16(4,20);central.u16(6,20);central.u16(8,0x800);central.u16(10,0);central.u16(12,stamp.time);central.u16(14,stamp.date);central.u32(16,crc);central.u32(20,data.length);central.u32(24,data.length);central.u16(28,name.length);central.u16(30,0);central.u16(32,0);central.u16(34,0);central.u16(36,0);central.u32(38,0);central.u32(42,offset);centrals.push(central.bytes,name);offset+=30+name.length+data.length});var centralSize=centrals.reduce(function(total,part){return total+part.length},0),end=zipHeader(22);end.u32(0,0x06054b50);end.u16(4,0);end.u16(6,0);end.u16(8,files.length);end.u16(10,files.length);end.u32(12,centralSize);end.u32(16,offset);end.u16(20,0);return new Blob(locals.concat(centrals,[end.bytes]),{type:'application/zip'})}
-function downloadZip(){var base=exportBaseName();status('Montando pacote ZIP…',true);Promise.all([canvasBlob('feed'),canvasBlob('story')]).then(function(blobs){return Promise.all(blobs.map(function(blob){return blob.arrayBuffer()}))}).then(function(buffers){var zip=makeZip([{name:base+'_FEED.jpg',data:new Uint8Array(buffers[0])},{name:base+'_STORY.jpg',data:new Uint8Array(buffers[1])}]);triggerBlob(zip,base+'_FEED_STORY.zip');window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+base});status('Pacote ZIP baixado',false)}).catch(function(){status('Não foi possível gerar o pacote ZIP',false)})}
+function downloadZip(){var base=exportBaseName();status('Montando pacote ZIP…',true);Promise.all([canvasBlob('feed'),canvasBlob('story')]).then(function(blobs){return Promise.all(blobs.map(function(blob){return blob.arrayBuffer()}))}).then(function(buffers){var zip=makeZip([{name:base+'_FEED.jpg',data:new Uint8Array(buffers[0])},{name:base+'_STORY.jpg',data:new Uint8Array(buffers[1])}]);triggerBlob(zip,base+'_FEED_STORY.zip');window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+base});editDirty=false;status('Pacote ZIP baixado',false)}).catch(function(){status('Não foi possível gerar o pacote ZIP',false)})}
 setupDrop('#backgroundDrop','#backgroundFile','#backgroundFileName',function(file,name){name.textContent=file.name;status('Analisando a foto…',true);fileImage(file).then(function(im){state.background=im;state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};analyze()}).catch(function(){status('Não foi possível abrir a foto',false)})});
 setupDrop('#productDrop','#productFile','#productFileName',function(file,name){setProductFilePreviewFromFile(file);fileImage(file).then(function(im){state.product=im;updateProduct()}).catch(function(){status('Não foi possível abrir o produto',false)})});
 ['#productName','#productCode','#productCode2','#codeVariant1','#codeVariant2','#eventDay','#eventMonth','#eventPrefix','#ecommerceDiscount','#ecommerceCta','#ecommerceValidity'].forEach(function(s){var el=$(s);if(el)el.addEventListener('input',drawAll)});
 function formatCurrencyInput(el){var digits=el.value.replace(/\D/g,'');if(!digits){el.value='';return}digits=digits.replace(/^0+(?=\d)/,'');while(digits.length<3)digits='0'+digits;var cents=digits.slice(-2),intPart=(digits.slice(0,-2).replace(/^0+(?=\d)/,'')||'0').replace(/\B(?=(\d{3})+(?!\d))/g,'.');el.value=intPart+','+cents}
-['#ecommerceOldPrice','#ecommercePrice'].forEach(function(s){var el=$(s);if(el)el.addEventListener('input',function(){formatCurrencyInput(this);drawAll()})});if($('#eventMonth'))$('#eventMonth').addEventListener('blur',function(){var month=this.value.trim().toLocaleLowerCase('pt-BR');this.value=month?month.charAt(0).toLocaleUpperCase('pt-BR')+month.slice(1):'';drawAll()});function syncCodeFields(){var dual=$('#codeCount').value==='2';$('#codeVariantField1').hidden=!dual;$('#codeRow1').classList.toggle('is-dual',dual);$('#codeRow2').hidden=!dual;$('#productCodeLabel').textContent=dual?'Código 1':'Código';drawAll()}$('#codeCount').addEventListener('change',syncCodeFields);if($('#ecommercePriceMode'))$('#ecommercePriceMode').addEventListener('change',function(){var mode=this.value;$('#ecommerceOldPriceField').hidden=mode!=='de-por';$('#ecommerceDiscountField').hidden=mode!=='desconto';drawAll()});syncCodeFields();$('#layoutMode').addEventListener('change',drawAll);$('#removeWhite').addEventListener('change',updateProduct);['Feed','Story'].forEach(function(format){var input=$('#eventTitleSize'+format),output=$('#eventTitleSize'+format+'Out');if(input)input.addEventListener('input',function(){if(output)output.value=this.value+'%';draw(format.toLowerCase())})});
+['#ecommerceOldPrice','#ecommercePrice'].forEach(function(s){var el=$(s);if(el)el.addEventListener('input',function(){formatCurrencyInput(this);drawAll()})});if($('#eventMonth'))$('#eventMonth').addEventListener('blur',function(){var month=this.value.trim().toLocaleLowerCase('pt-BR');this.value=month?month.charAt(0).toLocaleUpperCase('pt-BR')+month.slice(1):'';drawAll()});function syncCodeFields(){var dual=$('#codeCount').value==='2';$('#codeVariantField1').hidden=!dual;$('#codeRow1').classList.toggle('is-dual',dual);$('#codeRow2').hidden=!dual;$('#productCodeLabel').textContent=dual?'Código 1':'Código';drawAll()}$('#codeCount').addEventListener('change',syncCodeFields);if($('#ecommercePriceMode'))$('#ecommercePriceMode').addEventListener('change',function(){var mode=this.value;$('#ecommerceOldPriceField').hidden=mode!=='de-por';$('#ecommerceDiscountField').hidden=mode!=='desconto';drawAll()});syncCodeFields();$('#layoutMode').addEventListener('change',drawAll);$('#removeWhite').addEventListener('change',updateProduct);$('#removeHoles').addEventListener('change',updateProduct);['Feed','Story'].forEach(function(format){var input=$('#eventTitleSize'+format),output=$('#eventTitleSize'+format+'Out');if(input)input.addEventListener('input',function(){if(output)output.value=this.value+'%';draw(format.toLowerCase())})});
 ['feed','story'].forEach(function(format){var cap=format[0].toUpperCase()+format.slice(1),input=$('#backgroundZoom'+cap),output=$('#backgroundZoom'+cap+'Out');input.addEventListener('input',function(){state.bgZoom[format]=this.value/100;output.value=this.value+'%';draw(format)})});$('#overlayScale').addEventListener('input',function(){state.overlayScale=this.value/100;$('#overlayScaleOut').value=this.value+'%';drawAll()});
 if($('#brandBadgeColor'))$('#brandBadgeColor').addEventListener('input',function(){state.brandBadgeColor=this.value;drawAll()});
 $('#autoCompose').addEventListener('click',analyze);$('#generateCompositions').addEventListener('click',generateCompositions);$$('[data-composition]').forEach(function(button){button.addEventListener('click',function(){applyComposition(button.dataset.composition)})});$('#resetPosition').addEventListener('click',function(){state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};drawAll();status('Posições centralizadas',false)});
@@ -594,9 +684,9 @@ function flashMoveTarget(format,cap,hit,canvasRect,box){
 $$('[data-move-mode]').forEach(function(b){b.addEventListener('click',function(){setMoveMode(b.dataset.moveMode)})});$('#moveTarget').addEventListener('change',function(){setMoveMode($('#moveTarget').value)});
 Object.keys(canvases).forEach(function(format){
  var c=canvases[format],cap=format[0].toUpperCase()+format.slice(1),zoomInput=$('#backgroundZoom'+cap),zoomOut=$('#backgroundZoom'+cap+'Out'),drag=null,dragTarget=null;
- c.addEventListener('pointerdown',function(e){if(!state.moveEnabled)return;drag={x:e.clientX,y:e.clientY};dragTarget=$('#moveTarget').value;c.setPointerCapture(e.pointerId)});
+ c.addEventListener('pointerdown',function(e){if(!state.moveEnabled)return;dragSnapshot=JSON.stringify(state.format);drag={x:e.clientX,y:e.clientY};dragTarget=$('#moveTarget').value;c.setPointerCapture(e.pointerId)});
  c.addEventListener('pointermove',function(e){if(!drag)return;var scale=c.width/c.getBoundingClientRect().width,dx=(e.clientX-drag.x)*scale,dy=(e.clientY-drag.y)*scale;drag={x:e.clientX,y:e.clientY};if(dragTarget==='background'){state.format[format].bgDx+=dx;state.format[format].bgDy+=dy}else{state.format[format].overlayDx+=dx;state.format[format].overlayDy+=dy}drawAll()});
- ['pointerup','pointercancel'].forEach(function(ev){c.addEventListener(ev,function(){drag=null;dragTarget=null})});
+ ['pointerup','pointercancel'].forEach(function(ev){c.addEventListener(ev,function(){commitDrag();drag=null;dragTarget=null})});
  c.addEventListener('dblclick',function(e){
   if(!state.moveEnabled)return;var rect=c.getBoundingClientRect(),scaleX=c.width/rect.width,scaleY=c.height/rect.height,px=(e.clientX-rect.left)*scaleX,py=(e.clientY-rect.top)*scaleY,destaqueBox=state.priceMoveOnly?lastProductBox[format]:unionBox(lastProductBox[format],lastBadgeBox[format]),hit=boxHit(destaqueBox,px,py);
   setMoveMode(hit?'overlay':'background');status(hit?'Box de preço selecionada para mover':'Fundo selecionado para mover',false);
@@ -609,15 +699,19 @@ Object.keys(canvases).forEach(function(format){
  },{passive:false});
 });
 $('#downloadFeed').onclick=function(){download('feed')};$('#downloadStory').onclick=function(){download('story')};$('#downloadBoth').onclick=downloadZip;$$('[data-download]').forEach(function(b){b.onclick=function(){download(b.dataset.download)}});
-$('#catalogSearch').addEventListener('input',function(){catalogFocus=0;renderCatalogResults()});
-$('#catalogSearch').addEventListener('keydown',function(ev){var matches=matchingProducts(this.value);if(ev.key==='ArrowDown'&&matches.length){catalogFocus=Math.min(matches.length-1,catalogFocus+1);renderCatalogResults();ev.preventDefault()}else if(ev.key==='ArrowUp'&&matches.length){catalogFocus=Math.max(0,catalogFocus-1);renderCatalogResults();ev.preventDefault()}else if(ev.key==='Enter'&&matches.length){chooseCatalogProduct(matches[catalogFocus]||matches[0]);ev.preventDefault()}});
-$('#manualProduct').addEventListener('click',chooseManualProduct);$('#changeProduct').addEventListener('click',function(){goToStep('choose')});
+$('#catalogSearch').addEventListener('input',function(){catalogFocus=0;abortSite();siteSearch={q:'',status:'idle',items:[]};renderCatalogResults();scheduleSiteSearch(this.value)});
+$('#catalogSearch').addEventListener('keydown',function(ev){
+ var q=this.value,rl=resultList(q),n=rl.local.length,sites=visibleSiteItems(q),total=n+sites.length;if(!total)return;
+ if(ev.key==='ArrowDown'||ev.key==='ArrowUp'){catalogFocus=ev.key==='ArrowDown'?Math.min(total-1,catalogFocus+1):Math.max(0,catalogFocus-1);renderCatalogResults();var focused=$('#catalogResults .is-focused');if(focused)focused.scrollIntoView({block:'nearest'});ev.preventDefault()}
+ else if(ev.key==='Enter'){if(catalogFocus<n)chooseCatalogProduct(rl.local[catalogFocus]||rl.local[0]);else{var idx=catalogFocus-n,btn=$('#catalogResults [data-site-index="'+idx+'"]');if(btn)openSiteProduct(sites[idx].code,btn)}ev.preventDefault()}
+});
+$('#manualProduct').addEventListener('click',chooseManualProduct);$('#changeProduct').addEventListener('click',function(){goToStep('choose')});$('#nextProduct').addEventListener('click',function(){goToStep('choose')});
 if($('#changeBrandLogo'))$('#changeBrandLogo').addEventListener('click',function(){$('#brandLogoSummary').hidden=true;$('#brandLogoPicker').hidden=false;$('#brandLogoSearch').value='';renderBrandLogoResults();setTimeout(function(){$('#brandLogoSearch').focus()},20)});
 if($('#brandLogoSearch'))$('#brandLogoSearch').addEventListener('input',renderBrandLogoResults);
 $('#changeEditoriaChoose').addEventListener('click',function(){goToStep('editoria')});$('#changeEditoriaEdit').addEventListener('click',function(){goToStep('editoria')});
 setFlow('editoria');renderEditoriaGrid();loadCatalog();refreshEditoriasFromServer();
 if(INCOMING_COMM){var incomingEditoria=EDITORIAS.filter(function(e){return /comemorat/i.test(e.name||'')})[0];if(incomingEditoria&&EDITORIA_PRESETS[incomingEditoria.name])chooseEditoria(incomingEditoria)}
-var embedded=window.POST_EDITOR_ASSETS||{};loadImage(embedded.product||'post-editor-assets/demo-product.png').then(function(im){if(!selectedProduct&&!state.product&&$('#editorWorkspace').hidden)state.productDrawable=im;drawAll();try{canvases.feed.toDataURL('image/jpeg',.1);document.body.dataset.exportReady='true';status('Editor pronto',false)}catch(e){document.body.dataset.exportReady='false';status('Prévia pronta; exportação bloqueada pelo navegador',false)}}).catch(function(){drawAll();status('Editor aberto; alguns elementos não carregaram',false)});
+loadImage('post-editor-assets/demo-product.png').then(function(im){if(!selectedProduct&&!state.product&&$('#editorWorkspace').hidden)state.productDrawable=im;drawAll();try{canvases.feed.toDataURL('image/jpeg',.1);document.body.dataset.exportReady='true';status('Editor pronto',false)}catch(e){document.body.dataset.exportReady='false';status('Prévia pronta; exportação bloqueada pelo navegador',false)}}).catch(function(){drawAll();status('Editor aberto; alguns elementos não carregaram',false)});
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawAll);else drawAll();
 window.PostEditor={redraw:drawAll,state:state,chooseProduct:chooseCatalogProduct,getCatalog:function(){return catalog.slice()},makeZip:makeZip,exportBaseName:exportBaseName};
 
@@ -627,8 +721,8 @@ window.PostEditor={redraw:drawAll,state:state,chooseProduct:chooseCatalogProduct
 
 
 
-// Importação de ofertas FG: o site é estático, então consulta exclusivamente o auxiliar local
-// iniciado pelo "Abrir Calendario.cmd". O resultado é sempre revisável nos campos da oferta.
+// Importação de ofertas FG: o site é estático, então consulta o Worker do Cloudflare (/product-offer).
+// O resultado é sempre revisável nos campos da oferta.
 (function(){
  var button=$('#importEcommerceOffer'),urlField=$('#ecommerceProductUrl'),modal=$('#offerSkuModal');if(!button||!urlField||!modal)return;
  function money(value){return Number(value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}

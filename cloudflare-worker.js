@@ -1,9 +1,5 @@
 // Cloudflare Worker - coletor público de ofertas da Ferramentas Gerais.
-// ponytail: /product-image e /product-offer têm gêmeos sem código compartilhado em
-// product-image.php e scripts/{product-image-proxy,fg-offer-proxy}.ps1 (3 runtimes distintos,
-// sem build step neste projeto pra unificar). Já divergiram de verdade uma vez (arredondamento
-// de desconto e campo offerCta ausente no PowerShell, corrigido em 15/09/2026) - ao mudar regra
-// de parsing/cálculo aqui, replicar nos outros arquivos.
+// Único proxy de foto/oferta/catálogo do portal (o PHP e os proxies PowerShell locais foram removidos em 06/10/2026: o portal só fala com a web).
 const ALLOWED_ORIGINS=new Set(['https://vonderferramentas-coder.github.io','https://portalmktovd.pages.dev','https://hml.portalmktovd.pages.dev','http://localhost:5500','http://127.0.0.1:5500']);
 const FG_HOST=/(^|\.)fg\.com\.br$/i;
 function cors(request){const origin=request.headers.get('Origin')||'';const allowed=ALLOWED_ORIGINS.has(origin)?origin:'https://vonderferramentas-coder.github.io';return {'Access-Control-Allow-Origin':allowed,'Access-Control-Allow-Methods':'GET, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Vary':'Origin'};}
@@ -48,9 +44,7 @@ async function offer(request){const url=productUrl(new URL(request.url).searchPa
 // CORS, então o navegador só chega nela por aqui. O código do texto é o do produto ou o do SKU
 // (iguais nos produtos de SKU único), por isso tenta os dois filtros. Por link, a busca é pelo
 // "slug" da página (/{slug}/p); o host do link é validado por productUrl (só fg.com.br).
-// ponytail: sem gêmeo em product-image.php/scripts/*.ps1 - só o Conecta FG usa, e ele cai num link
-// deduzido do nome do produto quando o Worker não responde; se um dia precisar rodar sem o Worker,
-// replicar aqui e lá.
+// ponytail: só o Conecta FG usa; ele cai num link deduzido do nome do produto quando o Worker não responde.
 async function productLink(request){
  const params=new URL(request.url).searchParams;
  const code=(params.get('code')||'').replace(/\D/g,'');
@@ -65,34 +59,80 @@ async function productLink(request){
  }
  return json(request,{error:'Produto não encontrado no site FG.',notFound:true},404);
 }
+// Perfil VONDER: só entram produtos das marcas VONDER do site FG (IDs fixos, ativas em 06/10/2026: VONDER, VONDER PLUS,
+// VONDER AT, VONDER/TMX, VONDER CONSTRUTOR). Marca nova com "VONDER" no nome precisa ser acrescentada aqui (lista de marcas:
+// /api/catalog_system/pub/brand/list). O filtro por nome da marca é a 2ª barreira: nada de outra marca passa.
+const VONDER_BRAND_FQ=[2959,29859,29360,29639,37264].map(id=>'fq=B:'+id).join('&');
+const isVonderBrand=product=>/^vonder\b/i.test(String(product&&product.brand||''));
+// Consultas ao site FG pelas rotas novas: cache de borda de 10 min (mesma URL = mesma resposta, sem nova ida ao site; acelera buscas
+// repetidas e protege o site e a cota do Worker). Barreira de origem: só o portal chama (o Origin é falsificável fora de um navegador,
+// então isto só barra uso casual; contra abuso de verdade há a regra de limite de requisições do Cloudflare, ver ARQUITETURA seção do Worker).
+const vtexFetch=url=>fetch(url,{headers:{Accept:'application/json'},cf:{cacheTtl:600,cacheEverything:true}});
+const originAllowed=request=>ALLOWED_ORIGINS.has(request.headers.get('Origin')||'');
+const formatCode=digits=>digits.length===10?digits.replace(/^(\d{2})(\d{2})(\d{3})(\d{3})$/,'$1.$2.$3.$4'):digits;
+// Tabela de especificações do site (descrição do produto): linhas [rótulo, valor] em texto limpo.
+const specRows=product=>[...String(product.description||'').matchAll(/<th[^>]*>([\s\S]*?)<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>[plainText(m[1]),plainText(m[2])]);
+const specTake=rows=>pattern=>(rows.find(([label])=>pattern.test(label))||['',''])[1];
 // Produto fora do catálogo.json (portal: post-editor.js, "Buscar no site da FG"): devolve os mesmos campos
 // de data/catalog-*.json a partir da tabela de especificações do site FG, achada pela REFERÊNCIA
 // (código OVD, 10 dígitos; é o RefId do SKU, por isso o filtro alternateIds_RefId e não productId). A foto
 // NÃO vem daqui: o portal a busca em /product-image pelo mesmo código (app.ovd.com.br).
-// ponytail: sem gêmeo em product-image.php/scripts/*.ps1 - só o editor publicado usa; "qualificacaoTecnica" junta
+// ponytail: "qualificacaoTecnica" junta
 // as linhas técnicas do site e pode divergir do catálogo (que tem linhas comerciais a mais).
 async function productCatalog(request){
  const code=(new URL(request.url).searchParams.get('code')||'').replace(/\D/g,'');
  if(code.length<5||code.length>20)return json(request,{error:'Informe um código de 5 a 20 dígitos.'},400);
- const upstream=await fetch('https://www.fg.com.br/api/catalog_system/pub/products/search?fq=alternateIds_RefId:'+code,{headers:{Accept:'application/json'}});
+ if(!originAllowed(request))return json(request,{error:'Origem não permitida.'},403);
+ const upstream=await vtexFetch('https://www.fg.com.br/api/catalog_system/pub/products/search?fq=alternateIds_RefId:'+code);
  if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
- const product=(await upstream.json())[0];
+ const product=(await upstream.json()).find(isVonderBrand);
  if(!product)return json(request,{error:'Produto não encontrado no site FG.',notFound:true},404);
- const rows=[...String(product.description||'').matchAll(/<th[^>]*>([\s\S]*?)<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>[plainText(m[1]),plainText(m[2])]);
- const take=pattern=>(rows.find(([label])=>pattern.test(label))||['',''])[1];
+ const rows=specRows(product),take=specTake(rows);
  const named=/^(descri[cç][aã]o completa|refer[eê]ncia|conte[uú]do da embalagem|aplica[cç][oõ]es|destaques)/i;
- const ref=(((product.items||[])[0]||{}).referenceId||[]).find(r=>r.Key==='RefId'),digits=String((ref&&ref.Value)||code).replace(/\D/g,'');
+ // O código buscado pode ser de uma variação (SKU) do produto; vale o que foi pedido, não o do 1º SKU.
+ const skuMatch=(product.items||[]).some(item=>(item.referenceId||[]).some(ref=>String(ref.Value||'').replace(/\D/g,'')===code)),ref=(((product.items||[])[0]||{}).referenceId||[]).find(r=>r.Key==='RefId'),digits=skuMatch?code:String((ref&&ref.Value)||code).replace(/\D/g,'');
  return json(request,{
   name:take(/^descri[cç][aã]o completa/i)||product.productName,
-  code:digits.length===10?digits.replace(/^(\d{2})(\d{2})(\d{3})(\d{3})$/,'$1.$2.$3.$4'):digits,
+  code:formatCode(digits),
   codeFG:String(product.productId),
+  brand:product.brand,
   destaques:take(/^destaques/i),aplicacoes:take(/^aplica[cç][oõ]es/i),conteudoEmbalagem:take(/^conte[uú]do da embalagem/i),
   qualificacaoTecnica:rows.filter(([label,value])=>value&&!named.test(label)).map(([label,value])=>label+': '+value).join(' | '),
  });
+}
+// Miniatura da lista: a CDN pública da VTEX redimensiona pela URL (/arquivos/ids/ID-120-120/arquivo, ~3 KB). A foto oficial
+// do app.ovd tem vários MB e só é carregada depois que o usuário escolhe o produto.
+const thumbUrl=(product,item=(product.items||[])[0])=>{const image=((item||{}).images||[])[0],match=image&&/^(https:\/\/[\w.-]+\.vteximg\.com\.br)\/arquivos\/ids\/(\d+)\/([^?]+)/.exec(image.imageUrl||'');return match?match[1]+'/arquivos/ids/'+match[2]+'-120-120/'+match[3]:'';};
+// Busca por nome (ou código) de produto VONDER no site FG, para a lista "Encontrados no site" do editor de posts. Devolve só
+// nome e código (a foto e os demais dados vêm depois, em /product-catalog e /product-image, quando o usuário escolhe um item).
+// ponytail: sem gêmeo em PHP/PowerShell; no máximo 12 itens, sem paginação.
+async function productSearch(request){
+ const q=(new URL(request.url).searchParams.get('q')||'').trim().slice(0,60),digits=q.replace(/\D/g,''),byCode=digits.length>=5&&/^[\d.\s-]+$/.test(q);
+ if(!byCode&&q.length<3)return json(request,{error:'Digite ao menos 3 letras ou um código.'},400);
+ const query=byCode?'?fq=alternateIds_RefId:'+digits:'?ft='+encodeURIComponent(q)+'&'+VONDER_BRAND_FQ+'&_from=0&_to=14';
+ if(!originAllowed(request))return json(request,{error:'Origem não permitida.'},403);
+ const upstream=await vtexFetch('https://www.fg.com.br/api/catalog_system/pub/products/search'+query);
+ if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
+ const items=(await upstream.json()).filter(isVonderBrand).slice(0,12).map(product=>({name:specTake(specRows(product))(/^descri[cç][aã]o completa/i)||product.productName,brand:product.brand,code:formatCode(String(product.productReference||'').replace(/\D/g,'')),thumb:thumbUrl(product)})).filter(item=>item.code);
+ return json(request,{items});
+}
+// Miniaturas (3 KB) de vários produtos do catálogo de uma vez, para a lista do editor de posts: a foto do app.ovd tem de 2 a 15 MB e
+// travava a busca. A consulta é uma só (várias referências em OU). Produto que o site não tem volta sem miniatura.
+// ponytail: sem gêmeo em PHP/PowerShell; no máximo 20 códigos por chamada.
+async function productThumbs(request){
+ const codes=[...new Set((new URL(request.url).searchParams.get('codes')||'').split(',').map(code=>code.replace(/\D/g,'')).filter(code=>code.length>=5&&code.length<=20))].slice(0,20);
+ if(!codes.length)return json(request,{error:'Informe os códigos separados por vírgula.'},400);
+ if(!originAllowed(request))return json(request,{error:'Origem não permitida.'},403);
+ const upstream=await vtexFetch('https://www.fg.com.br/api/catalog_system/pub/products/search?'+codes.map(code=>'fq=alternateIds_RefId:'+code).join('&')+'&_from=0&_to=19');
+ if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
+ const thumbs={};
+ // Variações (127 V / 220 V...) são SKUs do mesmo produto: cada uma tem a sua referência e as suas fotos.
+ for(const product of await upstream.json())for(const item of product.items||[])for(const ref of item.referenceId||[]){const code=String(ref.Value||'').replace(/\D/g,'');if(codes.includes(code)&&thumbUrl(product,item))thumbs[code]=thumbUrl(product,item);}
+ return json(request,{thumbs});
 }
 export default {async fetch(request){
  const path=new URL(request.url).pathname;
  if(path==='/product-image'){if(request.method==='OPTIONS')return imageReply(null,204);try{return await productImage(request);}catch{return imageReply('Não foi possível carregar a imagem do produto.',502,{'Content-Type':'text/plain; charset=utf-8'});}}
  if(request.method==='OPTIONS')return reply(request,null,204);
- try{if(path==='/product-offer')return offer(request);if(path==='/product-link')return await productLink(request);if(path==='/product-catalog')return await productCatalog(request);return json(request,{error:'Rota não encontrada.'},404);}catch{return json(request,{error:'Não foi possível consultar a oferta.'},502);}
+ try{if(path==='/product-offer')return offer(request);if(path==='/product-link')return await productLink(request);if(path==='/product-catalog')return await productCatalog(request);if(path==='/product-search')return await productSearch(request);if(path==='/product-thumbs')return await productThumbs(request);return json(request,{error:'Rota não encontrada.'},404);}catch{return json(request,{error:'Não foi possível consultar a oferta.'},502);}
 }};
