@@ -144,12 +144,21 @@ function itemThumbnailUrls(item){return(item&&item.thumbnail)?[item.thumbnail]:h
 var thumbCache={},thumbPending={},thumbFailUntil=0;
 function thumbKey(item){var first=catalogCodes(item)[0];return first?normalizeCode(first.code):''}
 function applyThumbs(){$$('#catalogResults [data-thumb]').forEach(function(slot){var url=thumbCache[slot.dataset.thumb];if(!url)return;var img=document.createElement('img');img.alt='';img.decoding='async';img.src=url;img.onerror=function(){img.replaceWith(slot)};slot.replaceWith(img)})}
+// Produto que o site não tem: a única foto é a do app.ovd (1 a 15 MB, via worker). Carrega só as das linhas ainda visíveis,
+// 2 por vez, e fica no cache do navegador (7 dias); enquanto não chega, a linha mostra o "+".
+var heavyQueue=[],heavyActive=0,heavyTried={};
+function queueHeavy(keys){keys.forEach(function(key){if(!heavyTried[key]&&heavyQueue.indexOf(key)<0)heavyQueue.push(key)});pumpHeavy()}
+function startHeavy(key){
+ var url=workerProductImageUrl(key),im=new Image(),done=function(ok){heavyActive--;if(ok){thumbCache[key]=url;applyThumbs()}pumpHeavy()};
+ heavyActive++;heavyTried[key]=1;im.decoding='async';im.onload=function(){done(true)};im.onerror=function(){done(false)};im.src=url
+}
+function pumpHeavy(){while(heavyActive<2&&heavyQueue.length){var key=heavyQueue.shift();if($('#catalogResults [data-thumb="'+key+'"]'))startHeavy(key)}}
 function loadThumbs(items){
  var need=items.map(thumbKey).filter(function(key){return key&&!(key in thumbCache)&&!thumbPending[key]}).slice(0,20);
  if(!need.length||Date.now()<thumbFailUntil)return;
  need.forEach(function(key){thumbPending[key]=1});
  fetch(SITE_API+'/product-thumbs?codes='+need.join(',')).then(function(res){if(!res.ok)throw new Error('thumbs');return res.json()}).then(function(data){
-  need.forEach(function(key){delete thumbPending[key];thumbCache[key]=(data.thumbs&&data.thumbs[key])||''});applyThumbs();loadThumbs(items)
+  need.forEach(function(key){delete thumbPending[key];thumbCache[key]=(data.thumbs&&data.thumbs[key])||''});applyThumbs();queueHeavy(need.filter(function(key){return!thumbCache[key]}));loadThumbs(items)
  }).catch(function(){need.forEach(function(key){delete thumbPending[key]});thumbFailUntil=Date.now()+30000})
 }
 // tenta cada URL da lista em sequência quando a anterior falhar (onerror) - usado pelas
@@ -323,7 +332,7 @@ function renderCatalogResults(){
  var site=siteEligible(query)?siteResultsHtml(query,matches.length>0):'';
  if(!matches.length&&!site){box.innerHTML='<div class="pe-catalog-empty"><strong>Nenhum produto encontrado</strong><p>Tente buscar apenas uma parte do nome ou os números do código.</p></div>';return}
  box.innerHTML=matches.map(function(item,index){var hasImage=!!itemThumbnailUrls(item).length;return'<button type="button" class="pe-catalog-item'+(index===catalogFocus?' is-focused':'')+'" data-catalog-index="'+index+'" role="option" aria-selected="'+(index===catalogFocus)+'">'+(hasImage?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb" data-thumb="'+thumbKey(item)+'">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(editorCodes(item).map(function(v){return v.code}).join(' · '))+'</small></span><span>›</span></button>'}).join('')+(all.length>matches.length?'<div class="pe-catalog-group">Mostrando os '+matches.length+' primeiros de '+all.length+' · refine a busca</div>':'')+site;
- if(hostedThumbs()){applyThumbs();loadThumbs(matches)}
+ if(hostedThumbs()){applyThumbs();loadThumbs(matches);queueHeavy(matches.map(thumbKey).filter(function(key){return key&&thumbCache[key]===''}))}
  $$('#catalogResults [data-catalog-index]').forEach(function(btn){
   var item=matches[Number(btn.dataset.catalogIndex)];
   btn.addEventListener('click',function(){chooseCatalogProduct(item)});
