@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gerador de Consolidado</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
+  <script>document.documentElement.classList.add('auth-pending')</script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="auth-guard.js"></script>
+  <link rel="stylesheet" href="consolidado-generator.css">
+</head>
+<body>
+  <div class="portal-shell">
+    <aside class="portal-sidebar" id="portalSidebar"></aside>
+    <main class="portal-main consolidado-app">
+      <section id="libraryView">
+        <header class="consolidado-header page-header">
+          <div><span class="page-kicker">Produção gráfica</span><h1>Gerador de Consolidado</h1><p class="page-subtitle">Crie, salve e retome os informativos mensais de lançamentos.</p></div>
+          <button type="button" id="newConsolidado" class="btn">+ Criar novo consolidado</button>
+        </header>
+        <section class="consolidado-library" aria-labelledby="libraryTitle">
+          <div class="section-heading"><div><span class="k">Biblioteca</span><h2 id="libraryTitle">Todos os consolidados</h2></div><span id="libraryCount" class="count-pill">0</span></div>
+          <div id="savedConsolidados" class="saved-consolidados" aria-live="polite"></div>
+        </section>
+      </section>
+
+      <section id="editorView" hidden>
+        <header class="consolidado-header editor-header page-header">
+          <div><button type="button" id="backToLibrary" class="btn ghost small text-button">← Todos os consolidados</button><h1 id="editorHeading">Novo consolidado</h1><p class="page-subtitle" id="editorStatus">Importe a planilha para começar.</p></div>
+          <div class="header-actions"><button type="button" id="restoreOriginal" class="btn ghost" hidden>Voltar à planilha original</button><button type="button" id="saveConsolidado" class="btn ghost" disabled>Salvar</button><button type="button" id="exportPdf" class="btn" disabled>Baixar PDF</button></div>
+        </header>
+
+        <section class="setup-panel" aria-label="Configuração do consolidado">
+          <label>Nome do consolidado<input id="consolidadoTitle" maxlength="100" placeholder="Consolidado Agosto 2026"></label>
+          <label>Mês do informativo<input id="consolidadoMonth" type="month"></label>
+          <label id="sheetField" hidden>Aba da planilha<select id="sheetSelect"></select></label>
+        </section>
+
+        <section class="source-panel" aria-label="Origem dos produtos">
+          <div class="consolidado-dropzone" id="sheetDropzone">
+            <label class="dz-empty" for="sheetFile" id="dzEmpty">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 16 12 12 8 16"></polyline><line x1="12" y1="12" x2="12" y2="21"></line><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"></path></svg>
+              <strong>Arraste a planilha aqui</strong>
+              <span class="muted">ou clique para selecionar (.xlsx ou .xls)</span>
+              <span class="btn ghost">Escolher planilha</span>
+            </label>
+            <div class="dz-file" id="dzFile" hidden>
+              <span class="dz-file-icon" aria-hidden="true"><span>XLS</span></span>
+              <span class="dz-file-name"><strong id="fileName">Nenhum arquivo selecionado</strong><span class="muted">Arraste outra planilha aqui para trocar</span></span>
+              <label class="btn ghost small" for="sheetFile">Trocar planilha</label>
+            </div>
+            <input id="sheetFile" type="file" accept=".xlsx,.xls" hidden>
+          </div>
+          <div class="start-actions" id="startActions"><span class="muted">ou</span><button type="button" class="btn ghost" id="startBlank">Começar do zero, adicionando os produtos manualmente</button></div>
+        </section>
+
+        <section id="workspace" class="consolidado-workspace" hidden>
+          <aside class="square-settings" aria-labelledby="settingsTitle">
+            <div class="section-heading compact"><div><span class="k">Configurações</span><h2 id="settingsTitle">Produtos</h2></div><span id="itemCount" class="count-pill">0</span></div>
+            <p>Abra um produto para ajustar título, link ou foto.</p><button type="button" class="btn ghost small" id="addProduct">+ Adicionar produto</button>
+            <div id="squareList" class="square-list"></div>
+          </aside>
+          <section class="preview-panel" aria-labelledby="previewTitle">
+            <div class="section-heading compact"><div><span class="k">Prévia</span><h2 id="previewTitle">Informativo completo</h2></div></div>
+            <div id="pagesPreview" class="pages-preview"></div>
+          </section>
+        </section>
+      </section>
+      <div id="toast" class="toast" hidden role="status"></div>
+    </main>
+  </div>
+  <script src="portal-shell.js"></script>
+  <script src="usage-analytics.js"></script>
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="vendor/html2canvas.min.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="sync-backend.js"></script>
+  <script src="consolidado-model.js"></script>
+  <script src="consolidado-export.js"></script>
+  <script src="post-editor-assets/brands-js/OVD - Grupo_amarelo.js"></script>
+  <script src="post-editor-assets/brands-js/VONDER_TIP_PTO.js"></script>
+  <script src="cartaz-title-format.js"></script>
+  <script src="consolidado-generator.js"></script>
+</body>
+</html>

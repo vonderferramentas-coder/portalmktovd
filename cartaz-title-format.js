@@ -4,17 +4,23 @@
 // guardada em item.titleHtml (ver updateTitle em cartaz-generator.js); só essas 3 tags são aceitas.
 (function () {
   const TAGS = { B: 'b', STRONG: 'b', I: 'i', EM: 'i', U: 'u' };
+  const TITLE_SEL = '.card h3[contenteditable], .consolidado-page [contenteditable], .pe-rich-title, .pe-uso-edit'; // Gerador de Cartazes, Gerador de Consolidado e Editor de artes (Destaques)
   const esc = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   // HTML do título só com <b>/<i>/<u>; '' quando não há nenhuma formatação (o título volta a ser texto puro).
-  function sanitize(root) {
-    let tagged = false;
+  // opts (Gerador de Consolidado): always = devolve o HTML mesmo sem formatação; keepBr = mantém <br>; keepStrong = mantém <strong>.
+  // <span> com font-style/font-weight "normal" (o que o execCommand gera ao desligar itálico/negrito do estilo-base) vira <span class="fn wn">.
+  function sanitize(root, opts = {}) {
+    let tagged = !!opts.always;
     const walk = node => {
       let out = '';
       node.childNodes.forEach(child => {
         if (child.nodeType === 3) { out += esc(child.nodeValue); return; }
         if (child.nodeType !== 1) return;
-        const inner = walk(child), tag = TAGS[child.tagName];
+        if (opts.keepBr && child.tagName === 'BR') { out += '<br>'; return; }
+        const inner = walk(child), tag = opts.keepStrong && child.tagName === 'STRONG' ? 'strong' : TAGS[child.tagName];
+        const normal = child.tagName === 'SPAN' ? [child.style.fontStyle === 'normal' || child.classList.contains('fn') ? 'fn' : '', child.style.fontWeight === 'normal' || child.style.fontWeight === '400' || child.classList.contains('wn') ? 'wn' : ''].filter(Boolean).join(' ') : '';
+        if (normal && inner) { tagged = true; out += `<span class="${normal}">${inner}</span>`; return; }
         if (tag && inner) { tagged = true; out += `<${tag}>${inner}</${tag}>`; }
         else out += (/^(BR|DIV|P)$/.test(child.tagName) ? ' ' : '') + inner;
       });
@@ -24,7 +30,7 @@
     return tagged ? html : '';
   }
   // HTML vindo de fora (grade salva/compartilhada no Firestore): reconstrói só com <b>/<i>/<u>. O <template> é inerte, nada executa ao interpretar.
-  function clean(html) { const box = document.createElement('template'); box.innerHTML = html; return sanitize(box.content) || esc(box.content.textContent); }
+  function clean(html, opts) { const box = document.createElement('template'); box.innerHTML = html; return sanitize(box.content, opts) || esc(box.content.textContent); }
   window.CartazTitleFormat = { sanitize, clean };
 
   const ICONS = {
@@ -50,7 +56,7 @@
     const sel = getSelection();
     if (!sel || sel.isCollapsed || !sel.rangeCount) return null;
     const from = sel.anchorNode && (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement);
-    const h3 = from && from.closest('.card h3[contenteditable]');
+    const h3 = from && from.closest(TITLE_SEL);
     return h3 && h3.contains(sel.focusNode) ? h3 : null;
   }
 
@@ -82,7 +88,7 @@
   });
   // colar sempre como texto puro: estilos vindos de fora não entram no título
   document.addEventListener('paste', event => {
-    if (!event.target.closest || !event.target.closest('.card h3[contenteditable]')) return;
+    if (!event.target.closest || !event.target.closest(TITLE_SEL)) return;
     event.preventDefault();
     document.execCommand('insertText', false, event.clipboardData.getData('text/plain').replace(/\s+/g, ' '));
   });

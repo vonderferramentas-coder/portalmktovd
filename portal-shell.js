@@ -502,6 +502,7 @@
       // brands: página exclusiva dessas marcas (ids de DEFAULT_BRANDS) - nas demais some do menu
       // e da Início e a própria página é bloqueada; quem aplica é auth-guard.js
       { href:'cartaz-generator.html', label:'Gerador de Cartazes', brands:['grupo-ovd'], icon:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="m8 17 3-4 2 2.5 1.5-2 1.5 3.5"/>' },
+      { href:'consolidado-generator.html', label:'Gerador de Consolidado', brands:['grupo-ovd'], icon:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h4M14 13h3M7 17h10"/>' },
       { href:'barcode-generator.html', label:'Código de Barras', icon:'<path d="M4 5v14M8 5v14M12 5v14M15 5v14M20 5v14"/><path d="M6 5v14" stroke-width="3"/><path d="M17.5 5v14" stroke-width="3"/>' },
       { href:'qr-code-generator.html', label:'Gerador de QR Codes', icon:'<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM15 15h2v2h-2zM18 14h2v4h-2zM14 19h4v1h-4z"/>' },
       { href:'business-card-generator.html', label:'Gerador de Cartões', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h5M7 14h3M15.5 10.5h2M15.5 14h2"/>' },

@@ -1049,3 +1049,38 @@
 :where(input[type=checkbox]:not(:is(.chip-net,.sched-day-chip,.sched-net-choice)>input)):focus-visible{outline:2px solid var(--accent,#005745);outline-offset:2px}
 :where(input[type=checkbox]:not(:is(.chip-net,.sched-day-chip,.sched-net-choice)>input)):disabled{opacity:.5;cursor:not-allowed}
 @media (prefers-reduced-motion:reduce){:where(input[type=checkbox]),:where(input[type=checkbox])::before{transition:none!important}}
+
+/* Barra flutuante Negrito/Itálico/Sublinhado (cartaz-title-format.js) - compartilhada pelo Gerador de Cartazes e pelo Gerador de Consolidado */
+.cg-fmt {
+    position: fixed;
+    z-index: 1000;
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    width: fit-content;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+    box-shadow: var(--shadow-md);
+}
+.cg-fmt[hidden] { display: none; }
+.cg-fmt-item {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: background-color .15s, color .15s, transform .1s;
+}
+.cg-fmt-item:hover { background: var(--surface-muted); }
+.cg-fmt-item[data-state="on"] { background: var(--accent-weak); }
+.cg-fmt-item:active { transform: scale(.95); }
+.cg-fmt-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media print { .cg-fmt { display: none !important; } }

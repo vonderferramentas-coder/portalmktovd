@@ -91,7 +91,8 @@
               <div id="eventPrefixField"><label for="eventPrefix">Chamada</label><input id="eventPrefix" maxlength="20"
                   value="Dia do"></div>
             </div><label for="productName" id="productNameLabel">Nome completo</label><textarea id="productName"
-              rows="3"></textarea><small class="pe-field-hint" id="commemorativeTitleHint" hidden>Use Enter para
+              rows="3"></textarea><div id="productNameRich" class="pe-rich-title" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="productNameLabel" spellcheck="true" hidden></div>
+            <div id="titleReviewBox" hidden><div class="pe-actions-row"><button id="titleReviewBtn" type="button">✓ Revisar texto</button><button id="titleRestoreBtn" type="button">↺ Restaurar texto original</button></div><div class="pe-hint" id="titleReviewList" role="status" hidden></div></div><small class="pe-field-hint" id="commemorativeTitleHint" hidden>Use Enter para
               escolher onde o título quebra de linha.</small>
             <div id="eventTitleSizeField" class="pe-format-zooms" hidden>
               <div><label for="eventTitleSizeFeed">Tamanho do texto - Feed <output
@@ -185,10 +186,10 @@
                 </select></div>
               <input id="moveTarget" type="hidden" value="background">
             </div>
-            <label for="circleLayer">Círculo do produto</label><select id="circleLayer">
+            <div id="circleLayerField"><label for="circleLayer">Círculo do produto</label><select id="circleLayer">
               <option value="back">Atrás do selo</option>
               <option value="front">À frente do selo</option>
-            </select>
+            </select></div>
             <div id="overlayScaleField"><label for="overlayScale">Tamanho do destaque <output
                   id="overlayScaleOut">100%</output></label><input id="overlayScale" type="range" min="70" max="135"
                 value="100"></div>
@@ -196,12 +197,12 @@
                   id="productScaleOut">100%</output></label><input id="productScale" type="range" min="60" max="140"
                 value="100"></div>
 
-            <label for="circleStyle">Cor do círculo</label><select id="circleStyle">
+            <div id="circleStyleField"><label for="circleStyle">Cor do círculo</label><select id="circleStyle">
               <option value="yellow">Amarelo (#F6BE00)</option>
               <option value="white">Branco (#FFFFFF)</option>
               <option value="white-border">Branco com borda amarela</option>
-            </select>
-            <div class="pe-actions-row"><button id="autoCompose" type="button">✦ Recalcular composição</button><button
+            </select></div>
+            <div class="pe-actions-row" id="compositionActions"><button id="autoCompose" type="button">✦ Recalcular composição</button><button
                 id="resetPosition" type="button">↺ Centralizar</button></div>
           <div class="pe-suggestions-section" id="compositionSuggestionsSection">
             <div class="pe-section-heading">
@@ -292,11 +293,14 @@
   <script src="post-editor-assets/brands-js/Osten_fundo_laranja.js"></script>
   <script src="post-editor-assets/brands-js/Dismatal.js"></script>
   <script src="post-editor-assets/brands-js/DWT SLOGAN B.js"></script>
+  <script src="post-editor-vonder-uso-recomendo.js"></script>
   <script src="post-editor-fg-lancamentos.js"></script>
   <script src="post-editor-fg-ecommerce.js"></script>
   <script src="post-editor-osten-datas-comemorativas.js"></script>
   <script src="post-editor-dismatal-datas-comemorativas.js"></script>
   <script src="post-editor-dwt-datas-comemorativas.js"></script>
+  <script src="cartaz-title-format.js"></script>
+  <script src="cartaz-validator.js"></script>
   <script src="catalog-provider.js"></script>
   <script src="post-editor.js"></script>
 </body>
