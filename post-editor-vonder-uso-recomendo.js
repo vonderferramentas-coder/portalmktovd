@@ -11,9 +11,9 @@
   };
 
   // quebra o texto (letras com estilo, '\n' = quebra forçada) em linhas de no máximo maxW
-  function wrap(ctx,chars,maxW,rich){
+  function wrap(ctx,chars,maxW,rich,size){
     var lines=[],cur=[],curW=0,word=[];
-    function width(list){return list.length?rich.width(ctx,rich.runs(list),SIZE):0}
+    function width(list){return list.length?rich.width(ctx,rich.runs(list),size):0}
     function flush(){
       if(!word.length)return;var w=width(word),sp=cur.length?width([{c:' ',b:word[0].b,i:word[0].i,u:false}]):0;
       if(cur.length&&curW+sp+w>maxW){lines.push(cur);cur=[];curW=0;sp=0}
@@ -27,10 +27,10 @@
     flush();if(cur.length||!lines.length)lines.push(cur);return lines
   }
 
-  function drawLine(ctx,rich,chars,x,y){
+  function drawLine(ctx,rich,chars,x,y,size){
     rich.runs(chars).forEach(function(r){
-      ctx.font=rich.font(r,SIZE);var w=ctx.measureText(r.t).width;ctx.fillText(r.t,x,y);
-      if(r.u)ctx.fillRect(x,y+SIZE*.14,w,Math.max(2,SIZE/16));x+=w
+      ctx.font=rich.font(r,size);var w=ctx.measureText(r.t).width;ctx.fillText(r.t,x,y);
+      if(r.u)ctx.fillRect(x,y+size*.14,w,Math.max(2,size/16));x+=w
     })
   }
 
@@ -45,8 +45,10 @@
   function renderer(api){
     var ctx=api.ctx,t=api.t,st=api.state,f=api.format,g=GEO[f],pos=st.format[f],right=st.ov[f].layout==='right',h=api.helpers;
     if(st.background)h.drawCover(ctx,st.background,t,f);else h.drawPlaceholder(ctx,t);
-    if('letterSpacing' in ctx)ctx.letterSpacing=SPACING+'px';
-    var lines=wrap(ctx,h.rich.chars(),g.textW,h.rich),n=lines.length,yellowH=BASELINE1+(n-1)*PITCH+PAD_BOTTOM,total=g.blackH+yellowH;
+    // tamanho do texto (botões A↑/A↓): fonte, entrelinha e espaçamento crescem juntos; a 1ª linha desce o que a altura das maiúsculas cresceu
+    var k=st.titleScale||1,size=Math.round(SIZE*k*2)/2,spacing=SPACING*k,pitch=PITCH*k,baseline1=BASELINE1+(k-1)*26;
+    if('letterSpacing' in ctx)ctx.letterSpacing=spacing+'px';
+    var lines=wrap(ctx,h.rich.chars(),g.textW,h.rich,size),n=lines.length,yellowH=baseline1+(n-1)*pitch+PAD_BOTTOM,total=g.blackH+yellowH;
     // o arraste só desloca na vertical; o limite da arte volta pro deslocamento guardado, senão arrastar além da borda "acumularia" movimento
     var y=Math.round(Math.max(0,Math.min(t.h-total,g.blackTop+pos.overlayDy)));pos.overlayDy=y-g.blackTop;
     var bx=right?t.w-g.blackW:0,yx=right?t.w-g.yellowW:0,yTop=y+g.blackH,yBot=yTop+yellowH;
@@ -56,10 +58,10 @@
     ctx.fillStyle=YELLOW;ctx.beginPath();ctx.moveTo(outer,yTop);ctx.lineTo(inner,yTop);ctx.lineTo(inner,yBot-RADIUS);ctx.arcTo(inner,yBot,right?inner+RADIUS:inner-RADIUS,yBot,RADIUS);ctx.lineTo(outer,yBot);ctx.closePath();ctx.fill();
     ctx.textBaseline='alphabetic';ctx.textAlign='left';drawHashtag(ctx,bx+TAG_X,y+TAG_BASELINE);
     ctx.fillStyle='#050505';
-    if(st.usoEditing!==f)lines.forEach(function(line,k){drawLine(ctx,h.rich,line,yx+g.textX,yTop+BASELINE1+k*PITCH)});
+    if(st.usoEditing!==f)lines.forEach(function(line,i){drawLine(ctx,h.rich,line,yx+g.textX,yTop+baseline1+i*pitch,size)});
     if('letterSpacing' in ctx)ctx.letterSpacing='0px';
     // a caixa de edição por duplo clique (post-editor.js) se posiciona por aqui
-    t.uso={yx:yx,yTop:yTop,yw:g.yellowW,yh:yellowH,textX:g.textX,textW:g.textW,size:SIZE,spacing:SPACING,pitch:PITCH,baseline1:BASELINE1};
+    t.uso={yx:yx,yTop:yTop,yw:g.yellowW,yh:yellowH,textX:g.textX,textW:g.textW,size:size,spacing:spacing,pitch:pitch,baseline1:baseline1};
     h.setMoveBox([bx,y,g.blackW,total])
   }
 

@@ -39,6 +39,13 @@
     underline: '<path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" x2="20" y1="20" y2="20"/>'
   };
   const LABELS = { bold: 'Negrito', italic: 'Itálico', underline: 'Sublinhado' };
+  // Aumentar/reduzir o texto todo (só no Editor de Posts: título .pe-rich-title / caixa .pe-uso-edit): avisa a página pelo evento "titlesize" (detail = +1 ou -1)
+  const SIZE_ICONS = {
+    sizeUp: '<path d="M2 20 8 6l6 14M4.5 15h7"/><path d="M17 9l3-3 3 3"/>',
+    sizeDown: '<path d="M3 20 8 10l5 10M5 16.5h6"/><path d="M17 6l3 3 3-3"/>'
+  };
+  const SIZE_LABELS = { sizeUp: 'Aumentar o texto todo', sizeDown: 'Reduzir o texto todo' };
+  const SIZE_SEL = '.pe-rich-title, .pe-uso-edit';
 
   const bar = document.createElement('div');
   bar.className = 'cg-fmt';
@@ -48,6 +55,9 @@
   bar.innerHTML = Object.keys(ICONS).map(cmd =>
     `<button type="button" class="cg-fmt-item" data-cmd="${cmd}" data-state="off" aria-pressed="false" aria-label="${LABELS[cmd]}" title="${LABELS[cmd]}">` +
     `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[cmd]}</svg></button>`
+  ).join('') + Object.keys(SIZE_ICONS).map(cmd =>
+    `<button type="button" class="cg-fmt-item" data-size="${cmd}" style="display:none" aria-label="${SIZE_LABELS[cmd]}" title="${SIZE_LABELS[cmd]}">` +
+    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SIZE_ICONS[cmd]}</svg></button>`
   ).join('');
   document.body.appendChild(bar);
 
@@ -64,7 +74,8 @@
     const h3 = selectedTitle();
     if (!h3) { bar.hidden = true; return; }
     bar.hidden = false;
-    bar.querySelectorAll('.cg-fmt-item').forEach(button => {
+    bar.querySelectorAll('[data-size]').forEach(button => { button.style.display = h3.matches(SIZE_SEL) ? '' : 'none'; });
+    bar.querySelectorAll('.cg-fmt-item[data-cmd]').forEach(button => {
       const on = document.queryCommandState(button.dataset.cmd);
       button.dataset.state = on ? 'on' : 'off';
       button.setAttribute('aria-pressed', String(on));
@@ -83,6 +94,7 @@
   bar.addEventListener('click', event => {
     const button = event.target.closest('.cg-fmt-item');
     if (!button) return;
+    if (button.dataset.size) { const title = selectedTitle(); if (title) title.dispatchEvent(new CustomEvent('titlesize', { bubbles: true, detail: button.dataset.size === 'sizeUp' ? 1 : -1 })); update(); return; }
     document.execCommand(button.dataset.cmd); // dispara "input" no título -> updateTitle grava titleHtml
     update();
   });
