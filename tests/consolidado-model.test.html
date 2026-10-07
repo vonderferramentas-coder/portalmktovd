@@ -9,8 +9,8 @@ const rows = [
   ['101', '6240300000', 'PULVERIZADOR VONDER®', '']
 ];
 const groups = ConsolidadoModel.parseRows(rows);
-console.assert(groups.length === 2, 'deve criar um quadrado por chamado');
-console.assert(groups[0].rows.length === 2, 'deve manter códigos sem chamado no quadrado anterior');
+console.assert(groups.length === 2, 'deve criar um produto por chamado');
+console.assert(groups[0].rows.length === 2, 'deve manter códigos sem chamado no produto anterior');
 console.assert(groups[0].rows[0].code === '6004185900', 'deve preservar o primeiro código para a foto');
 console.assert(ConsolidadoModel.photoUrl(groups[0].rows[0].code).endsWith('6004185900'), 'foto deve usar o primeiro código');
 console.assert(ConsolidadoModel.formatCode('6004185900') === '60.04.185.900', 'deve formatar o código OVD');

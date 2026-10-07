@@ -45,7 +45,7 @@
       const sourceTitle = text(row[columns.title]);
       const call = columns.call < 0 ? '' : text(row[columns.call]).replace(/\.0$/, '');
       if (!code && !sourceTitle && !call) return;
-      // linhas sem chamado de outra marca (ex.: NORTON CLIPPER logo após um produto VONDER) viram um quadrado próprio
+      // linhas sem chamado de outra marca (ex.: NORTON CLIPPER logo após um produto VONDER) viram um produto próprio
       const multi = isMultibrand(sourceTitle);
       if (call || !current || (multi && !current.multi) || (current.multi && /\b(VONDER|VD)\b/i.test(sourceTitle))) {
         current = { id: crypto.randomUUID(), call, title: displayTitle(sourceTitle) || 'Produto sem título', rows: [], link: '', photo: '', multi };

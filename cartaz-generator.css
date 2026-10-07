@@ -2130,40 +2130,6 @@ button:disabled {
 .card h3 i { font-family: Swiss721Italic, "Arial Narrow", Arial, sans-serif; font-style: italic; }
 .card h3 u { text-decoration: underline; text-underline-offset: 2px; }
 
-/* Barra flutuante com Negrito/Itálico/Sublinhado - visual do Toggle Group (outline) do animate-ui */
-.cg-fmt {
-    position: fixed;
-    z-index: 1000;
-    display: flex;
-    gap: 2px;
-    align-items: center;
-    width: fit-content;
-    padding: 2px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--card);
-    box-shadow: var(--shadow-md);
-}
-.cg-fmt[hidden] { display: none; }
-.cg-fmt-item {
-    min-width: 36px;
-    height: 36px;
-    padding: 0 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--text);
-    cursor: pointer;
-    transition: background-color .15s, color .15s, transform .1s;
-}
-.cg-fmt-item:hover { background: var(--surface-muted); }
-.cg-fmt-item[data-state="on"] { background: var(--accent-weak); }
-.cg-fmt-item:active { transform: scale(.95); }
-.cg-fmt-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-@media print { .cg-fmt { display: none !important; } }
 
 /* Validador de textos (cartaz-validator.js) */
 .cg-dialog.cg-validator { width: min(860px, calc(100vw - 32px)); }
