@@ -173,6 +173,7 @@ graph TB
 | `post-editor.html` / `.css` | Shell e estilos do editor | 4753 / 6422 |
 | `post-editor-fg-ecommerce.js` | Preset "Post E-commerce" (FG) - caixa De/Por/Desconto | 3896 |
 | `post-editor-fg-lancamentos.js` | Preset "Lançamentos" (FG) | 1781 |
+| `post-editor-vonder-uso-recomendo.js` | Preset "Uso e Recomendo VONDER" (VONDER): faixas preta/amarela, esquerda ou direita, arrastáveis na vertical | ~110 |
 | `post-editor-osten-datas-comemorativas.js` | Preset "Datas comemorativas" (OSTEN) | 1845 |
 | `post-editor-dismatal-datas-comemorativas.js` | Preset "Datas comemorativas" (DISMATAL) | 1982 |
 | `post-editor-dwt-datas-comemorativas.js` | Preset "Datas comemorativas" (DWT) | 1486 |

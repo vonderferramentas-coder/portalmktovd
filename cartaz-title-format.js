@@ -4,7 +4,7 @@
 // guardada em item.titleHtml (ver updateTitle em cartaz-generator.js); só essas 3 tags são aceitas.
 (function () {
   const TAGS = { B: 'b', STRONG: 'b', I: 'i', EM: 'i', U: 'u' };
-  const TITLE_SEL = '.card h3[contenteditable], .consolidado-page [contenteditable], .pe-rich-title'; // Gerador de Cartazes, Gerador de Consolidado e Editor de artes (Destaques)
+  const TITLE_SEL = '.card h3[contenteditable], .consolidado-page [contenteditable], .pe-rich-title, .pe-uso-edit'; // Gerador de Cartazes, Gerador de Consolidado e Editor de artes (Destaques)
   const esc = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   // HTML do título só com <b>/<i>/<u>; '' quando não há nenhuma formatação (o título volta a ser texto puro).

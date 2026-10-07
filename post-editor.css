@@ -145,6 +145,13 @@
 .pe-rich-title{width:100%;min-height:64px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text);font:italic 700 15px var(--font-ui);padding:9px 10px;outline:none;white-space:normal;overflow-wrap:anywhere}
 .pe-rich-title[hidden]{display:none}
 .pe-rich-title:focus{border-color:var(--accent-ink);box-shadow:0 0 0 3px var(--accent-weak)}
+.pe-rich-title.is-regular{font-weight:400}
+/* Uso e Recomendo: sem as caixas de seleção (recorte do produto, diagramação) nem o "Centralizar" (body.is-uso é ligado só nessa editoria) */
+body.is-uso .pe-check,body.is-uso #compositionActions{display:none}
+.pe-rich-title .fn,.pe-uso-edit .fn{font-style:normal}.pe-rich-title .wn,.pe-uso-edit .wn{font-weight:400}
+/* Uso e Recomendo: caixa de edição sobre o texto da faixa amarela, com a mesma fonte da arte (o texto aparece, a arte não o desenha enquanto isso) */
+.pe-uso-edit{position:absolute;z-index:6;box-sizing:border-box;margin:0;padding:0;background:transparent;outline:2px dashed rgba(5,5,5,.6);outline-offset:4px;color:#050505;caret-color:#050505;font-family:"Swiss721Editor","Arial Narrow",Arial,sans-serif;font-style:italic;font-weight:400;white-space:normal;overflow:visible}
+.pe-uso-edit::selection,.pe-uso-edit *::selection{background:rgba(5,5,5,.22)}
 #titleReviewList ul{list-style:none;margin:0;padding:0;flex:1 1 100%}
 #titleReviewList li{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:4px 0}
 #titleReviewList li button{flex:none}

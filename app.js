@@ -2406,7 +2406,8 @@
       { name:'Informativo', color:'#7c3aed' },
       { name:'Destaques', color:'#0284c7' },
       { name:'Lançamentos', color:'#16a34a' },
-      { name:'Dica VONDER', color:'#b45309' }
+      { name:'Dica VONDER', color:'#b45309' },
+      { name:'Uso e Recomendo VONDER', color:'#0d9488' }
     ];
     const FG_DEFAULT_EDITORIAS = [
       { name:'Post E-commerce', color:'#0284c7' },

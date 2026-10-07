@@ -44,7 +44,7 @@ var CATALOG_PHOTO_SLUG=({ fg:'vonder', dismatal:'vonder' })[CATALOG_SLUG]||CATAL
 var UNIVERSAL_FALLBACK_EDITORIAS=[{name:'Trend',color:'#db2777'},{name:'Personalizado',color:'#64748b'}];
 var FALLBACK_EDITORIAS_BY_BRAND={
  '':[{name:'Informativo',color:'#7c3aed'},{name:'Destaques',color:'#0284c7'},{name:'Lançamentos',color:'#16a34a'},
-     {name:'Dica VONDER',color:'#b45309'}],
+     {name:'Dica VONDER',color:'#b45309'},{name:'Uso e Recomendo VONDER',color:'#0d9488'}],
  '__ferramentas-gerais':[{name:'Post E-commerce',color:'#0284c7'},{name:'Lançamentos',color:'#16a34a'},
      {name:'Destaques',color:'#7c3aed'},{name:'Blog - Conecta FG',color:'#4f46e5'},{name:'Datas comemorativas',color:'#db2777'}],
  '__osten-ferragens':[{name:'Datas comemorativas',color:'#db2777'}],
@@ -52,10 +52,14 @@ var FALLBACK_EDITORIAS_BY_BRAND={
  '__dwt':[{name:'Datas comemorativas',color:'#AB2328'}]
 };
 var FALLBACK_EDITORIAS=(FALLBACK_EDITORIAS_BY_BRAND[BRAND_SUFFIX]||[]).concat(UNIVERSAL_FALLBACK_EDITORIAS);
+// A editoria nova nasce no calendário (app.js a acrescenta às configurações já salvas ao abrir lá); aqui ela já aparece
+// mesmo que o calendário ainda não tenha sido aberto depois da novidade.
+var USO_NAME='Uso e Recomendo VONDER';
+function withUso(list){var d=FALLBACK_EDITORIAS.filter(function(e){return e.name===USO_NAME})[0];return d&&!list.some(function(e){return e.name===USO_NAME})?list.concat(d):list}
 function readEditoriaList(){
  var raw=localStorage.getItem(CALENDAR_SETTINGS_KEY);if(!raw)return FALLBACK_EDITORIAS;
  try{var s=JSON.parse(raw),eds=Array.isArray(s.editorias)?s.editorias:null;if(!eds||!eds.length)return FALLBACK_EDITORIAS;
-  return eds.map(function(e,i){return typeof e==='string'?{name:e,color:(FALLBACK_EDITORIAS.length?FALLBACK_EDITORIAS[i%FALLBACK_EDITORIAS.length].color:'#64748b')}:e})
+  return withUso(eds.map(function(e,i){return typeof e==='string'?{name:e,color:(FALLBACK_EDITORIAS.length?FALLBACK_EDITORIAS[i%FALLBACK_EDITORIAS.length].color:'#64748b')}:e}))
  }catch(e){return FALLBACK_EDITORIAS}
 }
 var EDITORIAS=readEditoriaList();
@@ -69,7 +73,7 @@ function refreshEditoriasFromServer(){
   if(!res||res.v===null)return;
   var eds=Array.isArray(res.v.editorias)?res.v.editorias:null;if(!eds||!eds.length)return;
   var normalized=eds.map(function(e,i){return typeof e==='string'?{name:e,color:(FALLBACK_EDITORIAS.length?FALLBACK_EDITORIAS[i%FALLBACK_EDITORIAS.length].color:'#64748b')}:e});
-  EDITORIAS=normalized;
+  EDITORIAS=withUso(normalized);
   try{var raw=localStorage.getItem(CALENDAR_SETTINGS_KEY),s=raw?JSON.parse(raw):{};s.editorias=normalized;localStorage.setItem(CALENDAR_SETTINGS_KEY,JSON.stringify(s))}catch(e){}
   renderEditoriaGrid()
  }).catch(function(){})
@@ -224,7 +228,7 @@ function chooseEditoria(editoria){
  $('#flowStepEditNumber').textContent=preset.skipProductChooser?'2':'3';
  $('#overlayScaleField').hidden=isCommemorative||preset.supportsOverlayScale===false;if(!fgEcommerce)$('#overlayFormatField').hidden=$('#overlayScaleField').hidden;
  $('#imageSectionHint').textContent=usesCutout?'Envie a cena e, se tiver, o produto recortado':'Envie somente a imagem de uso do produto';
- syncEditoriaBadges();status('Carregando preset de '+editoria.name+'…',true);
+ applyPresetUi(preset);syncEditoriaBadges();status('Carregando preset de '+editoria.name+'…',true);
  var assetNames=Object.keys(preset.assetSources||{}),sources=[preset.badgeFeed,preset.badgeStory].concat(assetNames.map(function(name){return preset.assetSources[name]}));
  Promise.all(sources.map(function(src){return src?loadImage(src):Promise.resolve(null)})).then(function(v){state.badgeFeed=v[0];state.badgeStory=v[1];assetNames.forEach(function(name,index){state.customAssets[name]=v[index+2]});drawAll();status('Preset de '+editoria.name+' carregado',false)}).catch(function(){drawAll();status('Preset de '+editoria.name+' carregado; algumas imagens não abriram',false)});
  if(preset.skipProductChooser){
@@ -248,7 +252,7 @@ function updateSelectedSummary(item,manual){
 }
 function showEditor(item,manual){updateSelectedSummary(item||{},!!manual);syncRichFromText();setFlow('edit');setTimeout(function(){drawAll()},0)}
 function chooseManualProduct(){
- selectedProduct=null;$('#productName').value='';$('#productCode').value='';$('#productCode2').value='';$('#codeCount').value='1';selectBrandLogo('VONDER');state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;setProductFilePreview('','PNG transparente ou foto em fundo branco');$('#backgroundFileName').textContent='Clique ou arraste uma imagem';syncCodeFields();showEditor({},true);drawAll();status('Preencha os dados e envie as imagens',false)
+ selectedProduct=null;$('#productName').value='';state.originalTitle='';$('#productCode').value='';$('#productCode2').value='';$('#codeCount').value='1';selectBrandLogo('VONDER');state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;setProductFilePreview('','PNG transparente ou foto em fundo branco');$('#backgroundFileName').textContent='Clique ou arraste uma imagem';syncCodeFields();showEditor({},true);drawAll();status('Preencha os dados e envie as imagens',false)
 }
 // Produto novo: fundo e destaque voltam ao centro.
 function resetFormatForNewProduct(){
@@ -256,14 +260,14 @@ function resetFormatForNewProduct(){
  undoStack=[];updateUndoButton();editDirty=false
 }
 function chooseCatalogProduct(item){
- rememberProduct(item);selectedProduct=item;var codes=editorCodes(item);$('#productName').value=editorNameFor(item);$('#productCode').value=codes[0]?codes[0].code:'';$('#productCode2').value=codes[1]?codes[1].code:'';$('#codeVariant1').value=(codes[0]&&codes[0].label)||'110 V~';$('#codeVariant2').value=(codes[1]&&codes[1].label)||'220 V~';$('#codeCount').value=codes.length>1?'2':'1';syncCodeFields();
+ rememberProduct(item);selectedProduct=item;var codes=editorCodes(item);$('#productName').value=usoOn()?usoText(item,codes):editorNameFor(item);state.originalTitle=$('#productName').value;$('#productCode').value=codes[0]?codes[0].code:'';$('#productCode2').value=codes[1]?codes[1].code:'';$('#codeVariant1').value=(codes[0]&&codes[0].label)||'110 V~';$('#codeVariant2').value=(codes[1]&&codes[1].label)||'220 V~';$('#codeCount').value=codes.length>1?'2':'1';syncCodeFields();
  selectBrandLogo(normalizeBrandVariant(item.brandVariant)||(/vonder\s*plus/i.test(item.name||'')?'Vonder_plus':'VONDER'));
  state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;resetFormatForNewProduct();var thumbUrls=itemThumbnailUrls(item);setProductFilePreview(thumbUrls[0],'Carregada automaticamente · clique para alterar',thumbUrls.slice(1));showEditor(item,false);drawAll();
  var bgUrl=itemBackgroundUrl(item);if(bgUrl){$('#backgroundFileName').textContent='Foto de aplicação do catálogo';loadImage(bgUrl).then(function(im){if(selectedProduct!==item)return;
   if(!im.exportSafe){$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Essa foto de aplicação não pode ser usada automaticamente (o servidor de origem não libera para exportação) - envie manualmente abaixo',false);return}
   state.background=trimBackgroundMargins(im);state.bgZoom.feed=1;state.bgZoom.story=1;if(item.preferredLayout){state.autoLayout=item.preferredLayout;drawAll();status('Produto e foto de aplicação carregados',false)}else analyze()
  }).catch(function(){if(selectedProduct!==item)return;$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Produto carregado; a foto de aplicação não abriu',false)})}else{$('#backgroundFileName').textContent='Clique ou arraste uma imagem'}
- var urls=itemImageUrls(item,CATALOG_PRODUCT_WIDTH);if(!urls.length){status('Dados preenchidos; envie a foto do produto',false);return}status(bgUrl?'Carregando produto e foto de aplicação…':'Carregando e recortando a foto do catálogo…',true);$('#productFileName').textContent='Foto do catálogo · '+(codes[0]?codes[0].code:'produto')+' · clique para alterar';
+ var urls=usoOn()?[]:itemImageUrls(item,CATALOG_PRODUCT_WIDTH);if(!urls.length){status(usoOn()?'Dados preenchidos; envie a foto de fundo':'Dados preenchidos; envie a foto do produto',false);return}status(bgUrl?'Carregando produto e foto de aplicação…':'Carregando e recortando a foto do catálogo…',true);$('#productFileName').textContent='Foto do catálogo · '+(codes[0]?codes[0].code:'produto')+' · clique para alterar';
  loadExportSafeImage(urls).then(function(im){if(selectedProduct!==item)return;
   state.product=im;$('#productFileName').textContent='Foto do catálogo carregada · clique para alterar';$('#removeWhite').checked=!hasTransparency(im);$('#removeHoles').checked=false;updateProduct()
  }).catch(function(err){if(selectedProduct!==item)return;console.warn('[post-editor] recorte automático falhou para',codes[0]&&codes[0].code,'-',err&&err.message,urls);status('Dados preenchidos; não foi possível carregar a foto automaticamente. Verifique a conexão e tente novamente, ou envie a foto manualmente.',false);$('#productFileName').textContent='Foto visível, mas o recorte automático falhou'})
@@ -541,11 +545,14 @@ function drawDualCodes(ctx,t,y,rows,minLeft){
 // ===== Título editável (só Destaques da VONDER): negrito/itálico/sublinhado + minúsculas, revisão de texto =====
 // A base da arte é negrito+itálico MAIÚSCULO; o texto entra em maiúsculas e a pessoa pode mudar. O #productName (oculto) guarda o
 // texto puro (nomes de arquivo, etc.) e state.titleHtml só as marcas <b>/<i>/<u> (CartazTitleFormat, o mesmo do Gerador de Cartazes).
-function richOn(){return BRAND_SUFFIX===''&&state.editoriaName==='Destaques'}
+function usoOn(){return BRAND_SUFFIX===''&&state.editoriaName===USO_NAME}
+function richOn(){return BRAND_SUFFIX===''&&state.editoriaName==='Destaques'||usoOn()}
+// Uso e Recomendo: o texto da faixa amarela é itálico regular (Destaques é negrito+itálico) e já traz o código no fim ("NOME - 00.00.000.000")
+function usoText(item,codes){var name=String(item.name||'').replace(/[,\s]*VONDER\s*$/i,'').replace(/\s+/g,' ').trim(),code=codes[0]&&codes[0].code;return(name+(code?' - '+code:'')).toUpperCase()}
 function richPlain(root){var out='';(function walk(n){n.childNodes.forEach(function(c){if(c.nodeType===3)out+=c.nodeValue;else if(c.nodeType===1){if(c.tagName==='BR')out+='\n';else walk(c)}})})(root);return out.replace(/ /g,' ')}
 function richHtmlFromText(text){return escapeHtml(text).replace(/\n/g,'<br>')}
 function syncRichFromText(){
- var on=richOn(),rich=$('#productNameRich'),ta=$('#productName');rich.hidden=!on;ta.hidden=on;$('#titleReviewBox').hidden=!on;$('#titleReviewList').hidden=true;
+ var on=richOn(),rich=$('#productNameRich'),ta=$('#productName');rich.hidden=!on;rich.classList.toggle('is-regular',usoOn());ta.hidden=on;$('#titleReviewBox').hidden=!on;$('#titleReviewList').hidden=true;
  if(!on)return;state.titleHtml='';ta.value=ta.value.toUpperCase();rich.innerHTML=richHtmlFromText(ta.value);normalizeTitle(rich);
  if(document.fonts)Promise.all(['400 20px','italic 400 20px','700 20px','italic 700 20px'].map(function(f){return document.fonts.load(f+' "Swiss721Editor"')})).then(drawAll)
 }
@@ -554,7 +561,7 @@ function richChars(){
  (function walk(n,st){n.childNodes.forEach(function(c){
   if(c.nodeType===3){c.nodeValue.split('').forEach(function(ch){chars.push({c:ch,b:st.b,i:st.i,u:st.u})})}
   else if(c.nodeType===1){if(c.tagName==='BR'){chars.push({c:'\n'});return}
-   var s={b:st.b,i:st.i,u:st.u},cl=c.classList;if(c.tagName==='B'||c.tagName==='STRONG')s.b=true;if(c.tagName==='I'||c.tagName==='EM')s.i=true;if(c.tagName==='U')s.u=true;if(cl.contains('fn'))s.i=false;if(cl.contains('wn'))s.b=false;walk(c,s)}})})(box,{b:true,i:true,u:false});
+   var s={b:st.b,i:st.i,u:st.u},cl=c.classList;if(c.tagName==='B'||c.tagName==='STRONG')s.b=true;if(c.tagName==='I'||c.tagName==='EM')s.i=true;if(c.tagName==='U')s.u=true;if(cl.contains('fn'))s.i=false;if(cl.contains('wn'))s.b=false;walk(c,s)}})})(box,{b:!usoOn(),i:true,u:false});
  return chars
 }
 // mesma divisão título/subtítulo do splitName (Enter = nova linha), mas carregando o estilo de cada letra
@@ -580,15 +587,32 @@ function drawRich(ctx,chars,x,y,maxW,size,min){
 // que a arte, só as 2 primeiras quebras de linha valem (as outras viram espaço) e Enter não cria uma 4ª linha. Texto digitado numa linha só
 // que a arte divide sozinha em título + subtítulo (splitName) ganha essa quebra de verdade, para a caixa não discordar da arte.
 function capBreaks(root){var brs=root.querySelectorAll('br'),changed=false;for(var n=2;n<brs.length;n++){brs[n].replaceWith(document.createTextNode(' '));changed=true}return changed}
-function normalizeTitle(root){var changed=capBreaks(root);if(!root.querySelector('br')&&!state.titleHtml){var sp=splitName(richPlain(root));if(sp.sub){root.innerHTML=escapeHtml(sp.title)+'<br>'+escapeHtml(sp.sub);changed=true}}if(changed)applyRichInput(root);return changed}
-function enterKey(ev,root){if(ev.key!=='Enter')return;ev.preventDefault();if(root.querySelectorAll('br').length<2)document.execCommand('insertLineBreak')}
+function normalizeTitle(root){if(usoOn())return false;var changed=capBreaks(root);if(!root.querySelector('br')&&!state.titleHtml){var sp=splitName(richPlain(root));if(sp.sub){root.innerHTML=escapeHtml(sp.title)+'<br>'+escapeHtml(sp.sub);changed=true}}if(changed)applyRichInput(root);return changed}
+function enterKey(ev,root){if(ev.key!=='Enter')return;ev.preventDefault();if(usoOn()||root.querySelectorAll('br').length<2)document.execCommand('insertLineBreak')}
 // src = o campo do painel ou a caixa de edição sobre a arte: os dois mostram o mesmo texto e o mesmo state, então Feed e Story mudam juntos
 function applyRichInput(src){var rich=$('#productNameRich');if(src!==rich)rich.innerHTML=CartazTitleFormat.sanitize(src,{keepBr:true,always:true});$('#productName').value=richPlain(src);state.titleHtml=CartazTitleFormat.sanitize(src,{keepBr:true});$('#titleReviewList').hidden=true;drawAll()}
 $('#productNameRich').addEventListener('keydown',function(ev){enterKey(ev,this)});
 $('#productNameRich').addEventListener('input',function(){applyRichInput(this)});
 // Duplo clique no texto do rodapé (nome ou código) abre uma caixa de edição em cima dele. Só Destaques da VONDER.
 var footerEdit=null;
-function closeFooterEdit(){if(footerEdit){var el=footerEdit;footerEdit=null;if(el.parentNode)el.parentNode.removeChild(el)}}
+function closeFooterEdit(){if(footerEdit){var el=footerEdit;footerEdit=null;if(el.parentNode)el.parentNode.removeChild(el);if(el.onClose)el.onClose();
+ // a barra flutuante B/I/U (cartaz-title-format.js) só se esconde quando a seleção muda; ao remover a caixa ela ficava na tela
+ getSelection().removeAllRanges();document.dispatchEvent(new Event('selectionchange'))}}
+// Uso e Recomendo: o texto da faixa amarela é um parágrafo que quebra sozinho, então a caixa de edição mostra o próprio texto (não é transparente
+// como a do rodapé do Destaques) e a arte deixa de desenhá-lo enquanto ela está aberta (state.usoEditing); a faixa segue crescendo com as linhas.
+function openUsoEdit(format,c,px,py){
+ var t=templates[format],u=t.uso;if(!u||!boxHit([u.yx,u.yTop,u.yw,u.yh],px,py))return false;
+ closeFooterEdit();var el=document.createElement('div');el.className='pe-uso-edit';el.contentEditable='true';el.spellcheck=true;el.innerHTML=$('#productNameRich').innerHTML;
+ el.place=function(){var rect=c.getBoundingClientRect(),wr=c.parentNode.getBoundingClientRect(),k=rect.width/c.width,u=t.uso;
+  el.style.left=(rect.left-wr.left+(u.yx+u.textX)*k)+'px';el.style.width=(u.textW*k)+'px';el.style.fontSize=u.size*k+'px';el.style.letterSpacing=u.spacing*k+'px';el.style.lineHeight=u.pitch*k+'px';el.style.top=(rect.top-wr.top+u.yTop*k)+'px';
+  // a fonte posiciona a linha de base de um jeito no HTML e de outro no canvas: mede onde o navegador pôs a 1ª e empurra até a da arte
+  var probe=document.createElement('span');probe.style.cssText='display:inline-block;width:0;height:0';el.insertBefore(probe,el.firstChild);
+  var delta=rect.top+(u.yTop+u.baseline1)*k-probe.getBoundingClientRect().bottom;el.removeChild(probe);el.style.top=(parseFloat(el.style.top)+delta)+'px'};
+ el.addEventListener('keydown',function(ev){if(ev.key==='Enter')enterKey(ev,el);else if(ev.key==='Escape')closeFooterEdit()});
+ el.addEventListener('input',function(){applyRichInput(el);el.place()});el.addEventListener('blur',function(){setTimeout(function(){if(footerEdit===el)closeFooterEdit()},0)});
+ el.onClose=function(){state.usoEditing=null;autoFormatTextCodes();drawAll()};state.usoEditing=format;drawAll();
+ c.parentNode.appendChild(el);el.place();footerEdit=el;el.focus();getSelection().selectAllChildren(el);return true
+}
 // conteúdo da caixa sobre a arte: cada linha no tamanho de fonte que a arte usou nela (em relação à última linha, que é o tamanho-base da caixa)
 function overlayTitleHtml(t){var L=t.richLines||[{size:48},{size:30}],base=L[L.length-1].size;
  return $('#productNameRich').innerHTML.split(/<br\s*\/?>/i).map(function(piece,i){var d=document.createElement('div');d.innerHTML=piece;var ln=L[Math.min(i,L.length-1)];return'<span style="font-size:'+(ln.size/base)+'em;vertical-align:top;position:relative">'+d.innerHTML+'</span>'}).join('<br>')}
@@ -623,7 +647,24 @@ function openFooterEdit(format,c,px,py){
 if(window.ResizeObserver){var feReso=new ResizeObserver(function(){if(footerEdit&&footerEdit.place)footerEdit.place()});Object.keys(canvases).forEach(function(f){feReso.observe(canvases[f])})}
 
 // Revisor de texto (cartaz-validator.js, o mesmo do Gerador de Cartazes: regras locais, sem IA). Itálico é ignorado: a base da arte já é itálica.
-function titleIssues(){return CartazValidator.check($('#productName').value,{codes:$('#codeCount').value==='2'?2:1}).filter(function(i){return i.kind!=='italico'})}
+// vocabulário do catálogo da marca (palavras dos nomes dos produtos), montado uma vez por catálogo; marca sem catálogo = sem verificação de grafia.
+// Código sem pontos só é formatado na VONDER (10 dígitos viram 00.00.000.000); os 7 dígitos da FG e os códigos das outras marcas nunca são mexidos.
+var vocabMemo={catalog:null,vocab:null};
+function catalogVocab(){if(vocabMemo.catalog!==catalog){vocabMemo={catalog:catalog,vocab:catalog.length?CartazValidator.buildVocab(catalog.map(function(i){return i.name})):null}}return vocabMemo.vocab}
+function titleIssues(){return CartazValidator.check($('#productName').value,{codes:$('#codeCount').value==='2'?2:1,formatCodes:BRAND_SUFFIX==='',vocab:catalogVocab()}).filter(function(i){return i.kind!=='italico'})}
+// 10 dígitos soltos no texto viram 00.00.000.000 sozinhos (campo de código ao sair dele; texto da faixa do Uso e Recomendo ao fechar a edição)
+function formatCodesIn(text){return BRAND_SUFFIX===''?String(text||'').replace(/(?<![\d.])\d{10}(?![\d.])/g,CartazValidator.formatCode):text}
+function autoFormatTextCodes(){
+ var name=$('#productName').value,next=formatCodesIn(name);if(next===name)return;
+ $('#productName').value=next;if(state.titleHtml)state.titleHtml=formatCodesIn(state.titleHtml);$('#productNameRich').innerHTML=state.titleHtml||richHtmlFromText(next);drawAll()
+}
+['#productCode','#productCode2'].forEach(function(s){$(s).addEventListener('blur',function(){this.value=formatCodesIn(this.value);drawAll()})});
+$('#productNameRich').addEventListener('blur',function(){if(usoOn())autoFormatTextCodes()});
+// volta ao texto que o produto escolhido gerou (state.originalTitle), desfazendo edições, quebras e formatação
+$('#titleRestoreBtn').addEventListener('click',function(){
+ if(state.originalTitle==null)return;
+ $('#productName').value=state.originalTitle.toUpperCase();state.titleHtml='';$('#productNameRich').innerHTML=richHtmlFromText($('#productName').value);normalizeTitle($('#productNameRich'));$('#titleReviewList').hidden=true;drawAll();status('Texto original restaurado',false)
+});
 function renderTitleReview(){
  var list=$('#titleReviewList'),issues=titleIssues();list.hidden=false;
  if(!issues.length){list.innerHTML='<span>Nenhuma observação no texto. Tudo certo!</span>';return}
@@ -657,7 +698,7 @@ function drawArt(format){
   lastProductBox[format]=null;lastBadgeBox[format]=null;
   // setMoveBox: o preset diz qual área dele é arrastável, e ela entra no mesmo hit-test do duplo
   // clique usado pelas outras editorias - quem move o elemento é o overlayDx/overlayDy de sempre.
-  activePreset.renderer({format:format,canvas:c,ctx:ctx,t:t,state:state,item:selectedProduct,productName:$('#productName').value,helpers:{drawCover:drawCover,drawPlaceholder:drawPlaceholder,contain:contain,roundRect:roundRect,font:font,fitFont:fitFont,setMoveBox:function(box){lastProductBox[format]=box}}});return
+  activePreset.renderer({format:format,canvas:c,ctx:ctx,t:t,state:state,item:selectedProduct,productName:$('#productName').value,helpers:{drawCover:drawCover,drawPlaceholder:drawPlaceholder,contain:contain,roundRect:roundRect,font:font,fitFont:fitFont,setMoveBox:function(box){lastProductBox[format]=box},rich:{chars:richChars,runs:richRuns,font:richFont,width:richWidth}}});return
  }
  if(state.background)drawCover(ctx,state.background,t,format);else drawPlaceholder(ctx,t);
  var group=unionBox(pos.product,pos.badge),anchor=[group[0]+group[2]/2,group[1]+group[3]/2];
@@ -694,8 +735,10 @@ function visibleBox(format){
  if(im){if(state.productHasCircle)vp=fitRect(im,pb);else{var r=Math.min(pb[2],pb[3])*.48,cx=pb[0]+pb[2]/2,cy=pb[1]+pb[3]/2,k=state.ov[format].photo,iw=pb[2]*.84*k,ih=pb[3]*.84*k;vp=unionBox([cx-r,cy-r,2*r,2*r],fitRect(im,[cx-iw/2,pb[1]+pb[3]*.47-ih/2,iw,ih]))}}
  return unionBox(vb,vp)
 }
+// Uso e Recomendo: as faixas sangram até a borda da arte e só andam na vertical, então só as guias de cima e de baixo valem pra elas
+function guideBox(format){var b=visibleBox(format);if(b&&usoOn()){var m=SAFE_MARGINS[format];return[m.side+1,b[1],templates[format].w-2*m.side-2,b[3]]}return b}
 function drawGuides(format){
- var box=visibleBox(format);if(!state.guides[format]||!box)return;
+ var box=guideBox(format);if(!state.guides[format]||!box)return;
  var ctx=canvases[format].getContext('2d'),t=templates[format],m=SAFE_MARGINS[format],edges=[];
  if(box[1]<=m.top+.5)edges.push([0,m.top,t.w,m.top]);
  if(box[1]+box[3]>=t.h-m.bottom-.5)edges.push([0,t.h-m.bottom,t.w,t.h-m.bottom]);
@@ -723,7 +766,7 @@ function regionScore(img,rect){
  var d=x.getImageData(0,0,120,120).data,total=0,count=0;for(var y=1;y<119;y+=3)for(var q=1;q<119;q+=3){var i=(y*120+q)*4,j=i+4,k=i+480;total+=Math.abs(d[i]-d[j])+Math.abs(d[i+1]-d[j+1])+Math.abs(d[i+2]-d[j+2])+Math.abs(d[i]-d[k])+Math.abs(d[i+1]-d[k+1])+Math.abs(d[i+2]-d[k+2]);count++}return total/count
 }
 function analyze(){
- if(!state.background){state.autoLayout='left';drawAll();return}var candidates={left:[.02,.04,.8,.43],stacked:[.01,.03,.5,.48],right:[.5,.16,.49,.54]},best='left',score=Infinity;
+ if(!state.background||usoOn()){state.autoLayout='left';drawAll();return}var candidates={left:[.02,.04,.8,.43],stacked:[.01,.03,.5,.48],right:[.5,.16,.49,.54]},best='left',score=Infinity;
  Object.keys(candidates).forEach(function(k){var s=regionScore(state.background,candidates[k]);if(s<score){score=s;best=k}});state.autoLayout=best;syncOverlayControls();drawAll();status('Composição automática: '+({left:'esquerda',stacked:'superior',right:'direita'}[best]),false)
 }
 function fileImage(file){return new Promise(function(resolve,reject){var u=URL.createObjectURL(file),im=new Image();im.onload=function(){URL.revokeObjectURL(u);resolve(im)};im.onerror=function(){URL.revokeObjectURL(u);reject(new Error('Imagem inválida'))};im.src=u})}
@@ -859,6 +902,16 @@ $('#overlayScale').addEventListener('change',function(){var f=ovFormat();state.g
 if($('#brandBadgeColor'))$('#brandBadgeColor').addEventListener('input',function(){state.brandBadgeColor=this.value;drawAll()});
 $('#circleLayer').addEventListener('change',function(){var v=this.value==='front';linkedTargets().forEach(function(f){state.ov[f].circleFront=v});drawAll()});$('#productScale').addEventListener('input',function(){var v=this.value/100;linkedTargets().forEach(function(f){state.ov[f].photo=v});$('#productScaleOut').value=this.value+'%';drawAll()});$('#circleStyle').addEventListener('change',function(){var v=this.value;BOTH.forEach(function(f){state.ov[f].circleStyle=v});drawAll()});
 $('#autoCompose').addEventListener('click',analyze);$('#generateCompositions').addEventListener('click',generateCompositions);$$('[data-composition]').forEach(function(button){button.addEventListener('click',function(){applyComposition(button.dataset.composition)})});$('#resetPosition').addEventListener('click',function(){state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};drawAll();status('Posições centralizadas',false)});
+// Ajustes do painel que dependem do preset (hoje só Uso e Recomendo): layout reaproveitado como "de que lado partem as faixas", sem os controles de círculo
+var LAYOUT_OPTIONS_HTML=$('#layoutMode').innerHTML,MOVE_OVERLAY_LABEL=$('[data-move-mode="overlay"]').textContent;
+function applyPresetUi(preset){
+ var opts=preset.layoutOptions;$('#layoutMode').innerHTML=opts?opts.map(function(o){return'<option value="'+o[0]+'">'+o[1]+'</option>'}).join(''):LAYOUT_OPTIONS_HTML;
+ if(opts||state.layoutCustom)BOTH.forEach(function(f){state.ov[f].layout=opts?opts[0][0]:'auto'});state.layoutCustom=!!opts;
+ ['#circleLayerField','#productScaleField','#circleStyleField','#autoCompose'].forEach(function(s){var el=$(s);if(el)el.hidden=!!preset.hideCircleControls});
+ $('[data-move-mode="overlay"]').textContent=preset.moveLabel||MOVE_OVERLAY_LABEL;document.body.classList.toggle('is-uso',!!preset.hideCircleControls);
+ if(preset.moveHint)$('#stageMoveHint').textContent=preset.moveHint;if(preset.nameLabel)$('#productNameLabel').textContent=preset.nameLabel;
+ syncOverlayControls()
+}
 function setMoveMode(mode){$('#moveTarget').value=mode;$$('[data-move-mode]').forEach(function(x){x.classList.toggle('is-active',x.dataset.moveMode===mode)})}
 function boxHit(box,px,py){return box&&px>=box[0]&&px<=box[0]+box[2]&&py>=box[1]&&py<=box[1]+box[3]}
 function unionBox(a,b){if(!a)return b;if(!b)return a;var x=Math.min(a[0],b[0]),y=Math.min(a[1],b[1]);return[x,y,Math.max(a[0]+a[2],b[0]+b[2])-x,Math.max(a[1]+a[3],b[1]+b[3])-y]}
@@ -867,7 +920,7 @@ function flashMoveTarget(format,cap,hit,canvasRect,box){
  var scale=canvasRect.width/canvases[format].width,x=0,y=0,w=canvasRect.width,h=canvasRect.height;
  if(hit&&box){x=box[0]*scale;y=box[1]*scale;w=box[2]*scale;h=box[3]*scale}
  el.style.left=x+'px';el.style.top=y+'px';el.style.width=w+'px';el.style.height=h+'px';
- el.querySelector('span').textContent=hit?(state.priceMoveOnly?'Preço selecionado':'Destaque selecionado'):'Fundo selecionado';
+ el.querySelector('span').textContent=hit?(state.priceMoveOnly?'Preço selecionado':usoOn()?'Faixas selecionadas':'Destaque selecionado'):'Fundo selecionado';
  el.classList.toggle('is-background',!hit);
  el.classList.remove('is-firing');void el.offsetWidth;el.classList.add('is-firing')
 }
@@ -875,14 +928,15 @@ $$('[data-move-mode]').forEach(function(b){b.addEventListener('click',function()
 Object.keys(canvases).forEach(function(format){
  var c=canvases[format],cap=format[0].toUpperCase()+format.slice(1),drag=null,dragTarget=null,guideTimer=0;
  c.addEventListener('pointerdown',function(e){if(ovFormat()!==format){$('#overlayFormat').value=format;syncOverlayControls()}if(!state.moveEnabled)return;clearTimeout(guideTimer);dragSnapshot=JSON.stringify(state.format);drag={x:e.clientX,y:e.clientY,push:{x:0,y:0}};dragTarget=$('#moveTarget').value;state.guides[format]=dragTarget!=='background';c.setPointerCapture(e.pointerId)});
- c.addEventListener('pointermove',function(e){if(!drag)return;var scale=c.width/c.getBoundingClientRect().width,dx=(e.clientX-drag.x)*scale,dy=(e.clientY-drag.y)*scale;drag={x:e.clientX,y:e.clientY,push:drag.push};if(dragTarget==='background'){state.format[format].bgDx+=dx;state.format[format].bgDy+=dy}else{var gb=visibleBox(format);if(gb){var gm=SAFE_MARGINS[format],gt=templates[format];dx=guideResist(drag.push,'x',gb[0],gb[0]+gb[2],dx,gm.side,gt.w-gm.side);dy=guideResist(drag.push,'y',gb[1],gb[1]+gb[3],dy,gm.top,gt.h-gm.bottom)}state.format[format].overlayDx+=dx;state.format[format].overlayDy+=dy}drawAll()});
+ c.addEventListener('pointermove',function(e){if(!drag)return;var scale=c.width/c.getBoundingClientRect().width,dx=(e.clientX-drag.x)*scale,dy=(e.clientY-drag.y)*scale;drag={x:e.clientX,y:e.clientY,push:drag.push};if(dragTarget==='background'){state.format[format].bgDx+=dx;state.format[format].bgDy+=dy}else{var gb=guideBox(format);if(usoOn())dx=0;if(gb){var gm=SAFE_MARGINS[format],gt=templates[format];dx=guideResist(drag.push,'x',gb[0],gb[0]+gb[2],dx,gm.side,gt.w-gm.side);dy=guideResist(drag.push,'y',gb[1],gb[1]+gb[3],dy,gm.top,gt.h-gm.bottom)}state.format[format].overlayDx+=dx;state.format[format].overlayDy+=dy}drawAll()});
  ['pointerup','pointercancel'].forEach(function(ev){c.addEventListener(ev,function(){commitDrag();drag=null;dragTarget=null;state.guides[format]=false;draw(format)})});
  c.addEventListener('dblclick',function(e){
-  if(richOn()){var fr=c.getBoundingClientRect();if(openFooterEdit(format,c,(e.clientX-fr.left)*c.width/fr.width,(e.clientY-fr.top)*c.height/fr.height)){e.preventDefault();return}}
+  if(usoOn()){var ur=c.getBoundingClientRect();if(openUsoEdit(format,c,(e.clientX-ur.left)*c.width/ur.width,(e.clientY-ur.top)*c.height/ur.height)){e.preventDefault();return}}
+  else if(richOn()){var fr=c.getBoundingClientRect();if(openFooterEdit(format,c,(e.clientX-fr.left)*c.width/fr.width,(e.clientY-fr.top)*c.height/fr.height)){e.preventDefault();return}}
   if(!state.moveEnabled)return;var rect=c.getBoundingClientRect(),scaleX=c.width/rect.width,scaleY=c.height/rect.height,px=(e.clientX-rect.left)*scaleX,py=(e.clientY-rect.top)*scaleY,destaqueBox=state.priceMoveOnly?lastProductBox[format]:visibleBox(format),hit=boxHit(destaqueBox,px,py);
   // sem foto de fundo ainda, o duplo clique no fundo/placeholder abre a escolha do arquivo (com foto, segue selecionando fundo/destaque pra mover)
   if(!state.background&&!hit){$('#backgroundFile').click();return}
-  setMoveMode(hit?'overlay':'background');status(hit?'Box de preço selecionada para mover':'Fundo selecionado para mover',false);
+  setMoveMode(hit?'overlay':'background');status(hit?(usoOn()?'Faixas selecionadas para mover':'Box de preço selecionada para mover'):'Fundo selecionado para mover',false);
   flashMoveTarget(format,cap,hit,rect,destaqueBox)
  });
  c.addEventListener('wheel',function(e){

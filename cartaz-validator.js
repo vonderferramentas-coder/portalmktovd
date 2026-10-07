@@ -57,8 +57,40 @@
 
   const MOJIBAKE = { 'Ã§': 'ç', 'Ã£': 'ã', 'Ã©': 'é', 'Ã³': 'ó', 'Ãª': 'ê', 'Ã¡': 'á', 'Ãµ': 'õ', 'Ã­': 'í', 'Ãº': 'ú', 'Ã¢': 'â', 'Ã´': 'ô', 'Ã ': 'à' };
 
-  /* check(texto, { codes, html }) -> [{ kind, level, message, find, replace, italic }]
-     kind: acento | caractere | pontuacao | hifen | duplicidade | concordancia | unidade | italico
+  const formatCode = digits => `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4, 7)}.${digits.slice(7)}`;
+  // vocabulário = mapa "palavra sem acento em minúsculas" -> forma mais usada (com acento), montado com os nomes dos produtos do catálogo
+  function buildVocab(names) {
+    const count = new Map(), form = new Map();
+    for (const name of names) for (const w of String(name || '').match(new RegExp(`[${LETTER}]{4,}`, 'g')) || []) {
+      const low = w.toLowerCase(), norm = strip(low), key = norm + '|' + low;
+      count.set(key, (count.get(key) || 0) + 1);
+      const best = form.get(norm);
+      if (!best || count.get(key) > count.get(norm + '|' + best)) form.set(norm, low);
+    }
+    return form;
+  }
+  // distância de edição limitada (1 para palavras até 5 letras, 2 para as maiores); devolve a forma do vocabulário mais próxima ou null
+  function nearestWord(norm, vocab) {
+    const max = norm.length <= 5 ? 1 : 2; let best = null, bestDist = max + 1;
+    for (const [other, form] of vocab) {
+      if (Math.abs(other.length - norm.length) > max) continue;
+      const d = editDistance(norm, other, max);
+      if (d < bestDist) { bestDist = d; best = form; }
+    }
+    return best;
+  }
+  function editDistance(a, b, max) {
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i]; let rowMin = i;
+      for (let j = 1; j <= b.length; j++) { cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); if (cur[j] < rowMin) rowMin = cur[j]; }
+      if (rowMin > max) return max + 1; prev = cur;
+    }
+    return prev[b.length];
+  }
+
+  /* check(texto, { codes, html, formatCodes, vocab }) -> [{ kind, level, message, find, replace, italic }]
+     kind: codigo | ortografia | acento | caractere | pontuacao | hifen | duplicidade | concordancia | unidade | italico
      level: 'erro' (certeza alta) ou 'aviso' (conferir).  find/replace: correção automática; italic: palavra a pôr em itálico. */
   function check(text, ctx = {}) {
     const issues = [], seen = new Set();
@@ -137,6 +169,21 @@
     for (const m of text.matchAll(/(\d)\s+([%°])/g)) add({ kind: 'unidade', level: 'erro', message: `O sinal "${m[2]}" vai colado ao número.`, find: m[0], replace: m[1] + m[2] });
     for (const m of text.matchAll(/(\d)º(?![A-Za-zÀ-ÿ])/g)) add({ kind: 'unidade', level: 'aviso', message: 'Para graus (ex.: 90°), use o símbolo ° e não a letra ordinal º.', find: m[0], replace: m[1] + '°' });
 
+    // código de produto sem pontos (só se quem chama pedir: 10 dígitos soltos viram 00.00.000.000; códigos de outro tamanho, como os 7 dígitos da FG, ficam como estão)
+    if (ctx.formatCodes) for (const m of text.matchAll(/(?<![\d.])\d{10}(?![\d.])/g)) { const good = formatCode(m[0]); add({ kind: 'codigo', level: 'erro', message: `Código sem pontos: "${m[0]}" -> "${good}".`, find: m[0], replace: good }); }
+
+    // palavras que não aparecem em nenhum produto do catálogo (ctx.vocab, ver buildVocab): sugere a mais parecida
+    if (ctx.vocab && ctx.vocab.size) {
+      const known = new Set(Object.keys(ACCENTS).concat(Object.values(ACCENTS).map(w => strip(w))));
+      for (const word of new Set(text.match(new RegExp(`[${LETTER}]{4,}`, 'g')) || [])) {
+        const norm = strip(word).toLowerCase();
+        if (ctx.vocab.has(norm) || known.has(norm) || FOREIGN.includes(norm)) continue;
+        const near = nearestWord(norm, ctx.vocab);
+        if (near) { const fix = matchCase(word, near); add({ kind: 'ortografia', level: 'aviso', message: `"${word}" não aparece em nenhum produto do catálogo: você quis dizer "${fix}"?`, find: word, replace: fix }); }
+        else add({ kind: 'ortografia', level: 'aviso', message: `"${word}" não aparece em nenhum produto do catálogo: confira a grafia.`, find: word, replace: null });
+      }
+    }
+
     // itálico em termos estrangeiros
     for (const foreign of FOREIGN) if (new RegExp(`(^|[^${LETTER}])${foreign}(?![${LETTER}])`, 'i').test(text) && !(ctx.html && new RegExp(`<i>[^<]*${foreign}`, 'i').test(ctx.html))) {
       const word = (text.match(new RegExp(`${foreign}(?![${LETTER}])`, 'i')) || [foreign])[0];
@@ -163,5 +210,5 @@
   // Identifica a observação no estado exato do título. Se o texto mudar, uma confirmação antiga não a esconde.
   const key = (text, issue) => JSON.stringify([String(text || ''), issue.kind, issue.level, issue.message, issue.find ?? '', issue.replace ?? '', issue.italic || '']);
 
-  window.CartazValidator = { check, apply, key };
+  window.CartazValidator = { check, apply, key, buildVocab, formatCode };
 })();
