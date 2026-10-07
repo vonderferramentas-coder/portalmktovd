@@ -12,7 +12,7 @@ var positions={
  feed:{left:{badge:[68,108,484,313],product:[458,128,410,333]},stacked:{badge:[42,338,484,313],product:[92,147,340,276]},right:{badge:[528,108,484,313],product:[212,128,410,333]}},
  story:{left:{badge:[64,246,471,306],product:[450,286,430,349]},stacked:{badge:[42,548,471,306],product:[88,333,370,300]},right:{badge:[545,246,471,306],product:[200,286,430,349]}}
 };
-var state={editoriaName:null,editoriaColor:null,footerColor:'#FFBE00',brandBadgeColor:'#fbc400',background:null,product:null,productDrawable:null,productHasCircle:true,guides:{feed:false,story:false},badgeFeed:null,badgeStory:null,customAssets:{},autoLayout:'left',bgZoom:{feed:1,story:1},ov:{feed:{scale:1,photo:1,layout:'auto',circleFront:false,circleStyle:'yellow'},story:{scale:1,photo:1,layout:'auto',circleFront:false,circleStyle:'yellow'}},format:{feed:{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0},story:{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0}}};
+var state={titleScale:1,editoriaName:null,editoriaColor:null,footerColor:'#FFBE00',brandBadgeColor:'#fbc400',background:null,product:null,productDrawable:null,productHasCircle:true,guides:{feed:false,story:false},badgeFeed:null,badgeStory:null,customAssets:{},autoLayout:'left',bgZoom:{feed:1,story:1},ov:{feed:{scale:1,photo:1,layout:'auto',circleFront:false,circleStyle:'yellow'},story:{scale:1,photo:1,layout:'auto',circleFront:false,circleStyle:'yellow'}},format:{feed:{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0},story:{bgDx:0,bgDy:0,overlayDx:0,overlayDy:0}}};
 var lastProductBox={feed:null,story:null},lastBadgeBox={feed:null,story:null};
 var INCOMING_COMM=(function(){
  var q=new URLSearchParams(location.search);if(!q.get('eventTitle'))return null;
@@ -212,7 +212,7 @@ function renderEditoriaGrid(){
 }
 function chooseEditoria(editoria){
  var preset=EDITORIA_PRESETS[editoria.name];if(!preset)return;
- state.editoriaName=editoria.name;state.editoriaColor=editoria.color||'#64748b';state.footerColor=preset.footerColor||'#FFBE00';
+ state.editoriaName=editoria.name;state.titleScale=1;state.editoriaColor=editoria.color||'#64748b';state.footerColor=preset.footerColor||'#FFBE00';
  state.brandBadgeColor=preset.brandBadgeColor||'#fbc400';if($('#brandBadgeColor'))$('#brandBadgeColor').value=state.brandBadgeColor;
  state.customAssets={};var brandField=$('#brandVariantField');if(brandField)brandField.hidden=!preset.supportsBrandVariant;
  var brandBadgeColorField=$('#brandBadgeColorField');if(brandBadgeColorField)brandBadgeColorField.hidden=preset.supportsBrandBadgeColor===false;
@@ -660,10 +660,15 @@ function autoFormatTextCodes(){
 }
 ['#productCode','#productCode2'].forEach(function(s){$(s).addEventListener('blur',function(){this.value=formatCodesIn(this.value);drawAll()})});
 $('#productNameRich').addEventListener('blur',function(){if(usoOn())autoFormatTextCodes()});
+// Botões A↑/A↓ da barra flutuante: aumentam/reduzem o texto da faixa/rodapé INTEIRO (não só a seleção), de 5 em 5%. Destaques tem o rodapé de altura fixa,
+// então só até 110%; na Uso e Recomendo a faixa amarela cresce, então vai até 130%.
+function titleScaleRange(){return usoOn()?[.7,1.3]:[.7,1.1]}
+function setTitleScale(next){var r=titleScaleRange();state.titleScale=Math.round(Math.max(r[0],Math.min(r[1],next))*100)/100;drawAll();if(footerEdit&&footerEdit.place)footerEdit.place();status('Tamanho do texto: '+Math.round(state.titleScale*100)+'%',false)}
+document.addEventListener('titlesize',function(ev){if(richOn())setTitleScale(state.titleScale+.05*ev.detail)});
 // volta ao texto que o produto escolhido gerou (state.originalTitle), desfazendo edições, quebras e formatação
 $('#titleRestoreBtn').addEventListener('click',function(){
  if(state.originalTitle==null)return;
- $('#productName').value=state.originalTitle.toUpperCase();state.titleHtml='';$('#productNameRich').innerHTML=richHtmlFromText($('#productName').value);normalizeTitle($('#productNameRich'));$('#titleReviewList').hidden=true;drawAll();status('Texto original restaurado',false)
+ $('#productName').value=state.originalTitle.toUpperCase();state.titleHtml='';state.titleScale=1;$('#productNameRich').innerHTML=richHtmlFromText($('#productName').value);normalizeTitle($('#productNameRich'));$('#titleReviewList').hidden=true;drawAll();status('Texto original restaurado',false)
 });
 function renderTitleReview(){
  var list=$('#titleReviewList'),issues=titleIssues();list.hidden=false;
@@ -679,12 +684,12 @@ $('#titleReviewList').addEventListener('click',function(ev){
 function drawFooter(ctx,t){
  var txt=splitName($('#productName').value),code=($('#productCode').value||'').trim(),dual=$('#codeCount').value==='2';ctx.fillStyle=state.footerColor||'#FFBE00';ctx.fillRect(0,t.footerY,t.w,t.footerH);
  ctx.fillStyle='#050505';ctx.textBaseline='top';ctx.textAlign='left';var textEnd;
- if(richOn()){var parts=richParts();
-  if(parts.title2){var sz=40,r1=richRuns(parts.title),r2=richRuns(parts.title2),stp;while(sz>24&&(richWidth(ctx,r1,sz)>t.titleMax||richWidth(ctx,r2,sz)>t.titleMax))sz-=2;stp=Math.round(sz*1.04);var y1=t.titleY-12,sub2=26;
+ if(richOn()){var parts=richParts(),ks=state.titleScale||1,sc=function(n){return Math.round(n*ks)};
+  if(parts.title2){var sz=sc(40),r1=richRuns(parts.title),r2=richRuns(parts.title2),stp;while(sz>sc(24)&&(richWidth(ctx,r1,sz)>t.titleMax||richWidth(ctx,r2,sz)>t.titleMax))sz-=2;stp=Math.round(sz*1.04);var y1=t.titleY-12,sub2=26;
    textEnd=Math.max(drawRich(ctx,parts.title,t.textX,y1,t.titleMax,sz,sz),drawRich(ctx,parts.title2,t.textX,y1+stp,t.titleMax,sz,sz));
-   if(parts.sub.length){textEnd=Math.max(textEnd,drawRich(ctx,parts.sub,t.textX,y1+2*stp,t.titleMax,26,18));sub2=drawRich.size}
+   if(parts.sub.length){textEnd=Math.max(textEnd,drawRich(ctx,parts.sub,t.textX,y1+2*stp,t.titleMax,sc(26),sc(18)));sub2=drawRich.size}
    t.richLines=[{y:y1,size:sz},{y:y1+stp,size:sz},{y:y1+2*stp,size:sub2}];t.richStep=stp}
-  else{textEnd=drawRich(ctx,parts.title,t.textX,t.titleY,t.titleMax,48,28);var ts=drawRich.size,ss=30;if(parts.sub.length){textEnd=Math.max(textEnd,drawRich(ctx,parts.sub,t.textX,t.subY,t.titleMax,30,20));ss=drawRich.size}
+  else{textEnd=drawRich(ctx,parts.title,t.textX,t.titleY,t.titleMax,sc(48),sc(28));var ts=drawRich.size,ss=30;if(parts.sub.length){textEnd=Math.max(textEnd,drawRich(ctx,parts.sub,t.textX,t.subY,t.titleMax,sc(30),sc(20)));ss=drawRich.size}
    t.richLines=[{y:t.titleY,size:ts},{y:t.subY,size:ss}];t.richStep=t.subY-t.titleY}}
  else{ctx.font=font(fitFont(ctx,txt.title.toUpperCase(),t.titleMax,48,28));ctx.fillText(txt.title.toUpperCase(),t.textX,t.titleY);textEnd=t.textX+ctx.measureText(txt.title.toUpperCase()).width;
  if(txt.sub){ctx.font=font(fitFont(ctx,txt.sub.toUpperCase(),t.titleMax,30,20));ctx.fillText(txt.sub.toUpperCase(),t.textX,t.subY);textEnd=Math.max(textEnd,t.textX+ctx.measureText(txt.sub.toUpperCase()).width)}}
