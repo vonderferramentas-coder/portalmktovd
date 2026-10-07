@@ -1,0 +1,21 @@
+<!doctype html><meta charset="utf-8"><title>Teste do modelo do consolidado</title>
+<pre id="result">Executando…</pre>
+<script src="../consolidado-model.js"></script>
+<script>
+const rows = [
+  ['Chamado', 'Código', '', 'Data'],
+  ['100', '6004185900', 'PODADOR VONDER', ''],
+  ['', '6004185901', 'BATERIA VONDER', ''],
+  ['101', '6240300000', 'PULVERIZADOR VONDER®', '']
+];
+const groups = ConsolidadoModel.parseRows(rows);
+console.assert(groups.length === 2, 'deve criar um quadrado por chamado');
+console.assert(groups[0].rows.length === 2, 'deve manter códigos sem chamado no quadrado anterior');
+console.assert(groups[0].rows[0].code === '6004185900', 'deve preservar o primeiro código para a foto');
+console.assert(ConsolidadoModel.photoUrl(groups[0].rows[0].code).endsWith('6004185900'), 'foto deve usar o primeiro código');
+console.assert(ConsolidadoModel.formatCode('6004185900') === '60.04.185.900', 'deve formatar o código OVD');
+console.assert(ConsolidadoModel.monthNumber('Agosto') === 8, 'deve reconhecer a aba mensal');
+const marcas = ConsolidadoModel.parseRows([['Chamado', 'Código', 'Produto'], ['1', '6012181220', 'Politriz, CG252 VONDER'], ['', '6012252220', 'Politriz para piso, 220 V~, CG252 CLIPPER'], ['2', '6839657', 'Ponta rotativa CM3, RÖHM']]);
+console.assert(marcas.length === 3 && !marcas[0].multi && marcas[1].multi && marcas[2].multi, 'marca no título (CLIPPER, RÖHM) deve separar e cair em Multimarcas');
+document.getElementById('result').textContent = 'OK — agrupamento, foto, código e mês validados.';
+</script>

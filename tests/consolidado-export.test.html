@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Consolidado export photo regression</title>
+<script src="../vendor/html2canvas.min.js"></script>
+<script src="../consolidado-export.js"></script>
+<style>
+  body { margin: 0; }
+  .consolidado-page { position: relative; width: 460px; height: 320px; background: #fff; }
+  .consolidado-card { position: absolute; left: 20px; top: 20px; width: 420px; height: 280px; overflow: hidden; }
+  .consolidado-photo { position: absolute; left: 40px; top: 20px; width: 120px; height: 240px; transform: translate(60px, 10px) scale(1.5); }
+  .consolidado-photo img { display: block; width: 100%; height: 100%; object-fit: contain; }
+</style>
+<div class="consolidado-page"><div class="consolidado-card"><div class="consolidado-photo"><img alt="fixture"></div></div></div>
+<pre id="result">RUNNING</pre>
+<script>
+  // imagem 2:1 azul dentro de uma caixa 1:2 -> com object-fit: contain o azul deve sair 2:1 (não esticado para 1:2)
+  const source = '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="80"><rect width="160" height="80" fill="#0066ff"/></svg>';
+  const image = document.querySelector('img');
+  image.onload = async () => {
+    try {
+      const page = document.querySelector('.consolidado-page'), scale = 1.5;
+      const canvas = await html2canvas(page, { scale, backgroundColor: '#ffffff', logging: false, onclone: doc => ConsolidadoExport.bakeImages(page, doc.querySelector('.consolidado-page'), scale) });
+      const { data, width, height } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      let left = width, top = height, right = -1, bottom = -1;
+      for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) { const p = (y * width + x) * 4; if (data[p + 2] > 180 && data[p] < 80 && data[p + 1] < 160) { left = Math.min(left, x); top = Math.min(top, y); right = Math.max(right, x); bottom = Math.max(bottom, y); } }
+      const w = (right - left + 1) / scale, h = (bottom - top + 1) / scale;
+      // esperado: largura 120 * 1.5 = 180px, altura 60 * 1.5 = 90px (proporção 2:1)
+      const ok = Math.abs(w - 180) < 4 && Math.abs(h - 90) < 4;
+      document.getElementById('result').textContent = (ok ? 'OK' : 'FALHA') + ' — azul ' + w.toFixed(1) + 'x' + h.toFixed(1) + ' (esperado 180x90)';
+    } catch (error) { document.getElementById('result').textContent = 'FALHA — ' + error.message; }
+  };
+  image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
+</script>
