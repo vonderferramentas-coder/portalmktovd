@@ -91,7 +91,8 @@
               <div id="eventPrefixField"><label for="eventPrefix">Chamada</label><input id="eventPrefix" maxlength="20"
                   value="Dia do"></div>
             </div><label for="productName" id="productNameLabel">Nome completo</label><textarea id="productName"
-              rows="3"></textarea><small class="pe-field-hint" id="commemorativeTitleHint" hidden>Use Enter para
+              rows="3"></textarea><div id="productNameRich" class="pe-rich-title" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="productNameLabel" spellcheck="true" hidden></div>
+            <div id="titleReviewBox" hidden><div class="pe-actions-row"><button id="titleReviewBtn" type="button">✓ Revisar texto</button></div><div class="pe-hint" id="titleReviewList" role="status" hidden></div></div><small class="pe-field-hint" id="commemorativeTitleHint" hidden>Use Enter para
               escolher onde o título quebra de linha.</small>
             <div id="eventTitleSizeField" class="pe-format-zooms" hidden>
               <div><label for="eventTitleSizeFeed">Tamanho do texto - Feed <output
@@ -297,6 +298,8 @@
   <script src="post-editor-osten-datas-comemorativas.js"></script>
   <script src="post-editor-dismatal-datas-comemorativas.js"></script>
   <script src="post-editor-dwt-datas-comemorativas.js"></script>
+  <script src="cartaz-title-format.js"></script>
+  <script src="cartaz-validator.js"></script>
   <script src="catalog-provider.js"></script>
   <script src="post-editor.js"></script>
 </body>

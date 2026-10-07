@@ -82,7 +82,7 @@ function refreshEditoriasFromServer(){
 var EDITORIA_PRESETS_BY_BRAND={
  '':{ // VONDER (marca padrão)
   'Destaques':{
-   footerColor:'#FFBE00',
+   footerColor:'#F6BE00',
    badgeFeed:'post-editor-assets/destaques-feed.png',
    badgeStory:'post-editor-assets/destaques-story.png'
   }
@@ -246,7 +246,7 @@ function updateSelectedSummary(item,manual){
  var thumb=$('#selectedProductThumb');thumb.innerHTML='＋';$('#selectedProductName').textContent=manual?'Produto manual':(item.name||'Produto sem nome');$('#selectedProductCode').textContent=manual?'Sem vínculo com o catálogo':(editorCodes(item).map(function(v){return v.code}).join(' · ')||'Sem código');
  var urls=!manual&&itemThumbnailUrls(item);if(urls&&urls.length){var im=document.createElement('img');im.alt='';thumb.innerHTML='';thumb.appendChild(im);setImgWithFallback(im,urls,function(){thumb.textContent='＋'})}
 }
-function showEditor(item,manual){updateSelectedSummary(item||{},!!manual);setFlow('edit');setTimeout(function(){drawAll()},0)}
+function showEditor(item,manual){updateSelectedSummary(item||{},!!manual);syncRichFromText();setFlow('edit');setTimeout(function(){drawAll()},0)}
 function chooseManualProduct(){
  selectedProduct=null;$('#productName').value='';$('#productCode').value='';$('#productCode2').value='';$('#codeCount').value='1';selectBrandLogo('VONDER');state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;setProductFilePreview('','PNG transparente ou foto em fundo branco');$('#backgroundFileName').textContent='Clique ou arraste uma imagem';syncCodeFields();showEditor({},true);drawAll();status('Preencha os dados e envie as imagens',false)
 }
@@ -538,15 +538,120 @@ function drawDualCodes(ctx,t,y,rows,minLeft){
  rows.forEach(function(r,i){var ry=y+i*49;roundRect(ctx,left,ry,t.w+40-left,h,22);ctx.fillStyle='#fff';ctx.fill();
   var x=left+20;ctx.fillStyle='#080808';ctx.textBaseline='middle';ctx.textAlign='left';ctx.font=labelFont;ctx.fillText(r.label,x,ry+h/2+1);x+=m[i].lw+16;ctx.font='700 18px Arial,sans-serif';ctx.fillText('•',x,ry+h/2);x+=20;ctx.font=codeFont;ctx.fillText(r.code,x,ry+h/2+1)})
 }
+// ===== Título editável (só Destaques da VONDER): negrito/itálico/sublinhado + minúsculas, revisão de texto =====
+// A base da arte é negrito+itálico MAIÚSCULO; o texto entra em maiúsculas e a pessoa pode mudar. O #productName (oculto) guarda o
+// texto puro (nomes de arquivo, etc.) e state.titleHtml só as marcas <b>/<i>/<u> (CartazTitleFormat, o mesmo do Gerador de Cartazes).
+function richOn(){return BRAND_SUFFIX===''&&state.editoriaName==='Destaques'}
+function richPlain(root){var out='';(function walk(n){n.childNodes.forEach(function(c){if(c.nodeType===3)out+=c.nodeValue;else if(c.nodeType===1){if(c.tagName==='BR')out+='\n';else walk(c)}})})(root);return out.replace(/ /g,' ')}
+function richHtmlFromText(text){return escapeHtml(text).replace(/\n/g,'<br>')}
+function syncRichFromText(){
+ var on=richOn(),rich=$('#productNameRich'),ta=$('#productName');rich.hidden=!on;ta.hidden=on;$('#titleReviewBox').hidden=!on;$('#titleReviewList').hidden=true;
+ if(!on)return;state.titleHtml='';ta.value=ta.value.toUpperCase();rich.innerHTML=richHtmlFromText(ta.value);normalizeTitle(rich);
+ if(document.fonts)Promise.all(['400 20px','italic 400 20px','700 20px','italic 700 20px'].map(function(f){return document.fonts.load(f+' "Swiss721Editor"')})).then(drawAll)
+}
+function richChars(){
+ var chars=[],box=document.createElement('div');box.innerHTML=state.titleHtml||richHtmlFromText($('#productName').value);
+ (function walk(n,st){n.childNodes.forEach(function(c){
+  if(c.nodeType===3){c.nodeValue.split('').forEach(function(ch){chars.push({c:ch,b:st.b,i:st.i,u:st.u})})}
+  else if(c.nodeType===1){if(c.tagName==='BR'){chars.push({c:'\n'});return}
+   var s={b:st.b,i:st.i,u:st.u},cl=c.classList;if(c.tagName==='B'||c.tagName==='STRONG')s.b=true;if(c.tagName==='I'||c.tagName==='EM')s.i=true;if(c.tagName==='U')s.u=true;if(cl.contains('fn'))s.i=false;if(cl.contains('wn'))s.b=false;walk(c,s)}})})(box,{b:true,i:true,u:false});
+ return chars
+}
+// mesma divisão título/subtítulo do splitName (Enter = nova linha), mas carregando o estilo de cada letra
+function richParts(){
+ var chars=richChars(),lines=[[]];chars.forEach(function(ch){if(ch.c==='\n')lines.push([]);else lines[lines.length-1].push(ch)});
+ function tidy(arr){var out=[];arr.forEach(function(ch){if(/\s/.test(ch.c)){if(out.length&&out[out.length-1].c!==' ')out.push({c:' ',b:ch.b,i:ch.i,u:ch.u})}else out.push(ch)});if(out.length&&out[out.length-1].c===' ')out.pop();return out}
+ lines=lines.map(tidy).filter(function(l){return l.length});if(!lines.length)return{title:[],sub:[]};
+ // 3 linhas: as duas primeiras são o título (2 linhas) e a terceira o subtítulo; 2 linhas: título + subtítulo; a 4ª em diante emenda no subtítulo
+ function join(ls){var out=[];ls.forEach(function(l,k){if(k)out.push({c:' ',b:true,i:true,u:false});out=out.concat(l)});return out}
+ if(lines.length>2)return{title:lines[0],title2:lines[1],sub:join(lines.slice(2))};
+ if(lines.length>1)return{title:lines[0],sub:join(lines.slice(1))};
+ var line=lines[0],sp=splitName(line.map(function(ch){return ch.c}).join(''));return{title:line.slice(0,sp.title.length),sub:sp.sub?line.slice(line.length-sp.sub.length):[]}
+}
+function richRuns(chars){var runs=[];chars.forEach(function(ch){var r=runs[runs.length-1];if(r&&r.b===ch.b&&r.i===ch.i&&r.u===ch.u)r.t+=ch.c;else runs.push({t:ch.c,b:ch.b,i:ch.i,u:ch.u})});return runs}
+function richFont(r,size){return(r.b?'700':'400')+' '+(r.i?'italic':'normal')+' '+size+'px "Swiss721Editor","Arial Narrow",Impact,sans-serif'}
+function richWidth(ctx,runs,size){return runs.reduce(function(w,r){ctx.font=richFont(r,size);return w+ctx.measureText(r.t).width},0)}
+// desenha uma linha de runs encolhendo a fonte (de size até min) até caber em maxW; devolve o x final
+function drawRich(ctx,chars,x,y,maxW,size,min){
+ var runs=richRuns(chars);if(!runs.length)return x;while(size>min&&richWidth(ctx,runs,size)>maxW)size-=2;drawRich.size=size;
+ runs.forEach(function(r){ctx.font=richFont(r,size);var w=ctx.measureText(r.t).width;ctx.fillText(r.t,x,y);if(r.u)ctx.fillRect(x,y+size*.98,w,Math.max(2,size/16));x+=w});return x
+}
+// A arte aceita até 3 linhas: 2 de título (o texto encolhe para caber) e 1 de subtítulo. Para o campo e a caixa sobre a arte mostrarem o mesmo
+// que a arte, só as 2 primeiras quebras de linha valem (as outras viram espaço) e Enter não cria uma 4ª linha. Texto digitado numa linha só
+// que a arte divide sozinha em título + subtítulo (splitName) ganha essa quebra de verdade, para a caixa não discordar da arte.
+function capBreaks(root){var brs=root.querySelectorAll('br'),changed=false;for(var n=2;n<brs.length;n++){brs[n].replaceWith(document.createTextNode(' '));changed=true}return changed}
+function normalizeTitle(root){var changed=capBreaks(root);if(!root.querySelector('br')&&!state.titleHtml){var sp=splitName(richPlain(root));if(sp.sub){root.innerHTML=escapeHtml(sp.title)+'<br>'+escapeHtml(sp.sub);changed=true}}if(changed)applyRichInput(root);return changed}
+function enterKey(ev,root){if(ev.key!=='Enter')return;ev.preventDefault();if(root.querySelectorAll('br').length<2)document.execCommand('insertLineBreak')}
+// src = o campo do painel ou a caixa de edição sobre a arte: os dois mostram o mesmo texto e o mesmo state, então Feed e Story mudam juntos
+function applyRichInput(src){var rich=$('#productNameRich');if(src!==rich)rich.innerHTML=CartazTitleFormat.sanitize(src,{keepBr:true,always:true});$('#productName').value=richPlain(src);state.titleHtml=CartazTitleFormat.sanitize(src,{keepBr:true});$('#titleReviewList').hidden=true;drawAll()}
+$('#productNameRich').addEventListener('keydown',function(ev){enterKey(ev,this)});
+$('#productNameRich').addEventListener('input',function(){applyRichInput(this)});
+// Duplo clique no texto do rodapé (nome ou código) abre uma caixa de edição em cima dele. Só Destaques da VONDER.
+var footerEdit=null;
+function closeFooterEdit(){if(footerEdit){var el=footerEdit;footerEdit=null;if(el.parentNode)el.parentNode.removeChild(el)}}
+// conteúdo da caixa sobre a arte: cada linha no tamanho de fonte que a arte usou nela (em relação à última linha, que é o tamanho-base da caixa)
+function overlayTitleHtml(t){var L=t.richLines||[{size:48},{size:30}],base=L[L.length-1].size;
+ return $('#productNameRich').innerHTML.split(/<br\s*\/?>/i).map(function(piece,i){var d=document.createElement('div');d.innerHTML=piece;var ln=L[Math.min(i,L.length-1)];return'<span style="font-size:'+(ln.size/base)+'em;vertical-align:top;position:relative">'+d.innerHTML+'</span>'}).join('<br>')}
+// A fonte tem métricas próprias (área do texto acima/abaixo da linha de base) e o canvas e o HTML as posicionam de formas diferentes: depois
+// de montar a caixa, mede onde o navegador pôs cada linha e a empurra até o topo da área do texto que a arte desenha (textBaseline 'top').
+function calibrateTitleEdit(el,t,k,rect){
+ var L=t.richLines;if(!L)return;var cx=document.createElement('canvas').getContext('2d'),brs=el.querySelectorAll('br');cx.textBaseline='top';
+ Array.prototype.forEach.call(el.children,function(sp){if(sp.tagName!=='SPAN')return;
+  var idx=0;Array.prototype.forEach.call(brs,function(b){if(sp.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_PRECEDING)idx++});idx=Math.min(idx,L.length-1);
+  cx.font=richFont({b:true,i:true},L[idx].size);var fba=cx.measureText('H').fontBoundingBoxAscent||0,rs=sp.getClientRects();if(!rs.length)return;
+  var delta=rect.top+(L[idx].y-fba)*k-rs[0].top;sp.style.top=((parseFloat(sp.style.top)||0)+delta)+'px'})
+}
+function openFooterEdit(format,c,px,py){
+ var t=templates[format],dual=$('#codeCount').value==='2',kind=null,getBox,size;
+ // A caixa fica exatamente sobre o texto da arte (mesma fonte, tamanho e posição), só com um contorno tracejado avisando que a edição está
+ // ativa. O texto da caixa é invisível e a própria arte, redesenhada a cada tecla, mostra o resultado: só o cursor e a seleção aparecem.
+ if(px>=t.textX-12&&px<=t.textX+t.titleMax+12&&py>=t.titleY-20&&py<=t.footerY+t.footerH){kind='title';getBox=function(){var L=t.richLines||[{y:t.titleY,size:48},{y:t.subY,size:30}],st=t.richStep||51,n=Math.max(2,Math.min(3,L.length));return[t.textX,L[0].y-(st-L[0].size)/2,t.titleMax,st*n]}}
+ else if(dual){for(var r=0;r<2;r++){var ry=t.dualCodeY+r*49;if(px>=t.w*.5&&py>=ry&&py<=ry+42){kind='code'+r;(function(ry){getBox=function(){return[t.w*.6,ry,t.w-t.safeX-t.w*.6,42]}})(ry);size=29}}}
+ else if(boxHit([t.codeX,t.codeY,t.codeW,t.codeH],px,py)){kind='code0';getBox=function(){return[t.codeNumX||t.codeX+100,t.codeY,(t.codeNumW||150)+4,t.codeH]};size=30}
+ if(!kind)return false;closeFooterEdit();
+ var el=document.createElement(kind==='title'?'div':'input');el.className='pe-footer-edit'+(kind==='title'?' pe-rich-title':'');
+ // a posição acompanha o tamanho da prévia na tela (janela redimensionada, barra de rolagem que aparece) e o texto que re-centraliza
+ el.place=function(){var rect=c.getBoundingClientRect(),wr=c.parentNode.getBoundingClientRect(),k=rect.width/c.width,box=getBox();
+  el.style.left=(rect.left-wr.left+box[0]*k)+'px';el.style.top=(rect.top-wr.top+box[1]*k)+'px';el.style.width=(box[2]*k)+'px';el.style.height=(box[3]*k)+'px';
+  if(kind==='title'){var L=t.richLines||[{size:48},{size:30}];el.style.fontSize=L[L.length-1].size*k+'px';el.style.lineHeight=(t.richStep||51)*k+'px';calibrateTitleEdit(el,t,k,rect)}else el.style.fontSize=size*k+'px'};
+ if(kind==='title'){el.contentEditable='true';normalizeTitle($('#productNameRich'));el.innerHTML=overlayTitleHtml(t);el.addEventListener('keydown',function(ev){if(ev.key==='Enter')enterKey(ev,el);else if(ev.key==='Escape')closeFooterEdit()});el.addEventListener('input',function(){applyRichInput(el);el.place()})}
+ else{var field=$(kind==='code1'?'#productCode2':'#productCode');el.type='text';el.value=field.value;el.style.textAlign='left';el.addEventListener('input',function(){field.value=el.value;drawAll();el.place()});el.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key==='Escape')closeFooterEdit()})}
+ el.addEventListener('blur',function(){setTimeout(function(){if(footerEdit===el)closeFooterEdit()},0)});
+ c.parentNode.appendChild(el);el.place();footerEdit=el;el.focus();if(kind!=='title')el.select();else{var sel=getSelection();sel.selectAllChildren(el)}return true
+}
+// reposiciona a caixa de edição quando a prévia muda de tamanho
+if(window.ResizeObserver){var feReso=new ResizeObserver(function(){if(footerEdit&&footerEdit.place)footerEdit.place()});Object.keys(canvases).forEach(function(f){feReso.observe(canvases[f])})}
+
+// Revisor de texto (cartaz-validator.js, o mesmo do Gerador de Cartazes: regras locais, sem IA). Itálico é ignorado: a base da arte já é itálica.
+function titleIssues(){return CartazValidator.check($('#productName').value,{codes:$('#codeCount').value==='2'?2:1}).filter(function(i){return i.kind!=='italico'})}
+function renderTitleReview(){
+ var list=$('#titleReviewList'),issues=titleIssues();list.hidden=false;
+ if(!issues.length){list.innerHTML='<span>Nenhuma observação no texto. Tudo certo!</span>';return}
+ list.innerHTML='<ul>'+issues.map(function(i,k){return'<li><span>'+escapeHtml(i.message)+'</span>'+(i.replace!=null?'<button type="button" data-fix="'+k+'">Corrigir</button>':'')+'</li>'}).join('')+'</ul>'
+}
+$('#titleReviewBtn').addEventListener('click',renderTitleReview);
+$('#titleReviewList').addEventListener('click',function(ev){
+ var b=ev.target.closest('[data-fix]');if(!b)return;var issue=titleIssues()[+b.dataset.fix];if(!issue)return;
+ var r=CartazValidator.apply($('#productName').value,state.titleHtml||undefined,issue);
+ $('#productName').value=r.title;state.titleHtml=r.titleHtml||'';$('#productNameRich').innerHTML=state.titleHtml||richHtmlFromText(r.title);drawAll();renderTitleReview()
+});
 function drawFooter(ctx,t){
  var txt=splitName($('#productName').value),code=($('#productCode').value||'').trim(),dual=$('#codeCount').value==='2';ctx.fillStyle=state.footerColor||'#FFBE00';ctx.fillRect(0,t.footerY,t.w,t.footerH);
- ctx.fillStyle='#050505';ctx.textBaseline='top';ctx.textAlign='left';ctx.font=font(fitFont(ctx,txt.title.toUpperCase(),t.titleMax,48,28));ctx.fillText(txt.title.toUpperCase(),t.textX,t.titleY);var textEnd=t.textX+ctx.measureText(txt.title.toUpperCase()).width;
- if(txt.sub){ctx.font=font(fitFont(ctx,txt.sub.toUpperCase(),t.titleMax,30,20));ctx.fillText(txt.sub.toUpperCase(),t.textX,t.subY);textEnd=Math.max(textEnd,t.textX+ctx.measureText(txt.sub.toUpperCase()).width)}
+ ctx.fillStyle='#050505';ctx.textBaseline='top';ctx.textAlign='left';var textEnd;
+ if(richOn()){var parts=richParts();
+  if(parts.title2){var sz=40,r1=richRuns(parts.title),r2=richRuns(parts.title2),stp;while(sz>24&&(richWidth(ctx,r1,sz)>t.titleMax||richWidth(ctx,r2,sz)>t.titleMax))sz-=2;stp=Math.round(sz*1.04);var y1=t.titleY-12,sub2=26;
+   textEnd=Math.max(drawRich(ctx,parts.title,t.textX,y1,t.titleMax,sz,sz),drawRich(ctx,parts.title2,t.textX,y1+stp,t.titleMax,sz,sz));
+   if(parts.sub.length){textEnd=Math.max(textEnd,drawRich(ctx,parts.sub,t.textX,y1+2*stp,t.titleMax,26,18));sub2=drawRich.size}
+   t.richLines=[{y:y1,size:sz},{y:y1+stp,size:sz},{y:y1+2*stp,size:sub2}];t.richStep=stp}
+  else{textEnd=drawRich(ctx,parts.title,t.textX,t.titleY,t.titleMax,48,28);var ts=drawRich.size,ss=30;if(parts.sub.length){textEnd=Math.max(textEnd,drawRich(ctx,parts.sub,t.textX,t.subY,t.titleMax,30,20));ss=drawRich.size}
+   t.richLines=[{y:t.titleY,size:ts},{y:t.subY,size:ss}];t.richStep=t.subY-t.titleY}}
+ else{ctx.font=font(fitFont(ctx,txt.title.toUpperCase(),t.titleMax,48,28));ctx.fillText(txt.title.toUpperCase(),t.textX,t.titleY);textEnd=t.textX+ctx.measureText(txt.title.toUpperCase()).width;
+ if(txt.sub){ctx.font=font(fitFont(ctx,txt.sub.toUpperCase(),t.titleMax,30,20));ctx.fillText(txt.sub.toUpperCase(),t.textX,t.subY);textEnd=Math.max(textEnd,t.textX+ctx.measureText(txt.sub.toUpperCase()).width)}}
  if(dual)drawDualCodes(ctx,t,t.dualCodeY,[[$('#codeVariant1').value,code],[$('#codeVariant2').value,($('#productCode2').value||'').trim()]],textEnd+28);
- else{roundRect(ctx,t.codeX,t.codeY,t.codeW,t.codeH,25);ctx.fillStyle='#fff';ctx.fill();ctx.fillStyle='#080808';ctx.textBaseline='middle';ctx.textAlign='left';ctx.font=font(30);var labelW=ctx.measureText('CÓD.:').width;ctx.font='400 italic 30px "Swiss721Editor","Arial Narrow",Arial,sans-serif';var codeW=ctx.measureText(code).width,startX=Math.max(t.codeX+20,t.w-t.safeX-(labelW+8+codeW));ctx.font=font(30);ctx.fillText('CÓD.:',startX,t.codeY+t.codeH/2+1);ctx.font='400 italic 30px "Swiss721Editor","Arial Narrow",Arial,sans-serif';ctx.fillText(code,startX+labelW+8,t.codeY+t.codeH/2+1)}
+ else{roundRect(ctx,t.codeX,t.codeY,t.codeW,t.codeH,25);ctx.fillStyle='#fff';ctx.fill();ctx.fillStyle='#080808';ctx.textBaseline='middle';ctx.textAlign='left';ctx.font=font(30);var labelW=ctx.measureText('CÓD.:').width;ctx.font='400 italic 30px "Swiss721Editor","Arial Narrow",Arial,sans-serif';var codeW=ctx.measureText(code).width,total=labelW+8+codeW,startX=Math.max(t.codeX+20,Math.min((t.codeX+t.w)/2-total/2,t.w-t.safeX-total));t.codeNumX=startX+labelW+8;t.codeNumW=codeW;ctx.font=font(30);ctx.fillText('CÓD.:',startX,t.codeY+t.codeH/2+1);ctx.font='400 italic 30px "Swiss721Editor","Arial Narrow",Arial,sans-serif';ctx.fillText(code,startX+labelW+8,t.codeY+t.codeH/2+1)}
 }
 function drawArt(format){
- var c=canvases[format],ctx=c.getContext('2d'),t=templates[format],pos=positions[format][layout(format)];ctx.clearRect(0,0,t.w,t.h);
+ var c=canvases[format],ctx=c.getContext('2d'),t=templates[format],pos=positions[format][layout(format)];ctx.clearRect(0,0,t.w,t.h);ctx.imageSmoothingQuality='high';
  var activePreset=EDITORIA_PRESETS[state.editoriaName];
  if(activePreset&&typeof activePreset.renderer==='function'){
   lastProductBox[format]=null;lastBadgeBox[format]=null;
@@ -610,7 +715,9 @@ function guideResist(push,axis,lo,hi,d,minLimit,maxLimit){
  return d
 }
 function draw(format){drawArt(format);drawGuides(format)}
-function drawAll(){draw('feed');draw('story')}
+function drawAll(){draw('feed');draw('story');updateDropHint()}
+// Aviso (só na tela, não sai na exportação) de que dá pra soltar a foto de fundo na prévia enquanto não há nenhuma
+function updateDropHint(){$$('.pe-canvas-wrap').forEach(function(w){var h=w.querySelector('.pe-drop-hint');if(!h){h=document.createElement('div');h.className='pe-drop-hint';h.innerHTML='<span aria-hidden="true">＋</span><strong>Arraste a foto de fundo aqui</strong><small>ou dê dois cliques para escolher o arquivo</small>';w.appendChild(h)}h.hidden=!!state.background})}
 function regionScore(img,rect){
  var c=document.createElement('canvas');c.width=120;c.height=120;var x=c.getContext('2d');x.drawImage(img,rect[0]*img.width,rect[1]*img.height,rect[2]*img.width,rect[3]*img.height,0,0,120,120);
  var d=x.getImageData(0,0,120,120).data,total=0,count=0;for(var y=1;y<119;y+=3)for(var q=1;q<119;q+=3){var i=(y*120+q)*4,j=i+4,k=i+480;total+=Math.abs(d[i]-d[j])+Math.abs(d[i+1]-d[j+1])+Math.abs(d[i+2]-d[j+2])+Math.abs(d[i]-d[k])+Math.abs(d[i+1]-d[k+1])+Math.abs(d[i+2]-d[k+2]);count++}return total/count
@@ -669,7 +776,10 @@ function removeWhite(im,holes){
   // Tolerância justa: só vira vão (alça, cabo) se cercado de região escura; branco cercado de claro é parte do produto (copos, bandeja).
   if(members.length>=minArea&&members.length<=maxArea&&(maxX-minX)>=3&&(maxY-minY)>=3){if(!tight||holes||(edgeCount&&edgeLum/edgeCount<150))for(var m=0;m<members.length;m++)d[members[m]*4+3]=0;else skippedHoles++}
  }
- x.putImageData(data,0,0);c.skippedHoles=skippedHoles;return c
+ x.putImageData(data,0,0);
+ // A máscara é calculada em até 900px (rápido), mas o resultado sai na resolução da foto: a máscara é ampliada com suavização
+ // (borda com anti-aliasing) e aplicada sobre os pixels originais. Antes saía em 900px com borda de 1 bit, e serrilhava ao exportar.
+ var bs=Math.min(1,2400/Math.max(im.width,im.height)),big=document.createElement('canvas');big.width=Math.round(im.width*bs);big.height=Math.round(im.height*bs);var bx=big.getContext('2d');bx.imageSmoothingQuality='high';bx.drawImage(im,0,0,big.width,big.height);bx.globalCompositeOperation='destination-in';bx.drawImage(c,0,0,big.width,big.height);big.skippedHoles=skippedHoles;return big
 }
 // Dica quando o recorte manteve uma área branca cercada pelo produto (pode ser alça/furo ou parte do produto: a pessoa decide).
 var holesDismissedFor=null;
@@ -727,7 +837,7 @@ function generateCompositions(){var box=$('#compositionOptions');box.hidden=fals
 function safePart(value){return((value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/gi,'_').replace(/^_|_$/g,'').toUpperCase()||'PRODUTO')}
 function exportBaseName(){var title=splitName($('#productName').value||'produto').title,codes=[normalizeCode($('#productCode').value)];if($('#codeCount').value==='2')codes.push(normalizeCode($('#productCode2').value));codes=codes.filter(Boolean);return safePart(title)+(codes.length?'_'+codes.join('_'):'')}
 function exportFileName(format){return exportBaseName()+'_'+format.toUpperCase()+'.jpg'}
-function canvasBlob(format){return new Promise(function(resolve,reject){canvases[format].toBlob(function(blob){if(blob)resolve(blob);else reject(new Error('Falha ao gerar '+format))},'image/jpeg',.94)})}
+function canvasBlob(format){return new Promise(function(resolve,reject){canvases[format].toBlob(function(blob){if(blob)resolve(blob);else reject(new Error('Falha ao gerar '+format))},'image/jpeg',1)})}
 function triggerBlob(blob,name){var a=document.createElement('a'),u=URL.createObjectURL(blob);a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},1200)}
 function download(format){var name=exportFileName(format);status('Gerando '+name+'…',true);canvasBlob(format).then(function(blob){triggerBlob(blob,name);window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+exportBaseName()});editDirty=false;status(name+' baixado',false)}).catch(function(){status('Não foi possível gerar '+name,false)})}
 var ZIP_CRC_TABLE=(function(){var table=[];for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=(c&1)?0xedb88320^(c>>>1):c>>>1;table[n]=c>>>0}return table})();
@@ -736,7 +846,10 @@ function zipHeader(size){var bytes=new Uint8Array(size),view=new DataView(bytes.
 function zipDate(){var d=new Date(),year=Math.max(1980,d.getFullYear());return{time:(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1),date:((year-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate()}}
 function makeZip(files){var encoder=new TextEncoder(),stamp=zipDate(),locals=[],centrals=[],offset=0;files.forEach(function(file){var name=encoder.encode(file.name),data=file.data,crc=zipCrc(data),local=zipHeader(30);local.u32(0,0x04034b50);local.u16(4,20);local.u16(6,0x800);local.u16(8,0);local.u16(10,stamp.time);local.u16(12,stamp.date);local.u32(14,crc);local.u32(18,data.length);local.u32(22,data.length);local.u16(26,name.length);local.u16(28,0);locals.push(local.bytes,name,data);var central=zipHeader(46);central.u32(0,0x02014b50);central.u16(4,20);central.u16(6,20);central.u16(8,0x800);central.u16(10,0);central.u16(12,stamp.time);central.u16(14,stamp.date);central.u32(16,crc);central.u32(20,data.length);central.u32(24,data.length);central.u16(28,name.length);central.u16(30,0);central.u16(32,0);central.u16(34,0);central.u16(36,0);central.u32(38,0);central.u32(42,offset);centrals.push(central.bytes,name);offset+=30+name.length+data.length});var centralSize=centrals.reduce(function(total,part){return total+part.length},0),end=zipHeader(22);end.u32(0,0x06054b50);end.u16(4,0);end.u16(6,0);end.u16(8,files.length);end.u16(10,files.length);end.u32(12,centralSize);end.u32(16,offset);end.u16(20,0);return new Blob(locals.concat(centrals,[end.bytes]),{type:'application/zip'})}
 function downloadZip(){var base=exportBaseName();status('Montando pacote ZIP…',true);Promise.all([canvasBlob('feed'),canvasBlob('story')]).then(function(blobs){return Promise.all(blobs.map(function(blob){return blob.arrayBuffer()}))}).then(function(buffers){var zip=makeZip([{name:base+'_FEED.jpg',data:new Uint8Array(buffers[0])},{name:base+'_STORY.jpg',data:new Uint8Array(buffers[1])}]);triggerBlob(zip,base+'_FEED_STORY.zip');window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+base});editDirty=false;status('Pacote ZIP baixado',false)}).catch(function(){status('Não foi possível gerar o pacote ZIP',false)})}
-setupDrop('#backgroundDrop','#backgroundFile','#backgroundFileName',function(file,name){name.textContent=file.name;status('Analisando a foto…',true);fileImage(file).then(function(im){state.background=im;state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};analyze()}).catch(function(){status('Não foi possível abrir a foto',false)})});
+function loadBackgroundFile(file,name){name.textContent=file.name;status('Analisando a foto…',true);fileImage(file).then(function(im){state.background=im;state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};analyze()}).catch(function(){status('Não foi possível abrir a foto',false)})}
+setupDrop('#backgroundDrop','#backgroundFile','#backgroundFileName',loadBackgroundFile);
+// soltar a foto de fundo direto na prévia, enquanto ainda não há nenhuma (depois disso, soltar não faz nada: troca-se pelo campo de upload)
+$$('.pe-canvas-wrap').forEach(function(wrap){var over=function(ev){return!state.background&&ev.dataTransfer&&Array.prototype.indexOf.call(ev.dataTransfer.types||[],'Files')>=0};['dragenter','dragover'].forEach(function(e){wrap.addEventListener(e,function(ev){if(over(ev)){ev.preventDefault();wrap.classList.add('is-dragging')}})});wrap.addEventListener('dragleave',function(){wrap.classList.remove('is-dragging')});wrap.addEventListener('drop',function(ev){wrap.classList.remove('is-dragging');if(!over(ev))return;ev.preventDefault();var f=ev.dataTransfer.files[0];if(f&&/^image/.test(f.type))loadBackgroundFile(f,$('#backgroundFileName'))})});
 setupDrop('#productDrop','#productFile','#productFileName',function(file,name){setProductFilePreviewFromFile(file);fileImage(file).then(function(im){state.product=im;updateProduct()}).catch(function(){status('Não foi possível abrir o produto',false)})});
 ['#productName','#productCode','#productCode2','#codeVariant1','#codeVariant2','#eventDay','#eventMonth','#eventPrefix','#ecommerceDiscount','#ecommerceCta','#ecommerceValidity'].forEach(function(s){var el=$(s);if(el)el.addEventListener('input',drawAll)});
 function formatCurrencyInput(el){var digits=el.value.replace(/\D/g,'');if(!digits){el.value='';return}digits=digits.replace(/^0+(?=\d)/,'');while(digits.length<3)digits='0'+digits;var cents=digits.slice(-2),intPart=(digits.slice(0,-2).replace(/^0+(?=\d)/,'')||'0').replace(/\B(?=(\d{3})+(?!\d))/g,'.');el.value=intPart+','+cents}
@@ -761,11 +874,14 @@ function flashMoveTarget(format,cap,hit,canvasRect,box){
 $$('[data-move-mode]').forEach(function(b){b.addEventListener('click',function(){setMoveMode(b.dataset.moveMode)})});$('#moveTarget').addEventListener('change',function(){setMoveMode($('#moveTarget').value)});
 Object.keys(canvases).forEach(function(format){
  var c=canvases[format],cap=format[0].toUpperCase()+format.slice(1),drag=null,dragTarget=null,guideTimer=0;
- c.addEventListener('pointerdown',function(e){if(ovFormat()!==format){$('#overlayFormat').value=format;syncOverlayControls()}if(!state.moveEnabled)return;dragSnapshot=JSON.stringify(state.format);drag={x:e.clientX,y:e.clientY,push:{x:0,y:0}};dragTarget=$('#moveTarget').value;state.guides[format]=dragTarget!=='background';c.setPointerCapture(e.pointerId)});
+ c.addEventListener('pointerdown',function(e){if(ovFormat()!==format){$('#overlayFormat').value=format;syncOverlayControls()}if(!state.moveEnabled)return;clearTimeout(guideTimer);dragSnapshot=JSON.stringify(state.format);drag={x:e.clientX,y:e.clientY,push:{x:0,y:0}};dragTarget=$('#moveTarget').value;state.guides[format]=dragTarget!=='background';c.setPointerCapture(e.pointerId)});
  c.addEventListener('pointermove',function(e){if(!drag)return;var scale=c.width/c.getBoundingClientRect().width,dx=(e.clientX-drag.x)*scale,dy=(e.clientY-drag.y)*scale;drag={x:e.clientX,y:e.clientY,push:drag.push};if(dragTarget==='background'){state.format[format].bgDx+=dx;state.format[format].bgDy+=dy}else{var gb=visibleBox(format);if(gb){var gm=SAFE_MARGINS[format],gt=templates[format];dx=guideResist(drag.push,'x',gb[0],gb[0]+gb[2],dx,gm.side,gt.w-gm.side);dy=guideResist(drag.push,'y',gb[1],gb[1]+gb[3],dy,gm.top,gt.h-gm.bottom)}state.format[format].overlayDx+=dx;state.format[format].overlayDy+=dy}drawAll()});
  ['pointerup','pointercancel'].forEach(function(ev){c.addEventListener(ev,function(){commitDrag();drag=null;dragTarget=null;state.guides[format]=false;draw(format)})});
  c.addEventListener('dblclick',function(e){
+  if(richOn()){var fr=c.getBoundingClientRect();if(openFooterEdit(format,c,(e.clientX-fr.left)*c.width/fr.width,(e.clientY-fr.top)*c.height/fr.height)){e.preventDefault();return}}
   if(!state.moveEnabled)return;var rect=c.getBoundingClientRect(),scaleX=c.width/rect.width,scaleY=c.height/rect.height,px=(e.clientX-rect.left)*scaleX,py=(e.clientY-rect.top)*scaleY,destaqueBox=state.priceMoveOnly?lastProductBox[format]:visibleBox(format),hit=boxHit(destaqueBox,px,py);
+  // sem foto de fundo ainda, o duplo clique no fundo/placeholder abre a escolha do arquivo (com foto, segue selecionando fundo/destaque pra mover)
+  if(!state.background&&!hit){$('#backgroundFile').click();return}
   setMoveMode(hit?'overlay':'background');status(hit?'Box de preço selecionada para mover':'Fundo selecionado para mover',false);
   flashMoveTarget(format,cap,hit,rect,destaqueBox)
  });
@@ -773,7 +889,7 @@ Object.keys(canvases).forEach(function(format){
   // com o destaque selecionado (Arrastar: Logo e produto) a roda ajusta o tamanho dele, só neste formato
   if(state.moveEnabled&&!state.priceMoveOnly&&$('#moveTarget').value==='overlay'&&!$('#overlayScaleField').hidden){
    e.preventDefault();var pct=Math.max(70,Math.min(135,Math.round(state.ov[format].scale*100)+(e.deltaY<0?5:-5)));
-   state.ov[format].scale=pct/100;state.guides[format]=true;draw(format);if(ovFormat()===format)syncOverlayControls();clearTimeout(guideTimer);guideTimer=setTimeout(function(){state.guides[format]=false;draw(format)},600);return
+   state.ov[format].scale=pct/100;state.guides[format]=true;draw(format);if(ovFormat()===format)syncOverlayControls();clearTimeout(guideTimer);guideTimer=setTimeout(function(){if(drag)return;state.guides[format]=false;draw(format)},600);return
   }
   e.preventDefault();// zoom do fundo: 100% a 180%
   state.bgZoom[format]=Math.max(100,Math.min(180,Math.round(state.bgZoom[format]*100)+(e.deltaY<0?5:-5)))/100;draw(format)
