@@ -66,3 +66,7 @@ Validar renderizando de verdade (Chrome headless) continua obrigatório para mud
 - Limite ~2 rodadas de screenshot por bug. Se a causa raiz não aparecer nessas tentativas, aplique o fix mais seguro disponível (de preferência espelhando um padrão que já funciona em outro lugar do mesmo código) e siga em frente, em vez de continuar escalando a investigação (introspecção de CSSOM, bissecção de stylesheet, etc.) até esgotar a dúvida.
 - Não monte um harness de teste novo para validar um caminho de código que já foi exercitado por um teste anterior na mesma tarefa (ex.: reabrir o mesmo modal/fluxo já testado) - revisão de código basta nesses casos.
 - Para reler código já visitado na mesma sessão, prefira grep num trecho específico a reler o arquivo inteiro em blocos grandes.
+
+## Guias de margem de segurança nas artes
+
+Toda arte de feed e story (qualquer editoria/marca, inclusive novas) deve ter as guias ciano de margem de segurança do editor (`SAFE_MARGINS` em `post-editor.js`): feed 135px cima / 66px laterais / 190px baixo; story 190px cima / 66px laterais / 190px baixo. Aparecem só ao arrastar/redimensionar o elemento que encosta nelas, barram momentaneamente (passa empurrando mais, como no Instagram) e não saem na exportação. Novos renderers precisam informar a caixa do elemento móvel via `setMoveBox`.

@@ -171,29 +171,36 @@
             <div class="pe-step"><span>3</span>
               <div><strong>Composição</strong><small>Ajustes opcionais antes de baixar</small></div>
             </div>
+            <div id="overlayFormatField"><label for="overlayFormat">Ajustar o destaque do</label><select id="overlayFormat">
+                <option value="feed">Feed</option>
+                <option value="story">Story</option>
+              </select><small class="pe-field-hint">Tamanho e posição do destaque são sempre individuais. Clicar na arte troca de formato.</small>
+              <div class="pe-check pe-check-row"><input id="linkFormats" type="checkbox" checked aria-label="Diagramação igual para Feed e Story"><span>Diagramação igual para Feed e Story</span></div></div>
             <div class="pe-grid-fields">
-              <div id="layoutModeField"><label for="layoutMode">Layout</label><select id="layoutMode">
+              <div id="layoutModeField" style="grid-column:1/-1"><label for="layoutMode">Layout</label><select id="layoutMode">
                   <option value="auto">Automático</option>
                   <option value="left">Logo à esquerda</option>
                   <option value="stacked">Produto acima</option>
                   <option value="right">Logo à direita</option>
                 </select></div>
-              <div id="moveTargetField"><label for="moveTarget">Arrastar</label><select id="moveTarget">
-                  <option value="background">Imagem de fundo</option>
-                  <option value="overlay">Logo e produto</option>
-                </select></div>
+              <input id="moveTarget" type="hidden" value="background">
             </div>
-            <div class="pe-format-zooms">
-              <div><label for="backgroundZoomFeed">Zoom do Feed <output
-                    id="backgroundZoomFeedOut">100%</output></label><input id="backgroundZoomFeed" type="range"
-                  min="100" max="180" value="100"></div>
-              <div><label for="backgroundZoomStory">Zoom do Story <output
-                    id="backgroundZoomStoryOut">100%</output></label><input id="backgroundZoomStory" type="range"
-                  min="100" max="180" value="100"></div>
-            </div>
+            <label for="circleLayer">Círculo do produto</label><select id="circleLayer">
+              <option value="back">Atrás do selo</option>
+              <option value="front">À frente do selo</option>
+            </select>
             <div id="overlayScaleField"><label for="overlayScale">Tamanho do destaque <output
                   id="overlayScaleOut">100%</output></label><input id="overlayScale" type="range" min="70" max="135"
                 value="100"></div>
+            <div id="productScaleField"><label for="productScale">Tamanho da foto no círculo <output
+                  id="productScaleOut">100%</output></label><input id="productScale" type="range" min="60" max="140"
+                value="100"></div>
+
+            <label for="circleStyle">Cor do círculo</label><select id="circleStyle">
+              <option value="yellow">Amarelo (#F6BE00)</option>
+              <option value="white">Branco (#FFFFFF)</option>
+              <option value="white-border">Branco com borda amarela</option>
+            </select>
             <div class="pe-actions-row"><button id="autoCompose" type="button">✦ Recalcular composição</button><button
                 id="resetPosition" type="button">↺ Centralizar</button></div>
           <div class="pe-suggestions-section" id="compositionSuggestionsSection">
