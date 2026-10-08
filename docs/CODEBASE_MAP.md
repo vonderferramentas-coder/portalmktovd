@@ -175,6 +175,8 @@ graph TB
 | `post-editor-fg-lancamentos.js` | Preset "Lançamentos" (FG) | 1781 |
 | `post-editor-vonder-uso-recomendo.js` | Preset "Uso e Recomendo VONDER" (VONDER): faixas preta/amarela, esquerda ou direita, arrastáveis na vertical | ~110 |
 | `post-editor-vonder-datas-comemorativas.js` | Preset "Datas comemorativas" (VONDER): grade de 1/2/4 fotos com enquadramento e zoom por foto, losango + faixa preta com a data, forma amarela de pontas e forma branca opcional; textos editáveis por duplo clique (B/I/U e tamanho). Painel próprio (`#vcPanel`) e fonte Montserrat | ~330 |
+| `post-editor-saved-arts.js` | Artes salvas: salvamento automático da receita no `portalStore` (`art-draft-*`), fotos originais no IndexedDB (hash) e cópia comprimida em `artPhotos`, bloqueio "fulano está editando", lixeira, lista e reabertura. Usa os ganchos `serialize()`/`restore()` do preset | ~290 |
+| `scripts/purge_art_drafts.py` + `.github/workflows/limpar-artes-salvas.yml` | Limpeza diária das artes salvas (lixeira de 7 dias, fotos sem uso, `art-stats-v1`); decisões em funções puras testadas em `tests/purge_art_drafts.test.py` | ~110 |
 | `post-editor-osten-datas-comemorativas.js` | Preset "Datas comemorativas" (OSTEN) | 1845 |
 | `post-editor-dismatal-datas-comemorativas.js` | Preset "Datas comemorativas" (DISMATAL) | 1982 |
 | `post-editor-dwt-datas-comemorativas.js` | Preset "Datas comemorativas" (DWT) | 1486 |

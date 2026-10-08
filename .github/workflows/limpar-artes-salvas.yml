@@ -1,0 +1,33 @@
+name: Limpar artes salvas do Editor de Posts
+
+# Apaga de vez as artes que ficaram mais de 7 dias na lixeira, apaga as fotos que nenhuma arte viva usa mais (retenção de 30 dias a partir da
+# última edição ou da publicação do card) e grava o total de bytes de fotos em portalStore/art-stats-v1 (a trava de orçamento do editor lê isso).
+# Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js), às 04:30 de São Paulo - depois do backup das 04:00, que
+# ainda guarda as artes e fotos que esta limpeza vai apagar.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: limpar-artes-salvas
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  limpar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site (só pelo script)
+        uses: actions/checkout@v4
+
+      - name: Limpar artes e fotos vencidas
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::error::Falta o secret FIREBASE_SERVICE_ACCOUNT_KEY - limpeza não executada.'
+            exit 1
+          fi
+          pip install --quiet firebase-admin
+          python3 scripts/purge_art_drafts.py

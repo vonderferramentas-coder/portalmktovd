@@ -41,6 +41,13 @@
           <p>Cada editoria tem seu próprio preset de composição. As editorias ainda sem preset configurado aparecem
             desabilitadas, como "Em breve".</p>
           <div class="pe-editoria-grid" id="editoriaGrid"></div>
+          <div class="pe-saved" id="savedArts">
+            <h3>Artes salvas</h3>
+            <p class="pe-field-hint">Continue de onde parou ou ajuste uma arte depois da revisão. As fotos ficam guardadas por 30 dias; quem abre a arte em outro computador as recebe em qualidade reduzida e pode reenviar a original.</p>
+            <div class="pe-catalog-search"><input id="savedArtsSearch" type="search" autocomplete="off" placeholder="Buscar pelo título" aria-label="Buscar arte salva"><span aria-hidden="true">⌕</span></div>
+            <div class="pe-saved-list" id="savedArtsList"></div>
+            <button type="button" class="pe-saved-trash" id="savedArtsTrash" hidden></button>
+          </div>
         </div>
       </section>
       <section class="pe-chooser" id="productChooser" hidden>
@@ -70,7 +77,7 @@
       <div class="pe-layout" id="editorWorkspace" hidden>
         <aside class="pe-panel">
           <div class="pe-selected-editoria" id="selectedEditoriaBarEdit"><span class="pe-editoria-dot"
-              id="selectedEditoriaDotEdit"></span><strong id="selectedEditoriaNameEdit">Editoria</strong><button
+              id="selectedEditoriaDotEdit"></span><strong id="selectedEditoriaNameEdit">Editoria</strong><span class="pe-art-state" id="artSaveState" role="status" aria-live="polite" hidden></span><button
               id="changeEditoriaEdit" type="button">Trocar</button></div>
           <section class="pe-section pe-core-section">
             <div class="pe-step"><span>1</span>
@@ -279,6 +286,7 @@
               <div class="pe-segmented" id="moveModeControls"><button class="is-active" data-move-mode="background"
                   type="button">Mover fundo</button><button data-move-mode="overlay" type="button">Mover destaque</button>
               </div>
+              <button id="saveArt" type="button" class="pe-save-art" title="Salva a última versão desta arte para continuar depois" hidden>Salvar arte</button>
             </div>
           </div>
           <div class="pe-previews">
@@ -317,12 +325,13 @@
       <div class="pe-modal-overlay" id="confirmLeaveEdit" hidden>
         <div class="pe-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmLeaveEditTitle"
           aria-describedby="confirmLeaveEditDesc">
+          <button type="button" class="pe-modal-x" id="confirmLeaveEditClose" aria-label="Fechar">×</button>
           <h3 id="confirmLeaveEditTitle">Voltar e perder as edições?</h3>
           <p id="confirmLeaveEditDesc">A composição feita até aqui ainda não foi salva. Se você voltar agora, esse
             progresso será perdido.</p>
-          <div class="pe-modal-actions"><button type="button" id="confirmLeaveEditCancel">Continuar
-              editando</button><button type="button" class="pe-modal-danger" id="confirmLeaveEditOk">Voltar mesmo
-              assim</button></div>
+          <div class="pe-modal-actions"><button type="button" class="pe-modal-danger" id="confirmLeaveEditOk">Voltar mesmo
+              assim</button><button type="button" id="confirmLeaveEditCancel">Continuar
+              editando</button><button type="button" class="pe-modal-primary" id="confirmLeaveEditSave" hidden>Salvar e voltar</button></div>
         </div>
       </div>
     </main>
@@ -336,6 +345,7 @@
   <script src="post-editor-assets/brands-js/DWT SLOGAN B.js"></script>
   <script src="post-editor-vonder-uso-recomendo.js"></script>
   <script src="post-editor-vonder-datas-comemorativas.js"></script>
+  <script src="post-editor-saved-arts.js"></script>
   <script src="post-editor-fg-lancamentos.js"></script>
   <script src="post-editor-fg-ecommerce.js"></script>
   <script src="post-editor-osten-datas-comemorativas.js"></script>

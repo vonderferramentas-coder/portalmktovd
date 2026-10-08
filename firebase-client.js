@@ -5,7 +5,7 @@ import {
   sendPasswordResetEmail, signOut
 } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js';
 import {
-  getFirestore, doc, getDoc, addDoc, collection, serverTimestamp, updateDoc,
+  getFirestore, doc, getDoc, setDoc, Bytes, addDoc, collection, serverTimestamp, updateDoc,
   runTransaction, onSnapshot, writeBatch, query, where, deleteDoc, getCountFromServer, getDocs, limit
 } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
 
@@ -258,6 +258,111 @@ export async function deletePost(key, postId, expectedRevision) {
   });
 }
 
+// Artes salvas do Editor de Posts (fase 1): um documento pequeno por arte ("art-draft-{marca}-{id}"), com a receita da arte; sem fotos.
+// A revisão evita sobrescrever o que outra pessoa salvou depois (mesmo esquema dos cards do calendário).
+function artDraftReference(key, id) {
+  return doc(db, 'portalStore', `art-draft-${encodeURIComponent(String(key))}-${encodeURIComponent(String(id))}`);
+}
+
+export async function readArtDraft(key, id) {
+  await currentContext();
+  const snapshot = await getDoc(artDraftReference(key, id));
+  if (!snapshot.exists()) return { draft: null, revision: 0 };
+  const data = snapshot.data();
+  return { draft: data.v === undefined ? null : data.v, revision: Number(data.revision || 0) };
+}
+
+const ART_LOCK_MS = 10 * 60 * 1000;
+// bloqueio de edição: vale 10 min a partir da última renovação (gravação da arte ou batida a cada ~5 min) e vence sozinho
+function artLockedByOther(lock, uid, now) {
+  return !!(lock && lock.until > now && lock.uid !== uid);
+}
+
+// me = { uid, name }. Se outra pessoa tem o bloqueio ativo, nada é gravado e volta { locked }.
+export async function writeArtDraft(key, draft, expectedRevision, me) {
+  await currentContext();
+  if (!draft || !draft.id || String(draft.recipe || '').length > 100000) throw portalError('art/invalid', 'Arte inválida ou grande demais para salvar.');
+  const reference = artDraftReference(key, draft.id);
+  return runTransaction(db, async transaction => {
+    const current = await transaction.get(reference);
+    const currentRevision = current.exists() ? Number(current.data().revision || 0) : 0;
+    if (currentRevision !== Number(expectedRevision || 0)) return { conflict: true, revision: currentRevision };
+    const now = Date.now(), lock = current.exists() ? current.data().lock : null;
+    if (artLockedByOther(lock, me.uid, now)) return { conflict: false, locked: { name: lock.name, until: lock.until }, revision: currentRevision };
+    const revision = currentRevision + 1;
+    const payload = { kind: 'artDraft', artStoreKey: String(key), artId: String(draft.id), v: draft, revision, updatedAt: serverTimestamp(), lock: { uid: me.uid, name: me.name, until: now + ART_LOCK_MS } };
+    if (current.exists()) transaction.update(reference, payload); else transaction.set(reference, payload);
+    return { conflict: false, revision };
+  });
+}
+
+// Pega (ou renova) o bloqueio para abrir uma arte. force = assumir de quem está com ele.
+export async function lockArtDraft(key, id, me, force) {
+  await currentContext();
+  const reference = artDraftReference(key, id);
+  return runTransaction(db, async transaction => {
+    const current = await transaction.get(reference);
+    if (!current.exists()) return { missing: true };
+    const now = Date.now(), lock = current.data().lock;
+    if (!force && artLockedByOther(lock, me.uid, now)) return { locked: { name: lock.name, until: lock.until } };
+    transaction.update(reference, { lock: { uid: me.uid, name: me.name, until: now + ART_LOCK_MS } });
+    return { locked: null };
+  });
+}
+
+export async function releaseArtDraftLock(key, id, uid) {
+  await currentContext();
+  const reference = artDraftReference(key, id);
+  await runTransaction(db, async transaction => {
+    const current = await transaction.get(reference);
+    if (current.exists() && current.data().lock && current.data().lock.uid === uid) transaction.update(reference, { lock: null });
+  });
+}
+
+// Lixeira: deletedAt = timestamp (ms) manda para a lixeira, null restaura. A limpeza diária apaga de vez depois de 7 dias.
+export async function setArtDraftDeleted(key, id, deletedAt, me) {
+  await currentContext();
+  const reference = artDraftReference(key, id);
+  return runTransaction(db, async transaction => {
+    const current = await transaction.get(reference);
+    if (!current.exists()) return { missing: true };
+    const lock = current.data().lock;
+    if (artLockedByOther(lock, me.uid, Date.now())) return { locked: { name: lock.name, until: lock.until } };
+    const revision = Number(current.data().revision || 0) + 1;
+    transaction.update(reference, { 'v.deletedAt': deletedAt || null, 'v.deletedBy': deletedAt ? me.name : '', revision, updatedAt: serverTimestamp() });
+    return { revision };
+  });
+}
+
+// Fotos das artes (coleção artPhotos, fora do portalStore e do backup). bytes = JPEG já comprimido.
+export async function writeArtPhoto(hash, photo) {
+  const context = await currentContext();
+  const reference = doc(db, 'artPhotos', String(hash));
+  if ((await getDoc(reference)).exists()) return { existed: true };
+  await setDoc(reference, { hash: String(hash), data: Bytes.fromUint8Array(photo.bytes), size: photo.bytes.length, w: photo.w, h: photo.h, type: photo.type, createdAt: serverTimestamp(), createdBy: context.user.uid });
+  return { existed: false };
+}
+
+export async function readArtPhoto(hash) {
+  await currentContext();
+  const snapshot = await getDoc(doc(db, 'artPhotos', String(hash)));
+  return snapshot.exists() ? { bytes: snapshot.data().data.toUint8Array(), type: snapshot.data().type || 'image/jpeg' } : null;
+}
+
+// Total de bytes de fotos (gravado pela limpeza diária, só Admin SDK); { photoBytes: 0 } enquanto a limpeza não rodou.
+export async function readArtStats() {
+  await currentContext();
+  const snapshot = await getDoc(doc(db, 'portalStore', 'art-stats-v1'));
+  return snapshot.exists() && snapshot.data().v ? snapshot.data().v : { photoBytes: 0, photoCount: 0 };
+}
+
+// ponytail: sem orderBy (exigiria índice composto); traz até `max` artes da marca e quem chama ordena. A retenção mantém a lista curta.
+export async function listArtDrafts(key, max = 100) {
+  await currentContext();
+  const snapshot = await getDocs(query(collection(db, 'portalStore'), where('artStoreKey', '==', String(key)), limit(Math.max(1, Math.min(300, max)))));
+  return snapshot.docs.map(entry => ({ id: String(entry.data().artId || ''), draft: entry.data().v === undefined ? null : entry.data().v, revision: Number(entry.data().revision || 0), lock: entry.data().lock || null }));
+}
+
 export async function subscribeToPosts(key, onChange, onError) {
   await currentContext();
   let initial = true;
@@ -342,6 +447,7 @@ export { app, auth, db, profileFor, audit };
 
 window.PortalFirebase = {
   readPortalStore, writePortalStore, deletePortalStore, ensurePostsStore, writePost, deletePost, subscribeToPosts,
+  readArtDraft, writeArtDraft, listArtDrafts, lockArtDraft, releaseArtDraftLock, setArtDraftDeleted, writeArtPhoto, readArtPhoto, readArtStats,
   subscribeNotifications, markNotificationRead, currentContext, logout, requestPasswordReset,
   updateOwnProfile, recordUsageEvent, audit
 };

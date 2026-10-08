@@ -27,13 +27,59 @@
   ];
   var V,API=null,fontsAsked=false,last={feed:null,story:null},rec=[],editEl=null;
 
-  function fresh(){return{layout:'four',photos:[null,null,null,null],names:['','','',''],urls:['','','',''],loading:[false,false,false,false],scale:{day:1,month:1,prefix:1,title:1,yellow:1,white:1},textW:595,whiteOn:true,whiteAuto:true,whiteW:470,seed:0,loz:1,side:'left'}}
+  function fresh(){return{layout:'four',photos:[null,null,null,null],names:['','','',''],urls:['','','',''],loading:[false,false,false,false],files:[null,null,null,null],sizes:[0,0,0,0],hashes:['','','',''],hashPromises:[null,null,null,null],missing:[null,null,null,null],reduced:[false,false,false,false],scale:{day:1,month:1,prefix:1,title:1,yellow:1,white:1},textW:595,whiteOn:true,whiteAuto:true,whiteW:470,seed:0,loz:1,side:'left'}}
   V=fresh();
   function $(id){return document.getElementById(id)}
   function $$(sel){return Array.prototype.slice.call(document.querySelectorAll(sel))}
   // enquadramento da foto i no formato (deslocamento e zoom ficam em state.format: desfazer e "Restaurar posições" cobrem tudo)
   function phOf(pos,i){var l=pos.ph=pos.ph||[];return l[i]||(l[i]={dx:0,dy:0,z:1})}
   function isTitle(key){return key==='prefix'||key==='title'}
+  // ===== artes salvas (post-editor-saved-arts.js): o que vai para o documento e como volta =====
+  // A receita é guardada como texto JSON (o Firestore não aceita listas dentro de listas); os campos de texto passam pelo mesmo filtro de
+  // <b>/<i>/<u> da edição, na ida e na volta, então um documento alterado por fora nunca injeta HTML.
+  function round1(n){return Math.round((+n||0)*10)/10}
+  // enquadramento padrão (centrado, sem zoom) = null: o desenho cria essas entradas sozinho, e o documento não pode mudar por causa disso
+  function framing(e){if(!e)return null;var o={dx:round1(e.dx),dy:round1(e.dy),z:Math.round(e.z*100)/100};return!o.dx&&!o.dy&&o.z===1?null:o}
+  function serialize(){
+    var st=API.state.format,format={};
+    ['feed','story'].forEach(function(f){
+      var p=st[f]||{},ph=[];for(var i=0;i<4;i++)ph.push(framing(p.ph&&p.ph[i]));
+      format[f]={overlayDy:Math.round(p.overlayDy||0),ph:ph}
+    });
+    var fields={};Object.keys(FIELDS).forEach(function(k){fields[k]=global.CartazTitleFormat.sanitize($(FIELDS[k].id),{keepBr:true,always:true})});
+    var photos=[],blobs=[];
+    for(var i=0;i<4;i++){
+      if(V.photos[i]){photos.push({slot:i,name:V.names[i],size:V.sizes[i],hash:V.hashes[i]||''});if(V.files[i]&&V.hashes[i]&&!V.reduced[i])blobs.push({hash:V.hashes[i],blob:V.files[i]})}
+      else if(V.missing[i])photos.push({slot:i,name:V.missing[i].name,size:V.missing[i].size,hash:V.missing[i].hash})
+    }
+    return{
+      title:($('productName')&&$('productName').value)||'Data comemorativa',
+      recipe:{v:1,layout:V.layout,side:V.side,seed:V.seed,loz:V.loz,textW:V.textW,whiteOn:V.whiteOn,whiteAuto:V.whiteAuto,whiteW:V.whiteW,scale:V.scale,fields:fields,format:format},
+      photos:photos,blobs:blobs,maxSide:V.layout==='single'?1600:1280,
+      // o hash de cada foto é calculado em segundo plano: só salva depois que todos estiverem prontos
+      ready:Promise.all(V.hashPromises.filter(Boolean)).then(function(){photos.forEach(function(p){if(!p.hash&&V.hashes[p.slot]){p.hash=V.hashes[p.slot];if(!V.reduced[p.slot])blobs.push({hash:p.hash,blob:V.files[p.slot]})}})})
+    }
+  }
+  function num(v,lo,hi,def){v=+v;return isFinite(v)?Math.max(lo,Math.min(hi,v)):def}
+  // d = {recipe, photos}; getBlob(hash) devolve a foto guardada neste navegador (ou null: a foto vira "Reenviar")
+  function restore(d,getBlob){
+    var r=d.recipe||{};if(r.v!==1)return Promise.resolve();
+    V.layout=SLOT_NAMES[r.layout]?r.layout:'four';V.side=r.side==='right'?'right':'left';V.seed=Math.max(0,Math.floor(num(r.seed,0,1e6,0)));V.loz=num(r.loz,0,1.4,1);
+    V.textW=num(r.textW,300,860,595);V.whiteW=num(r.whiteW,300,860,470);V.whiteOn=r.whiteOn!==false;V.whiteAuto=!!r.whiteAuto;
+    Object.keys(V.scale).forEach(function(k){V.scale[k]=num(r.scale&&r.scale[k],.6,1.6,1)});
+    Object.keys(FIELDS).forEach(function(k){setField(k,global.CartazTitleFormat.clean(String((r.fields&&r.fields[k])||''),{keepBr:true,always:true}))});
+    $('vcGrid').value=V.layout;$('vcSide').value=V.side;$('vcLoz').value=Math.round(V.loz*100);$('vcLozOut').value=Math.round(V.loz*100)+'%';
+    $('vcTextW').value=V.textW;$('vcTextWOut').value=V.textW;$('vcWhiteW').value=V.whiteW;$('vcWhiteWOut').value=V.whiteW;$('vcWhiteOn').checked=V.whiteOn;$('vcWhiteBox').hidden=!V.whiteOn;
+    ['feed','story'].forEach(function(f){
+      var s=(r.format&&r.format[f])||{};
+      API.state.format[f]={bgDx:0,bgDy:0,overlayDx:0,overlayDy:num(s.overlayDy,-2000,2000,0),ph:(Array.isArray(s.ph)?s.ph.slice(0,4):[]).map(function(p){return p?{dx:num(p.dx,-5000,5000,0),dy:num(p.dy,-5000,5000,0),z:num(p.z,1,3,1)}:null})}
+    });
+    syncName();renderSlots();
+    return Promise.all((d.photos||[]).map(function(p){
+      var slot=+p.slot;if(!(slot>=0&&slot<4)||!p.hash)return;
+      return getBlob(p.hash).then(function(got){if(got)return loadPhoto(slot,got.blob,p.hash,true,String(p.name||''),got.reduced);V.missing[slot]={name:String(p.name||''),size:+p.size||0,hash:String(p.hash)}})
+    })).then(function(){renderSlots();API.redraw()})
+  }
   function capital(t){t=String(t||'').trim().toLocaleLowerCase('pt-BR');return t?t.charAt(0).toLocaleUpperCase('pt-BR')+t.slice(1):''}
   // "Feliz Dia do Vendedor!": enquanto ninguém mexe no texto da forma branca, ele acompanha a chamada e o título
   // título todo em maiúsculas vira "Vendedor"; título já em caixa mista ("São João Batista") fica como está
@@ -168,7 +214,7 @@
       ph.dx=clampOff(ph.dx,w,r[2]);ph.dy=clampOff(ph.dy,h,r[3]);ctx.drawImage(img,r[0]+(r[2]-w)/2+ph.dx,r[1]+(r[3]-h)/2+ph.dy,w,h)
     }else{
       var gr=ctx.createLinearGradient(r[0],r[1],r[0]+r[2],r[1]+r[3]);gr.addColorStop(0,'#2a2e31');gr.addColorStop(1,'#4b504e');ctx.fillStyle=gr;ctx.fillRect(r[0],r[1],r[2],r[3]);
-      ctx.fillStyle='rgba(255,255,255,.55)';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 34px '+MO;ctx.fillText('＋ '+SLOT_NAMES[V.layout][i],r[0]+r[2]/2,r[1]+r[3]/2);ctx.font='400 22px '+MO;ctx.fillText('dê dois cliques para enviar',r[0]+r[2]/2,r[1]+r[3]/2+36)
+      ctx.fillStyle='rgba(255,255,255,.55)';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 34px '+MO;ctx.fillText(V.missing[i]?'Reenviar a foto':'＋ '+SLOT_NAMES[V.layout][i],r[0]+r[2]/2,r[1]+r[3]/2);ctx.font='400 22px '+MO;ctx.fillText(V.missing[i]?V.missing[i].name:'dê dois cliques para enviar',r[0]+r[2]/2,r[1]+r[3]/2+36)
     }
     ctx.restore()
   }
@@ -261,7 +307,7 @@
   function onDragEnd(){finishDrag()}
   // reordena as fotos (e o enquadramento delas): order[k] = de qual posição antiga vem a foto que fica na posição k
   function permute(order){
-    ['photos','names','urls','loading'].forEach(function(k){var old=V[k].slice();order.forEach(function(from,to){V[k][to]=old[from]})});
+    ['photos','names','urls','loading','files','sizes','hashes','hashPromises','missing','reduced'].forEach(function(k){var old=V[k].slice();order.forEach(function(from,to){V[k][to]=old[from]})});
     ['feed','story'].forEach(function(f){var p=API.state.format[f],old=(p.ph||[]).slice();p.ph=[];order.forEach(function(from,to){if(old[from])p.ph[to]=old[from]})});
     renderSlots();API.redraw();API.status('Fotos reordenadas',false)
   }
@@ -359,30 +405,39 @@
     var box=$('vcSlots');if(!box)return;box.innerHTML='';
     SLOT_NAMES[V.layout].forEach(function(label,i){
       var row=document.createElement('div');row.className='pe-vc-slot';row.dataset.slot=i;
-      row.innerHTML='<button type="button" class="pe-vc-handle" title="Arraste para reordenar" aria-label="Reordenar foto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><label class="pe-vc-thumb" title="Enviar foto"><input type="file" accept="image/*">'+(V.photos[i]?'<img alt="">':'＋')+'</label><div><strong>'+esc(label)+'</strong><small>'+esc(V.names[i]||'Clique no quadrado ou dê dois cliques na arte')+'</small><div class="pe-vc-row"><input type="range" min="100" max="300" value="100" aria-label="Zoom da foto"><button type="button" data-act="center">Centralizar</button><button type="button" data-act="clear">Remover</button></div></div>';
+      row.innerHTML='<button type="button" class="pe-vc-handle" title="Arraste para reordenar" aria-label="Reordenar foto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><label class="pe-vc-thumb" title="Enviar foto"><input type="file" accept="image/*">'+(V.photos[i]?'<img alt="">':'＋')+'</label><div><strong>'+esc(label)+'</strong><small>'+esc(V.reduced[i]?'Qualidade reduzida: reenvie o original ('+(V.names[i]||'foto')+')':V.names[i]||(V.missing[i]?'Reenviar: '+V.missing[i].name:'Clique no quadrado ou dê dois cliques na arte'))+'</small><div class="pe-vc-row"><input type="range" min="100" max="300" value="100" aria-label="Zoom da foto"><button type="button" data-act="center">Centralizar</button><button type="button" data-act="clear">Remover</button></div></div>';
       if(V.photos[i])row.querySelector('img').src=V.urls[i];
       row.querySelector('input[type=file]').addEventListener('change',function(){if(this.files[0])loadPhoto(i,this.files[0])});
       bindSlotReorder(row);
       row.querySelector('input[type=range]').addEventListener('input',function(){var z=this.value/100;['feed','story'].forEach(function(f){phOf(API.state.format[f],i).z=z});API.redraw()});
       row.querySelector('[data-act=center]').addEventListener('click',function(){resetPhoto(i);API.redraw()});
-      row.querySelector('[data-act=clear]').addEventListener('click',function(){dropPhoto(i);resetPhoto(i);renderSlots();API.redraw()});
+      row.querySelector('[data-act=clear]').addEventListener('click',function(){dropPhoto(i);V.missing[i]=null;resetPhoto(i);renderSlots();API.redraw()});
       box.appendChild(row)
     })
   }
   // próxima célula vazia depois de i (ou antes, se não houver); -1 se todas estiverem cheias
   function nextEmpty(i){var n=SLOT_NAMES[V.layout].length,k;for(k=1;k<n;k++)if(!V.photos[(i+k)%n]&&!V.loading[(i+k)%n])return(i+k)%n;return-1}
   function resetPhoto(i){['feed','story'].forEach(function(f){API.state.format[f].ph&&delete API.state.format[f].ph[i]})}
-  function dropPhoto(i){if(V.urls[i])URL.revokeObjectURL(V.urls[i]);V.photos[i]=null;V.names[i]='';V.urls[i]=''}
+  function dropPhoto(i){if(V.urls[i])URL.revokeObjectURL(V.urls[i]);V.photos[i]=null;V.names[i]='';V.urls[i]='';V.files[i]=null;V.sizes[i]=0;V.hashes[i]='';V.hashPromises[i]=null;V.reduced[i]=false}
   // fotos de câmera têm milhares de pixels e seriam redesenhadas inteiras a cada movimento do arraste: acima de MAX_PHOTO o maior lado é reduzido
   var MAX_PHOTO=2200;
   function shrink(im){
     var k=MAX_PHOTO/Math.max(im.width,im.height);if(k>=1)return im;
     var c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);var x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(im,0,0,c.width,c.height);return c
   }
-  function loadPhoto(i,file){
+  // hash do arquivo (SHA-256, 128 bits): identifica a foto nas artes salvas e no cache do navegador
+  function hashFile(blob){return blob.arrayBuffer().then(function(b){return crypto.subtle.digest('SHA-256',b)}).then(function(d){return Array.prototype.map.call(new Uint8Array(d).slice(0,16),function(x){return('0'+x.toString(16)).slice(-2)}).join('')})}
+  // known/keep/name: usados ao reabrir uma arte salva (hash já conhecido, enquadramento preservado, nome guardado)
+  // devolve uma promessa que termina quando a foto já está na célula (ou falhou): reabrir uma arte espera por isso antes de conferir o estado
+  function loadPhoto(i,file,known,keep,name,reduced){
+    return new Promise(function(done){
     var u=URL.createObjectURL(file),im=new Image();V.loading[i]=true;
-    im.onload=function(){V.loading[i]=false;dropPhoto(i);V.photos[i]=shrink(im);V.names[i]=file.name;V.urls[i]=u;resetPhoto(i);renderSlots();API.redraw();API.status('Foto carregada: '+file.name,false)};
-    im.onerror=function(){V.loading[i]=false;URL.revokeObjectURL(u);API.status('Não foi possível abrir a foto',false)};im.src=u
+    im.onload=function(){
+      V.loading[i]=false;var gone=V.missing[i]||V.reduced[i];dropPhoto(i);V.missing[i]=null;V.reduced[i]=!!reduced;V.photos[i]=shrink(im);V.names[i]=file.name||name||'';V.urls[i]=u;V.files[i]=file;V.sizes[i]=file.size||0;
+      V.hashPromises[i]=(known?Promise.resolve(known):hashFile(file)).then(function(h){V.hashes[i]=h;if(gone&&gone.hash&&gone.hash!==h)API.status('Atenção: este arquivo não é o mesmo da arte salva ('+gone.name+')',false);return h});
+      if(!keep&&!gone)resetPhoto(i);renderSlots();API.redraw();if(!keep)API.status('Foto carregada: '+V.names[i],false);done()};
+    im.onerror=function(){V.loading[i]=false;URL.revokeObjectURL(u);API.status('Não foi possível abrir a foto',false);done()};im.src=u
+    })
   }
   function setup(api){
     API=api;var inc=api.incoming;V.urls.forEach(function(u){if(u)URL.revokeObjectURL(u)});V=fresh();
@@ -459,6 +514,8 @@
       wheel:wheel,
       dblclick:dblclick,
       renderer:renderer,
+      serialize:serialize,
+      restore:restore,
       test:{whiteText:whiteText,wrap:wrap,runs:runs,ink:ink,width:width,shapeFor:shapeFor,clampOff:clampOff,bump:bump}
     }
   });

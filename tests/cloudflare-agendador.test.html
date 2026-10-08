@@ -20,6 +20,7 @@ try {
   eq(em('2026-10-06T00:25:00Z'), ['sync-youtube-videos.yml:undefined'], 'vídeos do YouTube às 00 UTC');
   eq(em('2026-10-06T06:10:00Z'), [], 'posts não rodam às 06 UTC');
   eq(em('2026-10-06T07:00:00Z'), ['backup-portalstore.yml:undefined'], 'backup às 04:00 SP');
+  eq(em('2026-10-06T07:30:00Z'), ['limpar-artes-salvas.yml:undefined'], 'limpeza das artes salvas às 04:30 SP, depois do backup');
   eq(em('2026-10-06T06:15:00Z'), ['sync-google-trends.yml:undefined'], 'tendências antes da coleta das :35');
   eq(em('2026-10-06T06:30:00Z'), [], 'nada às 06:30');
 
@@ -36,7 +37,7 @@ try {
     'sync-meta-followers.yml': 25, 'sync-youtube-followers.yml': 25, 'sync-youtube-mencoes.yml': 12,
     'sync-meta-posts.yml': 2, 'sync-meta-facebook-posts.yml': 2, 'sync-youtube-videos.yml': 2,
     'aggregate-usage-metrics.yml': 1, 'sync-youtube-analytics-diario.yml': 1, 'sync-google-trends.yml': 1,
-    'backup-portalstore.yml': 1, 'reconstruir-historico.yml': 1, 'reconstruir-historico-facebook.yml': 1
+    'backup-portalstore.yml': 1, 'limpar-artes-salvas.yml': 1, 'reconstruir-historico.yml': 1, 'reconstruir-historico-facebook.yml': 1
   }), 'disparos por dia');
   eq(fechamentos, 2, 'fechamentos por dia');
 

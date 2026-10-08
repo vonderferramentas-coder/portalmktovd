@@ -16,7 +16,7 @@ var state={titleScale:1,editoriaName:null,editoriaColor:null,footerColor:'#FFBE0
 var lastProductBox={feed:null,story:null},lastBadgeBox={feed:null,story:null};
 var INCOMING_COMM=(function(){
  var q=new URLSearchParams(location.search);if(!q.get('eventTitle'))return null;
- return{day:q.get('eventDay')||'01',month:q.get('eventMonth')||'JANEIRO',prefix:q.get('eventPrefix')||'',title:q.get('eventTitle')||'NOME DA DATA'};
+ return{day:q.get('eventDay')||'01',month:q.get('eventMonth')||'JANEIRO',prefix:q.get('eventPrefix')||'',title:q.get('eventTitle')||'NOME DA DATA',cardId:q.get('cardId')||''};
 })();
 var catalog=[],selectedProduct=null,catalogFocus=0,catalogLoading=true;
 // ============================================================
@@ -186,11 +186,25 @@ function setFlow(mode){
 // nunca é salva automaticamente; indo pra frente (ou entre editoria/produto) não há nada a perder
 function goToStep(mode){
  if(mode===currentFlowMode)return;
- if(currentFlowMode==='edit'&&editDirty){pendingLeaveEditTarget=mode;$('#confirmLeaveEdit').hidden=false;return}
+ if(currentFlowMode==='edit'&&editDirty){pendingLeaveEditTarget=mode;showLeaveConfirm();return}
  setFlow(mode)
 }
+// Editorias com artes salvas (post-editor-saved-arts.js) oferecem salvar antes de sair; as outras mantêm o aviso de perda de sempre
+var LEAVE_TEXT={title:$('#confirmLeaveEditTitle').textContent,desc:$('#confirmLeaveEditDesc').textContent,ok:$('#confirmLeaveEditOk').textContent};
+function showLeaveConfirm(){
+ var S=window.PostEditorSaved,canSave=!!(S&&S.available());
+ $('#confirmLeaveEditSave').hidden=!canSave;
+ $('#confirmLeaveEditTitle').textContent=canSave?'Salvar a arte antes de sair?':LEAVE_TEXT.title;
+ $('#confirmLeaveEditDesc').textContent=canSave?'As últimas alterações desta arte ainda não foram salvas. Salve para continuar de onde parou depois, ou volte e perca o que mudou desde o último salvamento.':LEAVE_TEXT.desc;
+ $('#confirmLeaveEditOk').textContent=canSave?'Voltar sem salvar':LEAVE_TEXT.ok;
+ $('#confirmLeaveEdit').hidden=false
+}
+$('#confirmLeaveEditSave').addEventListener('click',function(){
+ var button=this;button.disabled=true;
+ window.PostEditorSaved.saveNow().then(function(ok){button.disabled=false;if(!ok)return;editDirty=false;var target=pendingLeaveEditTarget;closeConfirmLeaveEdit();if(target)setFlow(target)})
+});
 function closeConfirmLeaveEdit(){$('#confirmLeaveEdit').hidden=true;pendingLeaveEditTarget=null}
-$('#confirmLeaveEditCancel').addEventListener('click',closeConfirmLeaveEdit);
+$('#confirmLeaveEditCancel').addEventListener('click',closeConfirmLeaveEdit);$('#confirmLeaveEditClose').addEventListener('click',closeConfirmLeaveEdit);
 $('#confirmLeaveEditOk').addEventListener('click',function(){var target=pendingLeaveEditTarget;closeConfirmLeaveEdit();if(target)setFlow(target)});
 $('#confirmLeaveEdit').addEventListener('click',function(ev){if(ev.target===ev.currentTarget)closeConfirmLeaveEdit()});
 document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&!$('#confirmLeaveEdit').hidden)closeConfirmLeaveEdit()});
@@ -210,8 +224,10 @@ function renderEditoriaGrid(){
   btn.addEventListener('click',function(){var e=EDITORIAS.filter(function(x){return x.name===btn.dataset.editoria})[0];if(e)chooseEditoria(e)})
  })
 }
+// cada escolha de editoria começa uma sessão de edição nova (as artes salvas se amarram a ela, ver post-editor-saved-arts.js)
+var editSession=0;
 function chooseEditoria(editoria){
- var preset=EDITORIA_PRESETS[editoria.name];if(!preset)return;
+ var preset=EDITORIA_PRESETS[editoria.name];if(!preset)return;editSession++;
  state.editoriaName=editoria.name;state.titleScale=1;state.editoriaColor=editoria.color||'#64748b';state.footerColor=preset.footerColor||'#FFBE00';
  state.brandBadgeColor=preset.brandBadgeColor||'#fbc400';if($('#brandBadgeColor'))$('#brandBadgeColor').value=state.brandBadgeColor;
  state.customAssets={};var brandField=$('#brandVariantField');if(brandField)brandField.hidden=!preset.supportsBrandVariant;
@@ -764,7 +780,7 @@ function guideResist(push,axis,lo,hi,d,minLimit,maxLimit){
  return d
 }
 function draw(format){drawArt(format);drawGuides(format)}
-function drawAll(){draw('feed');draw('story');updateDropHint()}
+function drawAll(){draw('feed');draw('story');updateDropHint();if(window.PostEditorSaved)window.PostEditorSaved.touch()}
 // Aviso (só na tela, não sai na exportação) de que dá pra soltar a foto de fundo na prévia enquanto não há nenhuma
 function updateDropHint(){$$('.pe-canvas-wrap').forEach(function(w){var h=w.querySelector('.pe-drop-hint');if(!h){h=document.createElement('div');h.className='pe-drop-hint';h.innerHTML='<span aria-hidden="true">＋</span><strong>Arraste a foto de fundo aqui</strong><small>ou dê dois cliques para escolher o arquivo</small>';w.appendChild(h)}h.hidden=!!state.background||!!(EDITORIA_PRESETS[state.editoriaName]||{}).noBackground})}
 function regionScore(img,rect){
@@ -972,7 +988,7 @@ setFlow('editoria');renderEditoriaGrid();loadCatalog();refreshEditoriasFromServe
 if(INCOMING_COMM){var incomingEditoria=EDITORIAS.filter(function(e){return /comemorat/i.test(e.name||'')})[0];if(incomingEditoria&&EDITORIA_PRESETS[incomingEditoria.name])chooseEditoria(incomingEditoria)}
 loadImage('post-editor-assets/demo-product.png').then(function(im){if(!selectedProduct&&!state.product&&$('#editorWorkspace').hidden)state.productDrawable=im;drawAll();try{canvases.feed.toDataURL('image/jpeg',.1);document.body.dataset.exportReady='true';status('Editor pronto',false)}catch(e){document.body.dataset.exportReady='false';status('Prévia pronta; exportação bloqueada pelo navegador',false)}}).catch(function(){drawAll();status('Editor aberto; alguns elementos não carregaram',false)});
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawAll);else drawAll();
-window.PostEditor={redraw:drawAll,state:state,chooseProduct:chooseCatalogProduct,getCatalog:function(){return catalog.slice()},makeZip:makeZip,exportBaseName:exportBaseName};
+window.PostEditor={markSaved:function(){editDirty=false},redraw:drawAll,state:state,status:status,incoming:function(){return INCOMING_COMM},session:function(){return editSession},preset:function(){return EDITORIA_PRESETS[state.editoriaName]},editoriaName:function(){return state.editoriaName},chooseEditoria:function(name){var e=EDITORIAS.filter(function(x){return x.name===name})[0];if(!e||!EDITORIA_PRESETS[e.name])return false;chooseEditoria(e);return true},chooseProduct:chooseCatalogProduct,getCatalog:function(){return catalog.slice()},makeZip:makeZip,exportBaseName:exportBaseName};
 
 
 

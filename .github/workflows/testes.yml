@@ -100,6 +100,9 @@ jobs:
           cat /tmp/cartaz-validator-dump.html
           grep -q 'data-result="pass"' /tmp/cartaz-validator-dump.html
 
+      - name: Limpeza das artes salvas - prazos e lixeira
+        run: python3 tests/purge_art_drafts.test.py
+
       - name: Editor de Posts - Datas comemorativas VONDER (Chrome headless)
         run: |
           CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"

@@ -3,6 +3,7 @@
 <title>Teste do preset Datas comemorativas (VONDER)</title>
 <body data-result="running">RUNNING</body>
 <script src="../post-editor-vonder-datas-comemorativas.js"></script>
+<script src="../post-editor-saved-arts.js"></script>
 <script>
 // Roda em Chrome headless: chrome --headless=new --dump-dom file:///.../tests/vonder-datas-comemorativas.test.html
 try {
@@ -63,6 +64,13 @@ try {
   eq(T.bump('title', 1), 1.6, 'teto de 160%');
   for (let i = 0; i < 40; i++) T.bump('yellow', -1);
   eq(T.bump('yellow', -1), .6, 'piso de 60%');
+
+  // artes salvas: tamanho da foto que sobe para a nuvem (lado maior limitado, nunca amplia, mantém a proporção)
+  const F = PostEditorSaved.test.fitSize;
+  eq(F(4000, 3000, 1280), [1280, 960], 'foto horizontal grande');
+  eq(F(3000, 4000, 1600), [1200, 1600], 'foto vertical grande');
+  eq(F(800, 600, 1280), [800, 600], 'foto pequena não é ampliada');
+  eq(F(1, 5000, 1280), [1, 1280], 'faixa muito estreita nunca vira 0 px');
 
   document.body.dataset.result = 'pass';
   document.body.textContent = 'PASS: pontas (sorteio repetível), quebra de linha, trechos ricos, limite do enquadramento e tamanho do texto';
