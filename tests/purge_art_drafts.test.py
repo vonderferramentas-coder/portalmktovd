@@ -41,14 +41,17 @@ arts = [
     art('lixeira-recente', 1, ['ddd'], deleted_days_ago=2),
     art('lixeira-velha', 1, ['eee'], deleted_days_ago=8),
     art('publicada-recente', 60, ['fff'], card_id='card1'),
+    art('muito-antiga', 100, ['ggg']),
+    art('publicada-antiga', 100, ['hhh'], card_id='card2'),
 ]
-cards = {'card1': {'status': 'Publicado', 'date': '2026-11-10'}}
-photos = [photo('aaa'), photo('bbb'), photo('ccc'), photo('ddd'), photo('eee'), photo('fff'), photo('orfa'), photo('nova', age_days=0)]
+cards = {'card1': {'status': 'Publicado', 'date': '2026-11-10'}, 'card2': {'status': 'Publicado', 'date': '2026-11-14'}}
+photos = [photo('aaa'), photo('bbb'), photo('ccc'), photo('ddd'), photo('eee'), photo('fff'), photo('ggg'), photo('hhh'), photo('orfa'), photo('nova', age_days=0)]
 result = purge.plan(arts, cards, photos, NOW)
-assert result['delete_arts'] == ['lixeira-velha'], result['delete_arts']
-assert result['keep_hashes'] == {'aaa', 'bbb', 'fff'}, result['keep_hashes']
+# lixeira há mais de 7 dias e arte sem edição há mais de 90 dias saem de vez; arte antiga mas com card publicado há pouco fica
+assert sorted(result['delete_arts']) == ['lixeira-velha', 'muito-antiga'], result['delete_arts']
+assert result['keep_hashes'] == {'aaa', 'bbb', 'fff', 'hhh'}, result['keep_hashes']
 # ccc (arte vencida), ddd (lixeira), eee (lixeira apagada) e orfa (ninguém usa) saem; nova (menos de 1 dia) fica
-assert sorted(result['delete_photos']) == ['ccc', 'ddd', 'eee', 'orfa'], result['delete_photos']
+assert sorted(result['delete_photos']) == ['ccc', 'ddd', 'eee', 'ggg', 'orfa'], result['delete_photos']
 
 # foto compartilhada por uma arte viva e uma vencida fica
 shared = purge.plan([art('v', 1, ['x']), art('old', 90, ['x'])], {}, [photo('x')], NOW)

@@ -42,9 +42,10 @@
             desabilitadas, como "Em breve".</p>
           <div class="pe-editoria-grid" id="editoriaGrid"></div>
           <div class="pe-saved" id="savedArts">
-            <h3>Artes salvas</h3>
-            <p class="pe-field-hint">Continue de onde parou ou ajuste uma arte depois da revisão. As fotos ficam guardadas por 30 dias; quem abre a arte em outro computador as recebe em qualidade reduzida e pode reenviar a original.</p>
-            <div class="pe-catalog-search"><input id="savedArtsSearch" type="search" autocomplete="off" placeholder="Buscar pelo título" aria-label="Buscar arte salva"><span aria-hidden="true">⌕</span></div>
+            <div class="pe-saved-head"><h3>Artes salvas</h3><button type="button" class="pe-info" id="savedArtsInfo" aria-expanded="false" aria-controls="savedArtsInfoText" aria-label="Como funcionam as artes salvas">i</button>
+              <div class="pe-info-pop" id="savedArtsInfoText" role="note" hidden>Continue de onde parou ou ajuste uma arte depois da revisão. A arte é salva sozinha enquanto você edita.<br><br>As fotos ficam guardadas por 30 dias; depois disso é preciso enviá-las de novo. Quem abre a arte em outro computador recebe as fotos em qualidade reduzida e pode reenviar as originais.<br><br>A arte inteira é apagada depois de 90 dias sem uso.</div></div>
+            <div class="pe-catalog-search"><input id="savedArtsSearch" type="search" autocomplete="off" placeholder="Buscar pelo título ou editoria" aria-label="Buscar arte salva por título ou editoria"><span aria-hidden="true">⌕</span></div>
+            <div class="pe-saved-filters" id="savedArtsFilters" hidden></div>
             <div class="pe-saved-list" id="savedArtsList"></div>
             <button type="button" class="pe-saved-trash" id="savedArtsTrash" hidden></button>
           </div>
@@ -233,7 +234,7 @@
             </div>
             <div class="pe-grid-fields">
               <div><label for="vcDay">Dia</label><div id="vcDay" class="pe-rich-title pe-vc-rich" contenteditable="true" role="textbox" spellcheck="false"></div></div>
-              <div><label for="vcMonth">Mês</label><div id="vcMonth" class="pe-rich-title pe-vc-rich" contenteditable="true" role="textbox" spellcheck="false"></div></div>
+              <div><label for="vcMonth">Mês</label><select id="vcMonth"><option value="" hidden>Texto personalizado</option><option value="Janeiro">Janeiro</option><option value="Fevereiro">Fevereiro</option><option value="Março">Março</option><option value="Abril">Abril</option><option value="Maio">Maio</option><option value="Junho">Junho</option><option value="Julho">Julho</option><option value="Agosto">Agosto</option><option value="Setembro">Setembro</option><option value="Outubro">Outubro</option><option value="Novembro">Novembro</option><option value="Dezembro">Dezembro</option></select><div id="vcMonthText" hidden></div></div>
             </div>
             <label for="vcLoz">Opacidade do losango <output id="vcLozOut">100%</output></label><input id="vcLoz" type="range" min="0" max="140" value="100"><div class="pe-actions-row"><button id="vcLozReset" type="button">↺ Opacidade padrão</button></div>
             <label for="vcPrefix">Chamada (texto branco)</label><div id="vcPrefix" class="pe-rich-title pe-vc-rich pe-vc-caps" contenteditable="true" role="textbox" spellcheck="true"></div>

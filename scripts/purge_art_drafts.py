@@ -1,6 +1,7 @@
 # Limpeza diária das artes salvas do Editor de Posts (Firestore de produção). Usado por limpar-artes-salvas.yml (disparado pelo Worker do
 # Cloudflare, depois do backup do dia). Faz três coisas, nesta ordem:
-#   1. apaga de vez as artes que estão na lixeira há mais de TRASH_DAYS dias;
+#   1. apaga de vez as artes que estão na lixeira há mais de TRASH_DAYS dias e as que passaram de ART_RETENTION_DAYS sem edição nem
+#      publicação (a lista do editor não cresce para sempre);
 #   2. apaga as fotos (coleção artPhotos) que nenhuma arte "viva" usa mais - arte viva = fora da lixeira e dentro do prazo de retenção,
 #      que conta a partir da última edição da arte ou, se o card do calendário foi publicado, da data da publicação (vale o que for mais
 #      recente). A receita da arte fica: depois do prazo ela reabre com "Reenviar a foto", sem perder textos e enquadramento;
@@ -15,6 +16,7 @@ import sys
 DAY_MS = 86400000
 PHOTO_RETENTION_DAYS = 30  # ponytail: um prazo só para todas as marcas; se uma marca precisar de outro, vira parâmetro por marca
 TRASH_DAYS = 7
+ART_RETENTION_DAYS = 90  # a arte inteira (receita) some depois disso; as fotos e a miniatura já saem aos PHOTO_RETENTION_DAYS
 GRACE_MS = DAY_MS  # foto criada há menos de 1 dia fica: o upload vem antes do documento da arte e a arte pode ainda não ter sido gravada
 PUBLISHED_STATUS = 'Publicado'
 
@@ -38,7 +40,7 @@ def expires_at_ms(draft, card, retention_days=PHOTO_RETENTION_DAYS):
     return base + retention_days * DAY_MS
 
 
-def plan(arts, cards, photos, now_ms, retention_days=PHOTO_RETENTION_DAYS, trash_days=TRASH_DAYS, grace_ms=GRACE_MS):
+def plan(arts, cards, photos, now_ms, retention_days=PHOTO_RETENTION_DAYS, trash_days=TRASH_DAYS, grace_ms=GRACE_MS, art_days=ART_RETENTION_DAYS):
     """arts: [{'id', 'draft'}]; cards: {cardId: card}; photos: [{'hash', 'createdAtMs'}].
     Devolve {'delete_arts': [ids], 'keep_hashes': set, 'delete_photos': [hashes], 'strip_thumbs': [ids]}."""
     delete_arts, keep, strip_thumbs = [], set(), []
@@ -49,7 +51,11 @@ def plan(arts, cards, photos, now_ms, retention_days=PHOTO_RETENTION_DAYS, trash
             if now_ms - int(deleted_at) > trash_days * DAY_MS:
                 delete_arts.append(art['id'])
             continue  # na lixeira (ainda no prazo ou já apagada): não segura foto
-        if expires_at_ms(draft, cards.get(draft.get('cardId')), retention_days) <= now_ms:
+        card = cards.get(draft.get('cardId'))
+        if expires_at_ms(draft, card, art_days) <= now_ms:
+            delete_arts.append(art['id'])
+            continue
+        if expires_at_ms(draft, card, retention_days) <= now_ms:
             if draft.get('thumb'):
                 strip_thumbs.append(art['id'])
             continue

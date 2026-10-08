@@ -334,6 +334,21 @@ export async function setArtDraftDeleted(key, id, deletedAt, me) {
   });
 }
 
+// Renomear: o nome vira customTitle e passa a valer sobre o título gerado do conteúdo da arte.
+export async function renameArtDraft(key, id, title, me) {
+  await currentContext();
+  const reference = artDraftReference(key, id);
+  return runTransaction(db, async transaction => {
+    const current = await transaction.get(reference);
+    if (!current.exists()) return { missing: true };
+    const lock = current.data().lock;
+    if (artLockedByOther(lock, me.uid, Date.now())) return { locked: { name: lock.name, until: lock.until } };
+    const revision = Number(current.data().revision || 0) + 1;
+    transaction.update(reference, { 'v.title': String(title).slice(0, 80), 'v.customTitle': String(title).slice(0, 80), revision, updatedAt: serverTimestamp() });
+    return { revision };
+  });
+}
+
 // Fotos das artes (coleção artPhotos, fora do portalStore e do backup). bytes = JPEG já comprimido.
 export async function writeArtPhoto(hash, photo) {
   const context = await currentContext();
@@ -447,7 +462,7 @@ export { app, auth, db, profileFor, audit };
 
 window.PortalFirebase = {
   readPortalStore, writePortalStore, deletePortalStore, ensurePostsStore, writePost, deletePost, subscribeToPosts,
-  readArtDraft, writeArtDraft, listArtDrafts, lockArtDraft, releaseArtDraftLock, setArtDraftDeleted, writeArtPhoto, readArtPhoto, readArtStats,
+  readArtDraft, writeArtDraft, listArtDrafts, lockArtDraft, releaseArtDraftLock, setArtDraftDeleted, renameArtDraft, writeArtPhoto, readArtPhoto, readArtStats,
   subscribeNotifications, markNotificationRead, currentContext, logout, requestPasswordReset,
   updateOwnProfile, recordUsageEvent, audit
 };

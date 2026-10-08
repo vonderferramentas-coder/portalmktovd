@@ -11,7 +11,7 @@
   var AX=335,APEX_R=65,PILL_H=80,TEXT_X=346,PILL_PAD=39;
   var FIELDS={
     day:{id:'vcDay',font:MO,b:true,i:false,caps:false},
-    month:{id:'vcMonth',font:MO,b:false,i:false,caps:true},
+    month:{id:'vcMonthText',font:MO,b:false,i:false,caps:true},
     prefix:{id:'vcPrefix',font:SW,b:true,i:true,caps:true},
     title:{id:'vcTitle',font:SW,b:true,i:true,caps:true},
     yellow:{id:'vcYellow',font:MO,b:false,i:false,caps:false},
@@ -355,14 +355,16 @@
       s.top=(parseFloat(s.top)+rect.top+t.base*k-probe.getBoundingClientRect().bottom)+'px';el.removeChild(probe)
     };
     el.addEventListener('keydown',function(ev){if(ev.key==='Escape')closeEdit();else if(ev.key==='Enter'&&SINGLE_LINE[key]){ev.preventDefault();closeEdit()}});
-    el.addEventListener('input',function(){src.innerHTML=global.CartazTitleFormat.sanitize(el,{keepBr:true,always:true});if(isTitle(key)){syncName();autoWhite()}if(key==='white')V.whiteAuto=false;API.redraw();el.place()});
+    el.addEventListener('input',function(){src.innerHTML=global.CartazTitleFormat.sanitize(el,{keepBr:true,always:true});if(isTitle(key)){syncName();autoWhite()}if(key==='white')V.whiteAuto=false;if(key==='month')syncMonthSel();API.redraw();el.place()});
     el.addEventListener('titlesize',function(ev){ev.stopPropagation();var v=bump(key,ev.detail);API.redraw();el.place();API.status('Tamanho do texto: '+Math.round(v*100)+'%',false)});
     el.addEventListener('blur',function(){setTimeout(function(){if(editEl===el)closeEdit()},0)});
     V.editing=key;API.redraw();c.parentNode.appendChild(el);el.place();editEl=el;el.focus();getSelection().selectAllChildren(el)
   }
 
   // ===== painel =====
-  function setField(key,html){var el=$(FIELDS[key].id);if(el)el.innerHTML=html}
+  function setField(key,html){var el=$(FIELDS[key].id);if(el)el.innerHTML=html;if(key==='month')syncMonthSel()}
+  // o mês é escolhido numa lista; o texto fica num campo oculto (vcMonthText), que também recebe a edição com duplo clique na arte
+  function syncMonthSel(){var sel=$('vcMonth'),txt=$('vcMonthText');if(!sel||!txt)return;var t=txt.textContent.trim().toLocaleLowerCase('pt-BR'),found=Array.prototype.filter.call(sel.options,function(o){return o.value&&o.value.toLocaleLowerCase('pt-BR')===t})[0];sel.value=found?found.value:''}
   function syncName(){var pre=chars('prefix').map(function(c){return c.c}).join(''),tit=chars('title').map(function(c){return c.c}).join(''),name=$('productName');if(name)name.value=(pre+' '+tit).trim()||'DATA COMEMORATIVA'}
   function syncZooms(pos){$$('#vcSlots [data-slot]').forEach(function(row){var z=row.querySelector('input[type=range]');if(z&&document.activeElement!==z)z.value=Math.round(phOf(pos,+row.dataset.slot).z*100)})}
   // Reordenar arrastando o ícone de três linhas (mesmo gesto do Gerador de Consolidado): um cartão fantasma segue o mouse, o lugar vazio
@@ -458,6 +460,7 @@
       el.addEventListener('titlesize',function(ev){ev.stopPropagation();bump(key,ev.detail);API&&API.redraw()})
     });
     // com 1 foto a forma amarela nasce embaixo (arte do Agricultor); só acompanha se ainda estiver na posição inicial
+    $('vcMonth').addEventListener('change',function(){if(this.value){setField('month',esc(this.value));API&&API.redraw()}});
     $('vcGrid').addEventListener('change',function(){
       var was=V.layout;V.layout=this.value;
       if(API)['feed','story'].forEach(function(f){var p=API.state.format[f];if(V.layout==='single'&&was!=='single'&&!p.overlayDy)p.overlayDy=SINGLE_SHIFT;else if(V.layout!=='single'&&was==='single'&&p.overlayDy===SINGLE_SHIFT)p.overlayDy=0});
