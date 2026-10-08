@@ -100,6 +100,13 @@ jobs:
           cat /tmp/cartaz-validator-dump.html
           grep -q 'data-result="pass"' /tmp/cartaz-validator-dump.html
 
+      - name: Editor de Posts - Datas comemorativas VONDER (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --allow-file-access-from-files --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 --dump-dom "file://$(pwd)/tests/vonder-datas-comemorativas.test.html" > /tmp/vonder-datas-dump.html
+          cat /tmp/vonder-datas-dump.html
+          grep -q 'data-result="pass"' /tmp/vonder-datas-dump.html
+
       - name: Agendador do Cloudflare - agenda dos disparos (Chrome headless)
         run: |
           CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"

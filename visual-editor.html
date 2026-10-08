@@ -566,6 +566,26 @@
           </div>
         </div>
 
+        <!-- Dia com mais de uma data comemorativa: primeiro escolhe qual (depois vem o modal abaixo, já com a data escolhida) -->
+        <div id="commemorativePickBackdrop" class="modal-backdrop">
+          <div class="modal modal--narrow" role="dialog" aria-modal="true" aria-labelledby="commemorativePickTitle">
+            <div class="modal-header">
+              <div class="modal-header-title">
+                <h2 id="commemorativePickTitle">Qual data comemorativa?</h2>
+              </div>
+              <div class="modal-header-actions"><button type="button" id="commemorativePickCloseBtn"
+                  class="modal-close" aria-label="Fechar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6 6 18" />
+                    <path d="M6 6l12 12" />
+                  </svg></button></div>
+            </div>
+            <div class="modal-body">
+              <p id="commemorativePickMessage" style="margin:0 0 12px;font-size:14px;line-height:1.5;color:var(--text);font-weight:600"></p>
+              <div id="commemorativePickList" style="display:flex;flex-direction:column;gap:8px"></div>
+            </div>
+          </div>
+        </div>
         <!-- Escolha ao clicar numa data comemorativa: briefing personalizado ou abrir direto no
              Editor de Posts (só habilitado pra marcas com template institucional, ver
              brandHasCommemorativeEditorShortcut em app.js) -->

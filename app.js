@@ -1206,7 +1206,7 @@
     // nome(s) da(s) data(s) comemorativa(s) em "YYYY-MM-DD" (fixas/móveis + personalizadas
     // cadastradas em Configurações), unidos por " · " quando mais de uma cair no mesmo dia -
     // ou null se o dia não corresponder a nenhuma
-    function commemorativeDateName(dateStr){
+    function commemorativeDateNames(dateStr){
       const names = [];
       names.push(...(FIXED_COMMEMORATIVE_DATES[dateStr.slice(5)] || []));
       const year = Number(dateStr.slice(0,4));
@@ -1216,6 +1216,10 @@
         const matches = c.recurring ? c.date.slice(5)===dateStr.slice(5) : c.date===dateStr;
         if(matches) names.push(c.name);
       });
+      return Array.from(new Set(names));
+    }
+    function commemorativeDateName(dateStr){
+      const names = commemorativeDateNames(dateStr);
       return names.length ? names.join(' · ') : null;
     }
 
@@ -1242,11 +1246,33 @@
     // data comemorativa, mas só essas marcas conseguem de fato "Abrir editor de posts" - as
     // demais têm essa opção desabilitada, com aviso, porque não há template pra levá-las lá; só
     // resta seguir com o briefing manual.
-    function brandHasCommemorativeEditorShortcut(){ return BRAND_SUFFIX==='__osten-ferragens' || BRAND_SUFFIX==='__dismatal' || BRAND_SUFFIX==='__dwt'; }
+    function brandHasCommemorativeEditorShortcut(){ return BRAND_SUFFIX==='' || BRAND_SUFFIX==='__osten-ferragens' || BRAND_SUFFIX==='__dismatal' || BRAND_SUFFIX==='__dwt'; }
     function splitCommemorativeTitle(holidayName){
       const match=String(holidayName||'').trim().match(/^(Dia(?:s)?\s+(?:(?:Internacional|Nacional|Mundial)\s+)?(?:do|da|de|dos|das)\s+)(.+)$/i);
       return match ? { prefix:match[1].trim(), title:match[2].trim() } : { prefix:'', title:String(holidayName||'').trim() };
     }
+    // Mais de uma data comemorativa no mesmo dia (ex.: 12/10): cada uma é tratada separadamente - primeiro o usuário escolhe qual,
+    // depois o modal "Como deseja continuar?" (card para briefing / editor de posts) já vem com a data escolhida.
+    function openCommemorativeFromDay(dateStr){
+      const names = commemorativeDateNames(dateStr);
+      if(names.length > 1) openCommemorativePicker(dateStr, names);
+      else openCommemorativeEditorChoice(dateStr, names[0] || commemorativeDateName(dateStr));
+    }
+    function openCommemorativePicker(dateStr, names){
+      const [y,m,d]=dateStr.split('-').map(Number), dateLabel=new Date(y,m-1,d).toLocaleDateString('pt-BR',{ day:'2-digit', month:'long' });
+      $('commemorativePickMessage').textContent = `Há ${names.length} datas comemorativas em ${dateLabel}. Qual delas você quer trabalhar?`;
+      const list = $('commemorativePickList');
+      list.innerHTML = '';
+      names.forEach(name=>{
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'btn ghost'; btn.style.cssText = 'width:100%;justify-content:flex-start;text-align:left';
+        btn.textContent = name;
+        btn.addEventListener('click', ()=>{ closeCommemorativePicker(); openCommemorativeEditorChoice(dateStr, name); });
+        list.appendChild(btn);
+      });
+      $('commemorativePickBackdrop').style.display = 'flex';
+    }
+    function closeCommemorativePicker(){ $('commemorativePickBackdrop').style.display = 'none'; }
     function openCommemorativeEditorChoice(dateStr, holidayName){
       pendingCommemorativeDate={ dateStr, holidayName };
       const [y,m,d]=dateStr.split('-').map(Number),dateLabel=new Date(y,m-1,d).toLocaleDateString('pt-BR',{ day:'2-digit', month:'long' });
@@ -1356,7 +1382,7 @@
       // pára a propagação pro mesmo motivo que .date/.day-count acima (senão também abriria
       // "Postagens do dia")
       const holidayEl = cell.querySelector('.holiday-name');
-      if(holidayEl) holidayEl.addEventListener('click', (ev)=>{ ev.stopPropagation(); const holidayName=commemorativeDateName(dateStr); openCommemorativeEditorChoice(dateStr,holidayName); });
+      if(holidayEl) holidayEl.addEventListener('click', (ev)=>{ ev.stopPropagation(); openCommemorativeFromDay(dateStr); });
       // clicar em qualquer área do card do dia (fora de um post específico, que já abre a edição
       // dele) também abre "Postagens do dia" - mesmo destino do clique na data/contador acima.
       // Cards de postagem, o badge "+N" e o "+ Adicionar postagem" já param a propagação nos
@@ -4731,6 +4757,7 @@
     if($('confirmApplyEditoria')) $('confirmApplyEditoria').addEventListener('click', confirmApplyEditoriaModal);
     wireModalDismiss('scheduleWarningBackdrop', closeScheduleWarning, '#scheduleWarningCloseBtn');
     if($('scheduleWarningOkBtn')) $('scheduleWarningOkBtn').addEventListener('click', closeScheduleWarning);
+    wireModalDismiss('commemorativePickBackdrop', closeCommemorativePicker, '#commemorativePickCloseBtn');
     wireModalDismiss('ostenCommemorativeChoiceBackdrop', closeCommemorativeEditorChoice, '#ostenCommemorativeChoiceCloseBtn');
 if($('ostenCommemorativeCreateBriefing')) $('ostenCommemorativeCreateBriefing').addEventListener('click', createCommemorativeBriefingFromChoice);
 if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEventListener('click', openCommemorativeEditorDirect);

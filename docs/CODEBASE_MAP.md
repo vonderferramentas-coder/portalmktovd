@@ -174,6 +174,7 @@ graph TB
 | `post-editor-fg-ecommerce.js` | Preset "Post E-commerce" (FG) - caixa De/Por/Desconto | 3896 |
 | `post-editor-fg-lancamentos.js` | Preset "Lançamentos" (FG) | 1781 |
 | `post-editor-vonder-uso-recomendo.js` | Preset "Uso e Recomendo VONDER" (VONDER): faixas preta/amarela, esquerda ou direita, arrastáveis na vertical | ~110 |
+| `post-editor-vonder-datas-comemorativas.js` | Preset "Datas comemorativas" (VONDER): grade de 1/2/4 fotos com enquadramento e zoom por foto, losango + faixa preta com a data, forma amarela de pontas e forma branca opcional; textos editáveis por duplo clique (B/I/U e tamanho). Painel próprio (`#vcPanel`) e fonte Montserrat | ~330 |
 | `post-editor-osten-datas-comemorativas.js` | Preset "Datas comemorativas" (OSTEN) | 1845 |
 | `post-editor-dismatal-datas-comemorativas.js` | Preset "Datas comemorativas" (DISMATAL) | 1982 |
 | `post-editor-dwt-datas-comemorativas.js` | Preset "Datas comemorativas" (DWT) | 1486 |
@@ -183,6 +184,8 @@ graph TB
 | `data/social-posts.json` | Snapshot CI de posts Instagram (auditoria; consumo real é Firestore) | 19326 |
 | `calendar-recovery-20260821-1032.json` | Backup forense manual (localStorage), não referenciado em código | 8698 |
 | `data/catalog-vonder.backup-20260825.json` | Backup pontual do catálogo (não referenciado em código) | 4117 |
+
+**Ganchos opcionais de preset** (além de `renderer`): `panel` (mostra `#vcPanel` e esconde as seções do núcleo), `setup(api)` (chamado ao escolher a editoria, recebe `incoming` do calendário), `pickTarget(format,x,y,evento)`/`onDrag(...,x,y)`/`onDragEnd` (arraste por elemento, com a posição na arte e o fim do arraste), `wheel`, `dblclick` (pode devolver `{hit,box,label}` para o quadrado amarelo de seleção), `noBackground` (sem foto de fundo única) e `verticalOnly` (destaque só anda na vertical). Só o preset VONDER de Datas comemorativas os usa por enquanto; os testes dele ficam em `tests/vonder-datas-comemorativas.test.html`.
 
 **Como se conecta**: cada `post-editor-*.js` se auto-registra em `window.POST_EDITOR_CUSTOM_PRESETS[marca][editoria]` (ordem de `<script>` no HTML é crítica - presets antes de `post-editor.js`). `post-editor.js` lê `CatalogProvider.load(slug)` para o catálogo de produtos e resolve a foto do produto pelo Cloudflare Worker (`/product-image`), único caminho (o portal só fala com a web).
 

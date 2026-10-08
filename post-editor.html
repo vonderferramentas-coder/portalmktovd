@@ -72,7 +72,7 @@
           <div class="pe-selected-editoria" id="selectedEditoriaBarEdit"><span class="pe-editoria-dot"
               id="selectedEditoriaDotEdit"></span><strong id="selectedEditoriaNameEdit">Editoria</strong><button
               id="changeEditoriaEdit" type="button">Trocar</button></div>
-          <section class="pe-section">
+          <section class="pe-section pe-core-section">
             <div class="pe-step"><span>1</span>
               <div><strong id="detailsSectionTitle">Produto</strong><small id="detailsSectionHint">Dados preenchidos
                   pelo catálogo, mas editáveis</small></div>
@@ -154,7 +154,7 @@
               type="date"><small class="pe-field-hint">O restante do texto legal é fixo e será incluído
               automaticamente.</small>
           </section>
-          <section class="pe-section">
+          <section class="pe-section pe-core-section">
             <div class="pe-step"><span>2</span>
               <div><strong>Imagens</strong><small id="imageSectionHint">Envie a cena e, se tiver, o produto
                   recortado</small></div>
@@ -168,7 +168,7 @@
               id="removeWhiteField"><input id="removeWhite" type="checkbox" checked> Remover fundo branco do
               produto</label><label class="pe-check" id="removeHolesField" title="Para produtos com alça ou furo em que o fundo branco aparece no meio do produto"><input id="removeHoles" type="checkbox"> Remover também o fundo dentro de alças e furos</label><div class="pe-hint" id="holesHint" role="status" hidden><span>Há uma área branca cercada pelo produto. É fundo (alça ou furo)?</span><button type="button" id="holesHintYes">Sim, remover</button><button type="button" id="holesHintNo">Não, é do produto</button></div>
           </section>
-          <section class="pe-section">
+          <section class="pe-section pe-core-section">
             <div class="pe-step"><span>3</span>
               <div><strong>Composição</strong><small>Ajustes opcionais antes de baixar</small></div>
             </div>
@@ -219,7 +219,48 @@
                   bordas</small></button></div>
           </div>
           </section>
-          <div class="pe-downloads"><button class="pe-primary" id="downloadBoth" type="button">↓ Baixar pacote
+          <div id="vcPanel" hidden>
+          <section class="pe-section">
+            <div class="pe-step"><span>1</span>
+              <div><strong>Data e título</strong><small>Preenchidos pelo calendário, mas editáveis. Também dá para editar com duplo clique no texto da arte (negrito, itálico, sublinhado e tamanho)</small></div>
+            </div>
+            <div class="pe-grid-fields">
+              <div><label for="vcDay">Dia</label><div id="vcDay" class="pe-rich-title pe-vc-rich" contenteditable="true" role="textbox" spellcheck="false"></div></div>
+              <div><label for="vcMonth">Mês</label><div id="vcMonth" class="pe-rich-title pe-vc-rich" contenteditable="true" role="textbox" spellcheck="false"></div></div>
+            </div>
+            <label for="vcLoz">Opacidade do losango <output id="vcLozOut">100%</output></label><input id="vcLoz" type="range" min="0" max="140" value="100"><div class="pe-actions-row"><button id="vcLozReset" type="button">↺ Opacidade padrão</button></div>
+            <label for="vcPrefix">Chamada (texto branco)</label><div id="vcPrefix" class="pe-rich-title pe-vc-rich pe-vc-caps" contenteditable="true" role="textbox" spellcheck="true"></div>
+            <label for="vcTitle">Título (texto amarelo)</label><div id="vcTitle" class="pe-rich-title pe-vc-rich pe-vc-caps" contenteditable="true" role="textbox" spellcheck="true"></div>
+          </section>
+          <section class="pe-section">
+            <div class="pe-step"><span>2</span>
+              <div><strong>Fotos de fundo</strong><small>Escolha a grade e envie as fotos. Arraste cada foto na arte para enquadrar e use a roda para o zoom. Também dá para soltar o arquivo direto sobre a foto</small></div>
+            </div>
+            <label for="vcGrid">Grade</label><select id="vcGrid">
+              <option value="single">1 foto (tela cheia)</option>
+              <option value="two">2 fotos (cima e baixo)</option>
+              <option value="four" selected>4 fotos (2 em cima e 2 embaixo)</option>
+            </select>
+            <div class="pe-actions-row"><button id="vcCopyFS" type="button" title="Copia o enquadramento e o zoom de todas as fotos do Feed para o Story">Feed → Story</button><button id="vcCopySF" type="button" title="Copia o enquadramento e o zoom de todas as fotos do Story para o Feed">Story → Feed</button></div>
+            <small class="pe-field-hint">Para mudar uma foto de posição, arraste o ícone de três linhas do cartão dela, ou, na arte, clique na foto, segure um instante e arraste (Shift + arrastar muda na hora).</small>
+            <div id="vcSlots"></div>
+          </section>
+          <section class="pe-section">
+            <div class="pe-step"><span>3</span>
+              <div><strong>Formas e textos</strong><small>Forma amarela com pontas e forma branca opcional. Arraste as formas na arte para subir ou descer</small></div>
+            </div>
+            <label for="vcSide">Formas e textos partem da</label><select id="vcSide"><option value="left" selected>Esquerda</option><option value="right">Direita</option></select>
+            <label for="vcYellow">Texto da forma amarela</label><div id="vcYellow" class="pe-rich-title pe-vc-rich pe-vc-multi" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true"></div>
+            <label for="vcTextW">Largura do texto <output id="vcTextWOut">595</output></label><input id="vcTextW" type="range" min="300" max="860" step="10" value="595">
+            <div class="pe-actions-row"><button id="vcShape" type="button">↻ Variar pontas da forma</button><button id="vcShapeRef" type="button">↺ Forma da referência</button></div>
+            <div class="pe-vc-check"><input id="vcWhiteOn" type="checkbox" checked aria-label="Usar forma branca"><span>Usar forma branca com texto</span></div>
+            <div id="vcWhiteBox">
+              <label for="vcWhite">Texto da forma branca</label><div id="vcWhite" class="pe-rich-title pe-vc-rich pe-vc-multi" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true"></div>
+              <label for="vcWhiteW">Largura da forma branca <output id="vcWhiteWOut">470</output></label><input id="vcWhiteW" type="range" min="300" max="860" step="10" value="470">
+            </div>
+          </section>
+        </div>
+        <div class="pe-downloads"><button class="pe-primary" id="downloadBoth" type="button">↓ Baixar pacote
               ZIP</button><small class="pe-download-hint">Feed + Story com nomes padronizados</small>
             <div><button id="downloadFeed" type="button">Feed JPG</button><button id="downloadStory" type="button">Story
                 JPG</button></div>
@@ -294,6 +335,7 @@
   <script src="post-editor-assets/brands-js/Dismatal.js"></script>
   <script src="post-editor-assets/brands-js/DWT SLOGAN B.js"></script>
   <script src="post-editor-vonder-uso-recomendo.js"></script>
+  <script src="post-editor-vonder-datas-comemorativas.js"></script>
   <script src="post-editor-fg-lancamentos.js"></script>
   <script src="post-editor-fg-ecommerce.js"></script>
   <script src="post-editor-osten-datas-comemorativas.js"></script>
