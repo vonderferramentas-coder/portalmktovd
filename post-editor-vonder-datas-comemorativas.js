@@ -8,7 +8,7 @@
   var SW='"Swiss721Editor","Arial Narrow",Impact,sans-serif',MO='"MontserratEditor",Montserrat,Arial,sans-serif';
   // cy: centro vertical da faixa preta/losango; y0: referência do topo da forma amarela; whiteX: borda esquerda da forma branca
   var GEO={feed:{w:1080,h:1350,cy:209,y0:515,whiteX:123,dW:0,dWhite:0},story:{w:1080,h:1920,cy:290,y0:825,whiteX:110,dW:-37,dWhite:40}};
-  var AX=335,APEX_R=65,PILL_H=80,TEXT_X=346,PILL_PAD=39;
+  var AX=335,APEX_R=65,PILL_H=80,TEXT_X=346,PILL_PAD=39,LINE_GAP=14,LINE_W=2;
   var FIELDS={
     day:{id:'vcDay',font:MO,b:true,i:false,caps:false},
     month:{id:'vcMonthText',font:MO,b:false,i:false,caps:true},
@@ -17,6 +17,10 @@
     yellow:{id:'vcYellow',font:MO,b:false,i:false,caps:false},
     white:{id:'vcWhite',font:MO,b:false,i:false,caps:false}
   };
+  // mensagem do painel branco do banner: um campo próprio (começa igual ao texto da forma amarela, mas dá para editar sem mexer na arte)
+  var BNF={bnMsg:{id:'bnMsg',font:MO,b:false,i:false,caps:false}};
+  function F(key){return FIELDS[key]||BNF[key]}
+  var DEFAULT_YELLOW='Escreva aqui a mensagem da data comemorativa. Selecione palavras para destacar em <b>negrito</b>.';
   var SINGLE_SHIFT=390;
   var SINGLE_LINE={day:1,month:1,prefix:1,title:1};
   var SLOT_NAMES={single:['Foto'],two:['Foto de cima','Foto de baixo'],four:['Superior esquerda','Superior direita','Inferior esquerda','Inferior direita']};
@@ -27,7 +31,7 @@
   ];
   var V,API=null,fontsAsked=false,last={feed:null,story:null},rec=[],editEl=null;
 
-  function fresh(){return{layout:'four',photos:[null,null,null,null],names:['','','',''],urls:['','','',''],loading:[false,false,false,false],files:[null,null,null,null],sizes:[0,0,0,0],hashes:['','','',''],hashPromises:[null,null,null,null],missing:[null,null,null,null],reduced:[false,false,false,false],scale:{day:1,month:1,prefix:1,title:1,yellow:1,white:1},textW:595,whiteOn:true,whiteAuto:true,whiteW:470,seed:0,loz:1,side:'left'}}
+  function fresh(){return{layout:'four',photos:[null,null,null,null],names:['','','',''],urls:['','','',''],loading:[false,false,false,false],files:[null,null,null,null],sizes:[0,0,0,0],hashes:['','','',''],hashPromises:[null,null,null,null],missing:[null,null,null,null],reduced:[false,false,false,false],scale:{day:1,month:1,prefix:1,title:1,yellow:1,white:1},textW:595,whiteOn:true,whiteAuto:true,whiteW:470,seed:0,loz:1,lineOn:true,lineColor:'#F6BE00',side:'left',bnOrder:null,bnPh:[],bnPhoto:[null,null,null,null],bnMissing:[null,null,null,null],bnText:{line1:null,line2:null,msg:null},bnPanel:true,bnDrag:null,bnPress:null}}
   V=fresh();
   function $(id){return document.getElementById(id)}
   function $$(sel){return Array.prototype.slice.call(document.querySelectorAll(sel))}
@@ -52,33 +56,47 @@
       if(V.photos[i]){photos.push({slot:i,name:V.names[i],size:V.sizes[i],hash:V.hashes[i]||''});if(V.files[i]&&V.hashes[i]&&!V.reduced[i])blobs.push({hash:V.hashes[i],blob:V.files[i]})}
       else if(V.missing[i])photos.push({slot:i,name:V.missing[i].name,size:V.missing[i].size,hash:V.missing[i].hash})
     }
+    for(var k=0;k<4;k++){var bp=V.bnPhoto[k];
+      if(bp){photos.push({slot:'bn'+k,name:bp.name,size:bp.size,hash:bp.hash||''});if(bp.file&&bp.hash&&!bp.reduced)blobs.push({hash:bp.hash,blob:bp.file})}
+      else if(V.bnMissing[k])photos.push({slot:'bn'+k,name:V.bnMissing[k].name,size:V.bnMissing[k].size,hash:V.bnMissing[k].hash})}
     return{
       title:($('productName')&&$('productName').value)||'Data comemorativa',
-      recipe:{v:1,layout:V.layout,side:V.side,seed:V.seed,loz:V.loz,textW:V.textW,whiteOn:V.whiteOn,whiteAuto:V.whiteAuto,whiteW:V.whiteW,scale:V.scale,fields:fields,format:format},
+      recipe:{v:1,layout:V.layout,side:V.side,seed:V.seed,loz:V.loz,lineOn:V.lineOn,lineColor:V.lineColor,bn:{order:V.bnOrder,panel:V.bnPanel,ph:V.bnPh.map(framing),text:{line1:V.bnText.line1,line2:V.bnText.line2,msg:V.bnText.msg===null?null:global.CartazTitleFormat.clean(V.bnText.msg,{keepBr:true,always:true})}},textW:V.textW,whiteOn:V.whiteOn,whiteAuto:V.whiteAuto,whiteW:V.whiteW,scale:V.scale,fields:fields,format:format},
       photos:photos,blobs:blobs,maxSide:V.layout==='single'?1600:1280,
       // o hash de cada foto é calculado em segundo plano: só salva depois que todos estiverem prontos
-      ready:Promise.all(V.hashPromises.filter(Boolean)).then(function(){photos.forEach(function(p){if(!p.hash&&V.hashes[p.slot]){p.hash=V.hashes[p.slot];if(!V.reduced[p.slot])blobs.push({hash:p.hash,blob:V.files[p.slot]})}})})
+      ready:Promise.all(V.hashPromises.concat(V.bnPhoto.map(function(b){return b&&b.hp})).filter(Boolean)).then(function(){photos.forEach(function(p){
+        var m=/^bn([0-3])$/.exec(String(p.slot)),bp=m&&V.bnPhoto[+m[1]];
+        if(bp){if(!p.hash&&bp.hash){p.hash=bp.hash;if(!bp.reduced&&bp.file)blobs.push({hash:bp.hash,blob:bp.file})}}
+        else if(!p.hash&&V.hashes[p.slot]){p.hash=V.hashes[p.slot];if(!V.reduced[p.slot])blobs.push({hash:p.hash,blob:V.files[p.slot]})}})})
     }
   }
   function num(v,lo,hi,def){v=+v;return isFinite(v)?Math.max(lo,Math.min(hi,v)):def}
   // d = {recipe, photos}; getBlob(hash) devolve a foto guardada neste navegador (ou null: a foto vira "Reenviar")
   function restore(d,getBlob){
     var r=d.recipe||{};if(r.v!==1)return Promise.resolve();
-    V.layout=SLOT_NAMES[r.layout]?r.layout:'four';V.side=r.side==='right'?'right':'left';V.seed=Math.max(0,Math.floor(num(r.seed,0,1e6,0)));V.loz=num(r.loz,0,1.4,1);
+    V.layout=SLOT_NAMES[r.layout]?r.layout:'four';V.side=r.side==='right'?'right':'left';V.seed=Math.max(0,Math.floor(num(r.seed,0,1e6,0)));V.loz=num(r.loz,0,1.4,1);V.lineOn=r.lineOn!==false;V.lineColor=/^#[0-9a-fA-F]{6}$/.test(r.lineColor||'')?r.lineColor:'#F6BE00';
     V.textW=num(r.textW,300,860,595);V.whiteW=num(r.whiteW,300,860,470);V.whiteOn=r.whiteOn!==false;V.whiteAuto=!!r.whiteAuto;
     Object.keys(V.scale).forEach(function(k){V.scale[k]=num(r.scale&&r.scale[k],.6,1.6,1)});
     Object.keys(FIELDS).forEach(function(k){setField(k,global.CartazTitleFormat.clean(String((r.fields&&r.fields[k])||''),{keepBr:true,always:true}))});
-    $('vcGrid').value=V.layout;$('vcSide').value=V.side;$('vcLoz').value=Math.round(V.loz*100);$('vcLozOut').value=Math.round(V.loz*100)+'%';
+    $('vcGrid').value=V.layout;$('vcSide').value=V.side;$('vcLoz').value=Math.round(V.loz*100);$('vcLozOut').value=Math.round(V.loz*100)+'%';$('vcLineOn').checked=V.lineOn;$('vcLine').value=V.lineColor;$('vcLineBox').hidden=!V.lineOn;
     $('vcTextW').value=V.textW;$('vcTextWOut').value=V.textW;$('vcWhiteW').value=V.whiteW;$('vcWhiteWOut').value=V.whiteW;$('vcWhiteOn').checked=V.whiteOn;$('vcWhiteBox').hidden=!V.whiteOn;
     ['feed','story'].forEach(function(f){
       var s=(r.format&&r.format[f])||{};
       API.state.format[f]={bgDx:0,bgDy:0,overlayDx:0,overlayDy:num(s.overlayDy,-2000,2000,0),ph:(Array.isArray(s.ph)?s.ph.slice(0,4):[]).map(function(p){return p?{dx:num(p.dx,-5000,5000,0),dy:num(p.dy,-5000,5000,0),z:num(p.z,1,3,1)}:null})}
     });
-    syncName();renderSlots();
+    var bn=r.bn||{},n=SLOT_NAMES[V.layout].length;
+    V.bnOrder=validOrder(bn.order,n)?bn.order.slice():null;
+    V.bnPh=(Array.isArray(bn.ph)?bn.ph.slice(0,4):[]).map(function(p){return p?{dx:num(p.dx,-5000,5000,0),dy:num(p.dy,-5000,5000,0),z:num(p.z,1,3,1)}:null});
+    V.bnPanel=bn.panel!==false;
+    var bt=bn.text||{};V.bnText={line1:typeof bt.line1==='string'?bt.line1.slice(0,80):null,line2:typeof bt.line2==='string'?bt.line2.slice(0,120):null,msg:typeof bt.msg==='string'?global.CartazTitleFormat.clean(bt.msg,{keepBr:true,always:true}):null};
+    V.bnPhoto.forEach(function(b,k){dropBn(k)});V.bnMissing=[null,null,null,null];
+    syncName();renderSlots();renderBnOrder();
     return Promise.all((d.photos||[]).map(function(p){
+      var bm=/^bn([0-3])$/.exec(String(p.slot));
+      if(bm){var bk=+bm[1];if(!p.hash)return;return getBlob(p.hash).then(function(got){if(got)return loadBnPhoto(bk,got.blob,p.hash,String(p.name||''),got.reduced,true);V.bnMissing[bk]={name:String(p.name||''),size:+p.size||0,hash:String(p.hash)}})}
       var slot=+p.slot;if(!(slot>=0&&slot<4)||!p.hash)return;
       return getBlob(p.hash).then(function(got){if(got)return loadPhoto(slot,got.blob,p.hash,true,String(p.name||''),got.reduced);V.missing[slot]={name:String(p.name||''),size:+p.size||0,hash:String(p.hash)}})
-    })).then(function(){renderSlots();API.redraw()})
+    })).then(function(){renderSlots();syncBnFields();API.redraw()})
   }
   function capital(t){t=String(t||'').trim().toLocaleLowerCase('pt-BR');return t?t.charAt(0).toLocaleUpperCase('pt-BR')+t.slice(1):''}
   // "Feliz Dia do Vendedor!": enquanto ninguém mexe no texto da forma branca, ele acompanha a chamada e o título
@@ -101,7 +119,7 @@
 
   // ===== texto rico: cada campo do painel é um contenteditable com <b>/<i>/<u> (CartazTitleFormat) =====
   function chars(key){
-    var f=FIELDS[key],el=$(f.id),out=[];if(!el)return out;
+    var f=F(key),el=$(f.id),out=[];if(!el)return out;
     var box=document.createElement('div');box.innerHTML=global.CartazTitleFormat?global.CartazTitleFormat.sanitize(el,{keepBr:true,always:true}):esc(el.textContent);
     (function walk(n,st){n.childNodes.forEach(function(c){
       if(c.nodeType===3)c.nodeValue.split('').forEach(function(ch){out.push({c:f.caps?ch.toLocaleUpperCase('pt-BR'):ch,b:st.b,i:st.i,u:st.u})});
@@ -110,7 +128,7 @@
     return out
   }
   function runs(list){var r=[];list.forEach(function(ch){var l=r[r.length-1];if(l&&l.b===ch.b&&l.i===ch.i&&l.u===ch.u)l.t+=ch.c;else r.push({t:ch.c,b:ch.b,i:ch.i,u:ch.u})});return r}
-  function fontOf(key,r,size){return(r.b?'700':'400')+' '+(r.i?'italic':'normal')+' '+size+'px '+FIELDS[key].font}
+  function fontOf(key,r,size){return(r.b?'700':'400')+' '+(r.i?'italic':'normal')+' '+size+'px '+F(key).font}
   function width(ctx,key,list,size){return runs(list).reduce(function(w,r){ctx.font=fontOf(key,r,size);return w+ctx.measureText(r.t).width},0)}
   function drawRuns(ctx,key,list,x,y,size){
     var show=key!==V.editing;runs(list).forEach(function(r){ctx.font=fontOf(key,r,size);var w=ctx.measureText(r.t).width;if(show){ctx.fillText(r.t,x,y);if(r.u)ctx.fillRect(x,y+size*.12,w,Math.max(2,size/16))}x+=w});return x
@@ -135,9 +153,10 @@
   }
 
   // ===== peças da arte =====
-  function lozengePath(ctx,cy,keep){
-    var r=APEX_R,u=r/Math.SQRT2,far=60;if(!keep)ctx.beginPath();
-    ctx.moveTo(AX-cy-far,-far);ctx.lineTo(AX-u,cy-u);ctx.arc(AX-r*Math.SQRT2,cy,r,-Math.PI/4,Math.PI/4);ctx.lineTo(-far,AX+cy+far)
+  // d = afastamento para fora (o contorno fino fica solto, a LINE_GAP px do losango): mesmo centro do arco, raio maior, diagonais deslocadas
+  function lozengePath(ctx,cy,keep,d){
+    var r=APEX_R+(d||0),u=r/Math.SQRT2,far=60,cx=AX-APEX_R*Math.SQRT2,tx=cx+u,ty=cy-u;if(!keep)ctx.beginPath();
+    ctx.moveTo(tx-(ty+far),-far);ctx.lineTo(tx,ty);ctx.arc(cx,cy,r,-Math.PI/4,Math.PI/4);ctx.lineTo(-far,cy+u+tx+far)
   }
   // regiões de texto desta renderização (duplo clique abre a edição em cima delas)
   function text(key,x,base,size,w,color,spacing,o){rec.push(Object.assign({key:key,x:x,base:base,size:size,w:w,pitch:size*1.2,color:color,spacing:spacing||0,align:'left',box:[x-8,base-size*.85,w+16,size*1.1]},o))}
@@ -149,10 +168,10 @@
     var tb=cy+.375*Math.max(psz,tsz),pw=width(ctx,'prefix',pre,psz),tw=width(ctx,'title',tit,tsz),right=TEXT_X+pw+(pre.length?sp*k:0)+tw+PILL_PAD;
     ctx.save();ctx.beginPath();ctx.rect(0,0,g.w,g.h);lozengePath(ctx,cy,true);ctx.lineTo(-60,-60);ctx.closePath();ctx.clip('evenodd');
     var top=cy-PILL_H/2,rr=PILL_H/2;ctx.fillStyle='#000';ctx.beginPath();ctx.moveTo(AX-80,top);ctx.lineTo(right-rr,top);ctx.arc(right-rr,cy,rr,-Math.PI/2,Math.PI/2);ctx.lineTo(AX-80,top+PILL_H);ctx.closePath();ctx.fill();ctx.restore();
-    // losango: preto translúcido (o fundo aparece), mais fechado na ponta de fora, com contorno branco fino
+    // losango: preto translúcido (o fundo aparece), mais fechado na ponta de fora, e um contorno fino solto ao redor (cor escolhida no painel)
     var gr=ctx.createLinearGradient(0,0,AX,0);gr.addColorStop(0,'rgba(0,0,0,'+Math.min(1,.78*V.loz)+')');gr.addColorStop(1,'rgba(0,0,0,'+Math.min(1,.40*V.loz)+')');
     lozengePath(ctx,cy);ctx.save();ctx.lineTo(-60,-60);ctx.closePath();ctx.fillStyle=gr;ctx.fill();ctx.restore();
-    lozengePath(ctx,cy);ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
+    if(V.lineOn){lozengePath(ctx,cy,false,LINE_GAP);ctx.strokeStyle=V.lineColor;ctx.lineWidth=LINE_W;ctx.lineJoin='round';ctx.stroke()}
     ctx.textBaseline='alphabetic';ctx.textAlign='left';
     // título: chamada branca + título amarelo, na mesma linha de base
     ctx.fillStyle='#fff';var x=drawRuns(ctx,'prefix',pre,TEXT_X,tb,psz);ctx.fillStyle=YELLOW;var tx=x+(pre.length?sp*k:0);drawRuns(ctx,'title',tit,tx,tb,tsz);
@@ -200,6 +219,212 @@
     return{move:[mx,yb[1],mr-mx,Math.max(yb[1]+yb[3],wb[1]+wb[3])-yb[1]],rects:[yb,wb]}
   }
 
+
+  // ===== banner da intranet (900x258): as mesmas fotos e textos da arte, em outra composição (etapa "Desdobrar para banner") =====
+  // Medidas tiradas do modelo Conexão_OVD_Dia_do_Vendedor_900x258: faixa de fotos de 239 px, painel branco com a mensagem, barra amarela
+  // embaixo com o selo preto do Grupo OVD, título em duas linhas sobre as fotos e o calço amarelo à esquerda.
+  // O banner começa igual à arte (fotos e textos), mas tem os próprios textos e fotos: mexer aqui não muda o post.
+  var BN={w:900,h:258,photoH:239,panelY:179,panelW:485,panelR:22,bar:'#FDC300'};
+  var BN_DEFAULT={four:[2,3,0,1],two:[0,1],single:[0]};  // grade de 4: as duas de baixo antes das de cima, como no modelo
+  var logoImg=null,logoP=null;
+  // ordem das fotos no banner: uma permutação de 0..n-1 (vale o que veio salvo se for válido; senão a padrão da grade)
+  function validOrder(o,n){return Array.isArray(o)&&o.length===n&&o.every(function(v,i){return Number.isInteger(v)&&v>=0&&v<n&&o.indexOf(v)===i})}
+  function bnOrder(){return validOrder(V.bnOrder,SLOT_NAMES[V.layout].length)?V.bnOrder:BN_DEFAULT[V.layout]}
+  function bnPh(k){return V.bnPh[k]||(V.bnPh[k]={dx:0,dy:0,z:1})}
+  // logo real do Grupo OVD (OVD - Grupo_amarelo, da biblioteca de marcas); o download espera ele carregar
+  function loadLogo(){
+    if(logoP)return logoP;var name='OVD - Grupo_amarelo';
+    logoP=new Promise(function(done){
+      function go(){var u=global.OVD_BRAND_LOGOS&&global.OVD_BRAND_LOGOS[name];if(!u){done();return}var im=new Image();im.onload=function(){logoImg=im;done();if(API)API.redraw()};im.onerror=function(){done()};im.src=u}
+      if(global.OVD_BRAND_LOGOS&&global.OVD_BRAND_LOGOS[name])go();else{var sc=document.createElement('script');sc.src='post-editor-assets/brands-js/'+encodeURIComponent(name)+'.js';sc.onload=go;sc.onerror=function(){done()};document.head.appendChild(sc)}
+    });return logoP
+  }
+  function plain(key){return chars(key).map(function(c){return c.c}).join('').replace(/\s+/g,' ').trim()}
+  // textos que vêm da arte (enquanto o campo do banner não for editado)
+  function autoLine1(){return(plain('day')+' DE '+plain('month')).toLocaleUpperCase('pt-BR')}
+  function autoLine2(){var t=((plain('prefix')+' '+plain('title')).trim()).toLocaleUpperCase('pt-BR');return t&&!/[!?.]$/.test(t)?t+'!':t}
+  // a mensagem é exatamente o texto da forma amarela da arte (inclusive o texto de exemplo, enquanto ninguém o troca)
+  function autoMsgHtml(){var el=$('vcYellow');return el?global.CartazTitleFormat.sanitize(el,{keepBr:true,always:true}):''}
+  // mexeu no texto do post: o campo correspondente do banner volta a acompanhar a arte (o inverso nunca acontece: o banner não altera o post)
+  function postEdited(key){if(key==='day'||key==='month')V.bnText.line1=null;else if(key==='prefix'||key==='title')V.bnText.line2=null;else if(key==='yellow')V.bnText.msg=null}
+  function syncBnFields(){
+    var t=V.bnText,a=document.activeElement;
+    [['line1','bnLine1',autoLine1],['line2','bnLine2',autoLine2]].forEach(function(r){var el=$(r[1]);if(!el||a===el)return;var v=t[r[0]]!==null?t[r[0]]:r[2]();if(el.value!==v)el.value=v});
+    var po=$('bnPanelOn');if(po&&po.checked!==V.bnPanel){po.checked=V.bnPanel}var mb=$('bnMsgBox');if(mb)mb.hidden=!V.bnPanel;
+    var m=$('bnMsg');if(m&&a!==m&&!m.contains(a)){var h=t.msg!==null?t.msg:autoMsgHtml();if(m.innerHTML!==h)m.innerHTML=h}
+  }
+  function dropBn(k){var b=V.bnPhoto[k];if(b&&b.url)URL.revokeObjectURL(b.url);V.bnPhoto[k]=null}
+  // foto só do banner (não mexe nas fotos do post); known/name/reduced/keep: usados ao reabrir uma arte salva
+  function loadBnPhoto(k,file,known,name,reduced,keep){
+    return new Promise(function(done){
+      var u=URL.createObjectURL(file),im=new Image();
+      im.onload=function(){
+        dropBn(k);V.bnMissing[k]=null;var b=V.bnPhoto[k]={img:shrink(im),url:u,file:file,name:file.name||name||'',size:file.size||0,hash:known||'',reduced:!!reduced,hp:null};
+        b.hp=(known?Promise.resolve(known):hashFile(file)).then(function(h){b.hash=h;return h});
+        if(!keep)V.bnPh[k]=null;renderBnOrder();API.redraw();if(!keep)API.status('Foto do banner carregada: '+b.name,false);done()};
+      im.onerror=function(){URL.revokeObjectURL(u);API.status('Não foi possível abrir a foto',false);done()};im.src=u
+    })
+  }
+  // redução em etapas (metade por vez até ficar a no máximo 2x do tamanho final): melhor que um salto só quando a foto é muito maior que o destino
+  function stepDown(img,tw,th){
+    var cur=img,cw=img.width,ch=img.height;
+    while(cw/2>=tw&&ch/2>=th){var n=document.createElement('canvas');n.width=Math.ceil(cw/2);n.height=Math.ceil(ch/2);var x=n.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(cur,0,0,n.width,n.height);cur=n;cw=n.width;ch=n.height}
+    return cur
+  }
+  function bnCell(ctx,slot,k,r,S,hq){
+    var own=V.bnPhoto[k],img=(own&&own.img)||V.photos[slot],miss=V.bnMissing[k]||V.missing[slot];ctx.save();ctx.beginPath();ctx.rect(r[0],r[1],r[2],r[3]);ctx.clip();
+    if(img){
+      var ph=bnPh(k),s=Math.max(r[2]/img.width,r[3]/img.height)*ph.z,w=img.width*s,h=img.height*s;
+      ph.dx=clampOff(ph.dx,w,r[2]);ph.dy=clampOff(ph.dy,h,r[3]);ctx.drawImage(hq?stepDown(img,w*S,h*S):img,r[0]+(r[2]-w)/2+ph.dx,r[1]+(r[3]-h)/2+ph.dy,w,h)
+    }else{
+      var gr=ctx.createLinearGradient(r[0],r[1],r[0]+r[2],r[1]+r[3]);gr.addColorStop(0,'#2a2e31');gr.addColorStop(1,'#4b504e');ctx.fillStyle=gr;ctx.fillRect(r[0],r[1],r[2],r[3]);
+      ctx.fillStyle='rgba(255,255,255,.55)';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='700 13px '+MO;ctx.fillText(miss?'Reenviar a foto':'Sem foto',r[0]+r[2]/2,r[1]+r[3]/2)
+    }
+    ctx.restore()
+  }
+  function bannerVisible(){return document.body.classList.contains('is-banner-step')}
+  // tc/S/hq: tela de destino, escala e redução em etapas das fotos; sem argumentos desenha a prévia (escala 1)
+  function drawBanner(tc,S,hq){
+    var c=tc||$('bannerCanvas');if(!c)return;S=S||1;var ctx=c.getContext('2d'),order=bnOrder(),n=order.length;loadLogo();syncBnFields();
+    ctx.setTransform(S,0,0,S,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    ctx.clearRect(0,0,BN.w,BN.h);ctx.fillStyle='#fff';ctx.fillRect(0,0,BN.w,BN.h);ctx.textAlign='left';ctx.textBaseline='alphabetic';
+    var dg=V.bnDrag,now=performance.now();
+    order.forEach(function(slot,k){
+      var q=dg?bnAnimPos(k,now):k,r=[q*BN.w/n,0,BN.w/n,BN.photoH];
+      if(dg&&k===dg.id){ctx.fillStyle='rgba(246,190,0,.16)';ctx.fillRect(r[0],r[1],r[2],r[3]);ctx.strokeStyle=YELLOW;ctx.lineWidth=3;ctx.setLineDash([12,8]);ctx.strokeRect(r[0]+4,r[1]+4,r[2]-8,r[3]-8);ctx.setLineDash([])}
+      else bnCell(ctx,slot,k,r,S,hq)
+    });
+    // escurecimento do lado esquerdo (legibilidade do título) e, por cima dele, o calço amarelo 100% opaco (#F6BE00)
+    var sh=ctx.createLinearGradient(0,0,520,0);sh.addColorStop(0,'rgba(0,0,0,.5)');sh.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=sh;ctx.fillRect(0,0,520,BN.photoH);
+    ctx.fillStyle=YELLOW;ctx.beginPath();ctx.moveTo(0,26);ctx.lineTo(34,26);ctx.lineTo(22,77);ctx.lineTo(0,77);ctx.closePath();ctx.fill();
+    // título: linha 1 em amarelo e linha 2 em branco, Swiss condensada itálica; encolhe se não couber
+    var line1=String(V.bnText.line1!==null?V.bnText.line1:autoLine1()).toLocaleUpperCase('pt-BR'),line2=String(V.bnText.line2!==null?V.bnText.line2:autoLine2()).toLocaleUpperCase('pt-BR');
+    // o modelo usa uma versão mais estreita da fonte: desenha com 34 px de altura e 90% da largura
+    var tsz=34,HS=.9;ctx.font='italic 700 '+tsz+'px '+SW;
+    var wide=Math.max(ctx.measureText(line1).width,ctx.measureText(line2).width)*HS;if(wide>400){tsz=Math.max(18,Math.floor(tsz*400/wide*2)/2);ctx.font='italic 700 '+tsz+'px '+SW}
+    // sombra escura e macia atrás da data e do título (duas passadas para adensar), para o texto se destacar da foto
+    ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=12*S;ctx.shadowOffsetY=2*S;
+    ctx.save();ctx.translate(45,0);ctx.scale(HS,1);for(var pass=0;pass<2;pass++){ctx.fillStyle=YELLOW;ctx.fillText(line1,0,49);ctx.fillStyle='#fff';ctx.fillText(line2,0,82)}ctx.restore();ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+    // painel branco (canto superior direito arredondado) com a mensagem; trechos em negrito são mantidos
+    if(V.bnPanel){
+    var R=BN.panelR;ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(0,BN.panelY);ctx.lineTo(BN.panelW-R,BN.panelY);ctx.arc(BN.panelW-R,BN.panelY+R,R,-Math.PI/2,0);ctx.lineTo(BN.panelW,BN.photoH);ctx.lineTo(0,BN.photoH);ctx.closePath();ctx.fill();
+    var mlist=chars('bnMsg'),size=15,lines;
+    for(;;){lines=wrap(ctx,'bnMsg',mlist,428,size);if(lines.length<=2||size<=11)break;size-=.5}
+    var pitch=size*1.2,first=BN.panelY+(BN.photoH-BN.panelY)/2-(lines.length-1)*pitch/2+size*.35;
+    ctx.fillStyle='#1e1e1e';if(mlist.length)lines.slice(0,3).forEach(function(l,i){drawRuns(ctx,'bnMsg',l,47,first+i*pitch,size)})
+    }
+    // barra amarela e selo preto do Grupo OVD
+    ctx.fillStyle=BN.bar;ctx.fillRect(0,BN.photoH,BN.w,BN.h-BN.photoH);
+    ctx.fillStyle='#000';ctx.beginPath();ctx.moveTo(777,228);ctx.lineTo(BN.w,228);ctx.lineTo(BN.w,BN.h);ctx.lineTo(763,BN.h);ctx.closePath();ctx.fill();
+    if(logoImg)ctx.drawImage(logoImg,793,197,84,45)
+  }
+  // lista de fotos do banner, no mesmo molde da lista de fotos da arte: alça para reordenar, miniatura (clique envia outra foto só para o
+  // banner), nome, zoom, centralizar e "usar a da arte"
+  function renderBnOrder(){
+    var box=$('bnSlots');if(!box)return;box.innerHTML='';var order=bnOrder(),names=SLOT_NAMES[V.layout];
+    order.forEach(function(slot,k){
+      var own=V.bnPhoto[k],miss=V.bnMissing[k],art=V.photos[slot],src=own?own.url:art?V.urls[slot]:'';
+      var small=own?own.name+(own.reduced?' · qualidade reduzida (envie a original)':'')+' · só do banner':miss?'Reenviar: '+miss.name:art?'Da arte: '+names[slot]:'Sem foto na arte: clique no quadrado para enviar';
+      var row=document.createElement('div');row.className='pe-vc-slot';row.dataset.slot=k;
+      row.innerHTML='<button type="button" class="pe-vc-handle" title="Arraste para reordenar" aria-label="Reordenar foto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><label class="pe-vc-thumb" title="Enviar outra foto só para o banner"><input type="file" accept="image/*">'+(src?'<img alt="">':'＋')+'</label><div><strong>'+(k+1)+'ª foto</strong><small></small><div class="pe-vc-row"><input type="range" min="100" max="300" value="'+Math.round((V.bnPh[k]?V.bnPh[k].z:1)*100)+'" aria-label="Zoom da foto"><button type="button" data-act="center">Centralizar</button>'+(own||miss?'<button type="button" data-act="art">Usar a da arte</button>':'')+'</div></div>';
+      row.querySelector('small').textContent=small;if(src)row.querySelector('img').src=src;
+      row.querySelector('input[type=file]').addEventListener('change',function(){if(this.files[0])loadBnPhoto(k,this.files[0])});
+      bindSlotReorder(row,'bnSlots',bnPermute,renderBnOrder);
+      row.querySelector('input[type=range]').addEventListener('input',function(){bnPh(k).z=this.value/100;API&&API.redraw()});
+      row.querySelector('[data-act=center]').addEventListener('click',function(){V.bnPh[k]=null;renderBnOrder();API&&API.redraw()});
+      var back=row.querySelector('[data-act=art]');if(back)back.addEventListener('click',function(){dropBn(k);V.bnMissing[k]=null;V.bnPh[k]=null;renderBnOrder();API&&API.redraw()});
+      box.appendChild(row)
+    })
+  }
+  // o zoom feito com a roda do mouse no banner reflete nos controles da lista, sem refazer a lista
+  function syncBnZoom(){var rg=document.querySelectorAll('#bnSlots input[type=range]');[].forEach.call(rg,function(r,k){r.value=Math.round((V.bnPh[k]?V.bnPh[k].z:1)*100)})}
+  // reordena as fotos do banner (foto da arte, foto própria e enquadramento andam juntos): order[k] = posição antiga da foto que fica em k
+  function bnPermute(order){
+    var cur=bnOrder(),ph=V.bnPh.slice(),own=V.bnPhoto.slice(),miss=V.bnMissing.slice();
+    V.bnOrder=order.map(function(from){return cur[from]});
+    V.bnPh=[];order.forEach(function(from,to){if(ph[from])V.bnPh[to]=ph[from]});
+    V.bnPhoto=[null,null,null,null];V.bnMissing=[null,null,null,null];order.forEach(function(from,to){V.bnPhoto[to]=own[from]||null;V.bnMissing[to]=miss[from]||null});
+    renderBnOrder();API.redraw();API.status('Fotos do banner reordenadas',false)
+  }
+  // arrastar para reordenar direto no banner: mesmo gesto da arte (segurar e arrastar; Shift arrasta na hora), com a foto "fantasma", o
+  // lugar tracejado e as outras fotos deslizando para abrir espaço
+  var BN_HOLD=350,BN_SLOP=6,BN_SLIDE=180;
+  function bnAnimPos(id,now){var d=V.bnDrag,to=d.order.indexOf(id),a=d.anim[id];if(!a)return to;return a.from+(to-a.from)*(1-Math.pow(1-Math.min(1,(now-a.t0)/BN_SLIDE),3))}
+  function bnSlideLoop(){var d=V.bnDrag;if(!d)return;API.redraw();var now=performance.now();if(Object.keys(d.anim).some(function(id){return now-d.anim[id].t0<BN_SLIDE}))requestAnimationFrame(bnSlideLoop)}
+  function bnBeginDrag(k,e){
+    var c=$('bannerCanvas'),r=c.getBoundingClientRect(),n=bnOrder().length,kx=r.width/BN.w,cw=BN.w/n*kx,ch=BN.photoH*kx;
+    var d=V.bnDrag={id:k,order:bnOrder().map(function(_,i){return i}),anim:{},grab:e.clientX-(r.left+k*cw),box:[r.left+k*cw,r.top,cw,ch]};
+    var snap=document.createElement('canvas');snap.width=Math.max(1,Math.round(cw));snap.height=Math.max(1,Math.round(ch));
+    snap.getContext('2d').drawImage(c,k*BN.w/n,0,BN.w/n,BN.photoH,0,0,snap.width,snap.height);
+    d.ghost=document.createElement('div');d.ghost.className='pe-vc-ghost';d.ghost.style.cssText='left:'+d.box[0]+'px;top:'+d.box[1]+'px;width:'+cw+'px;height:'+ch+'px';
+    d.ghost.appendChild(snap);document.body.appendChild(d.ghost);API.redraw();API.status('Arraste até a posição desejada e solte',false)
+  }
+  function bnMoveDrag(e){
+    var d=V.bnDrag,r=$('bannerCanvas').getBoundingClientRect(),n=d.order.length;
+    d.ghost.style.transform='translate('+(e.clientX-d.grab-d.box[0])+'px,0) scale(1.02)';
+    var j=Math.max(0,Math.min(n-1,Math.floor((e.clientX-r.left)/(r.width/n)))),cur=d.order.indexOf(d.id);if(j===cur)return;
+    var now=performance.now(),from={};d.order.forEach(function(id){from[id]=bnAnimPos(id,now)});
+    d.order.splice(cur,1);d.order.splice(j,0,d.id);d.anim={};
+    d.order.forEach(function(id,i){if(from[id]!==i)d.anim[id]={from:from[id],t0:now}});bnSlideLoop()
+  }
+  function bnFinishDrag(){
+    var d=V.bnDrag;if(!d)return;var r=$('bannerCanvas').getBoundingClientRect(),n=d.order.length,to=r.left+d.order.indexOf(d.id)*(r.width/n);
+    d.ghost.style.transition='transform .16s ease, opacity .16s ease';d.ghost.style.transform='translate('+(to-d.box[0])+'px,0)';d.ghost.style.opacity='.6';
+    setTimeout(function(){
+      if(d.ghost.parentNode)d.ghost.parentNode.removeChild(d.ghost);if(V.bnDrag!==d)return;V.bnDrag=null;
+      if(d.order.some(function(id,i){return id!==i}))bnPermute(d.order);else API.redraw()
+    },170)
+  }
+  var bnPickK=0;
+  function pickBn(k){bnPickK=k;var f=$('bnFile');f.value='';f.click()}
+  function bindBanner(){
+    var c=$('bannerCanvas');if(!c)return;
+    function at(e){var r=c.getBoundingClientRect(),n=bnOrder().length,x=(e.clientX-r.left)*BN.w/r.width,y=(e.clientY-r.top)*BN.h/r.height;return y>BN.photoH?-1:Math.min(n-1,Math.max(0,Math.floor(x/(BN.w/n))))}
+    function hasPhoto(k){return!!(V.bnPhoto[k]&&V.bnPhoto[k].img||V.photos[bnOrder()[k]])}
+    function clearPress(){if(V.bnPress){clearTimeout(V.bnPress.timer);V.bnPress=null}}
+    c.addEventListener('pointerdown',function(e){
+      var k=at(e);if(k<0||V.bnDrag)return;clearPress();
+      var p=V.bnPress={k:k,x:e.clientX,y:e.clientY,dx:0,dy:0,mode:null,sc:BN.w/c.getBoundingClientRect().width};c.setPointerCapture(e.pointerId);
+      if(e.shiftKey){p.mode='drag';bnBeginDrag(k,e)}else p.timer=setTimeout(function(){if(V.bnPress===p&&!p.mode){p.mode='drag';bnBeginDrag(k,{clientX:p.x,clientY:p.y})}},BN_HOLD)
+    });
+    c.addEventListener('pointermove',function(e){
+      var p=V.bnPress;if(!p)return;
+      if(p.mode==='drag'){if(V.bnDrag)bnMoveDrag(e);return}
+      var dx=(e.clientX-p.x)*p.sc,dy=(e.clientY-p.y)*p.sc;p.x=e.clientX;p.y=e.clientY;
+      // antes de segurar, um tremor de até BN_SLOP px não enquadra a foto; passou disso é enquadramento e o tempo de segurar não vale mais
+      if(!p.mode){p.dx+=dx;p.dy+=dy;if(Math.hypot(p.dx,p.dy)<BN_SLOP)return;p.mode='pan';clearTimeout(p.timer);dx=p.dx;dy=p.dy}
+      if(!hasPhoto(p.k))return;var ph=bnPh(p.k);ph.dx+=dx;ph.dy+=dy;API&&API.redraw()
+    });
+    ['pointerup','pointercancel'].forEach(function(t){c.addEventListener(t,function(){var p=V.bnPress;clearPress();if(p&&p.mode==='drag')bnFinishDrag()})});
+    c.addEventListener('wheel',function(e){var k=at(e);if(k<0||!hasPhoto(k))return;e.preventDefault();var ph=bnPh(k);ph.z=Math.max(1,Math.min(3,Math.round((ph.z+(e.deltaY<0?.05:-.05))*100)/100));syncBnZoom();API&&API.redraw()},{passive:false});
+    c.addEventListener('dblclick',function(e){var k=at(e);if(k>=0){e.preventDefault();pickBn(k)}});
+    ['dragenter','dragover'].forEach(function(t){c.addEventListener(t,function(e){if(e.dataTransfer&&Array.prototype.indexOf.call(e.dataTransfer.types||[],'Files')>=0)e.preventDefault()})});
+    c.addEventListener('drop',function(e){var k=at(e),f=e.dataTransfer&&e.dataTransfer.files[0];if(k<0||!f||!/^image/.test(f.type))return;e.preventDefault();loadBnPhoto(k,f)});
+    $('bnFile').addEventListener('change',function(){var f=this.files[0];if(f)loadBnPhoto(bnPickK,f)});
+    $('bnReset').addEventListener('click',function(){V.bnPh=[];API&&API.redraw()});
+    $('bnBack').addEventListener('click',function(){global.PostEditor.goToStep('edit')});
+    // textos do banner: editar um campo o separa da arte; "Usar os textos da arte" volta a acompanhá-la
+    $('bnLine1').addEventListener('input',function(){V.bnText.line1=this.value;API&&API.redraw()});
+    $('bnLine2').addEventListener('input',function(){V.bnText.line2=this.value;API&&API.redraw()});
+    $('bnMsg').addEventListener('input',function(){V.bnText.msg=global.CartazTitleFormat.sanitize(this,{keepBr:true,always:true});API&&API.redraw()});
+    $('bnPanelOn').addEventListener('change',function(){V.bnPanel=this.checked;$('bnMsgBox').hidden=!this.checked;API&&API.redraw()});
+    $('bnTextReset').addEventListener('click',function(){V.bnText={line1:null,line2:null,msg:null};$('bnLine1').blur();syncBnFields();API&&API.redraw()});
+    [].forEach.call(document.querySelectorAll('[data-bn-download]'),function(b){b.addEventListener('click',function(){
+      var png=b.getAttribute('data-bn-download')==='png',base=global.PostEditor.exportBaseName(),name=base+'_BANNER.'+(png?'png':'jpg');API.status('Gerando '+name+'…',true);
+      // espera o logo carregar, desenha o banner em 2x (bordas e textos mais suaves), reduz para 900 x 258 com qualidade alta e codifica:
+      // JPEG na qualidade máxima (1.0, sem subamostragem de cor) ou PNG sem perda
+      loadLogo().then(function(){
+        var S=2,big=document.createElement('canvas');big.width=BN.w*S;big.height=BN.h*S;drawBanner(big,S,true);
+        var out=document.createElement('canvas');out.width=BN.w;out.height=BN.h;var ox=out.getContext('2d');ox.imageSmoothingEnabled=true;ox.imageSmoothingQuality='high';ox.drawImage(big,0,0,BN.w,BN.h);
+        out.toBlob(function(blob){
+        if(!blob){API.status('Não foi possível gerar '+name,false);return}
+        var a=document.createElement('a'),u=URL.createObjectURL(blob);a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},1200);
+        try{global.PortalUsage&&global.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+base+':banner'})}catch(_){}
+        global.PostEditor.markSaved();API.status(name+' baixado',false)
+      },png?'image/png':'image/jpeg',1)})
+    })})
+  }
+
   // ===== fotos =====
   // grade: colunas x linhas; a célula k fica em (k % colunas, k / colunas) e o deslizamento usa posições fracionárias
   function gridOf(layout){return layout==='single'?{c:1,r:1}:layout==='two'?{c:1,r:2}:{c:2,r:2}}
@@ -233,7 +458,8 @@
     if(d)SLOT_NAMES[V.layout].forEach(function(_,id){var q=animPos(id,now),r=rectAt(g,V.layout,q[0],q[1]);if(id===d.id)drawGap(ctx,r);else drawCell(ctx,id,r,pos)});
     else cells.forEach(function(r,i){drawCell(ctx,i,r,pos)});
     var sh=drawShapes(ctx,g,pos,h.roundRect);drawHeader(ctx,g);
-    last[f]={cells:cells,rects:sh.rects,texts:rec,move:sh.move};h.setMoveBox(sh.move);if(f==='feed')syncZooms(pos)
+    last[f]={cells:cells,rects:sh.rects,texts:rec,move:sh.move};h.setMoveBox(sh.move);if(f==='feed')syncZooms(pos);
+    if(f==='story'&&bannerVisible())drawBanner()
   }
 
   // ===== interação na arte (ganchos chamados por post-editor.js) =====
@@ -355,7 +581,7 @@
       s.top=(parseFloat(s.top)+rect.top+t.base*k-probe.getBoundingClientRect().bottom)+'px';el.removeChild(probe)
     };
     el.addEventListener('keydown',function(ev){if(ev.key==='Escape')closeEdit();else if(ev.key==='Enter'&&SINGLE_LINE[key]){ev.preventDefault();closeEdit()}});
-    el.addEventListener('input',function(){src.innerHTML=global.CartazTitleFormat.sanitize(el,{keepBr:true,always:true});if(isTitle(key)){syncName();autoWhite()}if(key==='white')V.whiteAuto=false;if(key==='month')syncMonthSel();API.redraw();el.place()});
+    el.addEventListener('input',function(){src.innerHTML=global.CartazTitleFormat.sanitize(el,{keepBr:true,always:true});if(isTitle(key)){syncName();autoWhite()}if(key==='white')V.whiteAuto=false;if(key==='month')syncMonthSel();postEdited(key);API.redraw();el.place()});
     el.addEventListener('titlesize',function(ev){ev.stopPropagation();var v=bump(key,ev.detail);API.redraw();el.place();API.status('Tamanho do texto: '+Math.round(v*100)+'%',false)});
     el.addEventListener('blur',function(){setTimeout(function(){if(editEl===el)closeEdit()},0)});
     V.editing=key;API.redraw();c.parentNode.appendChild(el);el.place();editEl=el;el.focus();getSelection().selectAllChildren(el)
@@ -369,8 +595,9 @@
   function syncZooms(pos){$$('#vcSlots [data-slot]').forEach(function(row){var z=row.querySelector('input[type=range]');if(z&&document.activeElement!==z)z.value=Math.round(phOf(pos,+row.dataset.slot).z*100)})}
   // Reordenar arrastando o ícone de três linhas (mesmo gesto do Gerador de Consolidado): um cartão fantasma segue o mouse, o lugar vazio
   // (tracejado) mostra onde a foto vai cair e os vizinhos deslizam (FLIP).
-  function bindSlotReorder(row){
-    var root=$('vcSlots'),panel=root.closest('.pe-panel')||root.parentNode,handle=row.querySelector('.pe-vc-handle');
+  // root/commit/cancel: a lista de fotos da arte (padrão) ou a do banner
+  function bindSlotReorder(row,rootId,commit,cancel){
+    var root=$(rootId||'vcSlots'),panel=root.closest('.pe-panel')||root.parentNode,handle=row.querySelector('.pe-vc-handle');
     handle.onpointerdown=function(event){
       if(event.button)return;event.preventDefault();
       var box=row.getBoundingClientRect(),grabX=event.clientX-box.left,grabY=event.clientY-box.top;
@@ -390,20 +617,22 @@
         pointerY=move.clientY;ghost.style.transform='translate('+(move.clientX-grabX-box.left)+'px,'+(pointerY-grabY-box.top)+'px) scale(1.02)';
         var area=panel.getBoundingClientRect();scrollSpeed=pointerY<area.top+48?-8:pointerY>area.bottom-48?8:0;place()
       }
+      var onCommit=commit,onCancel=cancel;
       function finish(commit){
-        if(ended)return;ended=true;cancelAnimationFrame(frame);document.removeEventListener('pointermove',onMove);document.removeEventListener('pointerup',onUp);document.removeEventListener('pointercancel',onCancel);
+        if(ended)return;ended=true;cancelAnimationFrame(frame);document.removeEventListener('pointermove',onMove);document.removeEventListener('pointerup',onUp);document.removeEventListener('pointercancel',onCancelEv);
         var slot=row.getBoundingClientRect();ghost.style.transition='transform .16s ease, opacity .16s ease';ghost.style.transform='translate('+(slot.left-box.left)+'px,'+(slot.top-box.top)+'px)';ghost.style.opacity='.6';
         setTimeout(function(){
           ghost.remove();row.classList.remove('drag-placeholder');
           var order=rows().map(function(e){return+e.dataset.slot});
-          if(commit&&order.some(function(id,n){return id!==n}))permute(order);else renderSlots()
+          if(commit&&order.some(function(id,n){return id!==n}))(onCommit||permute)(order);else(onCancel||renderSlots)()
         },170)
       }
-      function onUp(){finish(true)}function onCancel(){finish(false)} // no document: mover o cartão no DOM solta a captura do ponteiro no ícone
-      document.addEventListener('pointermove',onMove);document.addEventListener('pointerup',onUp);document.addEventListener('pointercancel',onCancel);tick()
+      function onUp(){finish(true)}function onCancelEv(){finish(false)} // no document: mover o cartão no DOM solta a captura do ponteiro no ícone
+      document.addEventListener('pointermove',onMove);document.addEventListener('pointerup',onUp);document.addEventListener('pointercancel',onCancelEv);tick()
     }
   }
   function renderSlots(){
+    renderBnOrder();
     var box=$('vcSlots');if(!box)return;box.innerHTML='';
     SLOT_NAMES[V.layout].forEach(function(label,i){
       var row=document.createElement('div');row.className='pe-vc-slot';row.dataset.slot=i;
@@ -442,27 +671,28 @@
     })
   }
   function setup(api){
-    API=api;var inc=api.incoming;V.urls.forEach(function(u){if(u)URL.revokeObjectURL(u)});V=fresh();
+    API=api;var inc=api.incoming;V.urls.forEach(function(u){if(u)URL.revokeObjectURL(u)});V.bnPhoto.forEach(function(b){if(b&&b.url)URL.revokeObjectURL(b.url)});V=fresh();
     var prefix=inc?inc.prefix:'Dia do',title=inc?inc.title:'Nome da data';
     setField('day',esc(inc?inc.day:'01'));setField('month',esc(capital(inc?inc.month:'Janeiro')));setField('prefix',esc(prefix));setField('title',esc(title));
-    setField('yellow','Escreva aqui a mensagem da data comemorativa. Selecione palavras para destacar em <b>negrito</b>.');
+    setField('yellow',DEFAULT_YELLOW);
     autoWhite();
-    $('vcGrid').value=V.layout;$('vcSide').value=V.side;$('vcLoz').value=100;$('vcLozOut').value='100%';$('vcTextW').value=V.textW;$('vcTextWOut').value=V.textW;$('vcWhiteW').value=V.whiteW;$('vcWhiteWOut').value=V.whiteW;$('vcWhiteOn').checked=true;$('vcWhiteBox').hidden=false;
+    $('vcGrid').value=V.layout;$('vcSide').value=V.side;$('vcLoz').value=100;$('vcLozOut').value='100%';$('vcLineOn').checked=true;$('vcLine').value=V.lineColor;$('vcLineBox').hidden=false;$('vcTextW').value=V.textW;$('vcTextWOut').value=V.textW;$('vcWhiteW').value=V.whiteW;$('vcWhiteWOut').value=V.whiteW;$('vcWhiteOn').checked=true;$('vcWhiteBox').hidden=false;
     renderSlots();syncName();api.status('Envie as fotos e ajuste os textos',false);api.redraw()
   }
   function bind(){
     if(!$('vcPanel'))return;
+    bindBanner();
     Object.keys(FIELDS).forEach(function(key){
       var el=$(FIELDS[key].id);
-      el.addEventListener('input',function(){if(isTitle(key)){syncName();autoWhite()}if(key==='white')V.whiteAuto=false;API&&API.redraw()});
+      el.addEventListener('input',function(){if(isTitle(key)){syncName();autoWhite()}if(key==='white')V.whiteAuto=false;postEdited(key);API&&API.redraw()});
       if(SINGLE_LINE[key])el.addEventListener('keydown',function(ev){if(ev.key==='Enter')ev.preventDefault()});
       // A↑/A↓ da barra flutuante (cartaz-title-format.js): mexem só no tamanho deste texto
       el.addEventListener('titlesize',function(ev){ev.stopPropagation();bump(key,ev.detail);API&&API.redraw()})
     });
     // com 1 foto a forma amarela nasce embaixo (arte do Agricultor); só acompanha se ainda estiver na posição inicial
-    $('vcMonth').addEventListener('change',function(){if(this.value){setField('month',esc(this.value));API&&API.redraw()}});
+    $('vcMonth').addEventListener('change',function(){if(this.value){setField('month',esc(this.value));postEdited('month');API&&API.redraw()}});
     $('vcGrid').addEventListener('change',function(){
-      var was=V.layout;V.layout=this.value;
+      var was=V.layout;V.layout=this.value;V.bnOrder=null;V.bnPh=[];
       if(API)['feed','story'].forEach(function(f){var p=API.state.format[f];if(V.layout==='single'&&was!=='single'&&!p.overlayDy)p.overlayDy=SINGLE_SHIFT;else if(V.layout!=='single'&&was==='single'&&p.overlayDy===SINGLE_SHIFT)p.overlayDy=0});
       renderSlots();API&&API.redraw()
     });
@@ -477,6 +707,8 @@
     function setLoz(v){V.loz=v/100;$('vcLoz').value=v;$('vcLozOut').value=v+'%';API&&API.redraw()}
     $('vcLoz').addEventListener('input',function(){setLoz(+this.value)});
     $('vcLozReset').addEventListener('click',function(){setLoz(100)});
+    $('vcLineOn').addEventListener('change',function(){V.lineOn=this.checked;$('vcLineBox').hidden=!this.checked;API&&API.redraw()});
+    $('vcLine').addEventListener('input',function(){V.lineColor=this.value;API&&API.redraw()});
     // soltar o arquivo direto na célula da foto (vários arquivos preenchem as células seguintes que estiverem vazias)
     ['feed','story'].forEach(function(format){
       var c=$(format+'Canvas'),wrap=c.parentNode;
@@ -505,6 +737,7 @@
       supportsOverlayScale:false,
       hideCircleControls:true,
       skipProductChooser:true,
+      banner:true,
       commemorative:true,
       panel:true,
       noBackground:true,
@@ -519,7 +752,7 @@
       renderer:renderer,
       serialize:serialize,
       restore:restore,
-      test:{whiteText:whiteText,wrap:wrap,runs:runs,ink:ink,width:width,shapeFor:shapeFor,clampOff:clampOff,bump:bump}
+      test:{validOrder:validOrder,bnDefault:BN_DEFAULT,whiteText:whiteText,wrap:wrap,runs:runs,ink:ink,width:width,shapeFor:shapeFor,clampOff:clampOff,bump:bump}
     }
   });
 })(window);

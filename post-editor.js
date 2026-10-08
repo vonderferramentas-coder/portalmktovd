@@ -173,22 +173,28 @@ function editorCodes(item){
 function editorNameFor(item){var title=item&&(item.title||item.shortName),sub=item&&(item.subtitle||item.shortDescription||item.descriptionShort);if(title)return title+(sub?'\n'+sub:'');var parsed=splitName(item&&item.name);return parsed.title+(parsed.sub?'\n'+parsed.sub:'')}
 // escolher o produto com duplo clique na lista abre o editor e o 2º clique cai na prévia: o duplo clique logo após abrir é ignorado
 var editOpenedAt=0;
-var FLOW_STEP_ORDER={editoria:0,choose:1,edit:2};
+var FLOW_STEP_ORDER={editoria:0,choose:1,edit:2,banner:3};
 var currentFlowMode='editoria',maxFlowOrder=0,pendingLeaveEditTarget=null;
 function setFlow(mode){
  currentFlowMode=mode;if(mode==='edit')editOpenedAt=Date.now();maxFlowOrder=Math.max(maxFlowOrder,FLOW_STEP_ORDER[mode]);
- $('#editoriaChooser').hidden=mode!=='editoria';$('#productChooser').hidden=mode!=='choose';$('#editorWorkspace').hidden=mode!=='edit';
- $('#editorIntro').textContent=mode==='editoria'?'Primeiro, escolha qual editoria você vai postar.':mode==='choose'?'Agora, escolha qual produto será usado na arte.':'Dados carregados. Revise a arte e ajuste o que precisar.';
+ $('#editoriaChooser').hidden=mode!=='editoria';$('#productChooser').hidden=mode!=='choose';$('#editorWorkspace').hidden=mode!=='edit'&&mode!=='banner';
+ // etapa "Desdobrar para banner": mesma área de trabalho, com o painel e a prévia do banner no lugar dos do post
+ document.body.classList.toggle('is-banner-step',mode==='banner');$$('.pe-bn').forEach(function(el){el.hidden=mode!=='banner'});
+ if(mode==='edit'&&!$('[data-flow-step="banner"]').hidden)maxFlowOrder=Math.max(maxFlowOrder,FLOW_STEP_ORDER.banner);
+ if(mode==='banner')setTimeout(drawAll,0);
+ $('#editorIntro').textContent=mode==='editoria'?'Primeiro, escolha qual editoria você vai postar.':mode==='choose'?'Agora, escolha qual produto será usado na arte.':mode==='banner'?'Banner da intranet montado com as mesmas fotos e textos da arte.':'Dados carregados. Revise a arte e ajuste o que precisar.';
  var cur=FLOW_STEP_ORDER[mode];
  $$('[data-flow-step]').forEach(function(el){var own=FLOW_STEP_ORDER[el.dataset.flowStep];el.classList.toggle('is-active',own===cur);el.classList.toggle('is-complete',own<cur);el.classList.toggle('is-clickable',own!==cur&&own<=maxFlowOrder)});
  if(mode==='choose'){renderCatalogResults();scheduleSiteSearch($('#catalogSearch').value);setTimeout(function(){$('#catalogSearch').focus()},20)}
 }
 // navegação entre etapas iniciada pelo usuário (clique nos passos do topo ou nos botões
-// "Trocar") - sair da etapa "Editar e baixar" pede confirmação, porque a composição em tela
+// "Trocar") - sair da etapa "Editar post" pede confirmação, porque a composição em tela
 // nunca é salva automaticamente; indo pra frente (ou entre editoria/produto) não há nada a perder
 function goToStep(mode){
  if(mode===currentFlowMode)return;
- if(currentFlowMode==='edit'&&editDirty){pendingLeaveEditTarget=mode;showLeaveConfirm();return}
+ // entre editar a arte (passo 2) e desdobrar para o banner (passo 3) a troca é livre: salva e segue, sem pedir confirmação
+ if((currentFlowMode==='edit'&&mode==='banner')||(currentFlowMode==='banner'&&mode==='edit')){if(window.PostEditorSaved&&window.PostEditorSaved.available())window.PostEditorSaved.saveNow();setFlow(mode);return}
+ if((currentFlowMode==='edit'||currentFlowMode==='banner')&&editDirty){pendingLeaveEditTarget=mode;showLeaveConfirm();return}
  setFlow(mode)
 }
 // Editorias com artes salvas (post-editor-saved-arts.js) oferecem salvar antes de sair; as outras mantêm o aviso de perda de sempre
@@ -244,6 +250,7 @@ function chooseEditoria(editoria,keepFlow){
  // produto/logo movível, inexistente nesse preset) somem do fluxo pra essa editoria.
  $('[data-flow-step="choose"]').hidden=!!preset.skipProductChooser;$('#flowSepChoose').hidden=!!preset.skipProductChooser;
  $('#flowStepEditNumber').textContent=preset.skipProductChooser?'2':'3';
+ $('[data-flow-step="banner"]').hidden=!preset.banner;$('#flowSepBanner').hidden=!preset.banner;$('#flowStepBannerNumber').textContent=preset.skipProductChooser?'3':'4';
  $('#overlayScaleField').hidden=isCommemorative||preset.supportsOverlayScale===false;if(!fgEcommerce)$('#overlayFormatField').hidden=$('#overlayScaleField').hidden;
  $('#imageSectionHint').textContent=usesCutout?'Envie a cena e, se tiver, o produto recortado':'Envie somente a imagem de uso do produto';
  applyPresetUi(preset);syncEditoriaBadges();status('Carregando preset de '+editoria.name+'…',true);
@@ -1026,7 +1033,7 @@ function savedRestore(d,getBlob){
  var item=null;
  return catalogReady.then(function(){
   if(r.item&&typeof r.item==='object'){var c=catalogCodes(r.item)[0],code=c&&c.code;item=(code&&catalog.filter(function(i){var k=catalogCodes(i)[0];return k&&k.code===code})[0])||r.item}
-  if(currentFlowMode==='edit')return;
+  if(currentFlowMode==='edit'||currentFlowMode==='banner')return;
   return item?chooseCatalogProduct(item):chooseManualProduct()
  }).then(function(){
   var f=r.fields||{};
@@ -1059,8 +1066,8 @@ function savedRestore(d,getBlob){
   })
  }).then(done,function(e){done();throw e})
 }
-var SAVED_ADAPTER={active:function(){return currentFlowMode==='edit'&&!!state.editoriaName},serialize:savedSerialize,restore:savedRestore};
-window.PostEditor={markSaved:function(){editDirty=false},redraw:drawAll,state:state,status:status,incoming:function(){return INCOMING_COMM},session:function(){return editSession},preset:function(){var p=EDITORIA_PRESETS[state.editoriaName];return p&&!p.serialize?SAVED_ADAPTER:p},editoriaName:function(){return state.editoriaName},chooseEditoria:function(name,keepFlow){var e=EDITORIAS.filter(function(x){return x.name===name})[0];if(!e||!EDITORIA_PRESETS[e.name])return false;chooseEditoria(e,keepFlow);return true},chooseProduct:chooseCatalogProduct,getCatalog:function(){return catalog.slice()},makeZip:makeZip,exportBaseName:exportBaseName};
+var SAVED_ADAPTER={active:function(){return(currentFlowMode==='edit'||currentFlowMode==='banner')&&!!state.editoriaName},serialize:savedSerialize,restore:savedRestore};
+window.PostEditor={goToStep:goToStep,markSaved:function(){editDirty=false},redraw:drawAll,state:state,status:status,incoming:function(){return INCOMING_COMM},session:function(){return editSession},preset:function(){var p=EDITORIA_PRESETS[state.editoriaName];return p&&!p.serialize?SAVED_ADAPTER:p},editoriaName:function(){return state.editoriaName},chooseEditoria:function(name,keepFlow){var e=EDITORIAS.filter(function(x){return x.name===name})[0];if(!e||!EDITORIA_PRESETS[e.name])return false;chooseEditoria(e,keepFlow);return true},chooseProduct:chooseCatalogProduct,getCatalog:function(){return catalog.slice()},makeZip:makeZip,exportBaseName:exportBaseName};
 
 
 

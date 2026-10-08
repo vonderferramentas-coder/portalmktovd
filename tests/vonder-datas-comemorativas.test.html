@@ -65,6 +65,14 @@ try {
   for (let i = 0; i < 40; i++) T.bump('yellow', -1);
   eq(T.bump('yellow', -1), .6, 'piso de 60%');
 
+  // banner da intranet: ordem das fotos é uma permutação válida; a padrão põe as de baixo antes das de cima (como no modelo)
+  eq(T.validOrder([2, 3, 0, 1], 4), true, 'ordem válida');
+  eq(T.validOrder([0, 0, 1, 2], 4), false, 'repetida');
+  eq(T.validOrder([0, 1, 4, 2], 4), false, 'fora da grade');
+  eq(T.validOrder([0, 1], 4), false, 'tamanho errado');
+  eq(T.validOrder(null, 1), false, 'sem ordem');
+  eq(T.bnDefault.four, [2, 3, 0, 1], 'padrão da grade de 4');
+
   // artes salvas: tamanho da foto que sobe para a nuvem (lado maior limitado, nunca amplia, mantém a proporção)
   const F = PostEditorSaved.test.fitSize;
   eq(F(4000, 3000, 1280), [1280, 960], 'foto horizontal grande');

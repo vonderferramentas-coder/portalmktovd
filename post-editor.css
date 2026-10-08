@@ -215,3 +215,9 @@ body.is-vcomm .pe-core-section,body.is-vcomm #moveModeControls,body.is-vcomm #ne
 .pe-saved-chip{border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--text);font:700 12px var(--font-ui);padding:6px 12px;cursor:pointer}.pe-saved-chip:hover{border-color:var(--accent-ink)}.pe-saved-chip.is-active{background:var(--pe-yellow);border-color:var(--pe-yellow);color:var(--on-accent)}
 .pe-saved-badges{display:flex;flex-wrap:wrap;gap:4px}.pe-saved-badge{align-self:flex-start;font-size:11px;font-weight:800;padding:2px 7px;border-radius:6px;background:rgba(220,38,38,.12);color:#dc2626}.pe-saved-badge.is-busy{background:rgba(245,158,11,.16);color:#b45309}
 .pe-modal input{width:100%;margin:0 0 20px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text);font:13px var(--font-ui);outline:none}.pe-modal input:focus{border-color:var(--accent-ink);box-shadow:0 0 0 3px var(--accent-weak)}
+/* etapa "Desdobrar para banner" (Datas comemorativas da VONDER): some o que é do post e aparece o que é do banner */
+body.is-banner-step .pe-panel>.pe-section:not(.pe-bn),body.is-banner-step #vcPanel,body.is-banner-step .pe-downloads:not(.pe-bn),body.is-banner-step #postPreviews,body.is-banner-step #positionControls,body.is-banner-step #moveModeControls{display:none!important}
+.pe-banner-previews{grid-template-columns:minmax(0,1fr)}.pe-banner-previews canvas{display:block;width:100%;max-width:900px;margin:0 auto;height:auto;border-radius:6px;cursor:grab;touch-action:none}.pe-banner-previews canvas:active{cursor:grabbing}
+#bnOrder{display:grid;gap:8px;margin-bottom:6px}#bnOrder label{margin:0}#bnOrder select{margin-top:4px}
+.pe-downloads[hidden],.pe-previews[hidden]{display:none!important}
+body.is-banner-step #stageMoveHint,body:not(.is-banner-step) #stageBannerHint{display:none}

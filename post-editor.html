@@ -31,7 +31,10 @@
           <div><strong>Escolher produto</strong><small>Nome ou código no catálogo</small></div>
         </div><i id="flowSepChoose"></i>
         <div class="pe-flow-step" data-flow-step="edit"><span id="flowStepEditNumber">3</span>
-          <div><strong>Editar e baixar</strong><small>Revise a composição final</small></div>
+          <div><strong>Editar post</strong><small>Revise a composição final</small></div>
+        </div><i id="flowSepBanner" hidden></i>
+        <div class="pe-flow-step" data-flow-step="banner" hidden><span id="flowStepBannerNumber">3</span>
+          <div><strong>Desdobrar para banner</strong><small>Banner 900 × 258 da intranet</small></div>
         </div>
       </nav>
       <section class="pe-chooser" id="editoriaChooser">
@@ -237,6 +240,8 @@
               <div><label for="vcMonth">Mês</label><select id="vcMonth"><option value="" hidden>Texto personalizado</option><option value="Janeiro">Janeiro</option><option value="Fevereiro">Fevereiro</option><option value="Março">Março</option><option value="Abril">Abril</option><option value="Maio">Maio</option><option value="Junho">Junho</option><option value="Julho">Julho</option><option value="Agosto">Agosto</option><option value="Setembro">Setembro</option><option value="Outubro">Outubro</option><option value="Novembro">Novembro</option><option value="Dezembro">Dezembro</option></select><div id="vcMonthText" hidden></div></div>
             </div>
             <label for="vcLoz">Opacidade do losango <output id="vcLozOut">100%</output></label><input id="vcLoz" type="range" min="0" max="140" value="100"><div class="pe-actions-row"><button id="vcLozReset" type="button">↺ Opacidade padrão</button></div>
+            <div class="pe-vc-check"><input id="vcLineOn" type="checkbox" checked aria-label="Mostrar o contorno do losango"><span>Contorno fino ao redor do losango</span></div>
+            <div id="vcLineBox"><label for="vcLine">Cor do contorno</label><input id="vcLine" type="color" value="#F6BE00"></div>
             <label for="vcPrefix">Chamada (texto branco)</label><div id="vcPrefix" class="pe-rich-title pe-vc-rich pe-vc-caps" contenteditable="true" role="textbox" spellcheck="true"></div>
             <label for="vcTitle">Título (texto amarelo)</label><div id="vcTitle" class="pe-rich-title pe-vc-rich pe-vc-caps" contenteditable="true" role="textbox" spellcheck="true"></div>
           </section>
@@ -268,6 +273,26 @@
             </div>
           </section>
         </div>
+        <section class="pe-section pe-bn" id="bannerPanel" hidden>
+          <div class="pe-step"><span>1</span>
+            <div><strong>Textos do banner</strong><small>Vêm da arte, mas dá para editar ou escrever do zero aqui sem mudar o post</small></div>
+          </div>
+          <label for="bnLine1">Linha 1 (data)</label><input id="bnLine1" maxlength="60" autocomplete="off">
+          <label for="bnLine2">Linha 2 (título)</label><input id="bnLine2" maxlength="80" autocomplete="off">
+          <div class="pe-vc-check"><input id="bnPanelOn" type="checkbox" checked aria-label="Mostrar a faixa branca com a mensagem"><span>Mostrar a faixa branca com a mensagem</span></div>
+          <div id="bnMsgBox"><label for="bnMsg">Mensagem (faixa branca)</label><div id="bnMsg" class="pe-rich-title pe-vc-rich pe-vc-multi" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true"></div></div>
+          <div class="pe-actions-row"><button id="bnTextReset" type="button" title="Volta a seguir os textos da arte">↺ Usar os textos da arte</button></div>
+        </section>
+        <section class="pe-section pe-bn" id="bannerPhotos" hidden>
+          <div class="pe-step"><span>2</span>
+            <div><strong>Fotos do banner</strong><small>Vêm da arte. Arraste cada foto no banner para enquadrar (roda do mouse = zoom; clicar, segurar e arrastar muda a foto de posição). Envie outra foto só para o banner se precisar de uma mais adequada ao formato horizontal</small></div>
+          </div>
+          <div id="bnSlots"></div>
+          <input id="bnFile" type="file" accept="image/*" hidden>
+          <div class="pe-actions-row"><button id="bnReset" type="button">↺ Centralizar fotos</button><button id="bnBack" type="button">← Editar post</button></div>
+        </section>
+        <div class="pe-downloads pe-bn" id="bannerDownloads" hidden><button class="pe-primary" data-bn-download type="button">↓ Baixar banner JPG</button><small class="pe-download-hint">900 × 258 px, JPEG na qualidade máxima</small>
+          <div><button data-bn-download="png" type="button">PNG sem perda</button></div></div>
         <div class="pe-downloads"><button class="pe-primary" id="downloadBoth" type="button">↓ Baixar pacote
               ZIP</button><small class="pe-download-hint">Feed + Story com nomes padronizados</small>
             <div><button id="downloadFeed" type="button">Feed JPG</button><button id="downloadStory" type="button">Story
@@ -278,7 +303,7 @@
         </aside>
         <section class="pe-stage">
           <div class="pe-stage-toolbar">
-            <div><strong>Pré-visualização</strong><small id="stageMoveHint">Arraste direto sobre a arte para
+            <div><strong>Pré-visualização</strong><small id="stageBannerHint">Arraste uma foto para enquadrar (roda do mouse = zoom)</small><small id="stageMoveHint">Arraste direto sobre a arte para
                 reposicionar</small></div>
             <div class="pe-toolbar-actions">
               <div class="pe-segmented" id="positionControls"><button id="undoMove" type="button" disabled
@@ -290,7 +315,15 @@
               <button id="saveArt" type="button" class="pe-save-art" title="Salva a última versão desta arte para continuar depois" hidden>Salvar arte</button>
             </div>
           </div>
-          <div class="pe-previews">
+          <div class="pe-previews pe-banner-previews pe-bn" id="bannerPreviews" hidden>
+            <article class="pe-preview-card">
+              <div class="pe-card-head">
+                <div><strong>Banner Intranet - Conexão OVD</strong><small>900 × 258 px</small></div><button data-bn-download type="button">Baixar</button>
+              </div>
+              <div class="pe-canvas-wrap"><canvas id="bannerCanvas" width="900" height="258"></canvas></div>
+            </article>
+          </div>
+          <div class="pe-previews" id="postPreviews">
             <article class="pe-preview-card">
               <div class="pe-card-head">
                 <div><strong>Feed</strong><small>1080 × 1350 px</small></div><button data-download="feed"
