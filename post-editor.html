@@ -31,7 +31,10 @@
           <div><strong>Escolher produto</strong><small>Nome ou código no catálogo</small></div>
         </div><i id="flowSepChoose"></i>
         <div class="pe-flow-step" data-flow-step="edit"><span id="flowStepEditNumber">3</span>
-          <div><strong>Editar e baixar</strong><small>Revise a composição final</small></div>
+          <div><strong>Editar post</strong><small>Revise a composição final</small></div>
+        </div><i id="flowSepBanner" hidden></i>
+        <div class="pe-flow-step" data-flow-step="banner" hidden><span id="flowStepBannerNumber">3</span>
+          <div><strong>Desdobrar para banner</strong><small>Banner 900 × 258 da intranet</small></div>
         </div>
       </nav>
       <section class="pe-chooser" id="editoriaChooser">
@@ -41,6 +44,14 @@
           <p>Cada editoria tem seu próprio preset de composição. As editorias ainda sem preset configurado aparecem
             desabilitadas, como "Em breve".</p>
           <div class="pe-editoria-grid" id="editoriaGrid"></div>
+          <div class="pe-saved" id="savedArts">
+            <div class="pe-saved-head"><h3>Artes salvas</h3><button type="button" class="pe-info" id="savedArtsInfo" aria-expanded="false" aria-controls="savedArtsInfoText" aria-label="Como funcionam as artes salvas">i</button>
+              <div class="pe-info-pop" id="savedArtsInfoText" role="note" hidden>Continue de onde parou ou ajuste uma arte depois da revisão. A arte é salva sozinha enquanto você edita.<br><br>As fotos ficam guardadas por 30 dias; depois disso é preciso enviá-las de novo. Quem abre a arte em outro computador recebe as fotos em qualidade reduzida e pode reenviar as originais.<br><br>A arte inteira é apagada depois de 90 dias sem uso.</div></div>
+            <div class="pe-catalog-search"><input id="savedArtsSearch" type="search" autocomplete="off" placeholder="Buscar pelo título ou editoria" aria-label="Buscar arte salva por título ou editoria"><span aria-hidden="true">⌕</span></div>
+            <div class="pe-saved-filters" id="savedArtsFilters" hidden></div>
+            <div class="pe-saved-list" id="savedArtsList"></div>
+            <button type="button" class="pe-saved-trash" id="savedArtsTrash" hidden></button>
+          </div>
         </div>
       </section>
       <section class="pe-chooser" id="productChooser" hidden>
@@ -70,9 +81,9 @@
       <div class="pe-layout" id="editorWorkspace" hidden>
         <aside class="pe-panel">
           <div class="pe-selected-editoria" id="selectedEditoriaBarEdit"><span class="pe-editoria-dot"
-              id="selectedEditoriaDotEdit"></span><strong id="selectedEditoriaNameEdit">Editoria</strong><button
+              id="selectedEditoriaDotEdit"></span><strong id="selectedEditoriaNameEdit">Editoria</strong><span class="pe-art-state" id="artSaveState" role="status" aria-live="polite" hidden></span><button
               id="changeEditoriaEdit" type="button">Trocar</button></div>
-          <section class="pe-section">
+          <section class="pe-section pe-core-section">
             <div class="pe-step"><span>1</span>
               <div><strong id="detailsSectionTitle">Produto</strong><small id="detailsSectionHint">Dados preenchidos
                   pelo catálogo, mas editáveis</small></div>
@@ -154,7 +165,7 @@
               type="date"><small class="pe-field-hint">O restante do texto legal é fixo e será incluído
               automaticamente.</small>
           </section>
-          <section class="pe-section">
+          <section class="pe-section pe-core-section">
             <div class="pe-step"><span>2</span>
               <div><strong>Imagens</strong><small id="imageSectionHint">Envie a cena e, se tiver, o produto
                   recortado</small></div>
@@ -168,7 +179,7 @@
               id="removeWhiteField"><input id="removeWhite" type="checkbox" checked> Remover fundo branco do
               produto</label><label class="pe-check" id="removeHolesField" title="Para produtos com alça ou furo em que o fundo branco aparece no meio do produto"><input id="removeHoles" type="checkbox"> Remover também o fundo dentro de alças e furos</label><div class="pe-hint" id="holesHint" role="status" hidden><span>Há uma área branca cercada pelo produto. É fundo (alça ou furo)?</span><button type="button" id="holesHintYes">Sim, remover</button><button type="button" id="holesHintNo">Não, é do produto</button></div>
           </section>
-          <section class="pe-section">
+          <section class="pe-section pe-core-section">
             <div class="pe-step"><span>3</span>
               <div><strong>Composição</strong><small>Ajustes opcionais antes de baixar</small></div>
             </div>
@@ -219,7 +230,70 @@
                   bordas</small></button></div>
           </div>
           </section>
-          <div class="pe-downloads"><button class="pe-primary" id="downloadBoth" type="button">↓ Baixar pacote
+          <div id="vcPanel" hidden>
+          <section class="pe-section">
+            <div class="pe-step"><span>1</span>
+              <div><strong>Data e título</strong><small>Preenchidos pelo calendário, mas editáveis. Também dá para editar com duplo clique no texto da arte (negrito, itálico, sublinhado e tamanho)</small></div>
+            </div>
+            <div class="pe-grid-fields">
+              <div><label for="vcDay">Dia</label><div id="vcDay" class="pe-rich-title pe-vc-rich" contenteditable="true" role="textbox" spellcheck="false"></div></div>
+              <div><label for="vcMonth">Mês</label><select id="vcMonth"><option value="" hidden>Texto personalizado</option><option value="Janeiro">Janeiro</option><option value="Fevereiro">Fevereiro</option><option value="Março">Março</option><option value="Abril">Abril</option><option value="Maio">Maio</option><option value="Junho">Junho</option><option value="Julho">Julho</option><option value="Agosto">Agosto</option><option value="Setembro">Setembro</option><option value="Outubro">Outubro</option><option value="Novembro">Novembro</option><option value="Dezembro">Dezembro</option></select><div id="vcMonthText" hidden></div></div>
+            </div>
+            <label for="vcLoz">Opacidade do losango <output id="vcLozOut">100%</output></label><input id="vcLoz" type="range" min="0" max="140" value="100"><div class="pe-actions-row"><button id="vcLozReset" type="button">↺ Opacidade padrão</button></div>
+            <div class="pe-vc-check"><input id="vcLineOn" type="checkbox" checked aria-label="Mostrar o contorno do losango"><span>Contorno fino ao redor do losango</span></div>
+            <div id="vcLineBox"><label for="vcLine">Cor do contorno</label><input id="vcLine" type="color" value="#F6BE00"></div>
+            <label for="vcPrefix">Chamada (texto branco)</label><div id="vcPrefix" class="pe-rich-title pe-vc-rich pe-vc-caps" contenteditable="true" role="textbox" spellcheck="true"></div>
+            <label for="vcTitle">Título (texto amarelo)</label><div id="vcTitle" class="pe-rich-title pe-vc-rich pe-vc-caps" contenteditable="true" role="textbox" spellcheck="true"></div>
+          </section>
+          <section class="pe-section">
+            <div class="pe-step"><span>2</span>
+              <div><strong>Fotos de fundo</strong><small>Escolha a grade e envie as fotos. Arraste cada foto na arte para enquadrar e use a roda para o zoom. Também dá para soltar o arquivo direto sobre a foto</small></div>
+            </div>
+            <label for="vcGrid">Grade</label><select id="vcGrid">
+              <option value="single">1 foto (tela cheia)</option>
+              <option value="two">2 fotos (cima e baixo)</option>
+              <option value="four" selected>4 fotos (2 em cima e 2 embaixo)</option>
+            </select>
+            <div class="pe-actions-row"><button id="vcCopyFS" type="button" title="Copia o enquadramento e o zoom de todas as fotos do Feed para o Story">Feed → Story</button><button id="vcCopySF" type="button" title="Copia o enquadramento e o zoom de todas as fotos do Story para o Feed">Story → Feed</button></div>
+            <small class="pe-field-hint">Para mudar uma foto de posição, arraste o ícone de três linhas do cartão dela, ou, na arte, clique na foto, segure um instante e arraste (Shift + arrastar muda na hora).</small>
+            <div id="vcSlots"></div>
+          </section>
+          <section class="pe-section">
+            <div class="pe-step"><span>3</span>
+              <div><strong>Formas e textos</strong><small>Forma amarela com pontas e forma branca opcional. Arraste as formas na arte para subir ou descer</small></div>
+            </div>
+            <label for="vcSide">Formas e textos partem da</label><select id="vcSide"><option value="left" selected>Esquerda</option><option value="right">Direita</option></select>
+            <label for="vcYellow">Texto da forma amarela</label><div id="vcYellow" class="pe-rich-title pe-vc-rich pe-vc-multi" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true"></div>
+            <label for="vcTextW">Largura do texto <output id="vcTextWOut">595</output></label><input id="vcTextW" type="range" min="300" max="860" step="10" value="595">
+            <div class="pe-actions-row"><button id="vcShape" type="button">↻ Variar pontas da forma</button><button id="vcShapeRef" type="button">↺ Forma da referência</button></div>
+            <div class="pe-vc-check"><input id="vcWhiteOn" type="checkbox" checked aria-label="Usar forma branca"><span>Usar forma branca com texto</span></div>
+            <div id="vcWhiteBox">
+              <label for="vcWhite">Texto da forma branca</label><div id="vcWhite" class="pe-rich-title pe-vc-rich pe-vc-multi" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true"></div>
+              <label for="vcWhiteW">Largura da forma branca <output id="vcWhiteWOut">470</output></label><input id="vcWhiteW" type="range" min="300" max="860" step="10" value="470">
+            </div>
+          </section>
+        </div>
+        <section class="pe-section pe-bn" id="bannerPanel" hidden>
+          <div class="pe-step"><span>1</span>
+            <div><strong>Textos do banner</strong><small>Vêm da arte, mas dá para editar ou escrever do zero aqui sem mudar o post</small></div>
+          </div>
+          <label for="bnLine1">Linha 1 (data)</label><input id="bnLine1" maxlength="60" autocomplete="off">
+          <label for="bnLine2">Linha 2 (título)</label><input id="bnLine2" maxlength="80" autocomplete="off">
+          <div class="pe-vc-check"><input id="bnPanelOn" type="checkbox" checked aria-label="Mostrar a faixa branca com a mensagem"><span>Mostrar a faixa branca com a mensagem</span></div>
+          <div id="bnMsgBox"><label for="bnMsg">Mensagem (faixa branca)</label><div id="bnMsg" class="pe-rich-title pe-vc-rich pe-vc-multi" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true"></div></div>
+          <div class="pe-actions-row"><button id="bnTextReset" type="button" title="Volta a seguir os textos da arte">↺ Usar os textos da arte</button></div>
+        </section>
+        <section class="pe-section pe-bn" id="bannerPhotos" hidden>
+          <div class="pe-step"><span>2</span>
+            <div><strong>Fotos do banner</strong><small>Vêm da arte. Arraste cada foto no banner para enquadrar (roda do mouse = zoom; clicar, segurar e arrastar muda a foto de posição). Envie outra foto só para o banner se precisar de uma mais adequada ao formato horizontal</small></div>
+          </div>
+          <div id="bnSlots"></div>
+          <input id="bnFile" type="file" accept="image/*" hidden>
+          <div class="pe-actions-row"><button id="bnReset" type="button">↺ Centralizar fotos</button><button id="bnBack" type="button">← Editar post</button></div>
+        </section>
+        <div class="pe-downloads pe-bn" id="bannerDownloads" hidden><button class="pe-primary" data-bn-download type="button">↓ Baixar banner JPG</button><small class="pe-download-hint">900 × 258 px, JPEG na qualidade máxima</small>
+          <div><button data-bn-download="png" type="button">PNG sem perda</button></div></div>
+        <div class="pe-downloads"><button class="pe-primary" id="downloadBoth" type="button">↓ Baixar pacote
               ZIP</button><small class="pe-download-hint">Feed + Story com nomes padronizados</small>
             <div><button id="downloadFeed" type="button">Feed JPG</button><button id="downloadStory" type="button">Story
                 JPG</button></div>
@@ -229,7 +303,7 @@
         </aside>
         <section class="pe-stage">
           <div class="pe-stage-toolbar">
-            <div><strong>Pré-visualização</strong><small id="stageMoveHint">Arraste direto sobre a arte para
+            <div><strong>Pré-visualização</strong><small id="stageBannerHint">Arraste uma foto para enquadrar (roda do mouse = zoom)</small><small id="stageMoveHint">Arraste direto sobre a arte para
                 reposicionar</small></div>
             <div class="pe-toolbar-actions">
               <div class="pe-segmented" id="positionControls"><button id="undoMove" type="button" disabled
@@ -238,9 +312,19 @@
               <div class="pe-segmented" id="moveModeControls"><button class="is-active" data-move-mode="background"
                   type="button">Mover fundo</button><button data-move-mode="overlay" type="button">Mover destaque</button>
               </div>
+              <button id="bnRefresh" type="button" class="pe-bn pe-refresh-art" title="Refaz o banner a partir da arte atual: textos, fotos, ordem e enquadramento" hidden>↻ Atualizar informações do banner</button>
+              <button id="saveArt" type="button" class="pe-save-art" title="Salva a última versão desta arte para continuar depois" hidden>Salvar arte</button>
             </div>
           </div>
-          <div class="pe-previews">
+          <div class="pe-previews pe-banner-previews pe-bn" id="bannerPreviews" hidden>
+            <article class="pe-preview-card">
+              <div class="pe-card-head">
+                <div><strong>Banner Intranet - Conexão OVD</strong><small>900 × 258 px</small></div><button data-bn-download type="button">Baixar</button>
+              </div>
+              <div class="pe-canvas-wrap"><canvas id="bannerCanvas" width="900" height="258"></canvas></div>
+            </article>
+          </div>
+          <div class="pe-previews" id="postPreviews">
             <article class="pe-preview-card">
               <div class="pe-card-head">
                 <div><strong>Feed</strong><small>1080 × 1350 px</small></div><button data-download="feed"
@@ -273,15 +357,24 @@
           </div>
         </div>
       </div>
+      <div class="pe-modal-overlay" id="confirmBnRefresh" hidden>
+        <div class="pe-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmBnRefreshTitle" aria-describedby="confirmBnRefreshDesc">
+          <button type="button" class="pe-modal-x" id="confirmBnRefreshClose" aria-label="Fechar">×</button>
+          <h3 id="confirmBnRefreshTitle">Atualizar o banner com a arte?</h3>
+          <p id="confirmBnRefreshDesc">Os textos, fotos, ordem e enquadramento que você ajustou só no banner serão descartados e substituídos pelas informações atuais da arte. O post não muda.</p>
+          <div class="pe-modal-actions"><button type="button" id="confirmBnRefreshCancel">Cancelar</button><button type="button" class="pe-modal-primary" id="confirmBnRefreshOk">Atualizar banner</button></div>
+        </div>
+      </div>
       <div class="pe-modal-overlay" id="confirmLeaveEdit" hidden>
         <div class="pe-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmLeaveEditTitle"
           aria-describedby="confirmLeaveEditDesc">
+          <button type="button" class="pe-modal-x" id="confirmLeaveEditClose" aria-label="Fechar">×</button>
           <h3 id="confirmLeaveEditTitle">Voltar e perder as edições?</h3>
           <p id="confirmLeaveEditDesc">A composição feita até aqui ainda não foi salva. Se você voltar agora, esse
             progresso será perdido.</p>
-          <div class="pe-modal-actions"><button type="button" id="confirmLeaveEditCancel">Continuar
-              editando</button><button type="button" class="pe-modal-danger" id="confirmLeaveEditOk">Voltar mesmo
-              assim</button></div>
+          <div class="pe-modal-actions"><button type="button" class="pe-modal-danger" id="confirmLeaveEditOk">Voltar mesmo
+              assim</button><button type="button" id="confirmLeaveEditCancel">Continuar
+              editando</button><button type="button" class="pe-modal-primary" id="confirmLeaveEditSave" hidden>Salvar e voltar</button></div>
         </div>
       </div>
     </main>
@@ -294,6 +387,8 @@
   <script src="post-editor-assets/brands-js/Dismatal.js"></script>
   <script src="post-editor-assets/brands-js/DWT SLOGAN B.js"></script>
   <script src="post-editor-vonder-uso-recomendo.js"></script>
+  <script src="post-editor-vonder-datas-comemorativas.js"></script>
+  <script src="post-editor-saved-arts.js"></script>
   <script src="post-editor-fg-lancamentos.js"></script>
   <script src="post-editor-fg-ecommerce.js"></script>
   <script src="post-editor-osten-datas-comemorativas.js"></script>

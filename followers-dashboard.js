@@ -206,7 +206,6 @@
   let goalsVersion = 0;
   let liveSnapshot = null;
   let initialized = false;
-  let milestoneMonth = null;  // { year, month } navegado pelo usuário no card "Marcos do mês"
   // Uma vez que o usuário abre/fecha manualmente o "Passo a passo" do card do TikTok (ver
   // render() e initTikTokImport), o render() para de decidir esse estado sozinho a cada
   // atualização automática - senão reabriria o card na cara do usuário a cada 60s.
@@ -236,11 +235,29 @@
     // Seguidores são um estoque, não um fluxo: entre duas medições vale a última conhecida.
     // 'measured' preserva o que foi de fato medido no dia, para não inventar pontos no gráfico.
     const carried = {};
-    return Array.from(byDate.keys()).sort().map(date => {
+    const real = Array.from(byDate.keys()).sort().map(date => {
       const measured = byDate.get(date);
       Object.keys(measured).forEach(network => { carried[network] = measured[network]; });
       return { date, values: Object.assign({}, carried), measured, insights: insightsByDate.get(date) || {} };
     });
+    // Dias sem coleta entram na série com o total interpolado (estimado, sem 'measured' nem Insights): o crescimento entre
+    // duas medições distantes fica rateado pelos dias do intervalo, em vez de cair inteiro no dia da segunda medição
+    // (que viraria um pico falso). A soma do intervalo continua igual à diferença real entre as duas medições.
+    const dense = [];
+    real.forEach((point, index) => {
+      const before = real[index - 1], gap = before ? dayDiff(before.date, point.date) : 0;
+      for (let k = 1; k < gap; k++) {
+        const values = {};
+        Object.keys(point.values).forEach(network => {
+          const a = before.values[network], b = point.values[network];
+          values[network] = Number.isFinite(a) && Number.isFinite(b) ? Math.round(a + (b - a) * k / gap) : a;
+          if (!Number.isFinite(values[network])) delete values[network];
+        });
+        dense.push({ date: iso(addDays(parse(before.date), k)), values, measured: {}, insights: {}, estimated: true });
+      }
+      dense.push(point);
+    });
+    return dense;
   }
 
   const activeNetworks = () => selectedNetwork === 'all' ? NETWORKS : [NETWORKS[Number(selectedNetwork)]];
@@ -271,27 +288,46 @@
     return values;
   };
 
-  // Só conta a variação de canais que já tinham valor conhecido no ponto anterior: a
-  // primeira medição de um canal é um saldo inicial, não um ganho de seguidores.
+  // Novos seguidores por dia, a mesma conta do gráfico (ver dailyNew): saldo real dos Insights no Instagram quando existe,
+  // senão a diferença entre medições. Só conta canais que já tinham valor no dia anterior: a primeira medição de um
+  // canal é um saldo inicial, não um ganho. O 1º dia do período usa o dia anterior da série inteira.
   function deltas(points, nets) {
+    const maps = nets.map(network => dailyNew(network.name));
+    const previous = new Map(series.map((point, index) => [point.date, index ? series[index - 1].date : null]));
     const out = [];
-    for (let index = 1; index < points.length; index++) {
+    points.forEach(point => {
       let total = 0, comparable = false;
-      nets.forEach(network => {
-        const now = points[index].values[network.name];
-        const before = points[index - 1].values[network.name];
-        if (Number.isFinite(now) && Number.isFinite(before)) { total += now - before; comparable = true; }
-      });
-      if (comparable) out.push({ date: points[index].date, delta: total, days: dayDiff(points[index - 1].date, points[index].date) });
+      maps.forEach(map => { if (map.has(point.date)) { total += map.get(point.date); comparable = true; } });
+      if (comparable) out.push({ date: point.date, delta: total, days: previous.get(point.date) ? dayDiff(previous.get(point.date), point.date) : 1 });
+    });
+    return out;
+  }
+  // Total de seguidores de uma rede em cada dia do período, reconstruído a partir dos novos diários (dailyNew) e ancorado no
+  // total real do último dia: total(dia anterior) = total(dia) − novos(dia). Assim a linha do gráfico, o tooltip e a tabela
+  // sempre fecham com os novos seguidores. O total medido pela Meta oscila por motivos que não são seguidor novo (cache, contas
+  // removidas), então onde há saldo da Meta (Instagram) ele pode diferir do medido; sem Insights os dois são idênticos.
+  function trackedTotals(points, network) {
+    const out = new Map();
+    if (!points.length) return out;
+    const last = points[points.length - 1];
+    const end = (last.date === lastDate() ? currentValues(last) : last.values)[network.name];
+    if (!Number.isFinite(end)) return out;
+    const news = dailyNew(network.name);
+    let total = end;
+    for (let index = points.length - 1; index >= 0; index--) {
+      out.set(points[index].date, total);
+      total -= news.get(points[index].date) || 0;
     }
     return out;
   }
+  // soma dos novos seguidores das redes em (from, to] - mesma base do gráfico, para acumulados e comparativos
+  function newBetween(nets, from, to) {
+    let total = 0, found = false;
+    nets.forEach(network => dailyNew(network.name).forEach((value, date) => { if (date > from && date <= to) { total += value; found = true; } }));
+    return found ? total : null;
+  }
 
   const inRange = (points, from, to) => points.filter(point => point.date >= from && point.date <= to);
-  const valueOn = (date, nets) => {
-    const upTo = series.filter(point => point.date <= date);
-    return upTo.length ? totalAt(upTo[upTo.length - 1], nets) : null;
-  };
 
   // ------------------------------------------------------- agrupamento do gráfico
 
@@ -309,18 +345,11 @@
     const buckets = new Map();
     points.forEach(point => {
       const key = bucketOf(point.date, grain);
-      const igInsight = point.insights && point.insights.Instagram;
-      const igNet = igInsight && Number.isFinite(Number(igInsight.net)) ? Number(igInsight.net) : null;
       const existing = buckets.get(key);
-      if (existing) {
-        existing.point = point;
-        existing.igNetSum = existing.igNetSum === null || igNet === null ? null : existing.igNetSum + igNet;
-      } else {
-        buckets.set(key, { point, igNetSum: igNet });
-      }
+      if (existing) { existing.point = point; existing.members.push(point); }
+      else buckets.set(key, { point, members: [point] });
     });
-    const list = Array.from(buckets.entries()).map(([key, entry]) => ({ label: bucketLabel(key, grain), point: entry.point, igNetSum: entry.igNetSum }));
-    return list.slice(-MAX_BUCKETS);
+    return Array.from(buckets.entries()).map(([key, entry]) => ({ key, label: bucketLabel(key, grain), point: entry.point, members: entry.members }));
   }
 
   // ---------------------------------------------------------------- render
@@ -330,7 +359,7 @@
     const nets = activeNetworks();
     const from = el('startDate').value, to = el('endDate').value;
     const spanForGrain = from && to ? Math.max(1, dayDiff(from, to)) : Math.max(1, series.length - 1);
-    const grain = spanForGrain > 180 ? 'month' : spanForGrain > 60 ? 'week' : 'day';
+    const grain = spanForGrain > 180 ? 'month' : spanForGrain > 59 ? 'week' : 'day';
     const points = (from && to) ? inRange(series, from, to) : series.slice();
 
     if (!points.length) {
@@ -349,8 +378,9 @@
     const current = totalAt(currentPoint, nets);
     const periodDeltas = deltas(points, nets);
     const net = periodDeltas.reduce((sum, item) => sum + item.delta, 0);
-    const span = Math.max(1, dayDiff(first.date, last.date));
-    const startValue = totalAt(first, nets);
+    // cada variação cobre os dias desde a medição anterior (inclusive a do 1º dia do período), então a base da taxa é o total antes dela
+    const span = periodDeltas.length ? Math.max(1, periodDeltas.reduce((sum, item) => sum + item.days, 0)) : Math.max(1, dayDiff(first.date, last.date));
+    const startValue = totalAt(first, nets) - (periodDeltas.length && periodDeltas[0].date === first.date ? periodDeltas[0].delta : 0);
     const rate = startValue ? net / startValue * 100 : 0;
     const perDay = periodDeltas.length ? net / span : null;
 
@@ -414,18 +444,15 @@
     const grossFollows = isInstagramOrAllSelected() ? igGrossFollows : 0;
     const grossUnfollows = isInstagramOrAllSelected() ? igGrossUnfollows : 0;
 
-    // "Crescimento líquido"/"Média por dia" deste card usam o saldo real (bruto − unfollows)
-    // quando ele está disponível - mesmo motivo do tooltip do gráfico (ver aggregate/
-    // showTooltip): o delta bruto de followers_count entre duas medições diverge do saldo
-    // real por ruído que não é "seguidor novo" (cache da Meta, limpeza de contas spam), e os
-    // 4 números deste card precisam fechar a conta entre si (bruto − unfollows = líquido).
-    // ponytail: com "Todas as redes" selecionado, isso restringe o líquido mostrado AQUI ao
-    // saldo do Instagram (única rede com Insights), sem somar a fração de Facebook/YouTube/
-    // TikTok no período - o card "Comunidade total" acima continua com o total real das 4
-    // redes. Evolução: se outra rede ganhar o mesmo tipo de Insights, somar aqui também.
-    const netForCard = periodInsights.length ? grossFollows - grossUnfollows : net;
-    const perDayForCard = periodInsights.length ? netForCard / span : perDay;
-    const hasNetForCard = periodDeltas.length || periodInsights.length;
+    // Líquido e média são os mesmos novos seguidores do gráfico (net, que já usa o saldo real da Meta nos dias com Insights).
+    // Bruto e "deixaram de seguir" só existem nos dias com Insights; se eles não cobrem o período todo, não fecham com o líquido
+    // e o card avisa isso (title).
+    const netForCard = net, perDayForCard = perDay, hasNetForCard = periodDeltas.length;
+    const partial = periodInsights.length > 0 && periodInsights.length < points.length;
+    ['grossFollowsPeriod', 'unfollowsPeriod'].forEach(id => {
+      const box = el(id) && el(id).parentElement;
+      if (box) box.title = partial ? `Dados da Meta em ${periodInsights.length} de ${points.length} dias do período; o crescimento líquido soma todos os dias.` : '';
+    });
 
     setText('newFollowers', hasNetForCard ? signed(netForCard) : '-');
     setTone('newFollowers', hasNetForCard ? netForCard : 0);
@@ -449,9 +476,9 @@
     el('channelContext').innerHTML = active ? `<img src="${active.icon}" alt=""> ${active.name}` : 'Todas';
 
     renderChart(points, nets, grain);
-    renderPlatforms(points, nets, currentPoint, igPeriodInsights.length ? igGrossFollows - igGrossUnfollows : null);
+    renderPlatforms(points, nets, currentPoint);
     renderTable(points, nets, grain);
-    renderIndicators(points, nets, periodDeltas, net, rate, perDay, span);
+    renderIndicators(points, nets, periodDeltas, net, rate, perDay, grain);
     // A Meta só nos dá follows/unfollows/alcance detalhados do Instagram - não existe
     // esse dado para Facebook/YouTube/TikTok, então o bloco não faz sentido fora do
     // Instagram (ou da visão "Todas", onde ele complementa o total).
@@ -488,7 +515,7 @@
       }
     }
     renderComparatives(points, nets, periodDeltas);
-    renderGoal(currentPoint, current, nets, periodDeltas, perDay);
+    renderGoal(currentPoint, points, nets);
 
     // Ranking de posts: Instagram e YouTube (ver POSTS_NETWORKS) - Facebook/TikTok ainda não
     // têm coleta de conteúdo. `hidden` aqui é só o corte por plataforma; o recolher/expandir
@@ -504,37 +531,120 @@
     }
   }
 
+  // Novos seguidores por dia de uma rede, sobre a série inteira (o 1º dia do período precisa do dia anterior).
+  // Instagram usa o saldo real dos Insights (follows − unfollows) quando existe; senão, a diferença entre medições.
+  function dailyNew(networkName) {
+    const out = new Map();
+    series.forEach((point, index) => {
+      const insight = networkName === 'Instagram' && point.insights && point.insights.Instagram;
+      // saldo do dia = net, ou entraram − saíram quando só os dois vieram (é a mesma conta do painel de Insights)
+      const net = !insight ? null : Number.isFinite(Number(insight.net)) ? Number(insight.net)
+        : Number.isFinite(Number(insight.follows)) && Number.isFinite(Number(insight.unfollows)) ? Number(insight.follows) - Number(insight.unfollows) : null;
+      const now = point.values[networkName], before = index ? series[index - 1].values[networkName] : undefined;
+      if (net !== null) out.set(point.date, net);
+      else if (Number.isFinite(now) && Number.isFinite(before)) out.set(point.date, now - before);
+    });
+    return out;
+  }
+
+  // 'total': evolução do total de seguidores (ex.: 600 mil → 650 mil); 'new': novos seguidores por dia/semana/mês
+  let chartMode = 'total';
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-chart-mode]');
+    if (!button || button.dataset.chartMode === chartMode) return;
+    chartMode = button.dataset.chartMode;
+    document.querySelectorAll('[data-chart-mode]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+    render();
+  });
+
   function renderChart(points, nets, grain) {
-    const buckets = aggregate(points, grain);
+    const all = aggregate(points, grain);
+    // só os últimos MAX_BUCKETS pontos são desenhados, mas o acumulado conta desde o início do período filtrado
+    const offset = Math.max(0, all.length - MAX_BUCKETS), buckets = all.slice(offset);
     const plotted = nets.filter(network => buckets.some(item => Number.isFinite(item.point.values[network.name])));
-    el('legend').innerHTML = plotted.map(network => `<span><i style="background:${chartColor(network)}"></i>${network.name}</span>`).join('');
-    const values = buckets.flatMap(item => plotted.map(network => item.point.values[network.name]).filter(Number.isFinite));
+    // Por rede e por bucket: novos (soma dos novos diários de dailyNew) e acumulado no período
+    const stats = {};
+    plotted.forEach(network => {
+      const news = dailyNew(network.name);
+      let cum = 0;
+      stats[network.name] = all.map(item => {
+        const days = item.members.filter(m => news.has(m.date));
+        const added = days.length ? days.reduce((sum, m) => sum + news.get(m.date), 0) : null;
+        cum += added || 0;
+        return { added, cum };
+      }).slice(offset);
+    });
+    const isTotal = chartMode === 'total';
+    const totals = {};
+    plotted.forEach(network => { totals[network.name] = trackedTotals(points, network); });
+    const plotValue = (network, index) => isTotal ? totals[network.name].get(buckets[index].point.date) : stats[network.name][index].added;
+    const values = plotted.flatMap(network => buckets.map((_, index) => plotValue(network, index)).filter(Number.isFinite));
+    // a linha do zero (e o zero no eixo) só entram quando algum dia do período foi negativo
+    const showZero = !isTotal && values.some(value => value < 0);
+    if (showZero) values.push(0);
+    if (!values.length) values.push(0); // sem nenhum valor no modo escolhido o eixo não pode virar Infinity
     const minimum = Math.min(...values), maximum = Math.max(...values);
     const spread = Math.max(1, maximum - minimum);
-    const lower = Math.max(0, minimum - spread * .16), upper = maximum + spread * .16;
+    const lower = isTotal ? Math.max(0, minimum - spread * .16) : minimum - spread * .35, upper = maximum + spread * .16;
     const scaleY = value => 252 - ((value - lower) / Math.max(1, upper - lower) * 252);
     const scaleX = index => buckets.length < 2 ? 500 : index / (buckets.length - 1) * 1000;
     el('chartY').innerHTML = [upper, upper - (upper - lower) / 3, upper - (upper - lower) * 2 / 3, lower]
-      .map(value => `<span>${value >= 1000 ? (value / 1000).toFixed(1).replace('.', ',') + ' mil' : format(Math.round(value))}</span>`).join('');
+      .map(value => `<span>${Math.abs(value) >= 1000 ? (isTotal ? '' : value < 0 ? '-' : value > 0 ? '+' : '') + (Math.abs(value) / 1000).toFixed(1).replace('.', ',') + ' mil' : isTotal ? format(Math.round(value)) : signed(Math.round(value))}</span>`).join('');
     const every = Math.ceil(buckets.length / 12);
     const seriesLines = plotted.map(network => {
       const coordinates = buckets.map((item, index) => {
-        const value = item.point.values[network.name];
+        const value = plotValue(network, index);
         return Number.isFinite(value) ? `${scaleX(index).toFixed(1)},${scaleY(value).toFixed(1)}` : null;
       }).filter(Boolean).join(' ');
       return `<polyline class="line-series" points="${coordinates}" stroke="${chartColor(network)}"/>`;
     }).join('');
+    // Destaque: maior e menor número de novos seguidores de cada rede (ponto colorido + linha até a base com o valor)
+    const extremes = {};
+    plotted.forEach(network => {
+      const added = stats[network.name].map((st, index) => ({ index, value: st.added })).filter(item => Number.isFinite(item.value));
+      if (added.length < 2) return;
+      const top = added.reduce((a, b) => b.value > a.value ? b : a), low = added.reduce((a, b) => b.value < a.value ? b : a);
+      if (top.value !== low.value) extremes[network.name] = { [top.index]: 'high', [low.index]: 'low' };
+    });
+    // Texto dos extremos: escolhe o lado da linha vertical e a altura onde a caixa não cruza a linha da série
+    // (ponytail: testa só a série da própria rede e 3 alturas por lado; se nada livre, cai embaixo à direita)
+    const chartW = el('bars').clientWidth || 1000, LABEL_H = 44;
+    const drops = plotted.flatMap(network => Object.entries(extremes[network.name] || {}).map(([index, kind]) => {
+      const x = scaleX(index) / 10, y = scaleY(plotValue(network, index)), st = stats[network.name][index];
+      if (!Number.isFinite(y)) return '';
+      const name = plotted.length > 1 ? `${network.name} · ` : '';
+      const labelW = Math.max(name.length + 17, 17) * 5.8 + 6, px = x / 100 * chartW;
+      const path = buckets.map((_, i) => [scaleX(i) / 1000 * chartW, scaleY(plotValue(network, i))]).filter(pt => Number.isFinite(pt[1]));
+      const yAt = at => { for (let i = 1; i < path.length; i++) if (at <= path[i][0]) { const [x0, y0] = path[i - 1], [x1, y1] = path[i]; return x1 === x0 ? y1 : y0 + (y1 - y0) * (at - x0) / (x1 - x0); } return path.length ? path[path.length - 1][1] : 0; };
+      const crosses = (x0, x1, top) => {
+        const ys = [yAt(x0), yAt(x1)];
+        path.forEach(pt => { if (pt[0] > x0 && pt[0] < x1) ys.push(pt[1]); });
+        return Math.min(...ys) < top + LABEL_H + 4 && Math.max(...ys) > top - 4;
+      };
+      const tops = [y + 8, Math.max(y + 8, 252 - LABEL_H), 252 - LABEL_H].filter(t => t + LABEL_H <= 252 + 4);
+      let spot = null;
+      for (const left of (px > chartW * .7 ? [true, false] : [false, true])) {
+        const x0 = left ? px - 7 - labelW : px + 7, x1 = x0 + labelW;
+        if (x0 < 0 || x1 > chartW) continue;
+        const top = tops.find(t => !crosses(x0, x1, t));
+        if (top !== undefined) { spot = { left, top }; break; }
+      }
+      spot = spot || { left: px > chartW * .7, top: 252 - LABEL_H };
+      return `<span class="line-drop is-${kind}" style="left:${x}%;top:${y.toFixed(1)}px;height:${(252 - y).toFixed(1)}px"></span><span class="line-drop-label is-${kind} ${spot.left ? 'is-left' : ''}" style="left:${x}%;top:${spot.top.toFixed(0)}px">${name}${kind === 'high' ? 'Maior' : 'Menor'} crescimento<small>${shortDate(buckets[index].point.date)}</small><b>${signed(st.added)}</b></span>`;
+    })).join('');
     const dots = plotted.flatMap(network => buckets.map((item, index) => {
-      const value = item.point.values[network.name];
+      const value = plotValue(network, index);
       if (!Number.isFinite(value)) return '';
-      return `<button type="button" class="line-point" style="left:${scaleX(index) / 10}%;top:${scaleY(value).toFixed(1)}px;background:${chartColor(network)}" data-index="${index}" data-network="${network.name}" aria-label="Ver dados de ${network.name} em ${shortDate(item.point.date)}"></button>`;
+      const kind = (extremes[network.name] || {})[index];
+      return `<button type="button" class="line-point${kind ? ' is-' + kind : ''}" style="left:${scaleX(index) / 10}%;top:${scaleY(value).toFixed(1)}px;background:${chartColor(network)}" data-index="${index}" data-network="${network.name}" aria-label="Ver dados de ${network.name} em ${shortDate(item.point.date)}"></button>`;
     })).join('');
     const labels = buckets.map((item, index) => {
       const show = buckets.length <= 12 || index % every === 0 || index === buckets.length - 1;
       return show ? `<span style="left:${scaleX(index) / 10}%">${item.label}</span>` : '';
     }).join('');
     el('bars').className = 'line-chart';
-    el('bars').innerHTML = `<svg class="line-chart-svg" viewBox="0 0 1000 252" preserveAspectRatio="none" aria-label="Evolução de seguidores">${seriesLines}</svg>${dots}<div class="line-labels">${labels}</div><div class="chart-tooltip" id="chartTooltip" role="status" hidden></div>`;
+    const zeroLine = !showZero ? '' : `<line x1="0" x2="1000" y1="${scaleY(0).toFixed(1)}" y2="${scaleY(0).toFixed(1)}" stroke="currentColor" stroke-opacity=".25" stroke-dasharray="6 6" vector-effect="non-scaling-stroke"/>`;
+    el('bars').innerHTML = `<svg class="line-chart-svg" viewBox="0 0 1000 252" preserveAspectRatio="none" aria-label="${isTotal ? 'Evolução do total de seguidores' : 'Novos seguidores'}">${zeroLine}${seriesLines}</svg>${drops}${dots}<div class="line-labels">${labels}</div><div class="chart-tooltip" id="chartTooltip" role="status" hidden></div>`;
     const tooltip = el('chartTooltip');
     const hideTooltip = () => { tooltip.hidden = true; };
     const grainNounLabel = grain === 'month' ? 'no mês' : grain === 'week' ? 'na semana' : 'no dia';
@@ -542,24 +652,17 @@
       const index = Number(point.dataset.index);
       const item = buckets[index];
       const network = plotted.find(entry => entry.name === point.dataset.network);
-      const value = item.point.values[network.name];
-      // Compara com o bucket anterior (mesmo grão), não com o dia bruto anterior: num
-      // agrupamento por mês, "novos no mês" precisa somar o mês inteiro, não só o último dia dele.
-      const previousValue = index > 0 ? buckets[index - 1].point.values[network.name] : undefined;
-      let change = Number.isFinite(previousValue) ? value - previousValue : null;
-      // O estoque de followers_count oscila entre dois fechamentos por motivos que não são
-      // "seguidor novo" (cache da Meta, contas removidas por spam etc.) - diverge do que a
-      // própria Meta contabiliza via Insights (follows_and_unfollows). Quando esse saldo real
-      // existe para o Instagram (reconstruir-historico.yml o publica em insights.Instagram.net,
-      // só os últimos ~29 dias), ele é mais confiável que a diferença bruta entre snapshots.
-      if (network.name === 'Instagram' && Number.isFinite(item.igNetSum)) change = item.igNetSum;
-      tooltip.innerHTML = `<strong>${network.name} · ${shortDate(item.point.date)}</strong><span>Seguidores: <b>${format(value)}</b></span><span>Novos ${grainNounLabel}: <b class="${change === null ? 'neutral' : change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral'}">${change === null ? '-' : signed(change)}</b></span>`;
+      // Novos = soma dos novos diários do bucket; acumulado = soma dos novos desde o início do período;
+      // seguidores = total reconstruído (trackedTotals): seguidores do dia anterior + novos do dia.
+      const st = stats[network.name][index];
+      const tone = v => v === null ? 'neutral' : v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral';
+      tooltip.innerHTML = `<strong>${network.name} · ${shortDate(item.point.date)}</strong><span>Seguidores: <b>${totals[network.name].has(item.point.date) ? format(totals[network.name].get(item.point.date)) : '-'}</b></span><span>Novos ${grainNounLabel}: <b class="${tone(st.added)}">${st.added === null ? '-' : signed(st.added)}</b></span><span>Acumulado no período: <b class="${tone(st.cum)}">${st.cum === null ? '-' : signed(st.cum)}</b></span>`;
       tooltip.hidden = false;
       const rect = el('bars').getBoundingClientRect();
       const pointerX = event.clientX || (rect.left + point.getBoundingClientRect().left - rect.left);
       const pointerY = event.clientY || (point.getBoundingClientRect().top + point.getBoundingClientRect().height / 2);
       tooltip.style.left = `${Math.max(8, Math.min(rect.width - 174, pointerX - rect.left + 12))}px`;
-      tooltip.style.top = `${Math.max(8, Math.min(rect.height - 88, pointerY - rect.top - 74))}px`;
+      tooltip.style.top = `${Math.max(8, Math.min(rect.height - 104, pointerY - rect.top - 74))}px`;
     };
     const chart = el('bars');
     chart.addEventListener('pointerleave', hideTooltip);
@@ -576,28 +679,26 @@
       note.textContent = `Passe o mouse sobre um ponto para ver os dados · por ${grainName}`;
     }
   }
-  function renderPlatforms(points, nets, currentPoint, igNetPeriod) {
+  function renderPlatforms(points, nets, currentPoint) {
     const last = currentPoint || points[points.length - 1];
-    const first = points[0];
     const chip = (value, delta, comparable) => comparable
       ? `<strong class="${delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral'}">${signed(delta)}</strong><small>no período</small>`
       : `<strong class="neutral">-</strong>`;
     const allTotal = totalAt(last, NETWORKS);
-    const allDelta = allTotal - totalAt(first, NETWORKS);
-    const comparableAll = points.length > 1;
+    // delta no período = novos seguidores do gráfico (mesma conta de deltas())
+    const sumNew = list => list.reduce((sum, item) => sum + item.delta, 0);
+    const allDeltas = deltas(points, NETWORKS);
+    const allDelta = sumNew(allDeltas);
+    const comparableAll = allDeltas.length > 0;
     const buttons = NETWORKS.map((network, index) => {
       const value = last.values[network.name];
-      const before = first.values[network.name];
       const known = Number.isFinite(value);
       // Mesmo aviso do total (ver openYoutubeApprox): o YouTube arredonda o que devolve por API.
       const shown = known ? (network.name === 'YouTube' ? formatApproxYouTube(value) : format(value)) : null;
       const detail = known ? `${shown} seguidores` : (network.connected ? 'Aguardando coleta' : 'Sem API conectada');
-      // Instagram usa o saldo real dos Insights da Meta (follows − unfollows), não o delta
-      // bruto de followers_count entre duas medições - mesmo motivo do card "Crescimento no
-      // período" (ver render()): o total bruto oscila por ruído que não é "seguidor novo".
-      const useIgNet = network.name === 'Instagram' && igNetPeriod !== null;
-      const delta = useIgNet ? igNetPeriod : (known ? value - before : 0);
-      const comparable = useIgNet || (known && Number.isFinite(before) && points.length > 1);
+      const networkDeltas = deltas(points, [network]);
+      const delta = sumNew(networkDeltas);
+      const comparable = networkDeltas.length > 0;
       return `<button type="button" class="platform ${String(index) === selectedNetwork ? 'selected' : ''}" data-network="${index}"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${detail}</small></span><span class="platform-delta">${chip(value, delta, comparable)}</span><span class="platform-chevron">›</span></button>`;
     }).concat([`<button type="button" class="platform ${selectedNetwork === 'all' ? 'selected' : ''}" data-network="all"><span class="all-networks-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M10 19V5M16 19v-7M22 19V2"/></svg></span><span class="platform-copy"><strong>Todas as redes</strong><small>${format(allTotal)} seguidores</small></span><span class="platform-delta">${chip(allTotal, allDelta, comparableAll)}</span><span class="platform-chevron">›</span></button>`]).join('');
     el('platforms').innerHTML = buttons;
@@ -619,13 +720,19 @@
     historyPage = Math.min(historyPage, totalPages - 1);
     const pageItems = buckets.slice(historyPage * HISTORY_PAGE_SIZE, (historyPage + 1) * HISTORY_PAGE_SIZE);
 
-    el('historyHead').innerHTML = `<th>Período</th>${nets.map(network => `<th>${network.name}</th>`).join('')}<th>Total</th>`;
+    // novos seguidores por período: a mesma conta do gráfico (deltas), agrupada pelo mesmo agrupamento
+    const newByBucket = new Map();
+    deltas(points, nets).forEach(item => { const key = bucketOf(item.date, grain); newByBucket.set(key, (newByBucket.get(key) || 0) + item.delta); });
+    const tracked = {};
+    nets.forEach(network => { tracked[network.name] = trackedTotals(points, network); });
+    const tableTotal = date => nets.reduce((sum, network) => sum + (tracked[network.name].get(date) || 0), 0);
+    el('historyHead').innerHTML = `<th>Período</th>${nets.map(network => `<th>${network.name}</th>`).join('')}<th>Total</th><th>Novos</th>`;
     el('table').innerHTML = pageItems.map(item => {
       const cells = nets.map(network => {
-        const value = item.point.values[network.name];
+        const value = tracked[network.name].get(item.point.date);
         return `<td>${Number.isFinite(value) ? format(value) : '-'}</td>`;
       }).join('');
-      return `<tr><td>${item.label}</td>${cells}<td><strong>${format(totalAt(item.point, nets))}</strong></td></tr>`;
+      return `<tr><td>${item.label}</td>${cells}<td><strong>${format(tableTotal(item.point.date))}</strong></td><td>${newByBucket.has(item.key) ? signed(newByBucket.get(item.key)) : '-'}</td></tr>`;
     }).join('');
 
     const pager = el('historyPager');
@@ -640,15 +747,19 @@
 
   // ----------------------------------------------------------- marcos do mês
 
-  // Marcos fixos do card visual: abertura e fechamento do mês, mais toda sexta-feira
-  // entre os dois - são os pontos que o time usa para comparar semana a semana.
-  function monthMilestones(year, month) {
-    const start = new Date(Date.UTC(year, month, 1));
-    const end = monthEnd(start);
-    const set = new Set([iso(start), iso(end)]);
-    let cursor = new Date(start);
-    while (cursor.getUTCDay() !== 5) cursor = addDays(cursor, 1);
-    while (cursor <= end) { set.add(iso(cursor)); cursor = addDays(cursor, 7); }
+  // Marcos do card, sempre dentro do período filtrado: primeiro e último dia mais toda sexta-feira entre eles
+  // (comparação semana a semana). Em períodos longos (> 100 dias) as sextas virariam dezenas de colunas,
+  // então os marcos passam a ser o fim de cada mês.
+  function periodMilestones(from, to) {
+    const set = new Set([from, to]);
+    if (dayDiff(from, to) <= 100) {
+      let cursor = parse(from);
+      while (cursor.getUTCDay() !== 5) cursor = addDays(cursor, 1);
+      while (iso(cursor) <= to) { set.add(iso(cursor)); cursor = addDays(cursor, 7); }
+    } else {
+      let cursor = parse(from);
+      while (iso(monthEnd(cursor)) < to) { set.add(iso(monthEnd(cursor))); cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1)); }
+    }
     return Array.from(set).sort();
   }
 
@@ -680,11 +791,10 @@
   };
 
   function renderMilestones() {
-    const head = el('milestoneHead'), body = el('milestoneBody'), label = el('milestoneMonthLabel'), nextBtn = el('milestoneNext');
+    const head = el('milestoneHead'), body = el('milestoneBody'), label = el('milestoneMonthLabel');
     if (!head || !body || !label) return;
     if (!series.length) {
       label.textContent = '-';
-      if (nextBtn) nextBtn.disabled = true;
       head.innerHTML = '<th>Rede social</th>';
       const message = !hasAnyIntegration ? 'A integração de redes sociais desta marca ainda não foi conectada.' : 'Aguardando a primeira coleta.';
       body.innerHTML = `<tr><td style="text-align:center;color:var(--muted);padding:20px">${message}</td></tr>`;
@@ -692,29 +802,21 @@
     }
 
     const todayIso = lastDate();
-    if (!milestoneMonth) {
-      const last = parse(todayIso);
-      milestoneMonth = { year: last.getUTCFullYear(), month: last.getUTCMonth() };
-    }
-    const { year, month } = milestoneMonth;
-    label.textContent = `${MONTH_NAMES[month]} de ${year}`;
-    const lastAvailable = parse(todayIso);
-    const atOrAfterCurrentMonth = year > lastAvailable.getUTCFullYear() ||
-      (year === lastAvailable.getUTCFullYear() && month >= lastAvailable.getUTCMonth());
-    if (nextBtn) nextBtn.disabled = atOrAfterCurrentMonth;
-
-    const dates = monthMilestones(year, month);
+    const from = el('startDate').value || series[0].date, to = el('endDate').value || todayIso;
+    label.textContent = `${milestoneDateLabel(from)} a ${milestoneDateLabel(to)}`;
+    const dates = periodMilestones(from, to);
     head.innerHTML = `<th>Rede social</th>${dates.map(date => `<th>${milestoneDateLabel(date)}</th>`).join('')}`;
 
     const toneClass = delta => delta === null ? 'neutral' : delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral';
     body.innerHTML = NETWORKS.map((network, netIndex) => {
       const values = dates.map(date => date > todayIso ? null : valueAtDate(date, network.name));
-      // Sem coleta real dentro da janela (ex.: meses antigos, só um número estimado por mês), o valor
+      // Ganho entre marcos = soma dos novos seguidores do intervalo, a mesma conta do gráfico (saldo real da Meta no
+      // Instagram). Sem coleta real dentro da janela (ex.: meses antigos, só um número estimado por mês), o valor
       // do marco é apenas herdado do anterior - mostrar "0" aí sugeriria estagnação em vez de "sem dado".
       const deltasRow = values.map((value, index) => {
         if (index === 0 || value === null || values[index - 1] === null) return null;
         if (!hasMeasurementInRange(network.name, dates[index - 1], dates[index])) return null;
-        return value - values[index - 1];
+        return newBetween([network], dates[index - 1], dates[index]);
       });
       const known = deltasRow.filter(delta => delta !== null);
       const best = known.length ? Math.max(...known) : null;
@@ -727,16 +829,6 @@
       return `<tr class="milestone-total-row${altClass}"><td class="milestone-row-label"><span class="milestone-row-label-inner"><img class="milestone-icon" src="${network.icon}" alt="">${network.name}</span></td>${totalCells}</tr>` +
         `<tr class="milestone-delta-row${altClass}"><td class="milestone-row-label"></td>${deltaCells}</tr>`;
     }).join('');
-  }
-
-  function shiftMilestoneMonth(delta) {
-    if (!milestoneMonth) return;
-    let { year, month } = milestoneMonth;
-    month += delta;
-    if (month < 0) { month = 11; year -= 1; }
-    if (month > 11) { month = 0; year += 1; }
-    milestoneMonth = { year, month };
-    renderMilestones();
   }
 
   // ------------------------------------------------------------ melhores posts
@@ -1077,7 +1169,7 @@
     host.addEventListener('pointerleave', hide);
   }
 
-  function renderIndicators(points, nets, periodDeltas, net, rate, perDay, span) {
+  function renderIndicators(points, nets, periodDeltas, net, rate, perDay, grain) {
     const needs = days => `Faltam ${days} dia${days === 1 ? '' : 's'}`;
     setText('netGrowth', periodDeltas.length ? signed(net) : '-');
     setTone('netGrowth', periodDeltas.length ? net : 0);
@@ -1086,12 +1178,18 @@
     setText('dailyRate', perDay === null ? '-' : signed(perDay));
     setTone('dailyRate', perDay || 0);
 
+    // Maior/menor crescimento no mesmo agrupamento do gráfico (dia, semana ou mês), para bater com os pontos destacados nele
+    const unit = grain === 'month' ? 'mensal' : grain === 'week' ? 'semanal' : 'diário';
+    setText('bestDayLabel', `Maior crescimento ${unit}`); setText('worstDayLabel', `Menor crescimento ${unit}`);
     if (periodDeltas.length) {
-      const best = periodDeltas.reduce((top, item) => item.delta > top.delta ? item : top);
-      const worst = periodDeltas.reduce((low, item) => item.delta < low.delta ? item : low);
-      setText('bestDay', `${signed(best.delta)} · ${shortDate(best.date)}`);
+      const byBucket = new Map();
+      periodDeltas.forEach(item => { const key = bucketOf(item.date, grain); byBucket.set(key, (byBucket.get(key) || 0) + item.delta); });
+      const list = Array.from(byBucket, ([key, delta]) => ({ delta, label: bucketLabel(key, grain) }));
+      const best = list.reduce((top, item) => item.delta > top.delta ? item : top);
+      const worst = list.reduce((low, item) => item.delta < low.delta ? item : low);
+      setText('bestDay', `${signed(best.delta)} · ${best.label}`);
       setTone('bestDay', best.delta);
-      setText('worstDay', `${signed(worst.delta)} · ${shortDate(worst.date)}`);
+      setText('worstDay', `${signed(worst.delta)} · ${worst.label}`);
       setTone('worstDay', worst.delta);
     } else {
       setText('bestDay', '-'); setText('worstDay', '-');
@@ -1112,14 +1210,8 @@
     const day = parse(last.date);
     const monthStart = iso(new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1)));
     const yearStart = iso(new Date(Date.UTC(day.getUTCFullYear(), 0, 1)));
-    // sem um ponto de abertura anterior ao último, não há intervalo para acumular:
-    // devolver 0 aí passaria a ideia de "não cresceu" em vez de "ainda não dá para saber"
-    const accumulated = since => {
-      const before = series.filter(point => point.date < since).pop();
-      const opening = before || series.find(point => point.date >= since);
-      if (!opening || opening.date === last.date) return null;
-      return totalAt(last, nets) - totalAt(opening, nets);
-    };
+    // soma dos novos seguidores desde o início do mês/ano (mesma base do gráfico), não a diferença bruta entre totais
+    const accumulated = since => newBetween(nets, iso(addDays(parse(since), -1)), last.date);
     const mtd = accumulated(monthStart), ytd = accumulated(yearStart);
     setText('mtd', mtd === null ? '-' : signed(mtd));
     setTone('mtd', mtd || 0);
@@ -1159,7 +1251,7 @@
     setText('reach', reachValues.length ? format(reach) : '-');
     setText('followConversion', conversion === null ? '-' : `${conversion.toFixed(2).replace('.', ',')}%`);
     setText('avgFollows', `${rounded(follows / daily.length)}/dia`); setTone('avgFollows', follows);
-    setText('insightsSummary', `Dados confirmados pela Meta em ${daily.length} dia${daily.length === 1 ? '' : 's'} fechado${daily.length === 1 ? '' : 's'} no período.`);
+    setText('insightsSummary', `Dados confirmados pela Meta em ${daily.length} de ${points.length} dia${points.length === 1 ? '' : 's'} do período. Saldo = novos − deixaram de seguir = os novos seguidores do gráfico nesses dias.`);
     setText('insightsPeriod', `${daily.length} dia${daily.length === 1 ? '' : 's'}`);
 
     renderTileSpark('grossFollowsSpark', followsSeries, 'area', 'var(--success)', dateSeries, 'Novos seguidores', 'count');
@@ -1169,48 +1261,45 @@
     renderTileSpark('followConversionSpark', conversionSeries, 'area', 'var(--accent)', dateSeries, 'Conversão', 'percent');
     renderTileSpark('avgFollowsSpark', followsSeries, 'area', 'var(--success)', dateSeries, 'Novos seguidores', 'count');
   }
+  // Cada comparativo mostra os dois lados pelo nome exato (data, intervalo ou mês) e, em destaque, a diferença.
+  // Tudo em novos seguidores, a mesma conta do gráfico.
   function renderComparatives(points, nets, periodDeltas) {
-    const last = points[points.length - 1];
-    const compareBack = days => {
-      const target = iso(addDays(parse(last.date), -days));
-      const before = valueOn(target, nets);
-      if (before === null || !series.some(point => point.date <= target)) return null;
-      return totalAt(last, nets) - before;
+    const last = points[points.length - 1], first = points[0];
+    const shift = (date, days) => iso(addDays(parse(date), days));
+    const sg = value => value === null ? '-' : signed(value);
+    // novos seguidores de from até to, inclusive
+    const sum = (from, to) => newBetween(nets, shift(from, -1), to);
+    const range = (from, to) => from === to ? shortDate(from) : `${shortDate(from)} a ${shortDate(to)}`;
+    // lado = { label, value }; mostra "rótulo: valor → rótulo: valor" e a diferença em destaque
+    const compare = (id, prev, cur, fmt, unit = '') => {
+      const diff = prev.value === null || cur.value === null ? null : cur.value - prev.value;
+      const result = diff === null ? null : fmt ? fmt(diff, prev.value) : signed(diff);
+      if (result === null) { setText(id, '-'); setText(id + 'Detail', ''); return; }
+      setText(id, result + (fmt ? '' : unit)); setTone(id, diff);
+      setText(id + 'Detail', `${prev.label}: ${sg(prev.value)}${unit} → ${cur.label}: ${sg(cur.value)}${unit}`);
     };
-    const show = (id, value) => { setText(id, value === null ? '-' : signed(value)); if (value !== null) setTone(id, value); };
-    show('cmpDay', periodDeltas.length ? periodDeltas[periodDeltas.length - 1].delta : null);
-    show('cmpWeek', compareBack(7));
-    show('cmpMonth', compareBack(30));
+    const side = (from, to, label, divisor) => { const v = sum(from, to); return { label: label || range(from, to), value: v === null ? null : v / (divisor || 1) }; };
+    compare('cmpDay', side(shift(last.date, -1), shift(last.date, -1)), side(last.date, last.date));
+    compare('cmpWeek', side(shift(last.date, -13), shift(last.date, -7)), side(shift(last.date, -6), last.date));
+
+    // mês: o mês do último dia contra o mês anterior, nos mesmos primeiros dias (ex.: 1 a 13 de agosto x 1 a 13 de setembro)
+    const lastDay = parse(last.date), elapsed = lastDay.getUTCDate();
+    const curStart = iso(new Date(Date.UTC(lastDay.getUTCFullYear(), lastDay.getUTCMonth(), 1)));
+    const prevStartDate = new Date(Date.UTC(lastDay.getUTCFullYear(), lastDay.getUTCMonth() - 1, 1));
+    const prevStart = iso(prevStartDate), prevEnd = iso(new Date(Math.min(addDays(prevStartDate, elapsed - 1), monthEnd(prevStartDate))));
+    const monthName = (date, to) => `${MONTH_NAMES[parse(date).getUTCMonth()]} (1 a ${parse(to).getUTCDate()})`;
+    compare('cmpMonth', side(prevStart, prevEnd, monthName(prevStart, prevEnd)), side(curStart, last.date, monthName(curStart, last.date)));
 
     // período anterior de mesmo tamanho, imediatamente antes do início da janela
-    const first = points[0];
-    const windowDays = Math.max(1, dayDiff(first.date, last.date));
-    const previousFrom = iso(addDays(parse(first.date), -windowDays));
-    const previousPoints = inRange(series, previousFrom, first.date);
-    const previousDeltas = deltas(previousPoints, nets);
-    const currentNet = periodDeltas.reduce((sum, item) => sum + item.delta, 0);
-    const previousNet = previousDeltas.reduce((sum, item) => sum + item.delta, 0);
-    if (!previousDeltas.length || !previousNet) {
-      setText('cmpPeriod', '-');
-    } else {
-      const variation = (currentNet - previousNet) / Math.abs(previousNet) * 100;
-      setText('cmpPeriod', percent(variation));
-      setTone('cmpPeriod', variation);
-    }
+    const windowDays = dayDiff(first.date, last.date) + 1;
+    const prevPeriod = side(shift(first.date, -windowDays), shift(first.date, -1)), curPeriod = side(first.date, last.date);
+    compare('cmpPeriod', prevPeriod, curPeriod, (diff, prev) => prev ? percent(diff / Math.abs(prev) * 100) : null);
 
-    const recent = periodDeltas.slice(-7), earlier = periodDeltas.slice(-14, -7);
-    if (recent.length < 7 || earlier.length < 7) {
-      setText('cmpAccel', 'Faltam dados de 14 dias');
-    } else {
-      const now = recent.reduce((sum, item) => sum + item.delta, 0) / 7;
-      const before = earlier.reduce((sum, item) => sum + item.delta, 0) / 7;
-      const change = now - before;
-      setText('cmpAccel', `${signed(change)} por dia`);
-      setTone('cmpAccel', change);
-    }
+    // aceleração: média por dia dos últimos 7 dias contra a dos 7 anteriores
+    compare('cmpAccel', side(shift(last.date, -13), shift(last.date, -7), null, 7), side(shift(last.date, -6), last.date, null, 7), null, '/dia');
 
     if (periodDeltas.length < 7) {
-      setText('cmpWeekday', 'Faltam dados de 7 dias');
+      setText('cmpWeekday', 'Faltam dados de 7 dias'); setText('cmpWeekdayDetail', '');
     } else {
       const byWeekday = new Map();
       periodDeltas.forEach(item => {
@@ -1222,6 +1311,7 @@
         .map(([weekday, list]) => ({ weekday, average: list.reduce((sum, value) => sum + value, 0) / list.length }))
         .sort((a,b) => b.average - a.average);
       setText('cmpWeekday', `${WEEKDAYS[ranked[0].weekday]} · ${signed(ranked[0].average)}`);
+      setText('cmpWeekdayDetail', 'Média de novos seguidores nesse dia da semana');
       setTone('cmpWeekday', ranked[0].average);
     }
   }
@@ -1287,7 +1377,7 @@
     if (pageVisible) reveal(); else onPageVisible = reveal;
   }
 
-  function renderGoal(last, current, nets, periodDeltas, perDay) {
+  function renderGoal(last, points, nets) {
     const blank = message => {
       setText('goalSummary', message);
       setText('goalStatus', 'Meta');
@@ -1324,7 +1414,10 @@
 
     // Todas as projeções usam o último total que aparece no filtro e a média do período selecionado.
     const requiredDaily = deadline ? remaining / daysToDeadline : null;
-    const pace = perDay;
+    // Ritmo e base das projeções só das redes que têm meta (com "Todas", as sem meta não entram), na mesma conta
+    // do gráfico: média dos novos seguidores diários do período filtrado.
+    const goalDeltas = deltas(points, entries);
+    const pace = goalDeltas.length ? goalDeltas.reduce((sum, item) => sum + item.delta, 0) / Math.max(1, goalDeltas.reduce((sum, item) => sum + item.days, 0)) : null;
     setText('goalNeeded', requiredDaily === null ? 'Sem prazo definido' : `${rounded(requiredDaily)}/dia`);
     if (pace === null || pace <= 0) {
       setText('goalPace', pace === null ? '-' : `${rounded(pace)}/dia`);
@@ -1346,8 +1439,8 @@
 
     const daysLeftInMonth = dayDiff(last.date, iso(monthEnd(referenceDate)));
     const daysLeftInYear = dayDiff(last.date, `${referenceDate.getUTCFullYear()}-12-31`);
-    setText('goalEndMonth', format(Math.round(current + pace * Math.max(0, daysLeftInMonth))));
-    setText('goalEndYear', format(Math.round(current + pace * Math.max(0, daysLeftInYear))));
+    setText('goalEndMonth', format(Math.round(reached + pace * Math.max(0, daysLeftInMonth))));
+    setText('goalEndYear', format(Math.round(reached + pace * Math.max(0, daysLeftInYear))));
 
     const eta = addDays(referenceDate, Math.ceil(remaining / pace));
     setText('goalProjection', `${String(eta.getUTCDate()).padStart(2,'0')}/${String(eta.getUTCMonth()+1).padStart(2,'0')}/${eta.getUTCFullYear()}`);
@@ -1371,16 +1464,15 @@
     setText('growthPeriod', '-');
     renderGoalRing({ values:{} }, activeNetworks());
     el('channelContext').textContent = 'Todas';
-    el('legend').innerHTML = '';
     el('chartY').innerHTML = '';
     el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">${message}<br>Instagram, Facebook e YouTube são coletados automaticamente; os demais canais ainda não têm coleta própria.</p>`;
     el('platforms').innerHTML = NETWORKS.map(network => `<div class="platform" style="cursor:default"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${network.connected ? 'Aguardando coleta' : 'Sem API conectada'}</small></span><span class="platform-delta"><strong class="neutral">-</strong></span></div>`).join('');
     el('table').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted)">${message}</td></tr>`;
     const pager = el('historyPager'); if (pager) pager.hidden = true;
     INSIGHT_SPARK_IDS.forEach(id => renderTileSpark(id, [], 'area', null));
-    ['netGrowth','growthRate','dailyRate','bestDay','worstDay','ma7','ma30','mtd','ytd','cmpDay','cmpWeek','cmpMonth','cmpPeriod','cmpAccel','cmpWeekday','grossFollows','unfollows','insightNet','reach','followConversion','avgFollows']
+    ['netGrowth','growthRate','dailyRate','bestDay','worstDay','ma7','ma30','mtd','ytd','cmpDay','cmpWeek','cmpMonth','cmpPeriod','cmpAccel','cmpWeekday','cmpDayDetail','cmpWeekDetail','cmpMonthDetail','cmpPeriodDetail','cmpAccelDetail','cmpWeekdayDetail','grossFollows','unfollows','insightNet','reach','followConversion','avgFollows']
       .forEach(id => { setText(id, '-'); const node = el(id); if (node) node.className = ''; });
-    renderGoal({ values:{} }, 0, activeNetworks(), [], null);
+    renderGoal({ values:{} }, [], activeNetworks());
   }
 
   // ---------------------------------------------------------------- controles
@@ -1499,9 +1591,6 @@
       && (!postsSortControl || !postsSortControl.contains(event.target))) closeMenus();
   });
   document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenus(); });
-  const milestonePrevBtn = el('milestonePrev'), milestoneNextBtn = el('milestoneNext');
-  if (milestonePrevBtn) milestonePrevBtn.addEventListener('click', () => shiftMilestoneMonth(-1));
-  if (milestoneNextBtn) milestoneNextBtn.addEventListener('click', () => shiftMilestoneMonth(1));
   if (postsFormatTrigger) postsFormatTrigger.addEventListener('click', () => {
     const opening = postsFormatMenu.hidden;
     closeMenus();
@@ -1692,10 +1781,8 @@
       followers.push(`<b>Crescimento total:</b> a comunidade ${r.net >= 0 ? 'ganhou' : 'perdeu'} ${plural(r.net, 'seguidor', 'seguidores')} no período (saldo líquido).`);
       if (r.perDay !== null) followers.push(`<b>Média por dia:</b> <b>${signed(r.perDay)}</b> seguidores ao dia.`);
     } else followers.push('<b>Crescimento total e média por dia:</b> sem medições suficientes no período.');
-    const bestFollows = r.insightDays.length ? r.insightDays.reduce((top, day) => day.follows > top.follows ? day : top) : null;
     const worstUnfollows = r.insightDays.length ? r.insightDays.reduce((top, day) => day.unfollows > top.unfollows ? day : top) : null;
-    if (bestFollows) followers.push(`<b>Dia com mais novos seguidores:</b> <b>${postDateLabel(bestFollows.date)}</b>, com ${plural(bestFollows.follows, 'novo seguidor', 'novos seguidores')}.`);
-    else if (r.bestDelta && r.bestDelta.delta > 0) followers.push(`<b>Dia com mais novos seguidores:</b> <b>${postDateLabel(r.bestDelta.date)}</b>, com saldo de <b>${signed(r.bestDelta.delta)}</b>.`);
+    if (r.bestDelta && r.bestDelta.delta > 0) followers.push(`<b>Dia com mais novos seguidores:</b> <b>${postDateLabel(r.bestDelta.date)}</b>, com saldo de <b>${signed(r.bestDelta.delta)}</b>.`);
     else followers.push('<b>Dia com mais novos seguidores:</b> sem dado disponível no período.');
     if (worstUnfollows) followers.push(`<b>Dia com mais unfollows:</b> <b>${postDateLabel(worstUnfollows.date)}</b>, com ${plural(worstUnfollows.unfollows, 'pessoa que deixou', 'pessoas que deixaram')} de seguir.`);
     else followers.push('<b>Dia com mais unfollows:</b> esse dado só existe para o Instagram e não há registro no período.');

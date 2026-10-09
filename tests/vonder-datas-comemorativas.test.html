@@ -1,0 +1,89 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste do preset Datas comemorativas (VONDER)</title>
+<body data-result="running">RUNNING</body>
+<script src="../post-editor-vonder-datas-comemorativas.js"></script>
+<script src="../post-editor-saved-arts.js"></script>
+<script>
+// Roda em Chrome headless: chrome --headless=new --dump-dom file:///.../tests/vonder-datas-comemorativas.test.html
+try {
+  const T = POST_EDITOR_CUSTOM_PRESETS['']['Datas comemorativas'].test;
+  const eq = (a, b, label) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(label + '\n  esperado: ' + JSON.stringify(b) + '\n  obtido:   ' + JSON.stringify(a)); };
+  const ok = (cond, label) => { if (!cond) throw new Error(label); };
+  const ctx = document.createElement('canvas').getContext('2d');
+  const chars = (text, b) => text.split('').map(c => ({ c, b: !!b, i: false, u: false }));
+  const plain = line => line.map(ch => ch.c).join('');
+
+  // pontas: 0 e 1 são as duas artes de referência; as demais saem do sorteio, sempre iguais para a mesma semente
+  eq(T.shapeFor(0).top[0], [0, 27], 'forma 0 (Vendedor/Encanador)');
+  eq(T.shapeFor(1).bot[T.shapeFor(1).bot.length - 1], [1, -62], 'forma 1 (Agricultor)');
+  for (let seed = 2; seed < 60; seed++) {
+    const a = T.shapeFor(seed), b = T.shapeFor(seed);
+    eq(a, b, 'semente ' + seed + ' repetível');
+    [a.top, a.bot].forEach(edge => {
+      eq(edge[0][0], 0, 'borda esquerda em x=0');
+      ok(edge[edge.length - 1][0] >= .98 && edge[edge.length - 1][0] <= 1, 'borda direita perto de x=1 (semente ' + seed + ')');
+      ok(edge.length >= 4, 'pontas suficientes (semente ' + seed + ')');
+      for (let i = 1; i < edge.length; i++) ok(edge[i][0] > edge[i - 1][0], 'x crescente (semente ' + seed + ')');
+    });
+    ok(a.top.slice(1, -1).every(p => p[1] >= -45 && p[1] <= 40), 'pontas do topo dentro do limite (semente ' + seed + ')');
+    ok(a.bot.slice(1, -1).every(p => p[1] >= -25 && p[1] <= 50), 'pontas da base dentro do limite (semente ' + seed + ')');
+  }
+  ok(JSON.stringify(T.shapeFor(2)) !== JSON.stringify(T.shapeFor(3)), 'sementes diferentes dão formas diferentes');
+
+  // quebra de linha: nenhuma linha passa da largura (exceto palavra sozinha maior que ela), as palavras se mantêm e \n força quebra
+  const text = 'um dois tres quatro cinco seis sete oito nove dez', size = 20, maxW = 140;
+  const lines = T.wrap(ctx, 'yellow', chars(text), maxW, size);
+  ok(lines.length > 1, 'texto longo quebra em mais de uma linha');
+  lines.forEach(line => ok(line.length === 0 || plain(line).indexOf(' ') < 0 || T.width(ctx, 'yellow', line, size) <= maxW, 'linha dentro da largura: ' + plain(line)));
+  eq(lines.map(plain).join(' '), text, 'quebra preserva todas as palavras');
+  eq(T.wrap(ctx, 'yellow', chars('a\nb'), 500, size).map(plain), ['a', 'b'], 'quebra forçada');
+  eq(T.wrap(ctx, 'yellow', [], 500, size), [[]], 'texto vazio = uma linha vazia');
+  eq(plain(T.wrap(ctx, 'yellow', chars('antidisestablishmentarianism'), 40, size)[0]), 'antidisestablishmentarianism', 'palavra maior que a largura fica inteira');
+
+  // texto da forma branca que acompanha a data: com e sem chamada, título sempre em caixa normal
+  eq(T.whiteText('Dia do', 'VENDEDOR'), 'Feliz Dia do Vendedor!', 'feliz + chamada + título');
+  eq(T.whiteText('', 'Natal'), 'Feliz Natal!', 'sem chamada');
+  eq(T.whiteText('  Dia da ', ' Mulher '), 'Feliz Dia da Mulher!', 'espaços sobrando');
+  eq(T.whiteText('Dia de', 'São João Batista'), 'Feliz Dia de São João Batista!', 'nome próprio em caixa mista não é minusculado');
+  eq(T.whiteText('Dia do', 'Trabalhador do Comércio'), 'Feliz Dia do Trabalhador do Comércio!', 'título longo em caixa mista');
+
+  // texto rico: caracteres seguidos com o mesmo estilo viram um trecho só
+  eq(T.runs([{ c: 'a', b: true }, { c: 'b', b: true }, { c: 'c', b: false }]).map(r => [r.t, r.b]), [['ab', true], ['c', false]], 'trechos por estilo');
+  ok(T.ink(ctx, 'day', chars('01', true), 100) <= T.width(ctx, 'day', chars('01', true), 100), 'largura da tinta nunca maior que o avanço');
+
+  // enquadramento da foto: o deslocamento nunca deixa a foto abrir vão na célula
+  eq(T.clampOff(500, 300, 200), 50, 'limite positivo');
+  eq(T.clampOff(-500, 300, 200), -50, 'limite negativo');
+  eq(T.clampOff(30, 300, 200), 30, 'dentro do limite');
+  eq(T.clampOff(30, 200, 200), 0, 'foto do tamanho da célula não anda');
+
+  // tamanho do texto: A↑/A↓ de 5 em 5%, entre 60% e 160%
+  eq(T.bump('title', 1), 1.05, 'A↑');
+  for (let i = 0; i < 30; i++) T.bump('title', 1);
+  eq(T.bump('title', 1), 1.6, 'teto de 160%');
+  for (let i = 0; i < 40; i++) T.bump('yellow', -1);
+  eq(T.bump('yellow', -1), .6, 'piso de 60%');
+
+  // banner da intranet: ordem das fotos é uma permutação válida; a padrão põe as de baixo antes das de cima (como no modelo)
+  eq(T.validOrder([2, 3, 0, 1], 4), true, 'ordem válida');
+  eq(T.validOrder([0, 0, 1, 2], 4), false, 'repetida');
+  eq(T.validOrder([0, 1, 4, 2], 4), false, 'fora da grade');
+  eq(T.validOrder([0, 1], 4), false, 'tamanho errado');
+  eq(T.validOrder(null, 1), false, 'sem ordem');
+  eq(T.bnDefault.four, [2, 3, 0, 1], 'padrão da grade de 4');
+
+  // artes salvas: tamanho da foto que sobe para a nuvem (lado maior limitado, nunca amplia, mantém a proporção)
+  const F = PostEditorSaved.test.fitSize;
+  eq(F(4000, 3000, 1280), [1280, 960], 'foto horizontal grande');
+  eq(F(3000, 4000, 1600), [1200, 1600], 'foto vertical grande');
+  eq(F(800, 600, 1280), [800, 600], 'foto pequena não é ampliada');
+  eq(F(1, 5000, 1280), [1, 1280], 'faixa muito estreita nunca vira 0 px');
+
+  document.body.dataset.result = 'pass';
+  document.body.textContent = 'PASS: pontas (sorteio repetível), quebra de linha, trechos ricos, limite do enquadramento e tamanho do texto';
+} catch (error) {
+  document.body.dataset.result = 'fail';
+  document.body.textContent = 'FAIL: ' + error.message;
+}
+</script>

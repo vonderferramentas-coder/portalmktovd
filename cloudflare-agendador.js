@@ -40,6 +40,7 @@ export function agendaDoMomento(agora) {
     '4:30': 'sync-youtube-analytics-diario.yml',
     '6:15': 'sync-google-trends.yml',
     '7:0': 'backup-portalstore.yml',
+    '7:30': 'limpar-artes-salvas.yml',
     '11:40': 'reconstruir-historico.yml',
     '12:40': 'reconstruir-historico-facebook.yml'
   };

@@ -29,7 +29,7 @@ service cloud.firestore {
     // estas regras por definição) - nenhum caminho legítimo de escrita pelo navegador. Travar
     // pra admin não tira função de ninguém e evita que um usuário comum forje esses números.
     function isCollectedDataDoc(id) {
-      return id.matches('^(followers|posts|youtube-videos|youtube-mentions|facebook-posts|trends)-.*');
+      return id.matches('^(followers|posts|youtube-videos|youtube-mentions|facebook-posts|trends|art-stats)-.*');
     }
 
     match /users/{userId} {
@@ -81,6 +81,22 @@ service cloud.firestore {
         && request.resource.data.lang is string && request.resource.data.lang.size() <= 10
         && request.resource.data.test is bool;
       allow read: if activeUser();
+      allow update, delete: if false;
+    }
+
+    // Fotos das artes salvas do Editor de Posts: 1 documento por foto (id = hash SHA-256 truncado do arquivo original), JPEG já comprimido
+    // no navegador (até ~350 KB; o teto aqui é o limite do documento). Qualquer usuário ativo lê e cria; ninguém altera nem apaga pelo
+    // navegador, só a limpeza diária do GitHub Actions (Admin SDK). Fica de propósito fora do portalStore para não entrar no backup diário.
+    match /artPhotos/{hash} {
+      allow read: if activeUser();
+      allow create: if activeUser()
+        && hash.matches('^[0-9a-f]{32}$')
+        && request.resource.data.keys().hasOnly(['hash', 'data', 'size', 'w', 'h', 'type', 'createdAt', 'createdBy'])
+        && request.resource.data.hash == hash
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.data is bytes && request.resource.data.data.size() <= 700000
+        && request.resource.data.size is int && request.resource.data.size <= 700000
+        && request.resource.data.type in ['image/jpeg', 'image/webp'];
       allow update, delete: if false;
     }
 

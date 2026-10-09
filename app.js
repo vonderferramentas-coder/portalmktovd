@@ -838,6 +838,11 @@
       if(!isCommemorative) select.value='custom';
       box.hidden=!isInstitutional;
       ['mInstitutionalCommemorativeProductsGroup','mContentSuggestionsGroup','mInstitutionalCommemorativeContentFields','mBriefingPreviewGroup','mInstitutionalCommemorativeContentHeading'].forEach(id=>{ const el=$(id); if(el) el.classList.toggle('institutional-hidden',isInstitutional); });
+      const reopenArtBtn=$('mReopenSavedArtBtn');
+      if(reopenArtBtn){
+        reopenArtBtn.hidden=true; delete reopenArtBtn.dataset.artId;
+        if(isInstitutional && editingId && brandHasCommemorativeEditorShortcut()) findSavedArt(editingId).then(art=>{ if(art && $('mReopenSavedArtBtn')===reopenArtBtn){ reopenArtBtn.dataset.artId=art.id; reopenArtBtn.hidden=false; } });
+      }
       const openEditorBtn=$('mOpenInstitutionalCommemorativeEditorBtn');
       if(openEditorBtn){
         const hasTemplate=brandHasCommemorativeEditorShortcut();
@@ -1206,7 +1211,7 @@
     // nome(s) da(s) data(s) comemorativa(s) em "YYYY-MM-DD" (fixas/móveis + personalizadas
     // cadastradas em Configurações), unidos por " · " quando mais de uma cair no mesmo dia -
     // ou null se o dia não corresponder a nenhuma
-    function commemorativeDateName(dateStr){
+    function commemorativeDateNames(dateStr){
       const names = [];
       names.push(...(FIXED_COMMEMORATIVE_DATES[dateStr.slice(5)] || []));
       const year = Number(dateStr.slice(0,4));
@@ -1216,6 +1221,10 @@
         const matches = c.recurring ? c.date.slice(5)===dateStr.slice(5) : c.date===dateStr;
         if(matches) names.push(c.name);
       });
+      return Array.from(new Set(names));
+    }
+    function commemorativeDateName(dateStr){
+      const names = commemorativeDateNames(dateStr);
       return names.length ? names.join(' · ') : null;
     }
 
@@ -1242,11 +1251,33 @@
     // data comemorativa, mas só essas marcas conseguem de fato "Abrir editor de posts" - as
     // demais têm essa opção desabilitada, com aviso, porque não há template pra levá-las lá; só
     // resta seguir com o briefing manual.
-    function brandHasCommemorativeEditorShortcut(){ return BRAND_SUFFIX==='__osten-ferragens' || BRAND_SUFFIX==='__dismatal' || BRAND_SUFFIX==='__dwt'; }
+    function brandHasCommemorativeEditorShortcut(){ return BRAND_SUFFIX==='' || BRAND_SUFFIX==='__osten-ferragens' || BRAND_SUFFIX==='__dismatal' || BRAND_SUFFIX==='__dwt'; }
     function splitCommemorativeTitle(holidayName){
       const match=String(holidayName||'').trim().match(/^(Dia(?:s)?\s+(?:(?:Internacional|Nacional|Mundial)\s+)?(?:do|da|de|dos|das)\s+)(.+)$/i);
       return match ? { prefix:match[1].trim(), title:match[2].trim() } : { prefix:'', title:String(holidayName||'').trim() };
     }
+    // Mais de uma data comemorativa no mesmo dia (ex.: 12/10): cada uma é tratada separadamente - primeiro o usuário escolhe qual,
+    // depois o modal "Como deseja continuar?" (card para briefing / editor de posts) já vem com a data escolhida.
+    function openCommemorativeFromDay(dateStr){
+      const names = commemorativeDateNames(dateStr);
+      if(names.length > 1) openCommemorativePicker(dateStr, names);
+      else openCommemorativeEditorChoice(dateStr, names[0] || commemorativeDateName(dateStr));
+    }
+    function openCommemorativePicker(dateStr, names){
+      const [y,m,d]=dateStr.split('-').map(Number), dateLabel=new Date(y,m-1,d).toLocaleDateString('pt-BR',{ day:'2-digit', month:'long' });
+      $('commemorativePickMessage').textContent = `Há ${names.length} datas comemorativas em ${dateLabel}. Qual delas você quer trabalhar?`;
+      const list = $('commemorativePickList');
+      list.innerHTML = '';
+      names.forEach(name=>{
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'btn ghost'; btn.style.cssText = 'width:100%;justify-content:flex-start;text-align:left';
+        btn.textContent = name;
+        btn.addEventListener('click', ()=>{ closeCommemorativePicker(); openCommemorativeEditorChoice(dateStr, name); });
+        list.appendChild(btn);
+      });
+      $('commemorativePickBackdrop').style.display = 'flex';
+    }
+    function closeCommemorativePicker(){ $('commemorativePickBackdrop').style.display = 'none'; }
     function openCommemorativeEditorChoice(dateStr, holidayName){
       pendingCommemorativeDate={ dateStr, holidayName };
       const [y,m,d]=dateStr.split('-').map(Number),dateLabel=new Date(y,m-1,d).toLocaleDateString('pt-BR',{ day:'2-digit', month:'long' });
@@ -1269,6 +1300,14 @@
         briefingBtn.textContent='Criar postagem';
       }
       $('ostenCommemorativeChoiceBackdrop').style.display='flex';
+      const reopenBtn=$('ostenCommemorativeReopenArt');
+      if(reopenBtn){
+        reopenBtn.hidden=true; delete reopenBtn.dataset.artId;
+        const card=hasTemplate ? findCommemorativeCard(dateStr,holidayName) : null;
+        if(card) findSavedArt(card.id).then(art=>{
+          if(art && pendingCommemorativeDate && pendingCommemorativeDate.dateStr===dateStr && pendingCommemorativeDate.holidayName===holidayName){ reopenBtn.dataset.artId=art.id; reopenBtn.hidden=false; }
+        });
+      }
     }
     function closeCommemorativeEditorChoice(){
       $('ostenCommemorativeChoiceBackdrop').style.display='none';
@@ -1303,11 +1342,30 @@
       pushUndo({type:'create',posts:[post.id]}); redoStack=[];
       return post;
     }
-    function openInstitutionalCommemorativeEditor(dateStr,holidayName){
+    // Artes salvas do Editor de Posts ligadas a um card (documentos "art-draft-*" do portalStore, ver post-editor-saved-arts.js).
+    // Lista curta por marca, com cache de 2 min, só para saber se existe uma arte para reabrir.
+    var SAVED_ART_KEY = 'art-drafts-v1' + BRAND_SUFFIX;
+    var savedArtListCache = null;
+    function findSavedArt(cardId){
+      if(!cardId || !window.PortalFirebase || !window.PortalFirebase.listArtDrafts) return Promise.resolve(null);
+      const fresh = savedArtListCache && Date.now() - savedArtListCache.at < 120000;
+      return (fresh ? Promise.resolve(savedArtListCache.items) : window.PortalFirebase.listArtDrafts(SAVED_ART_KEY, 100).then(items=>{ savedArtListCache = { at:Date.now(), items }; return items; }))
+        .then(items=>{
+          const match = items.filter(i=>i.draft && !i.draft.deletedAt && i.draft.cardId === cardId).sort((a,b)=>(b.draft.updatedAt||0)-(a.draft.updatedAt||0))[0];
+          return match ? { id:match.id, title:match.draft.title } : null;
+        }).catch(()=>null);
+    }
+    function openSavedArt(id){ location.href = 'post-editor.html?art=' + encodeURIComponent(id); }
+    function findCommemorativeCard(dateStr, holidayName){
+      const editoria = commemorativeEditoria(), editoriaName = editoria ? editoria.name : 'Datas comemorativas';
+      return state.posts.find(p=>p.date===dateStr && p.title===holidayName && (Array.isArray(p.editoria)?p.editoria:[p.editoria]).includes(editoriaName)) || null;
+    }
+    function openInstitutionalCommemorativeEditor(dateStr,holidayName,cardId){
       const [y,m,d]=dateStr.split('-').map(Number), parts=splitCommemorativeTitle(holidayName);
       const month=formatCommemorativeMonth(new Date(y,m-1,d).toLocaleDateString('pt-BR',{month:'long'}));
       const eventTitle=BRAND_SUFFIX==='__dwt' ? holidayName : parts.title;
       const params=new URLSearchParams({ eventDay:String(d).padStart(2,'0'), eventMonth:month, eventPrefix:parts.prefix, eventTitle });
+      if(cardId) params.set('cardId', cardId);
       location.href='post-editor.html?'+params.toString();
     }
     // ensureCommemorativeCard só agenda a gravação no servidor (setTimeout 0); navegar pro Editor de
@@ -1318,9 +1376,9 @@
       if(!pendingCommemorativeDate || !brandHasCommemorativeEditorShortcut()) return;
       const { dateStr,holidayName }=pendingCommemorativeDate;
       closeCommemorativeEditorChoice();
-      ensureCommemorativeCard(dateStr,holidayName);
+      const card=ensureCommemorativeCard(dateStr,holidayName);
       if(postSync) await postSync.flush();
-      openInstitutionalCommemorativeEditor(dateStr,holidayName);
+      openInstitutionalCommemorativeEditor(dateStr,holidayName,card.id);
     }
     function confirmCommemorativeDatePost(){
       if(!pendingCommemorativeDate) return;
@@ -1356,7 +1414,7 @@
       // pára a propagação pro mesmo motivo que .date/.day-count acima (senão também abriria
       // "Postagens do dia")
       const holidayEl = cell.querySelector('.holiday-name');
-      if(holidayEl) holidayEl.addEventListener('click', (ev)=>{ ev.stopPropagation(); const holidayName=commemorativeDateName(dateStr); openCommemorativeEditorChoice(dateStr,holidayName); });
+      if(holidayEl) holidayEl.addEventListener('click', (ev)=>{ ev.stopPropagation(); openCommemorativeFromDay(dateStr); });
       // clicar em qualquer área do card do dia (fora de um post específico, que já abre a edição
       // dele) também abre "Postagens do dia" - mesmo destino do clique na data/contador acima.
       // Cards de postagem, o badge "+N" e o "+ Adicionar postagem" já param a propagação nos
@@ -2290,7 +2348,7 @@
         closeEditState();
         if(openInstitutionalEditor){
           if(postSync) await postSync.flush();
-          openInstitutionalCommemorativeEditor(date,title);
+          openInstitutionalCommemorativeEditor(date,title,pid);
         }
         return;
       }
@@ -2314,7 +2372,7 @@
       redoStack = [];
       if(openInstitutionalEditor){
         if(postSync) await postSync.flush();
-        openInstitutionalCommemorativeEditor(date,title);
+        openInstitutionalCommemorativeEditor(date,title,p.id);
         return;
       }
       // limpa o modal para a próxima criação
@@ -4731,9 +4789,12 @@
     if($('confirmApplyEditoria')) $('confirmApplyEditoria').addEventListener('click', confirmApplyEditoriaModal);
     wireModalDismiss('scheduleWarningBackdrop', closeScheduleWarning, '#scheduleWarningCloseBtn');
     if($('scheduleWarningOkBtn')) $('scheduleWarningOkBtn').addEventListener('click', closeScheduleWarning);
+    wireModalDismiss('commemorativePickBackdrop', closeCommemorativePicker, '#commemorativePickCloseBtn');
     wireModalDismiss('ostenCommemorativeChoiceBackdrop', closeCommemorativeEditorChoice, '#ostenCommemorativeChoiceCloseBtn');
 if($('ostenCommemorativeCreateBriefing')) $('ostenCommemorativeCreateBriefing').addEventListener('click', createCommemorativeBriefingFromChoice);
 if($('ostenCommemorativeOpenEditor')) $('ostenCommemorativeOpenEditor').addEventListener('click', openCommemorativeEditorDirect);
+if($('ostenCommemorativeReopenArt')) $('ostenCommemorativeReopenArt').addEventListener('click', ()=>{ const id=$('ostenCommemorativeReopenArt').dataset.artId; if(id) openSavedArt(id); });
+if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()=>{ const id=$('mReopenSavedArtBtn').dataset.artId; if(id) openSavedArt(id); });
     // "‹ Voltar" do modal de postagem: só aparece quando ele foi aberto a partir de uma linha do
     // modal "Aplicar editoria" (ver renderApplyEditoriaModal) - fechar aqui também revela essa
     // lista de volta, igual ao "X", mas com o rótulo certo pra esse contexto

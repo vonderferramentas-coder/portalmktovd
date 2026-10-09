@@ -430,6 +430,13 @@
       margin-bottom: 7px
     }
 
+    .metric small {
+      display: block;
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 6px
+    }
+
     .metric strong {
       display: block;
       font-size: 18px;
@@ -923,6 +930,66 @@
       z-index: 2
     }
 
+    .line-point.is-high {
+      background: var(--success) !important
+    }
+
+    .line-point.is-low {
+      background: var(--danger) !important
+    }
+
+    .line-drop {
+      position: absolute;
+      width: 0;
+      border-left: 1.5px dashed;
+      pointer-events: none;
+      z-index: 1
+    }
+
+    .line-drop-label {
+      position: absolute;
+      transform: translateX(7px);
+      display: flex;
+      flex-direction: column;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 1
+    }
+
+    .line-drop-label.is-left {
+      transform: translateX(calc(-100% - 7px));
+      text-align: right
+    }
+
+    .line-drop-label small {
+      font-size: 10px;
+      font-weight: 600
+    }
+
+    .line-drop-label b {
+      font-size: 13px;
+      font-weight: 800
+    }
+
+    .line-drop.is-high {
+      border-color: var(--success)
+    }
+
+    .line-drop.is-low {
+      border-color: var(--danger)
+    }
+
+    .line-drop-label.is-high b {
+      color: var(--success)
+    }
+
+    .line-drop-label.is-low b {
+      color: var(--danger)
+    }
+
     .line-point:hover,
     .line-point:focus {
       transform: translate(-50%, -50%) scale(1.35);
@@ -1085,25 +1152,31 @@
       color: var(--muted)
     }
 
-    .legend {
-      display: flex;
-      gap: 11px;
-      flex-wrap: wrap;
-      justify-content: flex-end
+    .chart-mode {
+      display: inline-flex;
+      gap: 2px;
+      padding: 3px;
+      background: var(--surface-muted);
+      border-radius: 9px;
+      align-self: flex-start
     }
 
-    .legend span {
-      font-size: 10px;
+    .chart-mode button {
+      border: 0;
+      background: transparent;
       color: var(--muted);
-      font-weight: 700
+      font-size: 11px;
+      font-weight: 800;
+      font-family: inherit;
+      padding: 6px 11px;
+      border-radius: 7px;
+      cursor: pointer
     }
 
-    .legend i {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      margin-right: 4px
+    .chart-mode button[aria-pressed="true"] {
+      background: var(--card);
+      color: var(--text);
+      box-shadow: var(--shadow-sm)
     }
 
     .platform-card {
@@ -2402,10 +2475,6 @@
         padding: 0
       }
 
-      .legend {
-        display: none
-      }
-
       .chart-y {
         display: none
       }
@@ -2495,15 +2564,11 @@
         <section class="card milestones-card" style="margin-bottom:16px">
           <div class="head">
             <div>
-              <h2>Evolução mensal</h2>
-              <p class="muted">Primeiro e último dia do mês e toda sexta-feira · seguidores no marco e ganho da semana
+              <h2>Evolução no período</h2>
+              <p class="muted">Primeiro e último dia do período e toda sexta-feira (fim de cada mês em períodos longos) · seguidores no marco e ganho entre marcos
               </p>
             </div>
-            <div class="milestone-nav">
-              <button type="button" class="chevron-btn" id="milestonePrev" aria-label="Mês anterior">‹</button>
-              <span class="period-pill" id="milestoneMonthLabel">-</span>
-              <button type="button" class="chevron-btn" id="milestoneNext" aria-label="Próximo mês">›</button>
-            </div>
+            <span class="period-pill" id="milestoneMonthLabel">-</span>
           </div>
           <div class="table-wrap milestone-table-wrap">
             <table class="milestone-table">
@@ -2738,7 +2803,10 @@
               <h2>Evolução de seguidores</h2>
               <p class="muted">Por rede social</p>
             </div>
-            <div class="legend" id="legend"></div>
+            <div class="chart-mode" role="group" aria-label="Tipo de visualização">
+              <button type="button" data-chart-mode="total" aria-pressed="true">Crescimento total</button>
+              <button type="button" data-chart-mode="new" aria-pressed="false">Novos por dia</button>
+            </div>
           </div>
           <div class="chart">
             <div class="chart-y" id="chartY"></div>
@@ -2776,8 +2844,8 @@
             <div class="metric"><span>Crescimento líquido</span><strong id="netGrowth">-</strong></div>
             <div class="metric"><span>Taxa de crescimento</span><strong id="growthRate">-</strong></div>
             <div class="metric"><span>Média líquida por dia</span><strong id="dailyRate">-</strong></div>
-            <div class="metric"><span>Maior crescimento diário</span><strong id="bestDay">-</strong></div>
-            <div class="metric"><span>Menor crescimento diário</span><strong id="worstDay">-</strong></div>
+            <div class="metric"><span id="bestDayLabel">Maior crescimento diário</span><strong id="bestDay">-</strong></div>
+            <div class="metric"><span id="worstDayLabel">Menor crescimento diário</span><strong id="worstDay">-</strong></div>
             <div class="metric"><span>Média móvel 7 dias</span><strong id="ma7">-</strong></div>
             <div class="metric"><span>Média móvel 30 dias</span><strong id="ma30">-</strong></div>
             <div class="metric"><span>Acumulado no mês</span><strong id="mtd">-</strong></div>
@@ -2788,16 +2856,16 @@
           <div class="head">
             <div>
               <h2>Comparativos</h2>
-              <p class="muted">Variação em relação aos períodos anteriores.</p>
+              <p class="muted">Novos seguidores: o que veio antes, o que veio agora e a diferença entre os dois.</p>
             </div><span class="period-pill">Tendência</span>
           </div>
           <div class="metrics" style="margin-top:16px">
-            <div class="metric"><span>vs. dia anterior</span><strong id="cmpDay">-</strong></div>
-            <div class="metric"><span>vs. semana anterior</span><strong id="cmpWeek">-</strong></div>
-            <div class="metric"><span>vs. mês anterior</span><strong id="cmpMonth">-</strong></div>
-            <div class="metric"><span>Variação vs. período anterior</span><strong id="cmpPeriod">-</strong></div>
-            <div class="metric"><span>Aceleração do crescimento</span><strong id="cmpAccel">-</strong></div>
-            <div class="metric"><span>Melhor dia da semana</span><strong id="cmpWeekday">-</strong></div>
+            <div class="metric"><span>Último dia vs. dia anterior</span><strong id="cmpDay">-</strong><small id="cmpDayDetail"></small></div>
+            <div class="metric"><span>Últimos 7 dias vs. 7 anteriores</span><strong id="cmpWeek">-</strong><small id="cmpWeekDetail"></small></div>
+            <div class="metric"><span>Mês atual vs. mês anterior</span><strong id="cmpMonth">-</strong><small id="cmpMonthDetail"></small></div>
+            <div class="metric"><span>Período filtrado vs. período anterior</span><strong id="cmpPeriod">-</strong><small id="cmpPeriodDetail"></small></div>
+            <div class="metric"><span>Aceleração do crescimento</span><strong id="cmpAccel">-</strong><small id="cmpAccelDetail"></small></div>
+            <div class="metric"><span>Melhor dia da semana</span><strong id="cmpWeekday">-</strong><small id="cmpWeekdayDetail"></small></div>
           </div>
         </section>
         </section>
@@ -2810,7 +2878,7 @@
           </div>
           <div class="metrics" style="margin-top:16px">
             <div class="metric metric-spark">
-              <span>Novos seguidores</span><strong id="grossFollows">-</strong>
+              <span>Novos seguidores (bruto)</span><strong id="grossFollows">-</strong>
               <div class="tile-spark" id="grossFollowsSpark"></div>
             </div>
             <div class="metric metric-spark">
@@ -2822,15 +2890,15 @@
               <div class="tile-spark" id="insightNetSpark"></div>
             </div>
             <div class="metric metric-spark">
-              <span>Alcance</span><strong id="reach">-</strong>
+              <span>Alcance (soma dos dias)</span><strong id="reach">-</strong>
               <div class="tile-spark" id="reachSpark"></div>
             </div>
             <div class="metric metric-spark">
-              <span>Conversão alcance → follow</span><strong id="followConversion">-</strong>
+              <span>Conversão (novos ÷ alcance diário)</span><strong id="followConversion">-</strong>
               <div class="tile-spark" id="followConversionSpark"></div>
             </div>
             <div class="metric metric-spark">
-              <span>Média de novos por dia</span><strong id="avgFollows">-</strong>
+              <span>Média de novos (bruto) por dia</span><strong id="avgFollows">-</strong>
               <div class="tile-spark" id="avgFollowsSpark"></div>
             </div>
           </div>

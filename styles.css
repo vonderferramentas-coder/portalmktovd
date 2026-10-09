@@ -733,6 +733,8 @@
     .modal-header-title{display:flex;align-items:center;gap:6px;min-width:0}
     .modal-body{flex:1 1 auto;overflow-y:auto;padding:16px 18px}
     .modal-footer{flex:0 0 auto;display:flex;gap:8px;justify-content:flex-end;padding:14px 18px;border-top:1px solid var(--border)}
+    /* escolha da data comemorativa com arte já salva: 3 botões não cabem lado a lado; empilha com o principal em cima */
+    .modal-footer:has(#ostenCommemorativeReopenArt:not([hidden])){flex-direction:column-reverse;align-items:stretch}
     /* modal sem rodapé de botões (ex: "Postagens do dia") - o body já encosta no canto de baixo */
     .modal-body:last-child{padding-bottom:18px}
     /* Botão "X" (e o "⋮" de mais ações) - agora um item normal na linha do header, não mais
