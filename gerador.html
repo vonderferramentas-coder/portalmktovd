@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Gerador</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="auth.css">
+    <script>document.documentElement.classList.add('auth-pending')</script>
+    <script src="firebase-config.js"></script>
+    <script type="module" src="auth-guard.js"></script>
+    <style>
+        .gen { max-width: 1120px; margin: auto; padding-bottom: 44px }
+        .gen-hero { position: relative; overflow: hidden; margin-top: 24px; padding: 36px; border: 1px solid var(--border); border-radius: var(--radius-lg, 20px); background: linear-gradient(135deg, var(--accent-weak) 0%, var(--card) 62%) }
+        .gen-hero::after { content: ""; position: absolute; right: -90px; top: -90px; width: 300px; height: 300px; border-radius: 50%; background: var(--accent); opacity: .10; pointer-events: none }
+        .gen-hero-copy { position: relative; max-width: 620px }
+        .gen-hero-copy h2 { margin: 8px 0 10px; font-size: 30px; line-height: 1.15 }
+        .gen-hero-copy p { margin: 0; font-size: 15px; line-height: 1.55; color: var(--muted) }
+        .gen-grid { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; margin-top: 28px }
+        .gen-card { display: flex; align-items: center; gap: 14px; padding: 18px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); color: var(--text); text-decoration: none; box-shadow: var(--shadow-sm); transition: transform .14s, border-color .14s, box-shadow .14s }
+        .gen-card:hover, .gen-card:focus-visible { transform: translateY(-2px); border-color: var(--accent); box-shadow: var(--shadow-md); outline: none }
+        .gen-card[hidden] { display: none !important }
+        .gen-card-icon { flex-shrink: 0; width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; background: var(--accent-weak); color: var(--accent-ink) }
+        .gen-card-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0 }
+        .gen-card-tag { font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--muted) }
+        .gen-card-copy strong { font-size: 16px }
+        .gen-card-copy small { font-size: 12.5px; line-height: 1.45; color: var(--muted) }
+        .gen-card-arrow { margin-left: auto; font-size: 18px; color: var(--muted); transition: transform .14s, color .14s }
+        .gen-card:hover .gen-card-arrow { transform: translateX(3px); color: var(--accent-ink) }
+        @media (max-width: 560px) { .gen-hero { padding: 22px } .gen-hero-copy h2 { font-size: 24px } .gen-grid { grid-template-columns: 1fr } }
+    </style>
+</head>
+
+<body>
+    <div class="portal-shell">
+        <aside class="portal-sidebar" id="portalSidebar"></aside>
+        <main class="portal-main gen">
+            <header>
+                <span class="page-kicker">Criação</span>
+                <h1>Gerador</h1>
+                <p class="page-subtitle">Todas as ferramentas de geração de peças em um só lugar.</p>
+            </header>
+
+            <section class="gen-hero" aria-labelledby="genHeroTitle">
+                <div class="gen-hero-copy">
+                    <span class="page-kicker">Produção gráfica</span>
+                    <h2 id="genHeroTitle">O que você quer gerar hoje?</h2>
+                    <p>Cartazes, informativos, cartões, QR Codes, links rastreáveis e códigos de barras. Escolha uma opção para começar.</p>
+                </div>
+                <div class="gen-grid" id="genGrid">
+        <a class="gen-card" href="cartaz-generator.html"><span class="gen-card-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="m8 17 3-4 2 2.5 1.5-2 1.5 3.5"/></svg></span><span class="gen-card-copy"><span class="gen-card-tag">Cartazes</span><strong>Gerador de Cartazes</strong><small>Monte cartazes a partir da planilha tratada, com fotos automáticas e códigos de barras.</small></span><span class="gen-card-arrow" aria-hidden="true">→</span></a>
+        <a class="gen-card" href="consolidado-generator.html"><span class="gen-card-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM15 15h2v2h-2zM18 14h2v4h-2zM14 19h4v1h-4z"/></svg></span><span class="gen-card-copy"><span class="gen-card-tag">Informativo</span><strong>Gerador de Consolidado</strong><small>Transforme a planilha mensal em um informativo com fotos, links e PDF.</small></span><span class="gen-card-arrow" aria-hidden="true">→</span></a>
+        <a class="gen-card" href="business-card-generator.html"><span class="gen-card-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2"/><circle cx="8" cy="10.5" r="1.8"/><path d="M5.2 15.6c.5-1.4 1.5-2 2.8-2s2.3.6 2.8 2"/><path d="M14 9.5h5M14 12.5h4M14 15.5h3"/></svg></span><span class="gen-card-copy"><span class="gen-card-tag">Cartões</span><strong>Gerador de Cartões</strong><small>Importe dados e gere cartões de visita prontos para impressão.</small></span><span class="gen-card-arrow" aria-hidden="true">→</span></a>
+        <a class="gen-card" href="qr-code-generator.html"><span class="gen-card-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 007.07 0l3-3a5 5 0 00-7.07-7.07l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.07 0l-3 3a5 5 0 007.07 7.07l1.7-1.7"/></svg></span><span class="gen-card-copy"><span class="gen-card-tag">QR Codes e links</span><strong>Gerador de QR Codes<br>e Links Rastreáveis</strong><small>Gere QR Codes ou só o link rastreável, e acompanhe as visitas de cada um.</small></span><span class="gen-card-arrow" aria-hidden="true">→</span></a>
+        <a class="gen-card" href="barcode-generator.html"><span class="gen-card-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5v14M8 5v14M12 5v14M15 5v14M20 5v14"/><path d="M6 5v14" stroke-width="3"/><path d="M17.5 5v14" stroke-width="3"/></svg></span><span class="gen-card-copy"><span class="gen-card-tag">Códigos de barras</span><strong>Gerador de<br>Código de Barras</strong><small>Gere códigos de barras em PNG ou WMF a partir de planilha ou digitação.</small></span><span class="gen-card-arrow" aria-hidden="true">→</span></a>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="portal-shell.js"></script>
+</body>
+
+</html>

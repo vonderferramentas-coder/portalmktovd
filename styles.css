@@ -1086,3 +1086,20 @@
 .cg-fmt-item:active { transform: scale(.95); }
 .cg-fmt-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 @media print { .cg-fmt { display: none !important; } }
+
+    /* Gerador: item do menu com dropdown dos geradores (ver renderNavGroupHtml em portal-shell.js) */
+    .portal-nav-parent-row{position:relative}
+    .portal-nav-parent-row .portal-nav-item{padding-right:36px}
+    .portal-nav-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:24px;height:24px;display:grid;place-items:center;padding:0;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer}
+    .portal-nav-toggle:hover{background:var(--surface-muted);color:var(--text)}
+    .portal-nav-toggle svg{transition:transform .15s}
+    .portal-nav-group.open .portal-nav-toggle svg{transform:rotate(180deg)}
+    .portal-nav-sub{display:none;flex-direction:column;gap:2px;margin:2px 0 4px 20px;padding-left:8px;border-left:1px solid var(--border)}
+    .portal-nav-group.open .portal-nav-sub{display:flex}
+    .portal-nav-subitem{font-size:12.5px;padding:5px 10px}
+    .portal-nav-subitem svg{width:15px;height:15px}
+    .portal-sidebar.collapsed .portal-nav-sub,.portal-sidebar.collapsed .portal-nav-toggle{display:none}
+    @media (max-width:760px){.portal-nav-sub,.portal-nav-toggle{display:none!important}.portal-nav-parent-row .portal-nav-item{padding-right:11px}}
+    /* a sidebar continua rolando (roda do mouse/teclado) quando o dropdown a deixa mais alta que a tela, mas sem a barra, que comia largura e cortava os rótulos */
+    .portal-sidebar{scrollbar-width:none}
+    .portal-sidebar::-webkit-scrollbar{display:none}

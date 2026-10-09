@@ -501,11 +501,15 @@
       { href:'post-editor.html', label:'Editor de Posts', icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/><path d="m14 18 3-3"/>' },
       // brands: página exclusiva dessas marcas (ids de DEFAULT_BRANDS) - nas demais some do menu
       // e da Início e a própria página é bloqueada; quem aplica é auth-guard.js
-      { href:'cartaz-generator.html', label:'Gerador de Cartazes', brands:['grupo-ovd'], icon:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="m8 17 3-4 2 2.5 1.5-2 1.5 3.5"/>' },
-      { href:'consolidado-generator.html', label:'Gerador de Consolidado', brands:['grupo-ovd'], icon:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h4M14 13h3M7 17h10"/>' },
-      { href:'barcode-generator.html', label:'Código de Barras', icon:'<path d="M4 5v14M8 5v14M12 5v14M15 5v14M20 5v14"/><path d="M6 5v14" stroke-width="3"/><path d="M17.5 5v14" stroke-width="3"/>' },
-      { href:'qr-code-generator.html', label:'Gerador de QR Codes', icon:'<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM15 15h2v2h-2zM18 14h2v4h-2zM14 19h4v1h-4z"/>' },
-      { href:'business-card-generator.html', label:'Gerador de Cartões', icon:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h5M7 14h3M15.5 10.5h2M15.5 14h2"/>' },
+      // Gerador: página-hub (gerador.html) + dropdown com os geradores. A página-hub não entra na lista de permissões
+      // (window.PortalNavItems só leva os filhos): cada gerador continua liberado/bloqueado por página e por marca.
+      { href:'gerador.html', label:'Gerador', icon:'<path d="m12 3 1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z"/><path d="M19 15v4M17 17h4"/><path d="M5 16v3M3.5 17.5h3"/>', children:[
+        { href:'cartaz-generator.html', label:'Gerador de Cartazes', short:'Cartazes', brands:['grupo-ovd'], icon:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="m8 17 3-4 2 2.5 1.5-2 1.5 3.5"/>' },
+        { href:'consolidado-generator.html', label:'Gerador de Consolidado', short:'Consolidado', brands:['grupo-ovd'], icon:'<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM15 15h2v2h-2zM18 14h2v4h-2zM14 19h4v1h-4z"/>' },
+        { href:'barcode-generator.html', label:'Código de Barras', short:'Código de Barras', icon:'<path d="M4 5v14M8 5v14M12 5v14M15 5v14M20 5v14"/><path d="M6 5v14" stroke-width="3"/><path d="M17.5 5v14" stroke-width="3"/>' },
+        { href:'qr-code-generator.html', label:'Gerador de QR Codes', short:'QR Codes e Links', icon:'<path d="M10 13a5 5 0 007.07 0l3-3a5 5 0 00-7.07-7.07l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.07 0l-3 3a5 5 0 007.07 7.07l1.7-1.7"/>' },
+        { href:'business-card-generator.html', label:'Gerador de Cartões', short:'Cartões', icon:'<rect x="2.5" y="5" width="19" height="14" rx="2"/><circle cx="8" cy="10.5" r="1.8"/><path d="M5.2 15.6c.5-1.4 1.5-2 2.8-2s2.3.6 2.8 2"/><path d="M14 9.5h5M14 12.5h4M14 15.5h3"/>' }
+      ] },
       { href:'templates.html', label:'Templates', icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' }
     ] },
     { group:'Mídias Sociais', items:[
@@ -529,22 +533,40 @@
   // montar o checklist de "quais páginas cada perfil pode ver" sem duplicar href/label - ver
   // admin-users.js (renderPermPages) e auth-guard.js (aplica o resultado escondendo item/card +
   // a própria página); permissão continua por página, nunca por grupo.
-  const NAV_LEAF_ITEMS = NAV_ITEMS.flatMap(entry => entry.items || [entry]);
+  const NAV_LEAF_ITEMS = NAV_ITEMS.flatMap(entry => entry.items || [entry]).flatMap(item => item.children || [item]);
   window.PortalNavItems = NAV_LEAF_ITEMS.map(item => ({ href: item.href, label: item.label, defaultHidden: !!item.defaultHidden, brands: item.brands || null }));
   function currentPageFile(){
     return (location.pathname.split('/').pop() || 'index.html');
   }
-  function renderNavItemHtml(item, cur){
+  function renderNavItemHtml(item, cur, cls){
     const active = cur === item.href;
-    return `<a href="${item.href}" class="portal-nav-item${active?' active':''}">${svgIcon(item.icon)}<span>${escapeHtml(item.label)}</span></a>`;
+    return `<a href="${item.href}" class="portal-nav-item${cls?' '+cls:''}${active?' active':''}">${svgIcon(item.icon)}<span>${escapeHtml((cls && item.short) || item.label)}</span></a>`;
   }
+  // item com filhos: linha do item (abre a página-hub) + botão que abre/fecha o dropdown. Nasce fechado; só abre se a pessoa
+  // abriu (a escolha fica lembrada em localStorage). Quando a página atual é de um filho, a linha do item fica destacada.
+  const NAV_GROUP_KEY = 'portal-nav-group-open:';
+  function renderNavGroupHtml(item, cur){
+    const inside = item.children.some(child => child.href === cur);
+    let open = false;
+    try{ open = localStorage.getItem(NAV_GROUP_KEY + item.href) === '1'; }catch(_){}
+    return `<div class="portal-nav-group${open?' open':''}" data-nav-group="${item.href}">
+      <div class="portal-nav-parent-row">${renderNavItemHtml(item, cur, inside ? 'active' : '')}<button type="button" class="portal-nav-toggle" aria-label="Mostrar ou ocultar ${escapeHtml(item.label)}" aria-expanded="${open}">${svgIcon('<path d="m6 9 6 6 6-6"/>', 14)}</button></div>
+      <div class="portal-nav-sub">${item.children.map(child=>renderNavItemHtml(child, cur, 'portal-nav-subitem')).join('')}</div>
+    </div>`;
+  }
+  document.addEventListener('click', ev=>{
+    const btn = ev.target.closest && ev.target.closest('.portal-nav-toggle'); if(!btn) return;
+    const group = btn.closest('.portal-nav-group'), open = group.classList.toggle('open');
+    btn.setAttribute('aria-expanded', String(open));
+    try{ localStorage.setItem(NAV_GROUP_KEY + group.dataset.navGroup, open ? '1' : '0'); }catch(_){}
+  });
   function renderNavHtml(){
     const cur = currentPageFile();
     const html = NAV_ITEMS.map(entry=>{
       if(!entry.items) return renderNavItemHtml(entry, cur);
       return `<div class="portal-nav-section">
         <div class="portal-nav-section-label">${escapeHtml(entry.group)}</div>
-        ${entry.items.map(sub=>renderNavItemHtml(sub, cur)).join('')}
+        ${entry.items.map(sub=>sub.children ? renderNavGroupHtml(sub, cur) : renderNavItemHtml(sub, cur)).join('')}
       </div>`;
     }).join('');
     return `<nav class="portal-nav">${html}</nav>`;
