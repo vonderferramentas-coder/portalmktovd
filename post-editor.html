@@ -312,6 +312,7 @@
               <div class="pe-segmented" id="moveModeControls"><button class="is-active" data-move-mode="background"
                   type="button">Mover fundo</button><button data-move-mode="overlay" type="button">Mover destaque</button>
               </div>
+              <button id="bnRefresh" type="button" class="pe-bn pe-refresh-art" title="Refaz o banner a partir da arte atual: textos, fotos, ordem e enquadramento" hidden>↻ Atualizar informações do banner</button>
               <button id="saveArt" type="button" class="pe-save-art" title="Salva a última versão desta arte para continuar depois" hidden>Salvar arte</button>
             </div>
           </div>
@@ -354,6 +355,14 @@
           <div class="pe-sku-options" id="offerSkuOptions"></div>
           <div class="pe-modal-actions pe-modal-single"><button type="button" id="offerSkuModalCancel">Cancelar</button>
           </div>
+        </div>
+      </div>
+      <div class="pe-modal-overlay" id="confirmBnRefresh" hidden>
+        <div class="pe-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmBnRefreshTitle" aria-describedby="confirmBnRefreshDesc">
+          <button type="button" class="pe-modal-x" id="confirmBnRefreshClose" aria-label="Fechar">×</button>
+          <h3 id="confirmBnRefreshTitle">Atualizar o banner com a arte?</h3>
+          <p id="confirmBnRefreshDesc">Os textos, fotos, ordem e enquadramento que você ajustou só no banner serão descartados e substituídos pelas informações atuais da arte. O post não muda.</p>
+          <div class="pe-modal-actions"><button type="button" id="confirmBnRefreshCancel">Cancelar</button><button type="button" class="pe-modal-primary" id="confirmBnRefreshOk">Atualizar banner</button></div>
         </div>
       </div>
       <div class="pe-modal-overlay" id="confirmLeaveEdit" hidden>

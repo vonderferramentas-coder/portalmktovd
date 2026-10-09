@@ -402,6 +402,22 @@
     c.addEventListener('drop',function(e){var k=at(e),f=e.dataTransfer&&e.dataTransfer.files[0];if(k<0||!f||!/^image/.test(f.type))return;e.preventDefault();loadBnPhoto(k,f)});
     $('bnFile').addEventListener('change',function(){var f=this.files[0];if(f)loadBnPhoto(bnPickK,f)});
     $('bnReset').addEventListener('click',function(){V.bnPh=[];API&&API.redraw()});
+    // força o banner a refletir a arte atual: descarta textos, fotos próprias, ordem e enquadramento do banner (o post não muda)
+    function bnRefresh(){
+      V.bnText={line1:null,line2:null,msg:null};V.bnOrder=null;V.bnPh=[];V.bnMissing=[null,null,null,null];V.bnPhoto.forEach(function(b,k){dropBn(k)});
+      ['bnLine1','bnLine2','bnMsg'].forEach(function(id){$(id).blur()});
+      renderBnOrder();syncBnFields();API&&API.redraw();API&&API.status('Banner atualizado com as informações da arte',false)
+    }
+    // só pergunta se há algo ajustado no banner para perder; o modal é o mesmo padrão dos outros avisos do editor
+    var bnModal=$('confirmBnRefresh');function closeBnModal(){bnModal.hidden=true}
+    $('bnRefresh').addEventListener('click',function(){
+      var t=V.bnText;
+      if(t.line1!==null||t.line2!==null||t.msg!==null||V.bnOrder||V.bnPh.some(Boolean)||V.bnPhoto.some(Boolean)||V.bnMissing.some(Boolean))bnModal.hidden=false;else bnRefresh()
+    });
+    $('confirmBnRefreshOk').addEventListener('click',function(){closeBnModal();bnRefresh()});
+    $('confirmBnRefreshCancel').addEventListener('click',closeBnModal);$('confirmBnRefreshClose').addEventListener('click',closeBnModal);
+    bnModal.addEventListener('click',function(e){if(e.target===bnModal)closeBnModal()});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!bnModal.hidden)closeBnModal()});
     $('bnBack').addEventListener('click',function(){global.PostEditor.goToStep('edit')});
     // textos do banner: editar um campo o separa da arte; "Usar os textos da arte" volta a acompanhá-la
     $('bnLine1').addEventListener('input',function(){V.bnText.line1=this.value;API&&API.redraw()});
