@@ -302,6 +302,11 @@
     });
     return out;
   }
+  // O dia de hoje ainda está em andamento: o ponto dele é a leitura mais recente (sem o saldo da Meta, que atrasa até 48h) e
+  // por isso é parcial. Fica de fora dos destaques de maior/menor e das estatísticas diárias, para não virar sempre o "menor".
+  const todayIso = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  const isOpenDay = date => date >= todayIso();
+
   // Total de seguidores de uma rede em cada dia do período, reconstruído a partir dos novos diários (dailyNew) e ancorado no
   // total real do último dia: total(dia anterior) = total(dia) − novos(dia). Assim a linha do gráfico, o tooltip e a tabela
   // sempre fecham com os novos seguidores. O total medido pela Meta oscila por motivos que não são seguidor novo (cache, contas
@@ -478,7 +483,7 @@
     renderChart(points, nets, grain);
     renderPlatforms(points, nets, currentPoint);
     renderTable(points, nets, grain);
-    renderIndicators(points, nets, periodDeltas, net, rate, perDay, grain);
+    renderIndicators(points, nets, periodDeltas.filter(item => !isOpenDay(item.date)), net, rate, perDay, grain);
     // A Meta só nos dá follows/unfollows/alcance detalhados do Instagram - não existe
     // esse dado para Facebook/YouTube/TikTok, então o bloco não faz sentido fora do
     // Instagram (ou da visão "Todas", onde ele complementa o total).
@@ -514,7 +519,7 @@
         stepsBody.inert = !expanded;
       }
     }
-    renderComparatives(points, nets, periodDeltas);
+    renderComparatives(points, nets, periodDeltas.filter(item => !isOpenDay(item.date)));
     renderGoal(currentPoint, points, nets);
 
     // Ranking de posts: Instagram e YouTube (ver POSTS_NETWORKS) - Facebook/TikTok ainda não
@@ -601,7 +606,7 @@
     // Destaque: maior e menor número de novos seguidores de cada rede (ponto colorido + linha até a base com o valor)
     const extremes = {};
     plotted.forEach(network => {
-      const added = stats[network.name].map((st, index) => ({ index, value: st.added })).filter(item => Number.isFinite(item.value));
+      const added = stats[network.name].map((st, index) => ({ index, value: st.added, open: buckets[index].members.some(m => isOpenDay(m.date)) })).filter(item => Number.isFinite(item.value) && !item.open);
       if (added.length < 2) return;
       const top = added.reduce((a, b) => b.value > a.value ? b : a), low = added.reduce((a, b) => b.value < a.value ? b : a);
       if (top.value !== low.value) extremes[network.name] = { [top.index]: 'high', [low.index]: 'low' };
@@ -656,7 +661,7 @@
       // seguidores = total reconstruído (trackedTotals): seguidores do dia anterior + novos do dia.
       const st = stats[network.name][index];
       const tone = v => v === null ? 'neutral' : v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral';
-      tooltip.innerHTML = `<strong>${network.name} · ${shortDate(item.point.date)}</strong><span>Seguidores: <b>${totals[network.name].has(item.point.date) ? format(totals[network.name].get(item.point.date)) : '-'}</b></span><span>Novos ${grainNounLabel}: <b class="${tone(st.added)}">${st.added === null ? '-' : signed(st.added)}</b></span><span>Acumulado no período: <b class="${tone(st.cum)}">${st.cum === null ? '-' : signed(st.cum)}</b></span>`;
+      tooltip.innerHTML = `<strong>${network.name} · ${shortDate(item.point.date)}${item.members.some(m => isOpenDay(m.date)) ? ' · em andamento' : ''}</strong><span>Seguidores: <b>${totals[network.name].has(item.point.date) ? format(totals[network.name].get(item.point.date)) : '-'}</b></span><span>Novos ${grainNounLabel}: <b class="${tone(st.added)}">${st.added === null ? '-' : signed(st.added)}</b></span><span>Acumulado no período: <b class="${tone(st.cum)}">${st.cum === null ? '-' : signed(st.cum)}</b></span>`;
       tooltip.hidden = false;
       const rect = el('bars').getBoundingClientRect();
       const pointerX = event.clientX || (rect.left + point.getBoundingClientRect().left - rect.left);
@@ -1184,13 +1189,17 @@
     if (periodDeltas.length) {
       const byBucket = new Map();
       periodDeltas.forEach(item => { const key = bucketOf(item.date, grain); byBucket.set(key, (byBucket.get(key) || 0) + item.delta); });
+      byBucket.delete(bucketOf(todayIso(), grain)); // o período em andamento (hoje, ou a semana/mês de hoje) é parcial
       const list = Array.from(byBucket, ([key, delta]) => ({ delta, label: bucketLabel(key, grain) }));
+      if (!list.length) { setText('bestDay', '-'); setText('worstDay', '-'); }
+      else {
       const best = list.reduce((top, item) => item.delta > top.delta ? item : top);
       const worst = list.reduce((low, item) => item.delta < low.delta ? item : low);
       setText('bestDay', `${signed(best.delta)} · ${best.label}`);
       setTone('bestDay', best.delta);
       setText('worstDay', `${signed(worst.delta)} · ${worst.label}`);
       setTone('worstDay', worst.delta);
+      }
     } else {
       setText('bestDay', '-'); setText('worstDay', '-');
     }
@@ -1264,7 +1273,9 @@
   // Cada comparativo mostra os dois lados pelo nome exato (data, intervalo ou mês) e, em destaque, a diferença.
   // Tudo em novos seguidores, a mesma conta do gráfico.
   function renderComparatives(points, nets, periodDeltas) {
-    const last = points[points.length - 1], first = points[0];
+    const first = points[0];
+    // as janelas terminam no último dia fechado (o de hoje ainda está em andamento)
+    const lastPoint = points[points.length - 1], end = isOpenDay(lastPoint.date) && points.length > 1 ? iso(addDays(parse(lastPoint.date), -1)) : lastPoint.date;
     const shift = (date, days) => iso(addDays(parse(date), days));
     const sg = value => value === null ? '-' : signed(value);
     // novos seguidores de from até to, inclusive
@@ -1279,24 +1290,24 @@
       setText(id + 'Detail', `${prev.label}: ${sg(prev.value)}${unit} → ${cur.label}: ${sg(cur.value)}${unit}`);
     };
     const side = (from, to, label, divisor) => { const v = sum(from, to); return { label: label || range(from, to), value: v === null ? null : v / (divisor || 1) }; };
-    compare('cmpDay', side(shift(last.date, -1), shift(last.date, -1)), side(last.date, last.date));
-    compare('cmpWeek', side(shift(last.date, -13), shift(last.date, -7)), side(shift(last.date, -6), last.date));
+    compare('cmpDay', side(shift(end, -1), shift(end, -1)), side(end, end));
+    compare('cmpWeek', side(shift(end, -13), shift(end, -7)), side(shift(end, -6), end));
 
     // mês: o mês do último dia contra o mês anterior, nos mesmos primeiros dias (ex.: 1 a 13 de agosto x 1 a 13 de setembro)
-    const lastDay = parse(last.date), elapsed = lastDay.getUTCDate();
+    const lastDay = parse(end), elapsed = lastDay.getUTCDate();
     const curStart = iso(new Date(Date.UTC(lastDay.getUTCFullYear(), lastDay.getUTCMonth(), 1)));
     const prevStartDate = new Date(Date.UTC(lastDay.getUTCFullYear(), lastDay.getUTCMonth() - 1, 1));
     const prevStart = iso(prevStartDate), prevEnd = iso(new Date(Math.min(addDays(prevStartDate, elapsed - 1), monthEnd(prevStartDate))));
     const monthName = (date, to) => `${MONTH_NAMES[parse(date).getUTCMonth()]} (1 a ${parse(to).getUTCDate()})`;
-    compare('cmpMonth', side(prevStart, prevEnd, monthName(prevStart, prevEnd)), side(curStart, last.date, monthName(curStart, last.date)));
+    compare('cmpMonth', side(prevStart, prevEnd, monthName(prevStart, prevEnd)), side(curStart, end, monthName(curStart, end)));
 
     // período anterior de mesmo tamanho, imediatamente antes do início da janela
-    const windowDays = dayDiff(first.date, last.date) + 1;
-    const prevPeriod = side(shift(first.date, -windowDays), shift(first.date, -1)), curPeriod = side(first.date, last.date);
+    const windowDays = dayDiff(first.date, end) + 1;
+    const prevPeriod = side(shift(first.date, -windowDays), shift(first.date, -1)), curPeriod = side(first.date, end);
     compare('cmpPeriod', prevPeriod, curPeriod, (diff, prev) => prev ? percent(diff / Math.abs(prev) * 100) : null);
 
     // aceleração: média por dia dos últimos 7 dias contra a dos 7 anteriores
-    compare('cmpAccel', side(shift(last.date, -13), shift(last.date, -7), null, 7), side(shift(last.date, -6), last.date, null, 7), null, '/dia');
+    compare('cmpAccel', side(shift(end, -13), shift(end, -7), null, 7), side(shift(end, -6), end, null, 7), null, '/dia');
 
     if (periodDeltas.length < 7) {
       setText('cmpWeekday', 'Faltam dados de 7 dias'); setText('cmpWeekdayDetail', '');
