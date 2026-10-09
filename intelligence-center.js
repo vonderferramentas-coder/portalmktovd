@@ -47,6 +47,13 @@
     node.className = 'sync-status' + (kind ? ' ' + kind : '');
   }
 
+  // A coleta roda 1x/dia: mais de 36h sem dado novo significa que a combinação falhou na última coleta
+  const STALE_MS = 36 * 60 * 60 * 1000;
+  function isStale(iso) {
+    const time = new Date(iso).getTime();
+    return Number.isFinite(time) && Date.now() - time > STALE_MS;
+  }
+
   function formatDateTime(iso) {
     if (!iso) return '-';
     const date = new Date(iso);
@@ -67,6 +74,9 @@
       const periodData = bucket && bucket.periods && bucket.periods[dataKey];
       if (!periodData || !Array.isArray(periodData.terms)) return;
       periodData.terms.forEach(term => rows.push({
+        rank: term.rank,
+        previousRank: term.previousRank,
+        isNew: !!term.isNew,
         term: term.term,
         categoryLabel: bucket.label || CATEGORY_LABELS[slug] || slug,
         interest: term.interest,
@@ -75,14 +85,26 @@
         matchedProducts: Array.isArray(term.matchedProducts) ? term.matchedProducts : [],
       }));
     });
-    rows.sort((a, b) => b.interest - a.interest);
+    // Cada categoria tem sua própria escala 0-100 (o líder de cada uma vale 100), então misturar categorias num ranking só
+    // não compara nada: as linhas ficam agrupadas por categoria, na ordem do ranking dela.
     return rows;
   }
 
-  function renderVariation(variation) {
-    if (!variation) return '<span class="intel-variation-flat">-</span>';
-    const isUp = variation === 'Alta' || variation.startsWith('+');
-    return `<span class="${isUp ? 'intel-variation-up' : ''}">${escapeHtml(variation)}</span>`;
+  // Posição: quanto o termo subiu/desceu na lista da categoria desde a coleta anterior; embaixo, o crescimento de busca
+  // ("em alta" do Google), que só existe para parte dos termos.
+  function renderVariation(row) {
+    const growth = row.variation
+      ? `<small class="${row.variation === 'Alta' || row.variation.startsWith('+') ? 'intel-variation-up' : ''}">${escapeHtml(row.variation)} em busca</small>`
+      : '';
+    let position = '';
+    if (row.isNew) position = '<span class="intel-pos-new">novo</span>';
+    else if (Number.isFinite(row.previousRank) && Number.isFinite(row.rank)) {
+      const change = row.previousRank - row.rank;
+      position = change > 0 ? `<span class="intel-variation-up">▲ ${change}</span>`
+        : change < 0 ? `<span class="intel-pos-down">▼ ${-change}</span>`
+        : '<span class="intel-variation-flat">=</span>';
+    }
+    return position || growth ? `${position}${growth}` : '<span class="intel-variation-flat">-</span>';
   }
 
   // Cruzamento com o catálogo de produtos, calculado uma vez por dia pelo próprio workflow de
@@ -122,17 +144,18 @@
     empty.style.display = 'none';
     tbody.innerHTML = pageRows.map((row, index) => `
       <tr>
-        <td class="intel-col-rank">${page * PAGE_SIZE + index + 1}</td>
+        <td class="intel-col-rank">${row.rank || page * PAGE_SIZE + index + 1}</td>
         <td>${escapeHtml(row.term)}</td>
         <td>${escapeHtml(row.categoryLabel)}</td>
         <td class="intel-col-interest">${row.interest}</td>
-        <td class="intel-col-variation">${renderVariation(row.variation)}</td>
+        <td class="intel-col-variation">${renderVariation(row)}</td>
         <td>${escapeHtml(periodLabel)}</td>
-        <td>${formatDateTime(row.collectedAt)}</td>
+        <td class="${isStale(row.collectedAt) ? 'intel-stale' : ''}" ${isStale(row.collectedAt) ? 'title="Coleta antiga: o Google limitou a consulta e este é o último dado bom"' : ''}>${formatDateTime(row.collectedAt)}</td>
         <td>${renderMatchedProducts(row.matchedProducts)}</td>
       </tr>
     `).join('');
-    setText('trendsSummary', `${rows.length} termo${rows.length === 1 ? '' : 's'}`);
+    const stale = rows.filter(row => isStale(row.collectedAt)).length;
+    setText('trendsSummary', `${rows.length} termo${rows.length === 1 ? '' : 's'}${stale ? ` · ⚠ ${stale} com coleta antiga (o Google limitou a consulta; mostrando o último dado bom)` : ''}`);
 
     pager.hidden = rows.length <= PAGE_SIZE;
     setText('trendsPagerLabel', `Página ${page + 1} de ${totalPages}`);
