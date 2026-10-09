@@ -302,6 +302,24 @@
     });
     return out;
   }
+  // Total de seguidores de uma rede em cada dia do período, reconstruído a partir dos novos diários (dailyNew) e ancorado no
+  // total real do último dia: total(dia anterior) = total(dia) − novos(dia). Assim a linha do gráfico, o tooltip e a tabela
+  // sempre fecham com os novos seguidores. O total medido pela Meta oscila por motivos que não são seguidor novo (cache, contas
+  // removidas), então onde há saldo da Meta (Instagram) ele pode diferir do medido; sem Insights os dois são idênticos.
+  function trackedTotals(points, network) {
+    const out = new Map();
+    if (!points.length) return out;
+    const last = points[points.length - 1];
+    const end = (last.date === lastDate() ? currentValues(last) : last.values)[network.name];
+    if (!Number.isFinite(end)) return out;
+    const news = dailyNew(network.name);
+    let total = end;
+    for (let index = points.length - 1; index >= 0; index--) {
+      out.set(points[index].date, total);
+      total -= news.get(points[index].date) || 0;
+    }
+    return out;
+  }
   // soma dos novos seguidores das redes em (from, to] - mesma base do gráfico, para acumulados e comparativos
   function newBetween(nets, from, to) {
     let total = 0, found = false;
@@ -557,7 +575,9 @@
       }).slice(offset);
     });
     const isTotal = chartMode === 'total';
-    const plotValue = (network, index) => isTotal ? buckets[index].point.values[network.name] : stats[network.name][index].added;
+    const totals = {};
+    plotted.forEach(network => { totals[network.name] = trackedTotals(points, network); });
+    const plotValue = (network, index) => isTotal ? totals[network.name].get(buckets[index].point.date) : stats[network.name][index].added;
     const values = plotted.flatMap(network => buckets.map((_, index) => plotValue(network, index)).filter(Number.isFinite));
     // a linha do zero (e o zero no eixo) só entram quando algum dia do período foi negativo
     const showZero = !isTotal && values.some(value => value < 0);
@@ -633,10 +653,10 @@
       const item = buckets[index];
       const network = plotted.find(entry => entry.name === point.dataset.network);
       // Novos = soma dos novos diários do bucket; acumulado = soma dos novos desde o início do período;
-      // seguidores = total real medido da rede naquele dia.
+      // seguidores = total reconstruído (trackedTotals): seguidores do dia anterior + novos do dia.
       const st = stats[network.name][index];
       const tone = v => v === null ? 'neutral' : v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral';
-      tooltip.innerHTML = `<strong>${network.name} · ${shortDate(item.point.date)}</strong><span>Seguidores: <b>${Number.isFinite(item.point.values[network.name]) ? format(item.point.values[network.name]) : '-'}</b></span><span>Novos ${grainNounLabel}: <b class="${tone(st.added)}">${st.added === null ? '-' : signed(st.added)}</b></span><span>Acumulado no período: <b class="${tone(st.cum)}">${st.cum === null ? '-' : signed(st.cum)}</b></span>`;
+      tooltip.innerHTML = `<strong>${network.name} · ${shortDate(item.point.date)}</strong><span>Seguidores: <b>${totals[network.name].has(item.point.date) ? format(totals[network.name].get(item.point.date)) : '-'}</b></span><span>Novos ${grainNounLabel}: <b class="${tone(st.added)}">${st.added === null ? '-' : signed(st.added)}</b></span><span>Acumulado no período: <b class="${tone(st.cum)}">${st.cum === null ? '-' : signed(st.cum)}</b></span>`;
       tooltip.hidden = false;
       const rect = el('bars').getBoundingClientRect();
       const pointerX = event.clientX || (rect.left + point.getBoundingClientRect().left - rect.left);
@@ -703,13 +723,16 @@
     // novos seguidores por período: a mesma conta do gráfico (deltas), agrupada pelo mesmo agrupamento
     const newByBucket = new Map();
     deltas(points, nets).forEach(item => { const key = bucketOf(item.date, grain); newByBucket.set(key, (newByBucket.get(key) || 0) + item.delta); });
+    const tracked = {};
+    nets.forEach(network => { tracked[network.name] = trackedTotals(points, network); });
+    const tableTotal = date => nets.reduce((sum, network) => sum + (tracked[network.name].get(date) || 0), 0);
     el('historyHead').innerHTML = `<th>Período</th>${nets.map(network => `<th>${network.name}</th>`).join('')}<th>Total</th><th>Novos</th>`;
     el('table').innerHTML = pageItems.map(item => {
       const cells = nets.map(network => {
-        const value = item.point.values[network.name];
+        const value = tracked[network.name].get(item.point.date);
         return `<td>${Number.isFinite(value) ? format(value) : '-'}</td>`;
       }).join('');
-      return `<tr><td>${item.label}</td>${cells}<td><strong>${format(totalAt(item.point, nets))}</strong></td><td>${newByBucket.has(item.key) ? signed(newByBucket.get(item.key)) : '-'}</td></tr>`;
+      return `<tr><td>${item.label}</td>${cells}<td><strong>${format(tableTotal(item.point.date))}</strong></td><td>${newByBucket.has(item.key) ? signed(newByBucket.get(item.key)) : '-'}</td></tr>`;
     }).join('');
 
     const pager = el('historyPager');
