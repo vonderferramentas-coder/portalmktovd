@@ -1,13 +1,13 @@
 {
   "version": 1,
   "geo": "BR",
-  "updatedAt": "2026-10-08T06:22:40Z",
+  "updatedAt": "2026-10-09T06:27:54Z",
   "categories": {
     "construction-power-tools": {
       "label": "Construction & Power Tools",
       "periods": {
         "7d": {
-          "collectedAt": "2026-10-08T06:16:41Z",
+          "collectedAt": "2026-10-09T06:16:29Z",
           "terms": [
             {
               "rank": 1,
@@ -40,7 +40,7 @@
             {
               "rank": 2,
               "term": "broca",
-              "interest": 45,
+              "interest": 46,
               "variation": null,
               "matchedProducts": [
                 {
@@ -68,14 +68,14 @@
             {
               "rank": 3,
               "term": "makita",
-              "interest": 36,
+              "interest": 38,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 4,
               "term": "lixadeira",
-              "interest": 36,
+              "interest": 34,
               "variation": null,
               "matchedProducts": [
                 {
@@ -103,7 +103,7 @@
             {
               "rank": 5,
               "term": "martelete",
-              "interest": 27,
+              "interest": 28,
               "variation": null,
               "matchedProducts": [
                 {
@@ -131,7 +131,7 @@
             {
               "rank": 6,
               "term": "lavadora alta pressão",
-              "interest": 27,
+              "interest": 26,
               "variation": null,
               "matchedProducts": [
                 {
@@ -159,7 +159,7 @@
             {
               "rank": 7,
               "term": "cola quente",
-              "interest": 24,
+              "interest": 25,
               "variation": "+60%",
               "matchedProducts": [
                 {
@@ -187,7 +187,7 @@
             {
               "rank": 8,
               "term": "lavadora de alta pressão",
-              "interest": 23,
+              "interest": 24,
               "variation": null,
               "matchedProducts": [
                 {
@@ -283,7 +283,7 @@
             {
               "rank": 12,
               "term": "dewalt",
-              "interest": 19,
+              "interest": 20,
               "variation": null,
               "matchedProducts": []
             },
@@ -317,20 +317,48 @@
             },
             {
               "rank": 14,
-              "term": "wap",
-              "interest": 14,
+              "term": "cut",
+              "interest": 15,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 15,
-              "term": "cut",
-              "interest": 14,
+              "term": "wap",
+              "interest": 15,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 16,
+              "term": "caixa ferramentas",
+              "interest": 13,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "61.05.000.300",
+                  "name": "Caixa baú para ferramentas, plástica, CBV 030 VONDER PLUS"
+                },
+                {
+                  "code": "61.15.351.211",
+                  "name": "Caixa metálica para ferramentas, tipo baú, 35,0 cm x 12,0 cm x 10,0 cm, VONDER"
+                },
+                {
+                  "code": "61.15.401.617",
+                  "name": "Caixa metálica para ferramentas, tipo baú, com bandeja, 40,0 cm x 16,0 cm x 17,0 cm, VONDER"
+                },
+                {
+                  "code": "61.15.501.321",
+                  "name": "Caixa metálica para ferramentas, tipo baú, com bandeja, 50,0 cm x 16,0 cm x 17,0 cm, VONDER"
+                },
+                {
+                  "code": "61.15.401.611",
+                  "name": "Caixa metálica para ferramentas, tipo baú, sem bandeja, 40,0 cm x 16,0 cm x 11,0 cm, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 17,
               "term": "enxada",
               "interest": 10,
               "variation": null,
@@ -358,21 +386,21 @@
               ]
             },
             {
-              "rank": 17,
+              "rank": 18,
               "term": "cantareira",
               "interest": 10,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 18,
-              "term": "chainsaw man",
+              "rank": 19,
+              "term": "tools",
               "interest": 10,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 19,
+              "rank": 20,
               "term": "rompedor",
               "interest": 10,
               "variation": null,
@@ -400,9 +428,9 @@
               ]
             },
             {
-              "rank": 20,
+              "rank": 21,
               "term": "foice",
-              "interest": 9,
+              "interest": 10,
               "variation": "+50%",
               "matchedProducts": [
                 {
@@ -424,9 +452,16 @@
               ]
             },
             {
-              "rank": 21,
+              "rank": 22,
+              "term": "chainsaw man",
+              "interest": 10,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 23,
               "term": "caixa de ferramentas",
-              "interest": 9,
+              "interest": 10,
               "variation": null,
               "matchedProducts": [
                 {
@@ -452,23 +487,16 @@
               ]
             },
             {
-              "rank": 22,
-              "term": "tools",
-              "interest": 9,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 23,
-              "term": "bgs",
-              "interest": 9,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
               "rank": 24,
+              "term": "bgs",
+              "interest": 10,
+              "variation": "+50%",
+              "matchedProducts": []
+            },
+            {
+              "rank": 25,
               "term": "régua",
-              "interest": 9,
+              "interest": 10,
               "variation": null,
               "matchedProducts": [
                 {
@@ -476,39 +504,11 @@
                   "name": "Régua angular multiuso VONDER"
                 }
               ]
-            },
-            {
-              "rank": 25,
-              "term": "lixadeira orbital",
-              "interest": 9,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "93.09.350.035",
-                  "name": "Adaptador 1 para Lixadeira Roto-Orbital LRV 350B VONDER"
-                },
-                {
-                  "code": "93.09.350.036",
-                  "name": "Adaptador 2 para Lixadeira Roto-Orbital LRV 350B VONDER"
-                },
-                {
-                  "code": "93.09.350.041",
-                  "name": "Adaptador 3 para Lixadeira Roto-Orbital LRV 350B VONDER"
-                },
-                {
-                  "code": "62.99.550.034",
-                  "name": "Base 5\" para lixadeira roto-orbital, VONDER"
-                },
-                {
-                  "code": "93.09.350.034",
-                  "name": "Chave fixa para Lixadeira Roto-Orbital LRV 350B VONDER"
-                }
-              ]
             }
           ]
         },
         "30d": {
-          "collectedAt": "2026-10-08T06:16:48Z",
+          "collectedAt": "2026-10-09T06:16:44Z",
           "terms": [
             {
               "rank": 1,
@@ -541,7 +541,7 @@
             {
               "rank": 2,
               "term": "broca",
-              "interest": 44,
+              "interest": 43,
               "variation": null,
               "matchedProducts": [
                 {
@@ -569,7 +569,7 @@
             {
               "rank": 3,
               "term": "makita",
-              "interest": 35,
+              "interest": 34,
               "variation": null,
               "matchedProducts": []
             },
@@ -688,7 +688,7 @@
             {
               "rank": 8,
               "term": "regua",
-              "interest": 22,
+              "interest": 23,
               "variation": null,
               "matchedProducts": [
                 {
@@ -728,7 +728,7 @@
             {
               "rank": 10,
               "term": "serra copo",
-              "interest": 22,
+              "interest": 21,
               "variation": null,
               "matchedProducts": [
                 {
@@ -763,8 +763,8 @@
             {
               "rank": 12,
               "term": "cola quente",
-              "interest": 18,
-              "variation": "+50%",
+              "interest": 17,
+              "variation": "+40%",
               "matchedProducts": [
                 {
                   "code": "16.01.012.280",
@@ -825,14 +825,14 @@
             },
             {
               "rank": 15,
-              "term": "chainsaw",
+              "term": "wap",
               "interest": 14,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 16,
-              "term": "wap",
+              "term": "chainsaw",
               "interest": 14,
               "variation": null,
               "matchedProducts": []
@@ -874,41 +874,13 @@
             },
             {
               "rank": 19,
-              "term": "rompedor",
-              "interest": 11,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "68.05.000.005",
-                  "name": "Alavanca de acionamento para o rompedor de corrente de motosserra VONDER"
-                },
-                {
-                  "code": "68.05.000.007",
-                  "name": "Bigorna para rompedor de corrente de motosserra VONDER"
-                },
-                {
-                  "code": "93.10.135.162",
-                  "name": "Empunhadura completa para Martelo Rompedor MRV 1315N e MRD 1315N VONDER"
-                },
-                {
-                  "code": "93.10.135.062",
-                  "name": "Empunhadura completa para Martelo Rompedor MRV 1315N e MRD 1315N VONDER"
-                },
-                {
-                  "code": "92.20.150.002",
-                  "name": "Escova de carvão para martelo rompedor H-1125 220 V~, AWT"
-                }
-              ]
-            },
-            {
-              "rank": 20,
               "term": "chainsaw man",
               "interest": 11,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 21,
+              "rank": 20,
               "term": "enxada",
               "interest": 11,
               "variation": null,
@@ -932,6 +904,34 @@
                 {
                   "code": "43.10.018.000",
                   "name": "Lima chata para enxada 8\", VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 21,
+              "term": "rompedor",
+              "interest": 11,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "68.05.000.005",
+                  "name": "Alavanca de acionamento para o rompedor de corrente de motosserra VONDER"
+                },
+                {
+                  "code": "68.05.000.007",
+                  "name": "Bigorna para rompedor de corrente de motosserra VONDER"
+                },
+                {
+                  "code": "93.10.135.162",
+                  "name": "Empunhadura completa para Martelo Rompedor MRV 1315N e MRD 1315N VONDER"
+                },
+                {
+                  "code": "93.10.135.062",
+                  "name": "Empunhadura completa para Martelo Rompedor MRV 1315N e MRD 1315N VONDER"
+                },
+                {
+                  "code": "92.20.150.002",
+                  "name": "Escova de carvão para martelo rompedor H-1125 220 V~, AWT"
                 }
               ]
             },
@@ -977,16 +977,9 @@
             },
             {
               "rank": 24,
-              "term": "engenho",
-              "interest": 9,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 25,
               "term": "nivel",
               "interest": 9,
-              "variation": "+140%",
+              "variation": "+120%",
               "matchedProducts": [
                 {
                   "code": "38.20.300.302",
@@ -1009,11 +1002,39 @@
                   "name": "Nível a laser, 30 metros, verde, bateria intercambiável de 18 V, sem bateria e sem carregador, INLV 1854 VONDER"
                 }
               ]
+            },
+            {
+              "rank": 25,
+              "term": "lixadeira orbital",
+              "interest": 9,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "93.09.350.035",
+                  "name": "Adaptador 1 para Lixadeira Roto-Orbital LRV 350B VONDER"
+                },
+                {
+                  "code": "93.09.350.036",
+                  "name": "Adaptador 2 para Lixadeira Roto-Orbital LRV 350B VONDER"
+                },
+                {
+                  "code": "93.09.350.041",
+                  "name": "Adaptador 3 para Lixadeira Roto-Orbital LRV 350B VONDER"
+                },
+                {
+                  "code": "62.99.550.034",
+                  "name": "Base 5\" para lixadeira roto-orbital, VONDER"
+                },
+                {
+                  "code": "93.09.350.034",
+                  "name": "Chave fixa para Lixadeira Roto-Orbital LRV 350B VONDER"
+                }
+              ]
             }
           ]
         },
         "90d": {
-          "collectedAt": "2026-10-08T06:16:54Z",
+          "collectedAt": "2026-10-09T06:16:51Z",
           "terms": [
             {
               "rank": 1,
@@ -1046,7 +1067,7 @@
             {
               "rank": 2,
               "term": "broca",
-              "interest": 44,
+              "interest": 46,
               "variation": null,
               "matchedProducts": [
                 {
@@ -1074,14 +1095,14 @@
             {
               "rank": 3,
               "term": "makita",
-              "interest": 36,
+              "interest": 37,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 4,
               "term": "lixadeira",
-              "interest": 35,
+              "interest": 36,
               "variation": null,
               "matchedProducts": [
                 {
@@ -1137,7 +1158,7 @@
             {
               "rank": 6,
               "term": "lavadora alta pressão",
-              "interest": 25,
+              "interest": 26,
               "variation": null,
               "matchedProducts": [
                 {
@@ -1164,36 +1185,8 @@
             },
             {
               "rank": 7,
-              "term": "serra circular",
-              "interest": 21,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "93.20.185.110",
-                  "name": "Escova de carvão VONDER para serra circular SC 185, 127 V~, VONDER"
-                },
-                {
-                  "code": "93.04.229.014",
-                  "name": "Escova de carvão para Serra Circular SCV 2209 VONDER"
-                },
-                {
-                  "code": "92.20.135.020",
-                  "name": "Escova de carvão para serra circular HKS 12-65 220 V~, AWT"
-                },
-                {
-                  "code": "92.20.205.010",
-                  "name": "Escova de carvão para serra circular HKS18-85 127 V~, AWT"
-                },
-                {
-                  "code": "93.20.185.220",
-                  "name": "Escova de carvão para serra circular SC 185 220 V~, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 8,
               "term": "lavadora de alta pressão",
-              "interest": 21,
+              "interest": 23,
               "variation": null,
               "matchedProducts": [
                 {
@@ -1219,28 +1212,44 @@
               ]
             },
             {
+              "rank": 8,
+              "term": "serra circular",
+              "interest": 22,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "93.20.185.110",
+                  "name": "Escova de carvão VONDER para serra circular SC 185, 127 V~, VONDER"
+                },
+                {
+                  "code": "93.04.229.014",
+                  "name": "Escova de carvão para Serra Circular SCV 2209 VONDER"
+                },
+                {
+                  "code": "92.20.135.020",
+                  "name": "Escova de carvão para serra circular HKS 12-65 220 V~, AWT"
+                },
+                {
+                  "code": "92.20.205.010",
+                  "name": "Escova de carvão para serra circular HKS18-85 127 V~, AWT"
+                },
+                {
+                  "code": "93.20.185.220",
+                  "name": "Escova de carvão para serra circular SC 185 220 V~, VONDER"
+                }
+              ]
+            },
+            {
               "rank": 9,
               "term": "dewalt",
-              "interest": 20,
+              "interest": 22,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 10,
-              "term": "regua",
-              "interest": 20,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "35.95.010.000",
-                  "name": "Régua angular multiuso VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 11,
               "term": "serra copo",
-              "interest": 18,
+              "interest": 20,
               "variation": null,
               "matchedProducts": [
                 {
@@ -1266,6 +1275,18 @@
               ]
             },
             {
+              "rank": 11,
+              "term": "regua",
+              "interest": 20,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "35.95.010.000",
+                  "name": "Régua angular multiuso VONDER"
+                }
+              ]
+            },
+            {
               "rank": 12,
               "term": "wap",
               "interest": 14,
@@ -1275,7 +1296,7 @@
             {
               "rank": 13,
               "term": "martelo",
-              "interest": 13,
+              "interest": 14,
               "variation": null,
               "matchedProducts": [
                 {
@@ -1303,7 +1324,7 @@
             {
               "rank": 14,
               "term": "cola quente",
-              "interest": 13,
+              "interest": 12,
               "variation": null,
               "matchedProducts": [
                 {
@@ -1331,7 +1352,7 @@
             {
               "rank": 15,
               "term": "cut",
-              "interest": 12,
+              "interest": 11,
               "variation": null,
               "matchedProducts": []
             },
@@ -1366,7 +1387,7 @@
             {
               "rank": 17,
               "term": "furadeira",
-              "interest": 9,
+              "interest": 10,
               "variation": null,
               "matchedProducts": [
                 {
@@ -1491,13 +1512,6 @@
             },
             {
               "rank": 23,
-              "term": "engenho",
-              "interest": 8,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 24,
               "term": "régua",
               "interest": 8,
               "variation": null,
@@ -1507,6 +1521,13 @@
                   "name": "Régua angular multiuso VONDER"
                 }
               ]
+            },
+            {
+              "rank": 24,
+              "term": "engenho",
+              "interest": 8,
+              "variation": null,
+              "matchedProducts": []
             },
             {
               "rank": 25,
@@ -1539,7 +1560,7 @@
           ]
         },
         "12m": {
-          "collectedAt": "2026-10-08T06:17:01Z",
+          "collectedAt": "2026-10-09T06:17:07Z",
           "terms": [
             {
               "rank": 1,
@@ -1571,15 +1592,8 @@
             },
             {
               "rank": 2,
-              "term": "makita",
-              "interest": 42,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 3,
               "term": "broca",
-              "interest": 42,
+              "interest": 44,
               "variation": null,
               "matchedProducts": [
                 {
@@ -1605,9 +1619,16 @@
               ]
             },
             {
+              "rank": 3,
+              "term": "makita",
+              "interest": 43,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
               "rank": 4,
               "term": "lixadeira",
-              "interest": 38,
+              "interest": 36,
               "variation": null,
               "matchedProducts": [
                 {
@@ -1634,6 +1655,34 @@
             },
             {
               "rank": 5,
+              "term": "martelete",
+              "interest": 28,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "93.10.150.089",
+                  "name": "Escova de carvão para martelete MPD/MPV 1500, 127 V~/220 V~, VONDER"
+                },
+                {
+                  "code": "93.10.620.073",
+                  "name": "Escova de carvão para martelete MPD/MPV 620, 127 V~/220 V~, VONDER"
+                },
+                {
+                  "code": "93.20.620.000",
+                  "name": "Escova de carvão para martelete MPV 620, VONDER"
+                },
+                {
+                  "code": "93.20.810.220",
+                  "name": "Escova de carvão para martelete MPV 810, 220 V~, VONDER"
+                },
+                {
+                  "code": "93.10.840.081",
+                  "name": "Escova de carvão para martelete MPV 840, 127 V~/220 V~, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 6,
               "term": "lavadora alta pressão",
               "interest": 27,
               "variation": null,
@@ -1661,37 +1710,9 @@
               ]
             },
             {
-              "rank": 6,
-              "term": "martelete",
-              "interest": 26,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "93.10.150.089",
-                  "name": "Escova de carvão para martelete MPD/MPV 1500, 127 V~/220 V~, VONDER"
-                },
-                {
-                  "code": "93.10.620.073",
-                  "name": "Escova de carvão para martelete MPD/MPV 620, 127 V~/220 V~, VONDER"
-                },
-                {
-                  "code": "93.20.620.000",
-                  "name": "Escova de carvão para martelete MPV 620, VONDER"
-                },
-                {
-                  "code": "93.20.810.220",
-                  "name": "Escova de carvão para martelete MPV 810, 220 V~, VONDER"
-                },
-                {
-                  "code": "93.10.840.081",
-                  "name": "Escova de carvão para martelete MPV 840, 127 V~/220 V~, VONDER"
-                }
-              ]
-            },
-            {
               "rank": 7,
-              "term": "lavadora de alta pressão",
-              "interest": 23,
+              "term": "lavadora de pressão",
+              "interest": 26,
               "variation": null,
               "matchedProducts": [
                 {
@@ -1718,20 +1739,43 @@
             },
             {
               "rank": 8,
-              "term": "regua",
-              "interest": 21,
+              "term": "lavadora de alta pressão",
+              "interest": 24,
               "variation": null,
               "matchedProducts": [
                 {
-                  "code": "35.95.010.000",
-                  "name": "Régua angular multiuso VONDER"
+                  "code": "68.98.020.034",
+                  "name": "Bico leque para lavadora de alta pressão LAV 2000 e LAV 2030I, VONDER"
+                },
+                {
+                  "code": "68.99.360.001",
+                  "name": "Bico turbo para lavadora a gasolina de alta pressão LGV 3600, VONDER"
+                },
+                {
+                  "code": "68.98.020.035",
+                  "name": "Bico turbo para lavadora de alta pressão, para LAV 2000 e LAV 2030I, VONDER"
+                },
+                {
+                  "code": "68.99.300.100",
+                  "name": "Bico turbo para lavadora à gasolina, alta pressão, LGV 3000, VONDER"
+                },
+                {
+                  "code": "68.98.130.019",
+                  "name": "Lança leque para lavadora de alta pressão LAV 1300 e LAV 1600, VONDER"
                 }
               ]
             },
             {
               "rank": 9,
+              "term": "chainsaw",
+              "interest": 22,
+              "variation": "+60%",
+              "matchedProducts": []
+            },
+            {
+              "rank": 10,
               "term": "serra circular",
-              "interest": 21,
+              "interest": 22,
               "variation": null,
               "matchedProducts": [
                 {
@@ -1757,21 +1801,26 @@
               ]
             },
             {
-              "rank": 10,
-              "term": "chainsaw",
+              "rank": 11,
+              "term": "regua",
               "interest": 21,
-              "variation": "+60%",
-              "matchedProducts": []
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "35.95.010.000",
+                  "name": "Régua angular multiuso VONDER"
+                }
+              ]
             },
             {
-              "rank": 11,
+              "rank": 12,
               "term": "dewalt",
-              "interest": 20,
+              "interest": 21,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 12,
+              "rank": 13,
               "term": "serra copo",
               "interest": 20,
               "variation": null,
@@ -1799,23 +1848,16 @@
               ]
             },
             {
-              "rank": 13,
+              "rank": 14,
               "term": "chainsaw man",
               "interest": 17,
-              "variation": "+60%",
-              "matchedProducts": []
-            },
-            {
-              "rank": 14,
-              "term": "wap",
-              "interest": 15,
-              "variation": null,
+              "variation": "+70%",
               "matchedProducts": []
             },
             {
               "rank": 15,
-              "term": "cut",
-              "interest": 13,
+              "term": "wap",
+              "interest": 15,
               "variation": null,
               "matchedProducts": []
             },
@@ -1877,15 +1919,22 @@
             },
             {
               "rank": 18,
+              "term": "cut",
+              "interest": 13,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 19,
               "term": "cantareira",
               "interest": 12,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 19,
+              "rank": 20,
               "term": "enxada",
-              "interest": 11,
+              "interest": 12,
               "variation": null,
               "matchedProducts": [
                 {
@@ -1911,7 +1960,7 @@
               ]
             },
             {
-              "rank": 20,
+              "rank": 21,
               "term": "rompedor",
               "interest": 10,
               "variation": null,
@@ -1939,7 +1988,7 @@
               ]
             },
             {
-              "rank": 21,
+              "rank": 22,
               "term": "caixa de ferramentas",
               "interest": 10,
               "variation": null,
@@ -1967,7 +2016,7 @@
               ]
             },
             {
-              "rank": 22,
+              "rank": 23,
               "term": "régua",
               "interest": 9,
               "variation": null,
@@ -1979,7 +2028,7 @@
               ]
             },
             {
-              "rank": 23,
+              "rank": 24,
               "term": "lixadeira orbital",
               "interest": 9,
               "variation": null,
@@ -2007,37 +2056,9 @@
               ]
             },
             {
-              "rank": 24,
-              "term": "serra fita",
-              "interest": 8,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "60.01.090.127",
-                  "name": "Serra fita de bancada 9\", 300 W, SFV 090, 127 V~, VONDER"
-                },
-                {
-                  "code": "60.01.090.220",
-                  "name": "Serra fita de bancada 9\", 300 W, SFV 090, 220 V~, VONDER"
-                },
-                {
-                  "code": "11.99.000.200",
-                  "name": "Aplicador de fita, 50 mm, NOVE54"
-                },
-                {
-                  "code": "11.99.020.000",
-                  "name": "Aplicador de fita, 50 mm, VONDER"
-                },
-                {
-                  "code": "11.55.050.000",
-                  "name": "Aplicador de fita, 50 mm, metálico, VONDER"
-                }
-              ]
-            },
-            {
               "rank": 25,
               "term": "engenho",
-              "interest": 8,
+              "interest": 9,
               "variation": null,
               "matchedProducts": []
             }
@@ -2049,7 +2070,7 @@
       "label": "Home Improvement",
       "periods": {
         "7d": {
-          "collectedAt": "2026-10-08T06:17:07Z",
+          "collectedAt": "2026-10-09T06:17:14Z",
           "terms": [
             {
               "rank": 1,
@@ -2086,14 +2107,14 @@
             {
               "rank": 3,
               "term": "portão",
-              "interest": 22,
+              "interest": 23,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 4,
               "term": "ar condicionado inverter",
-              "interest": 19,
+              "interest": 20,
               "variation": null,
               "matchedProducts": [
                 {
@@ -2109,7 +2130,7 @@
             {
               "rank": 5,
               "term": "porcelanato",
-              "interest": 17,
+              "interest": 18,
               "variation": null,
               "matchedProducts": [
                 {
@@ -2136,42 +2157,22 @@
             },
             {
               "rank": 6,
-              "term": "ar condicionado 12000",
-              "interest": 15,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "68.47.012.000",
-                  "name": "Auxiliar de partida portátil com compressor de ar, APC 12000 VONDER"
-                },
-                {
-                  "code": "65.10.003.009",
-                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
-                },
-                {
-                  "code": "65.10.134.000",
-                  "name": "Manifold para ar-condicionado automotivo, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 7,
               "term": "teto",
-              "interest": 14,
+              "interest": 15,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 8,
+              "rank": 7,
               "term": "churrasqueira",
               "interest": 13,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 9,
+              "rank": 8,
               "term": "telha",
-              "interest": 12,
+              "interest": 13,
               "variation": null,
               "matchedProducts": [
                 {
@@ -2197,9 +2198,16 @@
               ]
             },
             {
+              "rank": 9,
+              "term": "travesseiro",
+              "interest": 12,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
               "rank": 10,
               "term": "ar condicionado 12000 btus",
-              "interest": 11,
+              "interest": 12,
               "variation": null,
               "matchedProducts": [
                 {
@@ -2234,15 +2242,8 @@
             },
             {
               "rank": 12,
-              "term": "travesseiro",
-              "interest": 11,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 13,
               "term": "isopor",
-              "interest": 10,
+              "interest": 11,
               "variation": null,
               "matchedProducts": [
                 {
@@ -2252,7 +2253,7 @@
               ]
             },
             {
-              "rank": 14,
+              "rank": 13,
               "term": "macaco",
               "interest": 9,
               "variation": null,
@@ -2280,6 +2281,13 @@
               ]
             },
             {
+              "rank": 14,
+              "term": "leroy",
+              "interest": 9,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
               "rank": 15,
               "term": "ar condicionado 9000 btus",
               "interest": 8,
@@ -2297,10 +2305,19 @@
             },
             {
               "rank": 16,
-              "term": "leroy",
+              "term": "ar condicionado lg",
               "interest": 8,
               "variation": null,
-              "matchedProducts": []
+              "matchedProducts": [
+                {
+                  "code": "65.10.003.009",
+                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
+                },
+                {
+                  "code": "65.10.134.000",
+                  "name": "Manifold para ar-condicionado automotivo, VONDER"
+                }
+              ]
             },
             {
               "rank": 17,
@@ -2320,38 +2337,24 @@
             },
             {
               "rank": 18,
-              "term": "climatizador",
+              "term": "leroy merlin",
               "interest": 8,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 19,
-              "term": "ar condicionado lg",
+              "term": "climatizador",
               "interest": 8,
               "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "65.10.003.009",
-                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
-                },
-                {
-                  "code": "65.10.134.000",
-                  "name": "Manifold para ar-condicionado automotivo, VONDER"
-                }
-              ]
+              "matchedProducts": []
             },
             {
               "rank": 20,
-              "term": "textura",
+              "term": "verniz",
               "interest": 7,
               "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "62.20.083.000",
-                  "name": "Pistola projetora de textura PTV 83 VONDER"
-                }
-              ]
+              "matchedProducts": []
             },
             {
               "rank": 21,
@@ -2383,21 +2386,21 @@
             },
             {
               "rank": 22,
-              "term": "verniz",
-              "interest": 7,
+              "term": "roleta",
+              "interest": 6,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 23,
-              "term": "leroy merlin",
-              "interest": 7,
+              "term": "persiana",
+              "interest": 6,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 24,
-              "term": "roleta",
+              "term": "impermeabilizante",
               "interest": 6,
               "variation": null,
               "matchedProducts": []
@@ -2412,7 +2415,7 @@
           ]
         },
         "30d": {
-          "collectedAt": "2026-10-08T06:17:14Z",
+          "collectedAt": "2026-10-09T06:17:21Z",
           "terms": [
             {
               "rank": 1,
@@ -2433,7 +2436,7 @@
             {
               "rank": 2,
               "term": "ar-condicionado",
-              "interest": 23,
+              "interest": 22,
               "variation": null,
               "matchedProducts": [
                 {
@@ -2472,7 +2475,7 @@
             {
               "rank": 5,
               "term": "porcelanato",
-              "interest": 17,
+              "interest": 16,
               "variation": null,
               "matchedProducts": [
                 {
@@ -2507,7 +2510,7 @@
             {
               "rank": 7,
               "term": "telha",
-              "interest": 13,
+              "interest": 12,
               "variation": null,
               "matchedProducts": [
                 {
@@ -2542,28 +2545,12 @@
             {
               "rank": 9,
               "term": "betão",
-              "interest": 12,
+              "interest": 11,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 10,
-              "term": "ar condicionado 9000",
-              "interest": 11,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "65.10.003.009",
-                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
-                },
-                {
-                  "code": "65.10.134.000",
-                  "name": "Manifold para ar-condicionado automotivo, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 11,
               "term": "ar condicionado 12000 btus",
               "interest": 11,
               "variation": null,
@@ -2583,9 +2570,25 @@
               ]
             },
             {
+              "rank": 11,
+              "term": "ar condicionado 9000",
+              "interest": 10,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "65.10.003.009",
+                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
+                },
+                {
+                  "code": "65.10.134.000",
+                  "name": "Manifold para ar-condicionado automotivo, VONDER"
+                }
+              ]
+            },
+            {
               "rank": 12,
               "term": "travesseiro",
-              "interest": 11,
+              "interest": 10,
               "variation": null,
               "matchedProducts": []
             },
@@ -2669,7 +2672,7 @@
             {
               "rank": 19,
               "term": "leroy",
-              "interest": 8,
+              "interest": 7,
               "variation": null,
               "matchedProducts": []
             },
@@ -2750,14 +2753,14 @@
             {
               "rank": 25,
               "term": "calha",
-              "interest": 6,
+              "interest": 5,
               "variation": null,
               "matchedProducts": []
             }
           ]
         },
         "90d": {
-          "collectedAt": "2026-10-08T06:17:21Z",
+          "collectedAt": "2026-10-09T06:17:29Z",
           "terms": [
             {
               "rank": 1,
@@ -2778,21 +2781,14 @@
             {
               "rank": 2,
               "term": "portão",
-              "interest": 23,
+              "interest": 25,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 3,
-              "term": "betão",
-              "interest": 23,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 4,
               "term": "ar-condicionado",
-              "interest": 22,
+              "interest": 24,
               "variation": null,
               "matchedProducts": [
                 {
@@ -2806,9 +2802,16 @@
               ]
             },
             {
+              "rank": 4,
+              "term": "betão",
+              "interest": 23,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
               "rank": 5,
               "term": "ar condicionado inverter",
-              "interest": 20,
+              "interest": 19,
               "variation": null,
               "matchedProducts": [
                 {
@@ -2824,21 +2827,21 @@
             {
               "rank": 6,
               "term": "churrasqueira",
-              "interest": 17,
+              "interest": 16,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 7,
               "term": "teto",
-              "interest": 15,
+              "interest": 16,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 8,
               "term": "betao",
-              "interest": 15,
+              "interest": 14,
               "variation": null,
               "matchedProducts": []
             },
@@ -2872,14 +2875,14 @@
             },
             {
               "rank": 10,
-              "term": "travesseiro",
+              "term": "aquecedor",
               "interest": 13,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 11,
-              "term": "aquecedor",
+              "term": "travesseiro",
               "interest": 13,
               "variation": null,
               "matchedProducts": []
@@ -2898,51 +2901,15 @@
             },
             {
               "rank": 13,
-              "term": "ar condicionado 12000 btus",
-              "interest": 11,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "68.47.012.000",
-                  "name": "Auxiliar de partida portátil com compressor de ar, APC 12000 VONDER"
-                },
-                {
-                  "code": "65.10.003.009",
-                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
-                },
-                {
-                  "code": "65.10.134.000",
-                  "name": "Manifold para ar-condicionado automotivo, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 14,
-              "term": "ar condicionado 9000",
-              "interest": 11,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "65.10.003.009",
-                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
-                },
-                {
-                  "code": "65.10.134.000",
-                  "name": "Manifold para ar-condicionado automotivo, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 15,
               "term": "leroy",
-              "interest": 10,
+              "interest": 11,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 16,
+              "rank": 14,
               "term": "macaco",
-              "interest": 10,
+              "interest": 11,
               "variation": null,
               "matchedProducts": [
                 {
@@ -2968,6 +2935,42 @@
               ]
             },
             {
+              "rank": 15,
+              "term": "ar condicionado 12000 btus",
+              "interest": 11,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "68.47.012.000",
+                  "name": "Auxiliar de partida portátil com compressor de ar, APC 12000 VONDER"
+                },
+                {
+                  "code": "65.10.003.009",
+                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
+                },
+                {
+                  "code": "65.10.134.000",
+                  "name": "Manifold para ar-condicionado automotivo, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 16,
+              "term": "ar condicionado 9000",
+              "interest": 11,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "65.10.003.009",
+                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
+                },
+                {
+                  "code": "65.10.134.000",
+                  "name": "Manifold para ar-condicionado automotivo, VONDER"
+                }
+              ]
+            },
+            {
               "rank": 17,
               "term": "betão bet",
               "interest": 10,
@@ -2976,22 +2979,22 @@
             },
             {
               "rank": 18,
-              "term": "paint",
-              "interest": 9,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 19,
               "term": "leroy merlin",
               "interest": 9,
               "variation": null,
               "matchedProducts": []
             },
             {
+              "rank": 19,
+              "term": "verniz",
+              "interest": 9,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
               "rank": 20,
-              "term": "ar condicionado lg",
-              "interest": 8,
+              "term": "ar condicionado 9000 btus",
+              "interest": 9,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3006,8 +3009,15 @@
             },
             {
               "rank": 21,
+              "term": "paint",
+              "interest": 9,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 22,
               "term": "lixadeira",
-              "interest": 8,
+              "interest": 9,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3033,24 +3043,8 @@
               ]
             },
             {
-              "rank": 22,
-              "term": "ar condicionado split",
-              "interest": 8,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "65.10.003.009",
-                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
-                },
-                {
-                  "code": "65.10.134.000",
-                  "name": "Manifold para ar-condicionado automotivo, VONDER"
-                }
-              ]
-            },
-            {
               "rank": 23,
-              "term": "ar condicionado 9000 btus",
+              "term": "ar condicionado lg",
               "interest": 8,
               "variation": null,
               "matchedProducts": [
@@ -3102,7 +3096,7 @@
           ]
         },
         "12m": {
-          "collectedAt": "2026-10-08T06:17:29Z",
+          "collectedAt": "2026-10-09T06:17:45Z",
           "terms": [
             {
               "rank": 1,
@@ -3123,14 +3117,14 @@
             {
               "rank": 2,
               "term": "betão",
-              "interest": 31,
+              "interest": 32,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 3,
               "term": "ar-condicionado",
-              "interest": 24,
+              "interest": 25,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3146,7 +3140,7 @@
             {
               "rank": 4,
               "term": "ar condicionado inverter",
-              "interest": 19,
+              "interest": 20,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3161,15 +3155,8 @@
             },
             {
               "rank": 5,
-              "term": "betão bet",
-              "interest": 16,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 6,
               "term": "porcelanato",
-              "interest": 15,
+              "interest": 18,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3195,30 +3182,23 @@
               ]
             },
             {
+              "rank": 6,
+              "term": "betão bet",
+              "interest": 16,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
               "rank": 7,
-              "term": "churrasqueira",
-              "interest": 15,
+              "term": "betao",
+              "interest": 16,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 8,
-              "term": "betao",
-              "interest": 15,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 9,
-              "term": "teto",
-              "interest": 15,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 10,
               "term": "ar condicionado 12000",
-              "interest": 14,
+              "interest": 15,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3236,14 +3216,44 @@
               ]
             },
             {
+              "rank": 9,
+              "term": "teto",
+              "interest": 15,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 10,
+              "term": "churrasqueira",
+              "interest": 15,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
               "rank": 11,
               "term": "aquecedor",
-              "interest": 12,
+              "interest": 13,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 12,
+              "term": "ar condicionado 9000",
+              "interest": 11,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "65.10.003.009",
+                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
+                },
+                {
+                  "code": "65.10.134.000",
+                  "name": "Manifold para ar-condicionado automotivo, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 13,
               "term": "telha",
               "interest": 11,
               "variation": null,
@@ -3271,9 +3281,9 @@
               ]
             },
             {
-              "rank": 13,
+              "rank": 14,
               "term": "ar condicionado 12000 btus",
-              "interest": 10,
+              "interest": 11,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3291,37 +3301,14 @@
               ]
             },
             {
-              "rank": 14,
-              "term": "ar condicionado 9000",
-              "interest": 10,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "65.10.003.009",
-                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
-                },
-                {
-                  "code": "65.10.134.000",
-                  "name": "Manifold para ar-condicionado automotivo, VONDER"
-                }
-              ]
-            },
-            {
               "rank": 15,
               "term": "leroy",
-              "interest": 10,
+              "interest": 11,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 16,
-              "term": "travesseiro",
-              "interest": 9,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 17,
               "term": "macaco",
               "interest": 9,
               "variation": null,
@@ -3349,9 +3336,16 @@
               ]
             },
             {
+              "rank": 17,
+              "term": "travesseiro",
+              "interest": 9,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
               "rank": 18,
               "term": "leroy merlin",
-              "interest": 8,
+              "interest": 9,
               "variation": null,
               "matchedProducts": []
             },
@@ -3374,7 +3368,7 @@
             {
               "rank": 20,
               "term": "ar condicionado 9000 btus",
-              "interest": 7,
+              "interest": 8,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3389,6 +3383,13 @@
             },
             {
               "rank": 21,
+              "term": "climatizador",
+              "interest": 7,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 22,
               "term": "lixadeira",
               "interest": 7,
               "variation": null,
@@ -3416,23 +3417,9 @@
               ]
             },
             {
-              "rank": 22,
-              "term": "climatizador",
-              "interest": 7,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
               "rank": 23,
-              "term": "makita",
-              "interest": 6,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 24,
               "term": "ar condicionado portatil",
-              "interest": 6,
+              "interest": 7,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3458,6 +3445,13 @@
               ]
             },
             {
+              "rank": 24,
+              "term": "makita",
+              "interest": 7,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
               "rank": 25,
               "term": "persiana",
               "interest": 6,
@@ -3472,7 +3466,7 @@
       "label": "Yard & Patio",
       "periods": {
         "7d": {
-          "collectedAt": "2026-10-08T06:17:35Z",
+          "collectedAt": "2026-10-09T06:17:52Z",
           "terms": [
             {
               "rank": 1,
@@ -3505,14 +3499,14 @@
             {
               "rank": 2,
               "term": "deck",
-              "interest": 42,
+              "interest": 44,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 3,
               "term": "cadeira praia",
-              "interest": 34,
+              "interest": 37,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3527,8 +3521,31 @@
             },
             {
               "rank": 4,
-              "term": "rocadeira",
+              "term": "cadeira de praia",
+              "interest": 32,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "35.40.170.000",
+                  "name": "Cadeira plástica dobrável, branca VONDER"
+                },
+                {
+                  "code": "35.40.170.170",
+                  "name": "Cadeira plástica dobrável, preta VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 5,
+              "term": "grass",
               "interest": 28,
+              "variation": "+130%",
+              "matchedProducts": []
+            },
+            {
+              "rank": 6,
+              "term": "rocadeira",
+              "interest": 26,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3554,32 +3571,9 @@
               ]
             },
             {
-              "rank": 5,
-              "term": "grass",
-              "interest": 28,
-              "variation": "+150%",
-              "matchedProducts": []
-            },
-            {
-              "rank": 6,
-              "term": "cadeira de praia",
-              "interest": 28,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "35.40.170.000",
-                  "name": "Cadeira plástica dobrável, branca VONDER"
-                },
-                {
-                  "code": "35.40.170.170",
-                  "name": "Cadeira plástica dobrável, preta VONDER"
-                }
-              ]
-            },
-            {
               "rank": 7,
               "term": "vassoura",
-              "interest": 24,
+              "interest": 25,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3606,22 +3600,22 @@
             },
             {
               "rank": 8,
-              "term": "swing",
-              "interest": 21,
+              "term": "patio",
+              "interest": 23,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 9,
-              "term": "patio",
-              "interest": 21,
+              "term": "swing",
+              "interest": 22,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 10,
               "term": "roçadeira stihl",
-              "interest": 19,
+              "interest": 21,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3649,14 +3643,14 @@
             {
               "rank": 11,
               "term": "leandro grass",
-              "interest": 18,
-              "variation": "+250%",
+              "interest": 19,
+              "variation": "+200%",
               "matchedProducts": []
             },
             {
               "rank": 12,
               "term": "cortador de grama",
-              "interest": 17,
+              "interest": 18,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3691,28 +3685,28 @@
             {
               "rank": 14,
               "term": "gazebo",
-              "interest": 15,
+              "interest": 16,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 15,
               "term": "guarda sol",
-              "interest": 15,
+              "interest": 16,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 16,
               "term": "table",
-              "interest": 13,
+              "interest": 14,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 17,
               "term": "decks",
-              "interest": 11,
+              "interest": 12,
               "variation": null,
               "matchedProducts": []
             },
@@ -3733,7 +3727,7 @@
             {
               "rank": 20,
               "term": "aparador de grama",
-              "interest": 9,
+              "interest": 10,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3761,21 +3755,28 @@
             {
               "rank": 21,
               "term": "sabo",
-              "interest": 9,
+              "interest": 10,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 22,
-              "term": "espreguiçadeira",
-              "interest": 7,
+              "term": "siage",
+              "interest": 8,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 23,
+              "term": "espreguiçadeira",
+              "interest": 8,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 24,
               "term": "cabo de vassoura",
-              "interest": 7,
+              "interest": 8,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3801,7 +3802,7 @@
               ]
             },
             {
-              "rank": 24,
+              "rank": 25,
               "term": "roçadeira a gasolina",
               "interest": 7,
               "variation": null,
@@ -3827,18 +3828,11 @@
                   "name": "Roçadeira a gasolina, 0,95 cv,  25,4 cm³ (cc) RGP 2540C VONDER"
                 }
               ]
-            },
-            {
-              "rank": 25,
-              "term": "tenda 3x3",
-              "interest": 7,
-              "variation": null,
-              "matchedProducts": []
             }
           ]
         },
         "30d": {
-          "collectedAt": "2026-10-08T06:17:41Z",
+          "collectedAt": "2026-10-09T06:17:58Z",
           "terms": [
             {
               "rank": 1,
@@ -3871,14 +3865,14 @@
             {
               "rank": 2,
               "term": "deck",
-              "interest": 47,
+              "interest": 48,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 3,
               "term": "cadeira praia",
-              "interest": 39,
+              "interest": 38,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3894,7 +3888,7 @@
             {
               "rank": 4,
               "term": "cadeira de praia",
-              "interest": 34,
+              "interest": 35,
               "variation": null,
               "matchedProducts": [
                 {
@@ -3909,34 +3903,6 @@
             },
             {
               "rank": 5,
-              "term": "vassoura",
-              "interest": 29,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "31.29.047.504",
-                  "name": "Vassoura metálica para grama, 18 arame, regulável, preta, com cabo, NOVE54"
-                },
-                {
-                  "code": "31.29.047.404",
-                  "name": "Vassoura metálica para grama, 18 arames, com cabo, NOVE54"
-                },
-                {
-                  "code": "31.29.040.404",
-                  "name": "Vassoura metálica para grama, 18 palhetas, com cabo, NOVE54"
-                },
-                {
-                  "code": "31.29.040.504",
-                  "name": "Vassoura metálica para grama, 18 palhetas, regulável, vermelha, com cabo, NOVE54"
-                },
-                {
-                  "code": "31.29.020.300",
-                  "name": "Vassoura metálica para grama, 22 arames, amarela, com cabo, VD 203, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 6,
               "term": "rocadeira",
               "interest": 28,
               "variation": null,
@@ -3964,9 +3930,37 @@
               ]
             },
             {
+              "rank": 6,
+              "term": "vassoura",
+              "interest": 28,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "31.29.047.504",
+                  "name": "Vassoura metálica para grama, 18 arame, regulável, preta, com cabo, NOVE54"
+                },
+                {
+                  "code": "31.29.047.404",
+                  "name": "Vassoura metálica para grama, 18 arames, com cabo, NOVE54"
+                },
+                {
+                  "code": "31.29.040.404",
+                  "name": "Vassoura metálica para grama, 18 palhetas, com cabo, NOVE54"
+                },
+                {
+                  "code": "31.29.040.504",
+                  "name": "Vassoura metálica para grama, 18 palhetas, regulável, vermelha, com cabo, NOVE54"
+                },
+                {
+                  "code": "31.29.020.300",
+                  "name": "Vassoura metálica para grama, 22 arames, amarela, com cabo, VD 203, VONDER"
+                }
+              ]
+            },
+            {
               "rank": 7,
               "term": "abri",
-              "interest": 28,
+              "interest": 27,
               "variation": null,
               "matchedProducts": []
             },
@@ -3980,7 +3974,7 @@
             {
               "rank": 9,
               "term": "patio",
-              "interest": 27,
+              "interest": 26,
               "variation": null,
               "matchedProducts": []
             },
@@ -4050,22 +4044,22 @@
             {
               "rank": 13,
               "term": "gazebo",
-              "interest": 18,
+              "interest": 19,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 14,
-              "term": "grass",
-              "interest": 17,
-              "variation": "+90%",
+              "term": "guarda sol",
+              "interest": 18,
+              "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 15,
-              "term": "guarda sol",
+              "term": "grass",
               "interest": 17,
-              "variation": null,
+              "variation": "+90%",
               "matchedProducts": []
             },
             {
@@ -4133,6 +4127,13 @@
             },
             {
               "rank": 22,
+              "term": "espreguiçadeira",
+              "interest": 9,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 23,
               "term": "cabo de vassoura",
               "interest": 9,
               "variation": null,
@@ -4160,16 +4161,9 @@
               ]
             },
             {
-              "rank": 23,
-              "term": "espreguiçadeira",
-              "interest": 9,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
               "rank": 24,
               "term": "how to reseed a lawn",
-              "interest": 9,
+              "interest": 8,
               "variation": null,
               "matchedProducts": []
             },
@@ -4183,7 +4177,7 @@
           ]
         },
         "90d": {
-          "collectedAt": "2026-10-08T06:18:12Z",
+          "collectedAt": "2026-10-09T06:18:05Z",
           "terms": [
             {
               "rank": 1,
@@ -4216,14 +4210,14 @@
             {
               "rank": 2,
               "term": "deck",
-              "interest": 47,
+              "interest": 48,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 3,
               "term": "cadeira praia",
-              "interest": 38,
+              "interest": 37,
               "variation": null,
               "matchedProducts": [
                 {
@@ -4239,7 +4233,7 @@
             {
               "rank": 4,
               "term": "cadeira de praia",
-              "interest": 29,
+              "interest": 32,
               "variation": null,
               "matchedProducts": [
                 {
@@ -4254,8 +4248,22 @@
             },
             {
               "rank": 5,
+              "term": "swing",
+              "interest": 27,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 6,
+              "term": "patio",
+              "interest": 26,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 7,
               "term": "vassoura",
-              "interest": 25,
+              "interest": 26,
               "variation": null,
               "matchedProducts": [
                 {
@@ -4281,14 +4289,7 @@
               ]
             },
             {
-              "rank": 6,
-              "term": "patio",
-              "interest": 24,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 7,
+              "rank": 8,
               "term": "rocadeira",
               "interest": 23,
               "variation": null,
@@ -4316,16 +4317,9 @@
               ]
             },
             {
-              "rank": 8,
-              "term": "swing",
-              "interest": 22,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
               "rank": 9,
               "term": "abri",
-              "interest": 22,
+              "interest": 23,
               "variation": null,
               "matchedProducts": []
             },
@@ -4360,28 +4354,28 @@
             {
               "rank": 11,
               "term": "fence",
-              "interest": 19,
+              "interest": 21,
               "variation": "+250%",
               "matchedProducts": []
             },
             {
               "rank": 12,
               "term": "tenda",
-              "interest": 16,
+              "interest": 17,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 13,
               "term": "gazebo",
-              "interest": 15,
+              "interest": 16,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 14,
               "term": "cortador de grama",
-              "interest": 15,
+              "interest": 16,
               "variation": null,
               "matchedProducts": [
                 {
@@ -4408,15 +4402,15 @@
             },
             {
               "rank": 15,
-              "term": "table",
-              "interest": 14,
+              "term": "guarda sol",
+              "interest": 15,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 16,
-              "term": "guarda sol",
-              "interest": 14,
+              "term": "table",
+              "interest": 15,
               "variation": null,
               "matchedProducts": []
             },
@@ -4430,63 +4424,84 @@
             {
               "rank": 18,
               "term": "best beach umbrellas",
-              "interest": 11,
+              "interest": 12,
               "variation": "+350%",
               "matchedProducts": []
             },
             {
               "rank": 19,
               "term": "what is a trellis",
-              "interest": 11,
+              "interest": 12,
               "variation": "+450%",
               "matchedProducts": []
             },
             {
               "rank": 20,
-              "term": "decks",
-              "interest": 11,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 21,
               "term": "poço",
               "interest": 11,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 22,
+              "rank": 21,
               "term": "grass",
-              "interest": 10,
+              "interest": 11,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 23,
+              "rank": 22,
               "term": "ombrelone",
               "interest": 10,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 24,
+              "rank": 23,
               "term": "sabo",
               "interest": 10,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 25,
+              "rank": 24,
               "term": "espreguiçadeira",
-              "interest": 8,
+              "interest": 9,
               "variation": null,
               "matchedProducts": []
+            },
+            {
+              "rank": 25,
+              "term": "aparador de grama",
+              "interest": 8,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "68.17.100.110",
+                  "name": "Aparador de grama AG 1000BP 1.000 W, 127 V~, VONDER"
+                },
+                {
+                  "code": "68.17.100.120",
+                  "name": "Aparador de grama AG 1000BP 1.000 W, 220 V~, VONDER"
+                },
+                {
+                  "code": "68.17.150.110",
+                  "name": "Aparador de grama AG 1500BP, 1.500 W, 127 V~, VONDER"
+                },
+                {
+                  "code": "68.17.150.220",
+                  "name": "Aparador de grama AG 1500BP, 1.500 W, 220 V~, VONDER"
+                },
+                {
+                  "code": "68.17.100.127",
+                  "name": "Aparador de grama AGV 1000, 1.000 W, 127 V~, VONDER"
+                }
+              ]
             }
           ]
         },
         "12m": {
-          "collectedAt": "2026-10-08T06:18:19Z",
+          "collectedAt": "2026-10-09T06:18:12Z",
           "terms": [
             {
               "rank": 1,
@@ -4519,14 +4534,14 @@
             {
               "rank": 2,
               "term": "deck",
-              "interest": 45,
+              "interest": 47,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 3,
               "term": "cadeira praia",
-              "interest": 39,
+              "interest": 41,
               "variation": null,
               "matchedProducts": [
                 {
@@ -4541,15 +4556,8 @@
             },
             {
               "rank": 4,
-              "term": "stihl",
-              "interest": 33,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 5,
               "term": "cadeira de praia",
-              "interest": 32,
+              "interest": 36,
               "variation": null,
               "matchedProducts": [
                 {
@@ -4561,6 +4569,13 @@
                   "name": "Cadeira plástica dobrável, preta VONDER"
                 }
               ]
+            },
+            {
+              "rank": 5,
+              "term": "stihl",
+              "interest": 35,
+              "variation": null,
+              "matchedProducts": []
             },
             {
               "rank": 6,
@@ -4593,7 +4608,7 @@
             {
               "rank": 7,
               "term": "roçadeira stihl",
-              "interest": 23,
+              "interest": 22,
               "variation": null,
               "matchedProducts": [
                 {
@@ -4620,8 +4635,15 @@
             },
             {
               "rank": 8,
-              "term": "cortador de grama",
+              "term": "guarda sol",
               "interest": 20,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 9,
+              "term": "cortador de grama",
+              "interest": 18,
               "variation": null,
               "matchedProducts": [
                 {
@@ -4645,13 +4667,6 @@
                   "name": "Trator cortador de grama manual TGM 175, VONDER"
                 }
               ]
-            },
-            {
-              "rank": 9,
-              "term": "guarda sol",
-              "interest": 19,
-              "variation": null,
-              "matchedProducts": []
             },
             {
               "rank": 10,
@@ -4697,21 +4712,21 @@
             },
             {
               "rank": 13,
-              "term": "gazebo",
-              "interest": 15,
+              "term": "tenda",
+              "interest": 16,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 14,
               "term": "decks",
-              "interest": 14,
+              "interest": 15,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 15,
-              "term": "tenda",
+              "term": "gazebo",
               "interest": 14,
               "variation": null,
               "matchedProducts": []
@@ -4719,14 +4734,14 @@
             {
               "rank": 16,
               "term": "table",
-              "interest": 12,
+              "interest": 13,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 17,
               "term": "aparador de grama",
-              "interest": 10,
+              "interest": 9,
               "variation": null,
               "matchedProducts": [
                 {
@@ -4788,20 +4803,13 @@
             },
             {
               "rank": 20,
-              "term": "espreguiçadeira",
-              "interest": 7,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 21,
               "term": "poço",
               "interest": 7,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 22,
+              "rank": 21,
               "term": "roçadeira toyama",
               "interest": 7,
               "variation": null,
@@ -4829,25 +4837,41 @@
               ]
             },
             {
+              "rank": 22,
+              "term": "espreguiçadeira",
+              "interest": 7,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
               "rank": 23,
+              "term": "sabo",
+              "interest": 7,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 24,
               "term": "steam deck",
               "interest": 6,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 24,
-              "term": "sabo",
-              "interest": 6,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
               "rank": 25,
-              "term": "guarda sol praia",
+              "term": "cadeira mor",
               "interest": 6,
               "variation": null,
-              "matchedProducts": []
+              "matchedProducts": [
+                {
+                  "code": "35.40.170.000",
+                  "name": "Cadeira plástica dobrável, branca VONDER"
+                },
+                {
+                  "code": "35.40.170.170",
+                  "name": "Cadeira plástica dobrável, preta VONDER"
+                }
+              ]
             }
           ]
         }
@@ -4857,7 +4881,7 @@
       "label": "Construction & Maintenance",
       "periods": {
         "7d": {
-          "collectedAt": "2026-10-08T06:18:26Z",
+          "collectedAt": "2026-10-09T06:18:19Z",
           "terms": [
             {
               "rank": 1,
@@ -4877,8 +4901,15 @@
             },
             {
               "rank": 2,
+              "term": "construção",
+              "interest": 47,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 3,
               "term": "ar-condicionado",
-              "interest": 24,
+              "interest": 25,
               "variation": null,
               "matchedProducts": [
                 {
@@ -4892,16 +4923,30 @@
               ]
             },
             {
-              "rank": 3,
+              "rank": 4,
               "term": "portão",
               "interest": 23,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 4,
+              "rank": 5,
+              "term": "material de construção",
+              "interest": 21,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 6,
+              "term": "escada",
+              "interest": 21,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 7,
               "term": "ar condicionado inverter",
-              "interest": 20,
+              "interest": 19,
               "variation": null,
               "matchedProducts": [
                 {
@@ -4915,23 +4960,9 @@
               ]
             },
             {
-              "rank": 5,
-              "term": "material de construção",
-              "interest": 19,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 6,
-              "term": "escada",
-              "interest": 19,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 7,
+              "rank": 8,
               "term": "parafusadeira",
-              "interest": 17,
+              "interest": 18,
               "variation": null,
               "matchedProducts": [
                 {
@@ -4957,7 +4988,7 @@
               ]
             },
             {
-              "rank": 8,
+              "rank": 9,
               "term": "ferramentas",
               "interest": 16,
               "variation": null,
@@ -4985,29 +5016,9 @@
               ]
             },
             {
-              "rank": 9,
-              "term": "ar condicionado 12000",
-              "interest": 16,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "68.47.012.000",
-                  "name": "Auxiliar de partida portátil com compressor de ar, APC 12000 VONDER"
-                },
-                {
-                  "code": "65.10.003.009",
-                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
-                },
-                {
-                  "code": "65.10.134.000",
-                  "name": "Manifold para ar-condicionado automotivo, VONDER"
-                }
-              ]
-            },
-            {
               "rank": 10,
               "term": "cimento",
-              "interest": 14,
+              "interest": 15,
               "variation": null,
               "matchedProducts": []
             },
@@ -5090,7 +5101,7 @@
             {
               "rank": 15,
               "term": "tijolo",
-              "interest": 10,
+              "interest": 11,
               "variation": null,
               "matchedProducts": [
                 {
@@ -5118,21 +5129,14 @@
             {
               "rank": 16,
               "term": "watts na web",
-              "interest": 10,
-              "variation": "+180%",
+              "interest": 11,
+              "variation": "+120%",
               "matchedProducts": []
             },
             {
               "rank": 17,
-              "term": "climatizador",
-              "interest": 8,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 18,
               "term": "ar condicionado 9000 btus",
-              "interest": 8,
+              "interest": 9,
               "variation": null,
               "matchedProducts": [
                 {
@@ -5142,6 +5146,18 @@
                 {
                   "code": "65.10.134.000",
                   "name": "Manifold para ar-condicionado automotivo, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 18,
+              "term": "isopor",
+              "interest": 8,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "74.65.006.003",
+                  "name": "Cortador de espuma e isopor, 6 W, USB, CEV 060 VONDER"
                 }
               ]
             },
@@ -5186,15 +5202,10 @@
             },
             {
               "rank": 22,
-              "term": "isopor",
-              "interest": 7,
+              "term": "climatizador",
+              "interest": 8,
               "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "74.65.006.003",
-                  "name": "Cortador de espuma e isopor, 6 W, USB, CEV 060 VONDER"
-                }
-              ]
+              "matchedProducts": []
             },
             {
               "rank": 23,
@@ -5205,15 +5216,8 @@
             },
             {
               "rank": 24,
-              "term": "roleta",
-              "interest": 6,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 25,
               "term": "alicate",
-              "interest": 6,
+              "interest": 7,
               "variation": null,
               "matchedProducts": [
                 {
@@ -5237,11 +5241,39 @@
                   "name": "Alicate amperímetro digital AAV 4200, VONDER"
                 }
               ]
+            },
+            {
+              "rank": 25,
+              "term": "argamassa",
+              "interest": 6,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "93.20.128.000",
+                  "name": "Escova de carvão para Misturador de Argamassa MAV 1280 VONDER"
+                },
+                {
+                  "code": "93.20.160.220",
+                  "name": "Escova de carvão para misturador de argamassa MAV 1600 220 V~, VONDER"
+                },
+                {
+                  "code": "93.20.850.010",
+                  "name": "Escova de carvão para misturador de argamassa MAV 850 127 V~, VONDER"
+                },
+                {
+                  "code": "93.20.850.020",
+                  "name": "Escova de carvão para misturador de argamassa MAV 850 220 V~, VONDER"
+                },
+                {
+                  "code": "93.21.400.000",
+                  "name": "Mexedor para argamassa, encaixe SDS PLUS VONDER"
+                }
+              ]
             }
           ]
         },
         "30d": {
-          "collectedAt": "2026-10-08T06:18:32Z",
+          "collectedAt": "2026-10-09T06:18:26Z",
           "terms": [
             {
               "rank": 1,
@@ -5278,26 +5310,12 @@
             {
               "rank": 3,
               "term": "portão",
-              "interest": 20,
+              "interest": 19,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 4,
-              "term": "escada",
-              "interest": 19,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 5,
-              "term": "material de construção",
-              "interest": 19,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 6,
               "term": "ar condicionado inverter",
               "interest": 18,
               "variation": null,
@@ -5311,6 +5329,20 @@
                   "name": "Manifold para ar-condicionado automotivo, VONDER"
                 }
               ]
+            },
+            {
+              "rank": 5,
+              "term": "material de construção",
+              "interest": 18,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 6,
+              "term": "escada",
+              "interest": 17,
+              "variation": null,
+              "matchedProducts": []
             },
             {
               "rank": 7,
@@ -5384,18 +5416,6 @@
             },
             {
               "rank": 11,
-              "term": "granito",
-              "interest": 11,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "53.79.012.150",
-                  "name": "Broca de vídea para granito 12 mm x 150 mm, ZMX, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 12,
               "term": "ar condicionado 12000 btus",
               "interest": 11,
               "variation": null,
@@ -5415,16 +5435,44 @@
               ]
             },
             {
+              "rank": 12,
+              "term": "granito",
+              "interest": 10,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "53.79.012.150",
+                  "name": "Broca de vídea para granito 12 mm x 150 mm, ZMX, VONDER"
+                }
+              ]
+            },
+            {
               "rank": 13,
+              "term": "ar condicionado 9000",
+              "interest": 10,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "65.10.003.009",
+                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
+                },
+                {
+                  "code": "65.10.134.000",
+                  "name": "Manifold para ar-condicionado automotivo, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 14,
               "term": "aquecedor",
               "interest": 9,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 14,
+              "rank": 15,
               "term": "ar condicionado 9000 btus",
-              "interest": 9,
+              "interest": 8,
               "variation": null,
               "matchedProducts": [
                 {
@@ -5438,16 +5486,16 @@
               ]
             },
             {
-              "rank": 15,
+              "rank": 16,
               "term": "climatizador",
               "interest": 8,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 16,
+              "rank": 17,
               "term": "ar condicionado lg",
-              "interest": 8,
+              "interest": 7,
               "variation": null,
               "matchedProducts": [
                 {
@@ -5461,14 +5509,14 @@
               ]
             },
             {
-              "rank": 17,
+              "rank": 18,
               "term": "forro pvc",
               "interest": 7,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 18,
+              "rank": 19,
               "term": "isopor",
               "interest": 7,
               "variation": null,
@@ -5480,21 +5528,21 @@
               ]
             },
             {
-              "rank": 19,
-              "term": "laje",
-              "interest": 7,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
               "rank": 20,
-              "term": "vaso sanitário",
+              "term": "laje",
               "interest": 6,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 21,
+              "term": "vaso sanitário",
+              "interest": 6,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 22,
               "term": "argamassa",
               "interest": 6,
               "variation": null,
@@ -5522,22 +5570,15 @@
               ]
             },
             {
-              "rank": 22,
-              "term": "madeireira",
-              "interest": 6,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
               "rank": 23,
               "term": "google",
-              "interest": 6,
+              "interest": 5,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 24,
-              "term": "persiana",
+              "term": "madeireira",
               "interest": 5,
               "variation": null,
               "matchedProducts": []
@@ -5552,7 +5593,7 @@
           ]
         },
         "90d": {
-          "collectedAt": "2026-10-08T06:18:39Z",
+          "collectedAt": "2026-10-09T06:18:33Z",
           "terms": [
             {
               "rank": 1,
@@ -5573,51 +5614,21 @@
             {
               "rank": 2,
               "term": "construção",
-              "interest": 51,
+              "interest": 52,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 3,
-              "term": "ar-condicionado",
-              "interest": 23,
+              "term": "portão",
+              "interest": 24,
               "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "65.10.003.009",
-                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
-                },
-                {
-                  "code": "65.10.134.000",
-                  "name": "Manifold para ar-condicionado automotivo, VONDER"
-                }
-              ]
+              "matchedProducts": []
             },
             {
               "rank": 4,
-              "term": "portão",
-              "interest": 23,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 5,
-              "term": "escada",
-              "interest": 23,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 6,
-              "term": "material de construção",
-              "interest": 22,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 7,
               "term": "parafusadeira",
-              "interest": 22,
+              "interest": 24,
               "variation": null,
               "matchedProducts": [
                 {
@@ -5643,9 +5654,39 @@
               ]
             },
             {
+              "rank": 5,
+              "term": "ar-condicionado",
+              "interest": 24,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "65.10.003.009",
+                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
+                },
+                {
+                  "code": "65.10.134.000",
+                  "name": "Manifold para ar-condicionado automotivo, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 6,
+              "term": "material de construção",
+              "interest": 23,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 7,
+              "term": "escada",
+              "interest": 22,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
               "rank": 8,
               "term": "ar condicionado inverter",
-              "interest": 19,
+              "interest": 20,
               "variation": null,
               "matchedProducts": [
                 {
@@ -5695,6 +5736,13 @@
             },
             {
               "rank": 11,
+              "term": "telhado",
+              "interest": 13,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 12,
               "term": "granito",
               "interest": 13,
               "variation": null,
@@ -5706,24 +5754,33 @@
               ]
             },
             {
-              "rank": 12,
-              "term": "telhado",
-              "interest": 13,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
               "rank": 13,
               "term": "aquecedor",
-              "interest": 13,
+              "interest": 12,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 14,
+              "term": "ar condicionado 9000",
+              "interest": 11,
+              "variation": "+50%",
+              "matchedProducts": [
+                {
+                  "code": "65.10.003.009",
+                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
+                },
+                {
+                  "code": "65.10.134.000",
+                  "name": "Manifold para ar-condicionado automotivo, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 15,
               "term": "ar condicionado 12000 btus",
               "interest": 11,
-              "variation": "+60%",
+              "variation": "+50%",
               "matchedProducts": [
                 {
                   "code": "68.47.012.000",
@@ -5740,37 +5797,14 @@
               ]
             },
             {
-              "rank": 15,
-              "term": "ar condicionado 9000",
-              "interest": 11,
-              "variation": "+50%",
-              "matchedProducts": [
-                {
-                  "code": "65.10.003.009",
-                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
-                },
-                {
-                  "code": "65.10.134.000",
-                  "name": "Manifold para ar-condicionado automotivo, VONDER"
-                }
-              ]
-            },
-            {
               "rank": 16,
               "term": "forro pvc",
-              "interest": 10,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 17,
-              "term": "laje",
               "interest": 9,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 18,
+              "rank": 17,
               "term": "telhas",
               "interest": 9,
               "variation": null,
@@ -5784,6 +5818,13 @@
                   "name": "Conjunto de vedação de haste para telhas, 1/4\", VONDER"
                 }
               ]
+            },
+            {
+              "rank": 18,
+              "term": "laje",
+              "interest": 9,
+              "variation": null,
+              "matchedProducts": []
             },
             {
               "rank": 19,
@@ -5803,83 +5844,13 @@
             },
             {
               "rank": 20,
-              "term": "argamassa",
-              "interest": 8,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "93.20.128.000",
-                  "name": "Escova de carvão para Misturador de Argamassa MAV 1280 VONDER"
-                },
-                {
-                  "code": "93.20.160.220",
-                  "name": "Escova de carvão para misturador de argamassa MAV 1600 220 V~, VONDER"
-                },
-                {
-                  "code": "93.20.850.010",
-                  "name": "Escova de carvão para misturador de argamassa MAV 850 127 V~, VONDER"
-                },
-                {
-                  "code": "93.20.850.020",
-                  "name": "Escova de carvão para misturador de argamassa MAV 850 220 V~, VONDER"
-                },
-                {
-                  "code": "93.21.400.000",
-                  "name": "Mexedor para argamassa, encaixe SDS PLUS VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 21,
               "term": "climatizador",
               "interest": 8,
               "variation": "+110%",
               "matchedProducts": []
             },
             {
-              "rank": 22,
-              "term": "madeireira",
-              "interest": 7,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 23,
-              "term": "esmerilhadeira",
-              "interest": 7,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "35.73.110.220",
-                  "name": "Chave ajustável para esmerilhadeira, VONDER"
-                },
-                {
-                  "code": "60.05.751.127",
-                  "name": "Conjunto esmerilhadeira de 4.1/2\", 750 W e furadeira de 1/2\", 710 W, 127 V~, com jogo de brocas e disco, EFD 751, DWT"
-                },
-                {
-                  "code": "60.01.751.127",
-                  "name": "Conjunto esmerilhadeira de 4.1/2\", 750 W e furadeira de 1/2\", 710 W, 127 V~, com jogo de brocas e disco, EFV 751, VONDER"
-                },
-                {
-                  "code": "60.05.751.220",
-                  "name": "Conjunto esmerilhadeira de 4.1/2\", 750 W e furadeira de 1/2\", 710 W, 220 V~, com jogo de brocas e disco, EFD 751, DWT"
-                },
-                {
-                  "code": "60.01.751.220",
-                  "name": "Conjunto esmerilhadeira de 4.1/2\", 750 W e furadeira de 1/2\", 710 W, 220 V~, com jogo de brocas e disco, EFV 751, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 24,
-              "term": "persiana",
-              "interest": 7,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 25,
+              "rank": 21,
               "term": "alicate",
               "interest": 7,
               "variation": null,
@@ -5905,11 +5876,81 @@
                   "name": "Alicate amperímetro digital AAV 4200, VONDER"
                 }
               ]
+            },
+            {
+              "rank": 22,
+              "term": "madeireira",
+              "interest": 7,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 23,
+              "term": "argamassa",
+              "interest": 7,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "93.20.128.000",
+                  "name": "Escova de carvão para Misturador de Argamassa MAV 1280 VONDER"
+                },
+                {
+                  "code": "93.20.160.220",
+                  "name": "Escova de carvão para misturador de argamassa MAV 1600 220 V~, VONDER"
+                },
+                {
+                  "code": "93.20.850.010",
+                  "name": "Escova de carvão para misturador de argamassa MAV 850 127 V~, VONDER"
+                },
+                {
+                  "code": "93.20.850.020",
+                  "name": "Escova de carvão para misturador de argamassa MAV 850 220 V~, VONDER"
+                },
+                {
+                  "code": "93.21.400.000",
+                  "name": "Mexedor para argamassa, encaixe SDS PLUS VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 24,
+              "term": "persiana",
+              "interest": 7,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 25,
+              "term": "esmerilhadeira",
+              "interest": 7,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "35.73.110.220",
+                  "name": "Chave ajustável para esmerilhadeira, VONDER"
+                },
+                {
+                  "code": "60.05.751.127",
+                  "name": "Conjunto esmerilhadeira de 4.1/2\", 750 W e furadeira de 1/2\", 710 W, 127 V~, com jogo de brocas e disco, EFD 751, DWT"
+                },
+                {
+                  "code": "60.01.751.127",
+                  "name": "Conjunto esmerilhadeira de 4.1/2\", 750 W e furadeira de 1/2\", 710 W, 127 V~, com jogo de brocas e disco, EFV 751, VONDER"
+                },
+                {
+                  "code": "60.05.751.220",
+                  "name": "Conjunto esmerilhadeira de 4.1/2\", 750 W e furadeira de 1/2\", 710 W, 220 V~, com jogo de brocas e disco, EFD 751, DWT"
+                },
+                {
+                  "code": "60.01.751.220",
+                  "name": "Conjunto esmerilhadeira de 4.1/2\", 750 W e furadeira de 1/2\", 710 W, 220 V~, com jogo de brocas e disco, EFV 751, VONDER"
+                }
+              ]
             }
           ]
         },
         "12m": {
-          "collectedAt": "2026-10-08T06:18:46Z",
+          "collectedAt": "2026-10-09T06:18:49Z",
           "terms": [
             {
               "rank": 1,
@@ -5929,15 +5970,15 @@
             },
             {
               "rank": 2,
-              "term": "material",
-              "interest": 26,
+              "term": "construção",
+              "interest": 44,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 3,
               "term": "ar-condicionado",
-              "interest": 21,
+              "interest": 23,
               "variation": null,
               "matchedProducts": [
                 {
@@ -5953,7 +5994,7 @@
             {
               "rank": 4,
               "term": "ar condicionado inverter",
-              "interest": 19,
+              "interest": 20,
               "variation": null,
               "matchedProducts": [
                 {
@@ -5968,50 +6009,29 @@
             },
             {
               "rank": 5,
+              "term": "escada",
+              "interest": 20,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 6,
+              "term": "portão",
+              "interest": 20,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 7,
               "term": "material de construção",
               "interest": 19,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 6,
-              "term": "escada",
-              "interest": 17,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 7,
-              "term": "parafusadeira",
-              "interest": 17,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "35.99.014.014",
-                  "name": "Adaptador angular para parafusadeira/furadeira, encaixe de 1/4\", VONDER"
-                },
-                {
-                  "code": "92.06.108.000",
-                  "name": "Bateria 10,8 V, íons de lítio, para parafusadeira/furadeira ABS-10,8 LI DWT"
-                },
-                {
-                  "code": "93.06.108.011",
-                  "name": "Bateria 10,8 V, íons de lítio, para parafusadeira/furadeira PB 10,8,  VONDER"
-                },
-                {
-                  "code": "93.06.010.034",
-                  "name": "Bateria 10,8 V, íons de lítio, para parafusadeira/furadeira PFV 010 e PBV 108, VONDER"
-                },
-                {
-                  "code": "93.06.108.000",
-                  "name": "Bateria 10,8 V, íons de lítio, para parafusadeira/furadeira PFV 108 VONDER"
-                }
-              ]
-            },
-            {
               "rank": 8,
-              "term": "furadeira",
-              "interest": 14,
+              "term": "parafusadeira",
+              "interest": 18,
               "variation": null,
               "matchedProducts": [
                 {
@@ -6038,36 +6058,70 @@
             },
             {
               "rank": 9,
-              "term": "cimento",
-              "interest": 12,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 10,
-              "term": "aquecedor",
-              "interest": 12,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 11,
-              "term": "granito",
-              "interest": 10,
+              "term": "furadeira",
+              "interest": 15,
               "variation": null,
               "matchedProducts": [
                 {
-                  "code": "53.79.012.150",
-                  "name": "Broca de vídea para granito 12 mm x 150 mm, ZMX, VONDER"
+                  "code": "35.99.014.014",
+                  "name": "Adaptador angular para parafusadeira/furadeira, encaixe de 1/4\", VONDER"
+                },
+                {
+                  "code": "92.06.108.000",
+                  "name": "Bateria 10,8 V, íons de lítio, para parafusadeira/furadeira ABS-10,8 LI DWT"
+                },
+                {
+                  "code": "93.06.108.011",
+                  "name": "Bateria 10,8 V, íons de lítio, para parafusadeira/furadeira PB 10,8,  VONDER"
+                },
+                {
+                  "code": "93.06.010.034",
+                  "name": "Bateria 10,8 V, íons de lítio, para parafusadeira/furadeira PFV 010 e PBV 108, VONDER"
+                },
+                {
+                  "code": "93.06.108.000",
+                  "name": "Bateria 10,8 V, íons de lítio, para parafusadeira/furadeira PFV 108 VONDER"
                 }
               ]
             },
             {
-              "rank": 12,
-              "term": "ar condicionado 9000",
-              "interest": 10,
+              "rank": 10,
+              "term": "ferramentas",
+              "interest": 15,
               "variation": null,
               "matchedProducts": [
+                {
+                  "code": "35.99.060.020",
+                  "name": "Abraçadeira magnética porta-ferramentas, VONDER"
+                },
+                {
+                  "code": "61.40.006.088",
+                  "name": "Armário de parede, para ferramentas, com 1 gaveta, VONDER"
+                },
+                {
+                  "code": "61.62.615.826",
+                  "name": "Armário para ferramentas, com 1 prateleira, VONDER"
+                },
+                {
+                  "code": "61.14.500.140",
+                  "name": "Armário superior para ferramentas, modular, VONDER"
+                },
+                {
+                  "code": "80.99.000.044",
+                  "name": "Bancada com ferramentas de brinquedo, 44 peças, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 11,
+              "term": "ar condicionado 12000",
+              "interest": 14,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "68.47.012.000",
+                  "name": "Auxiliar de partida portátil com compressor de ar, APC 12000 VONDER"
+                },
                 {
                   "code": "65.10.003.009",
                   "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
@@ -6079,9 +6133,16 @@
               ]
             },
             {
+              "rank": 12,
+              "term": "cimento",
+              "interest": 14,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
               "rank": 13,
               "term": "ar condicionado 12000 btus",
-              "interest": 9,
+              "interest": 11,
               "variation": null,
               "matchedProducts": [
                 {
@@ -6100,8 +6161,55 @@
             },
             {
               "rank": 14,
-              "term": "ar condicionado 9000 btus",
-              "interest": 7,
+              "term": "tijolo",
+              "interest": 11,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "28.95.106.010",
+                  "name": "Bucha de nylon para tijolo vazado, 10 mm, BTV 10, com 10 peças, VONDER"
+                },
+                {
+                  "code": "28.95.106.100",
+                  "name": "Bucha de nylon para tijolo vazado, 10 mm, BTV 10, com 100 peças, VONDER"
+                },
+                {
+                  "code": "28.95.636.010",
+                  "name": "Bucha de nylon para tijolo vazado, 6 mm, BTV 6, com 10 peças, VONDER"
+                },
+                {
+                  "code": "28.95.636.100",
+                  "name": "Bucha de nylon para tijolo vazado, 6 mm, BTV 6, com 100 peças, VONDER"
+                },
+                {
+                  "code": "28.95.850.010",
+                  "name": "Bucha de nylon para tijolo vazado, 8 mm, BTV 8, com 10 peças, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 15,
+              "term": "granito",
+              "interest": 11,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "53.79.012.150",
+                  "name": "Broca de vídea para granito 12 mm x 150 mm, ZMX, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 16,
+              "term": "telhado",
+              "interest": 10,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 17,
+              "term": "ar condicionado split",
+              "interest": 8,
               "variation": null,
               "matchedProducts": [
                 {
@@ -6115,153 +6223,104 @@
               ]
             },
             {
-              "rank": 15,
+              "rank": 18,
+              "term": "ar condicionado 9000 btus",
+              "interest": 8,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "65.10.003.009",
+                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
+                },
+                {
+                  "code": "65.10.134.000",
+                  "name": "Manifold para ar-condicionado automotivo, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 19,
+              "term": "ar condicionado lg",
+              "interest": 8,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "65.10.003.009",
+                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
+                },
+                {
+                  "code": "65.10.134.000",
+                  "name": "Manifold para ar-condicionado automotivo, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 20,
+              "term": "marmore",
+              "interest": 8,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "93.20.130.220",
+                  "name": "Escova de carvão para serra mármore SMV 1300S, VONDER e SMA 1300S, AWT 220 V~, VONDER"
+                },
+                {
+                  "code": "93.20.130.110",
+                  "name": "Escova de carvão para serra mármore SMV 1300S, VONDER e SMA-1300S AWT 127 V~, VONDER"
+                },
+                {
+                  "code": "93.20.140.010",
+                  "name": "Escova de carvão para serra mármore SMV 1400, 127 V~ VONDER"
+                },
+                {
+                  "code": "93.20.140.020",
+                  "name": "Escova de carvão para serra mármore SMV 1400, 220 V~, VONDER"
+                },
+                {
+                  "code": "93.02.130.000",
+                  "name": "Kit de refrigeração para serra mármore SMD 1300 e SMV 1300, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 21,
               "term": "forro pvc",
-              "interest": 7,
+              "interest": 8,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 16,
+              "rank": 22,
+              "term": "isopor",
+              "interest": 8,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "74.65.006.003",
+                  "name": "Cortador de espuma e isopor, 6 W, USB, CEV 060 VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 23,
               "term": "laje",
               "interest": 7,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 17,
-              "term": "climatizador",
-              "interest": 6,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 18,
-              "term": "madeireira",
-              "interest": 6,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 19,
-              "term": "ar condicionado portatil",
-              "interest": 6,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "68.47.010.000",
-                  "name": "Auxiliar de partida portátil APV 10000, VONDER"
-                },
-                {
-                  "code": "68.47.010.600",
-                  "name": "Auxiliar de partida portátil APV 10600, VONDER"
-                },
-                {
-                  "code": "68.47.013.000",
-                  "name": "Auxiliar de partida portátil APV 13000,  VONDER"
-                },
-                {
-                  "code": "68.47.004.000",
-                  "name": "Auxiliar de partida portátil APV 4000, VONDER"
-                },
-                {
-                  "code": "68.47.008.000",
-                  "name": "Auxiliar de partida portátil APV 8000, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 20,
-              "term": "argamassa",
-              "interest": 5,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "93.20.128.000",
-                  "name": "Escova de carvão para Misturador de Argamassa MAV 1280 VONDER"
-                },
-                {
-                  "code": "93.20.160.220",
-                  "name": "Escova de carvão para misturador de argamassa MAV 1600 220 V~, VONDER"
-                },
-                {
-                  "code": "93.20.850.010",
-                  "name": "Escova de carvão para misturador de argamassa MAV 850 127 V~, VONDER"
-                },
-                {
-                  "code": "93.20.850.020",
-                  "name": "Escova de carvão para misturador de argamassa MAV 850 220 V~, VONDER"
-                },
-                {
-                  "code": "93.21.400.000",
-                  "name": "Mexedor para argamassa, encaixe SDS PLUS VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 21,
-              "term": "google",
-              "interest": 5,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 22,
-              "term": "persiana",
-              "interest": 5,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 23,
-              "term": "ponte",
-              "interest": 5,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
               "rank": 24,
-              "term": "ar condicionado janela",
-              "interest": 5,
+              "term": "climatizador",
+              "interest": 7,
               "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "65.10.003.009",
-                  "name": "Conjunto saca conexões de ar-condicionado automotivo VONDER"
-                },
-                {
-                  "code": "65.10.134.000",
-                  "name": "Manifold para ar-condicionado automotivo, VONDER"
-                }
-              ]
+              "matchedProducts": []
             },
             {
               "rank": 25,
-              "term": "esmerilhadeira",
-              "interest": 5,
+              "term": "madeireira",
+              "interest": 7,
               "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "35.73.110.220",
-                  "name": "Chave ajustável para esmerilhadeira, VONDER"
-                },
-                {
-                  "code": "60.05.751.127",
-                  "name": "Conjunto esmerilhadeira de 4.1/2\", 750 W e furadeira de 1/2\", 710 W, 127 V~, com jogo de brocas e disco, EFD 751, DWT"
-                },
-                {
-                  "code": "60.01.751.127",
-                  "name": "Conjunto esmerilhadeira de 4.1/2\", 750 W e furadeira de 1/2\", 710 W, 127 V~, com jogo de brocas e disco, EFV 751, VONDER"
-                },
-                {
-                  "code": "60.05.751.220",
-                  "name": "Conjunto esmerilhadeira de 4.1/2\", 750 W e furadeira de 1/2\", 710 W, 220 V~, com jogo de brocas e disco, EFD 751, DWT"
-                },
-                {
-                  "code": "60.01.751.220",
-                  "name": "Conjunto esmerilhadeira de 4.1/2\", 750 W e furadeira de 1/2\", 710 W, 220 V~, com jogo de brocas e disco, EFV 751, VONDER"
-                }
-              ]
+              "matchedProducts": []
             }
           ]
         }
@@ -6271,7 +6330,7 @@
       "label": "Automotive",
       "periods": {
         "7d": {
-          "collectedAt": "2026-10-08T06:18:52Z",
+          "collectedAt": "2026-10-09T06:19:21Z",
           "terms": [
             {
               "rank": 1,
@@ -6304,7 +6363,7 @@
             {
               "rank": 2,
               "term": "moto",
-              "interest": 78,
+              "interest": 83,
               "variation": null,
               "matchedProducts": [
                 {
@@ -6332,35 +6391,35 @@
             {
               "rank": 3,
               "term": "detran",
-              "interest": 75,
+              "interest": 79,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 4,
               "term": "honda",
-              "interest": 39,
+              "interest": 41,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 5,
               "term": "fiat",
-              "interest": 38,
+              "interest": 37,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 6,
               "term": "cnh",
-              "interest": 30,
+              "interest": 33,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 7,
               "term": "olx",
-              "interest": 29,
+              "interest": 31,
               "variation": null,
               "matchedProducts": []
             },
@@ -6373,15 +6432,8 @@
             },
             {
               "rank": 9,
-              "term": "se",
-              "interest": 23,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 10,
               "term": "carros",
-              "interest": 23,
+              "interest": 24,
               "variation": null,
               "matchedProducts": [
                 {
@@ -6389,6 +6441,13 @@
                   "name": "Roda dianteira 180 mm x 50 mm em nylon, para Carros hidráulicos, VONDER"
                 }
               ]
+            },
+            {
+              "rank": 10,
+              "term": "se",
+              "interest": 24,
+              "variation": null,
+              "matchedProducts": []
             },
             {
               "rank": 11,
@@ -6421,14 +6480,14 @@
             {
               "rank": 12,
               "term": "ipva",
-              "interest": 19,
+              "interest": 20,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 13,
               "term": "caminhão",
-              "interest": 18,
+              "interest": 19,
               "variation": null,
               "matchedProducts": [
                 {
@@ -6439,22 +6498,22 @@
             },
             {
               "rank": 14,
-              "term": "bmw",
-              "interest": 15,
+              "term": "veículo",
+              "interest": 18,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 15,
-              "term": "jeep",
-              "interest": 14,
+              "term": "bmw",
+              "interest": 16,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 16,
               "term": "tabela fipe",
-              "interest": 14,
+              "interest": 15,
               "variation": null,
               "matchedProducts": []
             },
@@ -6467,64 +6526,322 @@
             },
             {
               "rank": 18,
-              "term": "peugeot",
-              "interest": 13,
+              "term": "jeep",
+              "interest": 14,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 19,
-              "term": "veículo",
+              "term": "volkswagen",
               "interest": 12,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 20,
-              "term": "chevrolet",
-              "interest": 11,
+              "term": "yamaha",
+              "interest": 12,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 21,
-              "term": "yamaha",
-              "interest": 11,
+              "term": "chevrolet",
+              "interest": 12,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 22,
-              "term": "volkswagen",
+              "term": "mercedes",
               "interest": 11,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 23,
+              "term": "renault",
+              "interest": 11,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 24,
               "term": "astra",
               "interest": 10,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 24,
-              "term": "detran sp",
-              "interest": 9,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
               "rank": 25,
-              "term": "google",
-              "interest": 9,
+              "term": "nissan",
+              "interest": 10,
               "variation": null,
               "matchedProducts": []
             }
           ]
         },
         "30d": {
-          "collectedAt": "2026-10-08T06:18:58Z",
+          "collectedAt": "2026-10-09T06:19:28Z",
+          "terms": [
+            {
+              "rank": 1,
+              "term": "carro",
+              "interest": 100,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "63.64.120.530",
+                  "name": "Capa impermeável para carro, tamanho G, VONDER"
+                },
+                {
+                  "code": "63.64.120.480",
+                  "name": "Capa impermeável para carro, tamanho M, VONDER"
+                },
+                {
+                  "code": "63.64.120.405",
+                  "name": "Capa impermeável para carro, tamanho P, VONDER"
+                },
+                {
+                  "code": "35.99.000.550",
+                  "name": "Carro em aço inox para ferramentas, com 5 gavetas CFI 550 VONDER PLUS"
+                },
+                {
+                  "code": "61.61.010.000",
+                  "name": "Carro para detalhamento automotivo, CAV 010, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 2,
+              "term": "moto",
+              "interest": 81,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "63.64.125.232",
+                  "name": "Capa impermeável para moto, tamanho G, VONDER"
+                },
+                {
+                  "code": "63.64.122.203",
+                  "name": "Capa impermeável para moto, tamanho M, VONDER"
+                },
+                {
+                  "code": "63.64.122.183",
+                  "name": "Capa impermeável para moto, tamanho P, VONDER"
+                },
+                {
+                  "code": "68.47.003.000",
+                  "name": "Carregador inteligente de bateria para moto, 127 V~ - 220 V~, CIB 003 VONDER"
+                },
+                {
+                  "code": "63.64.225.550",
+                  "name": "Escova para raios de moto e bicicleta, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 3,
+              "term": "detran",
+              "interest": 69,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 4,
+              "term": "honda",
+              "interest": 41,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 5,
+              "term": "fiat",
+              "interest": 38,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 6,
+              "term": "olx",
+              "interest": 32,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 7,
+              "term": "ford",
+              "interest": 31,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 8,
+              "term": "cnh",
+              "interest": 26,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 9,
+              "term": "carros",
+              "interest": 24,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "68.79.330.023",
+                  "name": "Roda dianteira 180 mm x 50 mm em nylon, para Carros hidráulicos, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 10,
+              "term": "se",
+              "interest": 23,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 11,
+              "term": "byd",
+              "interest": 23,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 12,
+              "term": "corsa",
+              "interest": 22,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 13,
+              "term": "caminhão",
+              "interest": 21,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "30.99.225.000",
+                  "name": "Catraca para caminhão, sem cabo, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 14,
+              "term": "bicicleta",
+              "interest": 20,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "35.98.272.000",
+                  "name": "Bomba de ar portátil com bico flexível para bicicleta VONDER"
+                },
+                {
+                  "code": "78.11.002.000",
+                  "name": "Campainha para bicicleta, tipo sino, prata, VONDER"
+                },
+                {
+                  "code": "78.11.002.002",
+                  "name": "Campainha para bicicleta, tipo sino, preta, VONDER"
+                },
+                {
+                  "code": "78.11.001.000",
+                  "name": "Campainha para bicicleta, tipo trim trim, prata, VONDER"
+                },
+                {
+                  "code": "78.11.001.001",
+                  "name": "Campainha para bicicleta, tipo trim trim, preta, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 15,
+              "term": "ipva",
+              "interest": 17,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 16,
+              "term": "bmw",
+              "interest": 15,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 17,
+              "term": "lanterna",
+              "interest": 14,
+              "variation": null,
+              "matchedProducts": [
+                {
+                  "code": "60.01.360.000",
+                  "name": "Parafusadeira a bateria 3,6 V, carregador bivolt, jogo com lanterna e 45 acessórios, PBV 360N, VONDER"
+                }
+              ]
+            },
+            {
+              "rank": 18,
+              "term": "jeep",
+              "interest": 14,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 19,
+              "term": "toyota",
+              "interest": 14,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 20,
+              "term": "veículo",
+              "interest": 13,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 21,
+              "term": "chevrolet",
+              "interest": 13,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 22,
+              "term": "peugeot",
+              "interest": 12,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 23,
+              "term": "habilitação",
+              "interest": 12,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 24,
+              "term": "yamaha",
+              "interest": 12,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 25,
+              "term": "gama",
+              "interest": 12,
+              "variation": "+70%",
+              "matchedProducts": []
+            }
+          ]
+        },
+        "90d": {
+          "collectedAt": "2026-10-09T06:19:34Z",
           "terms": [
             {
               "rank": 1,
@@ -6585,14 +6902,14 @@
             {
               "rank": 3,
               "term": "detran",
-              "interest": 65,
+              "interest": 72,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 4,
               "term": "honda",
-              "interest": 41,
+              "interest": 42,
               "variation": null,
               "matchedProducts": []
             },
@@ -6620,277 +6937,14 @@
             {
               "rank": 8,
               "term": "cnh",
-              "interest": 25,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 9,
-              "term": "carros",
-              "interest": 23,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "68.79.330.023",
-                  "name": "Roda dianteira 180 mm x 50 mm em nylon, para Carros hidráulicos, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 10,
-              "term": "se",
-              "interest": 23,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 11,
-              "term": "corsa",
-              "interest": 22,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 12,
-              "term": "byd",
-              "interest": 22,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 13,
-              "term": "caminhão",
-              "interest": 20,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "30.99.225.000",
-                  "name": "Catraca para caminhão, sem cabo, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 14,
-              "term": "corolla",
-              "interest": 19,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 15,
-              "term": "bicicleta",
-              "interest": 18,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "35.98.272.000",
-                  "name": "Bomba de ar portátil com bico flexível para bicicleta VONDER"
-                },
-                {
-                  "code": "78.11.002.000",
-                  "name": "Campainha para bicicleta, tipo sino, prata, VONDER"
-                },
-                {
-                  "code": "78.11.002.002",
-                  "name": "Campainha para bicicleta, tipo sino, preta, VONDER"
-                },
-                {
-                  "code": "78.11.001.000",
-                  "name": "Campainha para bicicleta, tipo trim trim, prata, VONDER"
-                },
-                {
-                  "code": "78.11.001.001",
-                  "name": "Campainha para bicicleta, tipo trim trim, preta, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 16,
-              "term": "ipva",
-              "interest": 17,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 17,
-              "term": "gama",
-              "interest": 16,
-              "variation": "+700%",
-              "matchedProducts": []
-            },
-            {
-              "rank": 18,
-              "term": "bmw",
-              "interest": 15,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 19,
-              "term": "jeep",
-              "interest": 15,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 20,
-              "term": "toyota",
-              "interest": 14,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 21,
-              "term": "santa fe x vasco da gama",
-              "interest": 14,
-              "variation": "+49250%",
-              "matchedProducts": [
-                {
-                  "code": "31.58.200.100",
-                  "name": "Foice modelo Santa Catarina, sem cabo, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 22,
-              "term": "lanterna",
-              "interest": 14,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "60.01.360.000",
-                  "name": "Parafusadeira a bateria 3,6 V, carregador bivolt, jogo com lanterna e 45 acessórios, PBV 360N, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 23,
-              "term": "civic",
-              "interest": 14,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 24,
-              "term": "chevrolet",
-              "interest": 12,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 25,
-              "term": "habilitação",
-              "interest": 12,
-              "variation": null,
-              "matchedProducts": []
-            }
-          ]
-        },
-        "90d": {
-          "collectedAt": "2026-10-08T06:19:04Z",
-          "terms": [
-            {
-              "rank": 1,
-              "term": "carro",
-              "interest": 100,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "63.64.120.530",
-                  "name": "Capa impermeável para carro, tamanho G, VONDER"
-                },
-                {
-                  "code": "63.64.120.480",
-                  "name": "Capa impermeável para carro, tamanho M, VONDER"
-                },
-                {
-                  "code": "63.64.120.405",
-                  "name": "Capa impermeável para carro, tamanho P, VONDER"
-                },
-                {
-                  "code": "35.99.000.550",
-                  "name": "Carro em aço inox para ferramentas, com 5 gavetas CFI 550 VONDER PLUS"
-                },
-                {
-                  "code": "61.61.010.000",
-                  "name": "Carro para detalhamento automotivo, CAV 010, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 2,
-              "term": "moto",
-              "interest": 87,
-              "variation": null,
-              "matchedProducts": [
-                {
-                  "code": "63.64.125.232",
-                  "name": "Capa impermeável para moto, tamanho G, VONDER"
-                },
-                {
-                  "code": "63.64.122.203",
-                  "name": "Capa impermeável para moto, tamanho M, VONDER"
-                },
-                {
-                  "code": "63.64.122.183",
-                  "name": "Capa impermeável para moto, tamanho P, VONDER"
-                },
-                {
-                  "code": "68.47.003.000",
-                  "name": "Carregador inteligente de bateria para moto, 127 V~ - 220 V~, CIB 003 VONDER"
-                },
-                {
-                  "code": "63.64.225.550",
-                  "name": "Escova para raios de moto e bicicleta, VONDER"
-                }
-              ]
-            },
-            {
-              "rank": 3,
-              "term": "detran",
-              "interest": 77,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 4,
-              "term": "honda",
-              "interest": 45,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 5,
-              "term": "fiat",
-              "interest": 41,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 6,
-              "term": "olx",
-              "interest": 34,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 7,
-              "term": "ford",
-              "interest": 32,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 8,
-              "term": "cnh",
-              "interest": 29,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 9,
-              "term": "carros",
               "interest": 26,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
+              "rank": 9,
+              "term": "carros",
+              "interest": 25,
               "variation": null,
               "matchedProducts": [
                 {
@@ -6909,21 +6963,14 @@
             {
               "rank": 11,
               "term": "se",
-              "interest": 23,
-              "variation": null,
-              "matchedProducts": []
-            },
-            {
-              "rank": 12,
-              "term": "ipva",
               "interest": 22,
               "variation": null,
               "matchedProducts": []
             },
             {
-              "rank": 13,
+              "rank": 12,
               "term": "caminhão",
-              "interest": 20,
+              "interest": 19,
               "variation": null,
               "matchedProducts": [
                 {
@@ -6933,9 +6980,16 @@
               ]
             },
             {
+              "rank": 13,
+              "term": "ipva",
+              "interest": 19,
+              "variation": null,
+              "matchedProducts": []
+            },
+            {
               "rank": 14,
               "term": "bicicleta",
-              "interest": 20,
+              "interest": 19,
               "variation": null,
               "matchedProducts": [
                 {
@@ -6963,42 +7017,42 @@
             {
               "rank": 15,
               "term": "bmw",
-              "interest": 17,
+              "interest": 15,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 16,
               "term": "tabela fipe",
-              "interest": 16,
+              "interest": 15,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 17,
-              "term": "civic",
-              "interest": 15,
+              "term": "jeep",
+              "interest": 14,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 18,
-              "term": "jeep",
-              "interest": 15,
+              "term": "civic",
+              "interest": 14,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 19,
               "term": "toyota",
-              "interest": 14,
+              "interest": 13,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 20,
-              "term": "licenciamento",
-              "interest": 14,
+              "term": "car",
+              "interest": 13,
               "variation": null,
               "matchedProducts": []
             },
@@ -7011,29 +7065,29 @@
             },
             {
               "rank": 22,
-              "term": "chevrolet",
-              "interest": 13,
+              "term": "licenciamento",
+              "interest": 12,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 23,
               "term": "veículo",
-              "interest": 13,
+              "interest": 12,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 24,
-              "term": "volkswagen",
-              "interest": 13,
+              "term": "chevrolet",
+              "interest": 12,
               "variation": null,
               "matchedProducts": []
             },
             {
               "rank": 25,
-              "term": "car",
-              "interest": 13,
+              "term": "volkswagen",
+              "interest": 12,
               "variation": null,
               "matchedProducts": []
             }
