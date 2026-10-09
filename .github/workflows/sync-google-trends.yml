@@ -93,42 +93,97 @@ jobs:
               'version': 1, 'geo': GEO, 'updatedAt': None, 'categories': {}
           }
           categories = dict(document.get('categories') or {})
-          any_success = False
-
+          today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
           for slug, label, cat_id in CATEGORIES:
               bucket = dict(categories.get(slug) or {'label': label, 'periods': {}})
               bucket['label'] = label
-              periods = dict(bucket.get('periods') or {})
-              for period_key, timeframe in TIMEFRAMES:
-                  print(f'{label} / {period_key} ({timeframe})...')
-                  result = fetch_related(cat_id, timeframe)
-                  top = None if result is None else result.get('top')
-                  if top is None or top.empty:
-                      print('  sem dado novo — mantendo o que já existia.')
-                      time.sleep(5)
-                      continue
-                  rising = result.get('rising')
-                  rising_lookup = {}
-                  if rising is not None and not rising.empty:
-                      for _, row in rising.iterrows():
-                          rising_lookup[str(row['query']).strip().lower()] = row['value']
-                  terms = []
-                  for rank, (_, row) in enumerate(top.iterrows(), start=1):
-                      term = str(row['query']).strip()
-                      terms.append({
-                          'rank': rank,
-                          'term': term,
-                          'interest': int(row['value']),
-                          'variation': format_variation(rising_lookup.get(term.lower())),
-                      })
-                  periods[period_key] = {
-                      'collectedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
-                      'terms': terms,
-                  }
-                  any_success = True
-                  time.sleep(5)
-              bucket['periods'] = periods
+              bucket['periods'] = dict(bucket.get('periods') or {})
               categories[slug] = bucket
+
+          # As 28 combinações (categoria x janela) rodam numa ordem que gira um passo por dia: quando o Google passa a
+          # limitar a taxa no meio da coleta, a falha não cai sempre nas mesmas (antes, as últimas categorias ficavam dias
+          # sem atualizar).
+          jobs = [(slug, label, cat_id, period_key, timeframe)
+                  for slug, label, cat_id in CATEGORIES for period_key, timeframe in TIMEFRAMES]
+          shift = datetime.now(timezone.utc).toordinal() % len(jobs)
+          jobs = jobs[shift:] + jobs[:shift]
+
+          def collect(job):
+              slug, label, cat_id, period_key, timeframe = job
+              print(f'{label} / {period_key} ({timeframe})...')
+              result = fetch_related(cat_id, timeframe)
+              top = None if result is None else result.get('top')
+              if top is None or top.empty:
+                  print('  sem dado novo.')
+                  return False
+              rising = result.get('rising')
+              rising_lookup = {}
+              if rising is not None and not rising.empty:
+                  for _, row in rising.iterrows():
+                      rising_lookup[str(row['query']).strip().lower()] = row['value']
+              # Posição anterior de cada termo, para a coluna "Variação" (subiu/desceu/novo). A base é a coleta anterior
+              # DE OUTRO DIA; se o workflow rodar de novo no mesmo dia, mantém a comparação já gravada em vez de
+              # comparar o dia com ele mesmo.
+              old = categories[slug]['periods'].get(period_key) or {}
+              old_terms = old.get('terms') or []
+              same_day = str(old.get('collectedAt') or '')[:10] == today
+              carried = {}
+              old_rank = {}
+              if same_day:
+                  carried = {str(t.get('term', '')).strip().lower(): t for t in old_terms}
+                  previous_collected = old.get('previousCollectedAt')
+              else:
+                  old_rank = {str(t.get('term', '')).strip().lower(): t.get('rank') for t in old_terms}
+                  previous_collected = old.get('collectedAt') if old_terms else None
+              terms = []
+              for rank, (_, row) in enumerate(top.iterrows(), start=1):
+                  term = str(row['query']).strip()
+                  entry = {
+                      'rank': rank,
+                      'term': term,
+                      'interest': int(row['value']),
+                      'variation': format_variation(rising_lookup.get(term.lower())),
+                  }
+                  key = term.lower()
+                  if same_day:
+                      before = carried.get(key) or {}
+                      if before.get('previousRank') is not None:
+                          entry['previousRank'] = before['previousRank']
+                      if before.get('isNew'):
+                          entry['isNew'] = True
+                  elif old_terms:
+                      if old_rank.get(key) is not None:
+                          entry['previousRank'] = old_rank[key]
+                      else:
+                          entry['isNew'] = True
+                  terms.append(entry)
+              categories[slug]['periods'][period_key] = {
+                  'collectedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+                  'previousCollectedAt': previous_collected,
+                  'terms': terms,
+              }
+              return True
+
+          # Combinação sem dado novo é refeita em até 2 rodadas extras (com pausa para o limite do Google baixar) antes de
+          # desistir; se ainda falhar, o painel mantém o último dado bom e avisa que ele está velho (ver intelligence-center.js).
+          any_success = False
+          pending = jobs
+          for round_number in range(1, 4):
+              failed = []
+              for job in pending:
+                  if collect(job):
+                      any_success = True
+                  else:
+                      failed.append(job)
+                  time.sleep(5)
+              pending = failed
+              if not pending:
+                  break
+              if round_number < 3:
+                  print(f'{len(pending)} combinações sem dado novo - pausa de 90s e nova rodada ({round_number + 1}/3)...')
+                  time.sleep(90)
+          if pending:
+              print(f"::warning::{len(pending)} combinações ficaram com o dado anterior: " + ', '.join(f'{j[0]}/{j[3]}' for j in pending))
 
           if any_success:
               document['updatedAt'] = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')

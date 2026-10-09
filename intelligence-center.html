@@ -112,6 +112,11 @@
     #trendsTableWrap .intel-col-variation { text-align: right }
     .intel-variation-up { color: var(--success); font-weight: 700 }
     .intel-variation-flat { color: var(--text-faint) }
+    .intel-pos-down { color: var(--danger); font-weight: 700 }
+    .intel-pos-new { color: var(--accent); font-weight: 700 }
+    #trendsTableWrap .intel-col-variation small { display: block; font-size: 10px; color: var(--muted); font-weight: 600 }
+    #trendsTableWrap .intel-col-variation small.intel-variation-up { color: var(--success) }
+    #trendsTableWrap td.intel-stale { color: var(--danger) }
     .intel-matched-products summary { cursor: pointer; color: var(--muted); font-size: 12px }
     .intel-matched-products ul { margin: 6px 0 0; padding-left: 16px; font-size: 12px; color: var(--muted) }
 
@@ -254,7 +259,7 @@
                         <th>Termo</th>
                         <th>Categoria</th>
                         <th class="intel-col-interest">Interesse</th>
-                        <th class="intel-col-variation">Variação</th>
+                        <th class="intel-col-variation" title="Posição: quanto o termo subiu (▲) ou desceu (▼) na lista da categoria desde a coleta anterior. Embaixo, o crescimento de busca do Google (só para parte dos termos).">Variação</th>
                         <th>Período analisado</th>
                         <th>Última atualização</th>
                         <th>Produtos</th>
