@@ -13586,22 +13586,6 @@
       }
     },
     {
-      "date": "2026-09-14",
-      "followers": {
-        "Instagram": 170402,
-        "Facebook": 49510
-      },
-      "source": "reconstruido",
-      "insights": {
-        "Instagram": {
-          "follows": 270,
-          "unfollows": 41,
-          "net": 229,
-          "reach": 31510
-        }
-      }
-    },
-    {
       "date": "2026-09-15",
       "followers": {
         "Instagram": 169948,
@@ -13814,8 +13798,7 @@
     {
       "date": "2026-09-29",
       "followers": {
-        "Instagram": 174365,
-        "Facebook": 49543
+        "Instagram": 174487
       },
       "source": "reconstruido",
       "insights": {
@@ -13830,8 +13813,7 @@
     {
       "date": "2026-09-30",
       "followers": {
-        "Instagram": 174641,
-        "Facebook": 49543
+        "Instagram": 174763
       },
       "source": "reconstruido",
       "insights": {
@@ -13846,8 +13828,7 @@
     {
       "date": "2026-10-01",
       "followers": {
-        "Instagram": 174967,
-        "Facebook": 49543
+        "Instagram": 175089
       },
       "source": "reconstruido",
       "insights": {
@@ -13892,8 +13873,7 @@
     {
       "date": "2026-10-04",
       "followers": {
-        "Instagram": 175958,
-        "Facebook": 49546
+        "Instagram": 176080
       },
       "source": "reconstruido",
       "insights": {
@@ -13908,8 +13888,7 @@
     {
       "date": "2026-10-05",
       "followers": {
-        "Instagram": 176334,
-        "Facebook": 49549
+        "Instagram": 176456
       },
       "source": "reconstruido",
       "insights": {
@@ -13986,6 +13965,14 @@
       "followers": {
         "Instagram": 177375,
         "Facebook": 49548
+      },
+      "insights": {
+        "Instagram": {
+          "follows": 408,
+          "unfollows": 58,
+          "net": 350,
+          "reach": 22754
+        }
       }
     },
     {
@@ -14003,5 +13990,5 @@
       }
     }
   ],
-  "updatedAt": "2026-10-12T03:06:51Z"
+  "updatedAt": "2026-10-12T11:42:18Z"
 }
