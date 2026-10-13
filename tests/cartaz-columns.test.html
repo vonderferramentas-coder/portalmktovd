@@ -33,6 +33,15 @@ try {
   document.body.dataset.result = 'pass';
   document.body.textContent = 'PASS: colunas identificadas por cabeçalho (sinônimos, barras correto x antigo) e por conteúdo';
 } catch (error) {
+  // Live Shop: modelo de cada linha, link e quantidade mínima (o título não vira a descrição)
+  const live = CartazColumns.detect(['CÓDIGO OVD', 'CÓDIGO FG', 'NOME DO TÍTULO', 'DESCRIÇÃO/MODELO', 'CÓDIGO PRINCIPAL', 'MARCA', 'LINK', 'QUANTIDADE MÍNIMA'], []);
+  eq([live.title, live.desc, live.link, live.minQty, live.ovd], ['NOME DO TÍTULO', 'DESCRIÇÃO/MODELO', 'LINK', 'QUANTIDADE MÍNIMA', 'CÓDIGO OVD'], 'colunas do Live Shop');
+  eq(CartazColumns.detect(['SKU', 'Descrição', 'EAN'], []).desc, undefined, 'descrição que já é o título não se repete');
+
+  // Live Shop com um link por divisão
+  const links = CartazColumns.detect(['CÓDIGO OVD', 'CÓDIGO FG', 'NOME DO TÍTULO', 'LINK OSTEN', 'LINK DISMATAL', 'LINK VONDER', 'QUANTIDADE MÍNIMA'], []);
+  eq([links.links, links.link, links.barcode], [{ osten: 'LINK OSTEN', dismatal: 'LINK DISMATAL', vonder: 'LINK VONDER' }, undefined, undefined], 'um link por divisão, sem coluna de barras');
+
   document.body.dataset.result = 'fail';
   document.body.textContent = 'FAIL: ' + error.message;
 }

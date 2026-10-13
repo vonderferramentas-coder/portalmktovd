@@ -2219,3 +2219,68 @@ button:disabled {
 .cg-validator-list::-webkit-scrollbar-track, .cg-dialog.cg-validator::-webkit-scrollbar-track { background: transparent; }
 .cg-validator-list::-webkit-scrollbar-thumb, .cg-dialog.cg-validator::-webkit-scrollbar-thumb { background: var(--cg-dash); border-radius: 4px; }
 .cg-validator-list::-webkit-scrollbar-thumb:hover, .cg-dialog.cg-validator::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* Grade configurada em "Configurações do cartaz" (fora do padrão da Feira): colunas/linhas vêm de --cols/--rows. Vem por último para vencer .sheet.a3. */
+.sheet.cfg-grid {
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+}
+.cg-config-body { padding-top: 4px; }
+.cg-config-note { margin: 0 0 12px; color: #52636c; font-size: 13px; }
+.cg-config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px 16px; align-items: end; }
+.cg-config-grid label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+.cg-config-grid label.cg-config-check { display: flex; align-items: center; gap: 8px; grid-column: 1 / -1; font-weight: 600; }
+.cg-config-grid input[type=number], .cg-config-grid select { width: 100%; box-sizing: border-box; }
+.cg-config-actions { margin-top: 14px; }
+
+/* ===== Layout Live Shop: box de produto (QR/barras + foto + tabela), box de logo e folha sem cabeçalho ===== */
+.sheet.lb-sheet { padding: 40px 30px 56px; gap: 8px; }
+.sheet.lb-sheet.a3 { padding: 56px 40px 70px; gap: 10px; }
+.sheet.lb-sheet::after, .sheet.lb-sheet .sheet-heading { display: none; }
+.card.lb { display: flex; flex-direction: column; gap: 4px; padding: 7px 8px 8px; background: #fff; border-radius: 12px; }
+.card.lb h3 { width: 100%; max-height: none; flex: none; text-align: center; font-size: 13.5px; line-height: 1.08; -webkit-line-clamp: 3; line-clamp: 3; }
+.card.lb .lb-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.card.lb .lb-left { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; }
+.card.lb .lb-right { position: relative; min-width: 0; }
+.card.lb .photo { top: 0; right: 0; bottom: 0; left: 0; width: auto; height: auto; margin: 0; align-self: auto; }
+.card.lb .ean { position: static; width: 100%; height: auto; max-height: 42px; }
+.card.lb .lb-qty { margin: 0; text-align: center; font: 700 8.5px/1.15 Arial, sans-serif; color: #111; }
+.card.lb .lb-table { flex: none; width: 100%; border-collapse: collapse; font: 400 8.5px/1.25 Swiss721, "Arial Narrow", Arial, sans-serif; color: #111; table-layout: fixed; }
+.card.lb .lb-table th { padding: 1px 4px; text-align: left; font-weight: 700; background: #f4f4f4; }
+.card.lb .lb-table th + th, .card.lb .lb-table td + td { width: 48%; }
+.card.lb .lb-table td { padding: 1px 4px; overflow: hidden; white-space: nowrap; text-overflow: clip; }
+.card.lb .lb-table tbody tr:nth-child(odd) { background: #e4e4e4; }
+.lb-logobox { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-width: 0; color: #fff; text-align: center; }
+.lb-logobox img { max-width: 100%; max-height: 52%; object-fit: contain; }
+.lb-logobox .lb-logo-empty { font: 700 13px Arial, sans-serif; opacity: .6; }
+.lb-attn { margin: 0; font: 400 9px/1.3 Arial, sans-serif; }
+.lb-attn strong { display: block; margin-bottom: 2px; font-size: 11px; letter-spacing: .04em; }
+.cg-config-grid label.cg-config-wide { grid-column: 1 / -1; }
+.cg-config-grid textarea { width: 100%; box-sizing: border-box; font: inherit; }
+
+/* ===== Live Shop: QR Code, botão, faixa de divisão e tamanhos por folha ===== */
+.sheet.lb-sheet { --u: 1; }
+.sheet.lb-sheet.a3 { --u: 1.12; }
+.sheet-label { margin: 14px 0 4px; color: #52636c; font: 700 12px/1 Arial, sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+.lb-strip { position: absolute; z-index: 5; left: 0; right: 0; top: 0; height: calc(14px * var(--u)); }
+.card.lb h3 { font-size: calc(11.5px * var(--u)); }
+.card.lb .lb-table { font-size: calc(7.4px * var(--u)); }
+.card.lb .lb-qty { font-size: calc(6.6px * var(--u)); }
+.card.lb .lb-qr { width: calc(58px * var(--u)); aspect-ratio: 1; flex: none; cursor: pointer; }
+.card.lb .lb-qr .qr-svg { display: block; width: 100%; height: 100%; }
+.card.lb .lb-qr-missing { display: grid; place-items: center; padding: 4px; box-sizing: border-box; border: 1px dashed #9aa2a6; color: #687780; font: 600 calc(7px * var(--u))/1.2 Arial, sans-serif; text-align: center; }
+.card.lb .lb-btn { box-sizing: border-box; width: 100%; padding: calc(2.5px * var(--u)) 2px; border: 1px solid #000; border-radius: 5px; text-align: center; font: 700 calc(6.4px * var(--u))/1.15 Arial, sans-serif; cursor: pointer; }
+.card.lb .ean { max-height: calc(34px * var(--u)); }
+@media print {
+    .card.lb .lb-qr-missing, .sheet-label { display: none; }
+}
+.cg-config-divisions { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0; padding: 8px 12px; border: 1px solid #cfd8dc; border-radius: 10px; }
+.cg-config-divisions legend { padding: 0 6px; font-size: 13px; font-weight: 700; }
+.cg-config-division { display: flex !important; align-items: center; gap: 8px; }
+.cg-config-division input[type=color] { width: 32px; height: 24px; padding: 0; }
+
+/* Texto legal e rodapé do Live Shop */
+.sheet-legal { position: absolute; z-index: 6; left: 40px; right: 40px; bottom: 7px; color: #fff; text-align: center; font: 400 calc(5.8px * var(--u, 1))/1.25 Arial, sans-serif; opacity: .92; pointer-events: none; }
+.sheet.lb-sheet.lb-footer { padding-bottom: 118px; }
+.sheet.lb-sheet.a3.lb-footer { padding-bottom: 140px; }
+.sheet.lb-sheet .sheet-footer { bottom: 24px; }
