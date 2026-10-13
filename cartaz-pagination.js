@@ -4,21 +4,34 @@
   const groupBrand = group => group.rows.map(row => row.brand).find(Boolean) || 'SEM MARCA';
   const twoCodeColumns = (count, a3) => count > 9 && !a3;
 
-  /* Distribui os produtos de UMA marca (ou de várias vinculadas, `members`) em páginas: A4 até 12 produtos,
-     A3 acima disso, e a regra de linhas/colunas de sempre. `prev` devolve título e foto já editados de cada
+  /* Configuração do cartaz (por template): produtos e colunas por folha. O padrão é o layout da Feira (6 boxes em 2 colunas no A4,
+     9 em 3 no A3). Com `a3Auto`, o A3 acompanha o A4: capacidade x1,5 (arredondada para baixo) e colunas x1,25 (arredondadas). */
+  const DEFAULT_CONFIG = { capA4: 6, colsA4: 2, a3Auto: true, capA3: 9, colsA3: 3, paginateBy: 'brand', layout: 'feira', logoBox: false, footerLogo: true, codeType: 'barcode', button: true, buttonText: 'CLIQUE AQUI E COMPRE AGORA!', buttonColor: '#F6BE00', divisions: [], divisionColors: {}, legalEnabled: false, legalText: '', attentionText: 'Para acessar as condições especiais, é indispensável estar logado com o seu perfil em nossa Plataforma B2B.' };
+  let current = { ...DEFAULT_CONFIG };
+  function resolve(config) {
+    let c = { ...DEFAULT_CONFIG, ...config };
+    c.capA4 = Math.max(1, Math.floor(+c.capA4) || DEFAULT_CONFIG.capA4); c.colsA4 = Math.max(1, Math.floor(+c.colsA4) || DEFAULT_CONFIG.colsA4);
+    if (c.a3Auto) { c.capA3 = Math.floor(c.capA4 * 1.5); c.colsA3 = Math.round(c.colsA4 * 1.25); }
+    else { c.capA3 = Math.max(1, Math.floor(+c.capA3) || DEFAULT_CONFIG.capA3); c.colsA3 = Math.max(1, Math.floor(+c.colsA3) || DEFAULT_CONFIG.colsA3); }
+    return c;
+  }
+  const setConfig = config => { current = resolve(config); return current; };
+
+  /* Distribui os produtos de UMA marca (ou de várias vinculadas, `members`) em páginas, pela configuração atual (setConfig).
+     Com o padrão da Feira: até 6 = 1 folha A4; 7 a 9 = 1 folha A3; 10 a 12 = A4 em duas; acima de 12 = A3. `prev` devolve título e foto já editados de cada
      produto quando as páginas são redistribuídas (vincular/desvincular). */
   function paginate(brandName, brandItems, members, prev) {
     let out = [];
-    let format = (brandItems.length > 6 && brandItems.length <= 9) || brandItems.length > 12 ? 'A3' : 'A4' /* até 6 = 1 folha A4; 7 a 9 = 1 folha A3; 10 a 12 = A4 em duas; acima de 12 = A3 */, capacity = format === 'A4' ? 6 : 9, columns = format === 'A4' ? 2 : 3, total = Math.ceil(brandItems.length / capacity), base = Math.floor(brandItems.length / total), extra = brandItems.length % total, start = 0;
+    let cfg = current, count0 = brandItems.length, format = count0 <= cfg.capA4 ? 'A4' : count0 <= cfg.capA3 ? 'A3' : count0 <= 2 * cfg.capA4 ? 'A4' : 'A3', capacity = format === 'A4' ? cfg.capA4 : cfg.capA3, columns = format === 'A4' ? cfg.colsA4 : cfg.colsA3, live = cfg.layout === 'liveshop', offset = live && cfg.logoBox ? 1 : 0 /* o box de logo ocupa a 1ª célula da folha */, standard = !live && columns === (format === 'A4' ? 2 : 3) /* centralizar/parear a última linha só existe na grade da Feira */, total = Math.ceil(brandItems.length / capacity), base = Math.floor(brandItems.length / total), extra = brandItems.length % total, start = 0;
     for (let pageIndex = 0; pageIndex < total; pageIndex++) {
-      let count = base + (pageIndex < extra ? 1 : 0), pageGroups = brandItems.slice(start, start += count), remainder = pageGroups.length % columns, lastRowIndex = Math.floor((pageGroups.length - 1) / columns), lastRowGroups = pageGroups.filter((group, index) => Math.floor(index / columns) === lastRowIndex), codeExtra = group => group.rows.length > 20 ? Math.min(150, Math.ceil((group.rows.length - 20) / 2) * 16 + 8) : 0, pairedExtraHeight = format === 'A4' && pageGroups.length <= 4 && lastRowGroups.length === 2 ? Math.max(...lastRowGroups.map(codeExtra)) : 0;
-      out.push({ name: brandName + ' · ' + format + ' · pág ' + (pageIndex + 1) + '/' + total, brand: brandName, ...(members ? { brands: members } : {}), format, capacity, items: pageGroups.map((group, index) => {
-        let lastRow = Math.floor(index / columns) === lastRowIndex, col = index % columns, center = format === 'A4' && lastRow && remainder === 1, pair = format === 'A3' && lastRow && remainder === 2;
-        if (format === 'A3' && lastRow && remainder === 1) col = 1;
-        let extraHeight = center && pageGroups.length <= 3 ? codeExtra(group) : (lastRow ? pairedExtraHeight : 0); return { group, col, gridRow: Math.floor(index / columns), size: 1, center, pair, extraHeight };
+      let count = base + (pageIndex < extra ? 1 : 0), pageGroups = brandItems.slice(start, start += count), remainder = pageGroups.length % columns, lastRowIndex = Math.floor((pageGroups.length - 1) / columns), lastRowGroups = pageGroups.filter((group, index) => Math.floor(index / columns) === lastRowIndex), codeExtra = group => group.rows.length > 20 ? Math.min(150, Math.ceil((group.rows.length - 20) / 2) * 16 + 8) : 0, pairedExtraHeight = standard && format === 'A4' && pageGroups.length <= 4 && lastRowGroups.length === 2 ? Math.max(...lastRowGroups.map(codeExtra)) : 0;
+      out.push({ name: brandName + ' · ' + format + ' · pág ' + (pageIndex + 1) + '/' + total, brand: brandName, ...(members ? { brands: members } : {}), format, capacity, cols: columns, rows: Math.ceil((capacity + offset) / columns), ...(live ? { layout: 'liveshop', logoBox: !!offset, footerLogo: cfg.footerLogo !== false } : {}), items: pageGroups.map((group, index) => {
+        let lastRow = Math.floor(index / columns) === lastRowIndex, col = index % columns, center = standard && format === 'A4' && lastRow && remainder === 1, pair = standard && format === 'A3' && lastRow && remainder === 2;
+        if (standard && format === 'A3' && lastRow && remainder === 1) col = 1;
+        let extraHeight = center && pageGroups.length <= 3 ? codeExtra(group) : (lastRow ? pairedExtraHeight : 0); return { group, col: offset ? (index + offset) % columns : col, gridRow: Math.floor((index + offset) / columns), size: 1, center, pair, extraHeight };
       }) });
     }
-    if (prev) out.forEach(page => page.items.forEach(item => { let old = prev.get(item.group); if (old) { if (old.title) { item.title = old.title; if (old.titleHtml) item.titleHtml = old.titleHtml; } if (old.photo) item.photo = old.photo; } }));
+    if (prev) out.forEach(page => page.items.forEach(item => { let old = prev.get(item.group); if (old) { if (old.title) { item.title = old.title; if (old.titleHtml) item.titleHtml = old.titleHtml; } if (old.photo) item.photo = old.photo; if (old.linesOverride) item.linesOverride = old.linesOverride; } }));
     return out;
   }
 
@@ -65,5 +78,5 @@
     return { pages: next, key: brandKey };
   }
 
-  window.CartazPagination = { paginate, groupBrand, link, unlink, insertItem, twoCodeColumns };
+  window.CartazPagination = { paginate, groupBrand, link, unlink, insertItem, twoCodeColumns, setConfig, resolve, DEFAULT_CONFIG };
 })();

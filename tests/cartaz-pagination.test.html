@@ -84,6 +84,36 @@ try {
   eq(insertItem(pagesAC, 'B', { title: 'B 0', rows: [{ brand: 'B' }] }).pages.map(p => p.brand), ['A', 'B', 'C'], 'marca nova entra em ordem alfabética entre as existentes');
   eq(insertItem(pagesAC, 'Z', { title: 'Z 0', rows: [{ brand: 'Z' }] }).pages.map(p => p.brand), ['A', 'C', 'Z'], 'marca nova entra no fim quando é a última em ordem alfabética');
 
+  // Configuração do cartaz (Live Shop): 19 por A4 em 4 colunas; A3 automático = 28 em 5 colunas; padrão da Feira = 6/2 e 9/3
+  eq([CartazPagination.resolve({}).capA3, CartazPagination.resolve({}).colsA3], [9, 3], 'A3 automático reproduz a Feira (9 em 3 colunas)');
+  CartazPagination.setConfig({ capA4: 19, colsA4: 4 });
+  let live = CartazPagination.resolve({ capA4: 19, colsA4: 4 });
+  eq([live.capA3, live.colsA3], [28, 5], 'A3 automático do Live Shop (19 -> 28, 4 -> 5 colunas)');
+  eq(shape(paginate('X', groups(19))), ['A4:19'], 'Live Shop: 19 cabem em 1 A4');
+  eq(shape(paginate('X', groups(20))), ['A3:20'], 'Live Shop: 20 vão para 1 A3');
+  eq(shape(paginate('X', groups(38))), ['A4:19', 'A4:19'], 'Live Shop: 38 = A4 em duas folhas');
+  eq(shape(paginate('X', groups(40))), ['A3:20', 'A3:20'], 'Live Shop: 40 = A3 em duas folhas');
+  eq(shape(paginate('X', groups(60))), ['A3:20', 'A3:20', 'A3:20'], 'Live Shop: 60 = A3 em tres folhas');
+  let livePage = paginate('X', groups(19))[0];
+  eq([livePage.cols, livePage.rows, livePage.capacity], [4, 5, 19], 'Live Shop: grade 4 x 5');
+  eq(livePage.items.map(i => i.center || i.pair), Array(19).fill(false), 'Live Shop: sem centralizar a última linha');
+  eq([livePage.items[18].col, livePage.items[18].gridRow], [2, 4], 'Live Shop: último item na linha 5, coluna 3');
+  CartazPagination.setConfig({ capA4: 6, colsA4: 2, a3Auto: false, capA3: 10, colsA3: 2 });
+  eq(shape(paginate('X', groups(10))), ['A3:10'], 'A3 manual: 10 cabem no A3 de 10');
+  CartazPagination.setConfig(CartazPagination.DEFAULT_CONFIG);
+  eq(shape(paginate('X', groups(10))), ['A4:5', 'A4:5'], 'voltando ao padrão: regra da Feira intacta');
+
+  // Live Shop com box de logo: a logo ocupa a 1ª célula; 19 produtos + logo = 20 células em 4 x 5
+  CartazPagination.setConfig({ capA4: 19, colsA4: 4, layout: 'liveshop', logoBox: true });
+  let lp = paginate('X', groups(19))[0];
+  eq([lp.rows, lp.layout, lp.logoBox], [5, 'liveshop', true], 'Live Shop: 5 linhas, layout e box de logo na página');
+  eq([lp.items[0].col, lp.items[0].gridRow, lp.items[2].col, lp.items[2].gridRow], [1, 0, 3, 0], 'Live Shop: 3 produtos ao lado da logo na 1a linha');
+  eq([lp.items[3].col, lp.items[3].gridRow, lp.items[18].col, lp.items[18].gridRow], [0, 1, 3, 4], 'Live Shop: 4 por linha depois da 1a');
+  CartazPagination.setConfig({ capA4: 19, colsA4: 4, layout: 'liveshop', logoBox: false });
+  eq(paginate('X', groups(19))[0].items.map(i => i.gridRow).slice(0, 5), [0, 0, 0, 0, 1], 'Live Shop sem box de logo: 4 produtos na 1a linha');
+  CartazPagination.setConfig(CartazPagination.DEFAULT_CONFIG);
+  eq(paginate('X', groups(6))[0].layout, undefined, 'Feira não ganha layout liveshop');
+
   document.body.dataset.result = 'pass';
   document.body.textContent = 'PASS: formato A4/A3, divisão em folhas, última linha, altura extra, vincular, desvincular e inserir item manual';
 } catch (error) {
