@@ -1443,6 +1443,7 @@ button:disabled {
         outline-offset: -5px;
     }
 }
+@media screen { .card.lb.title-cut { outline: 0; } } /* no Live Shop o contorno tracejado de "título cortado" não aparece */
 .brand-alert {
     cursor: pointer;
 }
@@ -2248,23 +2249,135 @@ button:disabled {
     grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
     grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
 }
+/* Configurações do cartaz: seções numeradas, switches e segmentados (ver DESIGN.md §6) */
 .cg-config-body { padding-top: 4px; }
-.cg-config-note { margin: 0 0 12px; color: #52636c; font-size: 13px; }
-.cg-config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px 16px; align-items: end; }
-.cg-config-grid label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
-.cg-config-grid label.cg-config-check { display: flex; align-items: center; gap: 8px; grid-column: 1 / -1; font-weight: 600; }
-.cg-config-grid input[type=number], .cg-config-grid select { width: 100%; box-sizing: border-box; }
+.cg-config-note { margin: 0 0 12px; color: var(--cg-muted); font-size: 13px; }
 .cg-config-actions { margin-top: 14px; }
+.cfg-layout { display: grid; grid-template-columns: minmax(0, 1fr) 410px; gap: 16px; align-items: start; }
+.cg-config-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.cg-config-actions button { flex: 0 0 170px; width: 170px; } /* os três botões com a mesma largura */
+.cfg-dirty { color: var(--cg-accent); font-size: 12px; font-weight: 600; }
+.cfg-stack { display: grid; gap: 10px; min-width: 0; }
+/* cada seção é um dropdown (fechado por padrão) com a animação padrão da plataforma, ver DESIGN.md §1 */
+.cfg-sec { min-width: 0; border: 1px solid var(--cg-line); border-radius: 12px; background: var(--cg-card); interpolate-size: allow-keywords; }
+.cfg-sec > summary { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 18px; cursor: pointer; list-style: none; border-radius: 12px; }
+.cfg-sec > summary::-webkit-details-marker { display: none; }
+.cfg-sec > summary:focus-visible { outline: 2px solid var(--cg-accent); outline-offset: 2px; }
+.cfg-sec > summary h3 { flex: 1; }
+.cfg-sec > summary > svg { flex: none; stroke: var(--cg-muted); transition: transform .25s ease; }
+.cfg-sec[open] > summary > svg { transform: rotate(180deg); }
+.cfg-sec::details-content { block-size: 0; overflow: hidden; transition: block-size .25s ease, content-visibility .25s allow-discrete; }
+.cfg-sec[open]::details-content { block-size: auto; }
+.cfg-body { display: grid; gap: 12px; padding: 2px 18px 16px; }
+.cfg-body .cfg-hint { margin: 0; line-height: 1.4; } /* a margem negativa cortava o topo do texto contra o overflow do dropdown */
+.cfg-preview { position: sticky; top: 12px; display: grid; gap: 10px; padding: 14px; border: 1px solid var(--cg-line); border-radius: 12px; background: var(--cg-card); }
+.cfg-preview h4 { margin: 0; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--cg-ink); }
+.cfg-preview .cfg-hint { margin: 0; }
+.cfg-pv { --u: 1; position: relative; display: grid; grid-template-columns: repeat(2, var(--pw, 177px)); gap: 8px; justify-content: center; padding: 26px 10px 14px; border-radius: 8px; background: #003e55; pointer-events: none; overflow: hidden; }
+.cfg-pv .card.lb, .cfg-pv .lb-logobox, .cfg-pv .lb-ph-box { height: var(--ph, 187px); }
+.cfg-pv .lb-ph-box { box-sizing: border-box; border: 1.5px dashed rgba(255,255,255,.35); border-radius: 12px; }
+.cfg-pv-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; height: 74px; overflow: hidden; }
+.cfg-pv-head div { display: grid; font: 900 12px/1 Swiss721, "Arial Narrow", Arial, sans-serif; min-width: 0; }
+.cfg-pv-head strong { display: block; margin-left: -10px; padding: 3px 10px; background: #fdc300; color: #00445c; font-size: 15px; }
+.cfg-pv-head span { padding: 4px 0 0 4px; font-size: 11px; }
+.cfg-pv-head img { max-width: 90px; max-height: 60px; object-fit: contain; }
+.cfg-pv-head em { color: #fff; opacity: .6; font: 700 11px Arial, sans-serif; }
+.cfg-colors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.cfg-fld { border: 1px solid var(--cg-line); border-radius: 10px; background: var(--cg-btn-bg); interpolate-size: allow-keywords; }
+.cfg-fld > summary, .cfg-fld-flat { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px; font-size: 13px; }
+.cfg-fld > summary { cursor: pointer; list-style: none; border-radius: 10px; }
+.cfg-fld > summary::-webkit-details-marker { display: none; }
+.cfg-fld > summary:focus-visible { outline: 2px solid var(--cg-accent); outline-offset: 2px; }
+.cfg-fld > summary b, .cfg-fld-flat b { flex: 1; font-weight: 600; }
+.cfg-fld > summary > svg { flex: none; stroke: var(--cg-muted); transition: transform .25s ease; }
+.cfg-fld[open] > summary > svg { transform: rotate(180deg); }
+.cfg-fld::details-content { block-size: 0; overflow: hidden; transition: block-size .25s ease, content-visibility .25s allow-discrete; }
+.cfg-fld[open]::details-content { block-size: auto; }
+.cfg-fld .cfg-body { padding: 2px 14px 14px; }
+.cfg-fld .cfg-btnrow { padding: 0; }
+.cfg-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; }
+@media (max-width: 700px) { .cfg-fields { grid-template-columns: 1fr; } }
+.cfg-seg-2 { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
+.cfg-pv .sheet-legal { position: static; grid-column: 1 / -1; margin-top: 6px; }
+.cfg-sec h3 { margin: 0; text-transform: none; letter-spacing: 0; display: flex; align-items: baseline; gap: 8px; font-size: 14px; font-weight: 700; color: var(--cg-ink); }
+.cfg-sec h3 i { font: 600 10px/1 ui-monospace, Consolas, monospace; font-style: normal; letter-spacing: .06em; color: var(--cg-muted); }
+.cfg-hint { margin: -4px 0 0; color: var(--cg-muted); font-size: 12px; }
+.cfg-field { display: grid; gap: 6px; align-content: start; min-width: 0; font-size: 12px; font-weight: 600; color: var(--cg-ink); }
+.cfg-field > span:first-child { display: flex; justify-content: space-between; align-items: baseline; }
+.cfg-count { font-style: normal; font-weight: 500; color: var(--cg-muted); font-size: 11px; }
+.cfg-sec input:not([type=checkbox]):not([type=color]), .cfg-sec select, .cfg-sec textarea { width: 100%; box-sizing: border-box; min-height: 36px; font-size: 13px; }
+.cfg-sec textarea { resize: vertical; font-family: inherit; }
+.cfg-sheet { display: grid; grid-template-columns: 36px 1fr 1fr; gap: 8px 12px; align-items: center; }
+.cfg-col { color: var(--cg-muted); font-size: 12px; font-weight: 600; }
+.cfg-sheet b { font-size: 13px; }
+.cfg-two { display: grid; gap: 12px; }
+.cfg-toggle { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.cfg-toggle span { display: grid; gap: 2px; font-size: 13px; }
+.cfg-toggle small { color: var(--cg-muted); font-size: 12px; }
+.cfg-switch { appearance: none; flex: none; width: 38px; height: 22px; margin: 0; border-radius: 11px; background: var(--cg-dash); cursor: pointer; position: relative; transition: background .25s ease; }
+.cfg-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .25s ease; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.cfg-switch::before { display: none; } /* tira a marca de check global dos checkboxes */
+.cfg-switch { border: 0; background-image: none; }
+.cfg-switch:checked { background: var(--accent, #f6be00); }
+.cfg-switch:checked::after { transform: translateX(16px); }
+.cfg-switch:disabled { opacity: .5; cursor: not-allowed; }
+.cfg-switch:focus-visible, .cfg-seg button:focus-visible, .cfg-check:focus-visible { outline: 2px solid var(--cg-accent); outline-offset: 2px; }
+.cfg-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 3px; gap: 3px; border: 1px solid var(--cg-line); border-radius: 10px; background: var(--cg-btn-bg); }
+.cfg-seg button { min-height: 30px; border: 0; border-radius: 7px; background: transparent; color: var(--cg-muted); font: 600 12px/1 inherit; cursor: pointer; transition: background .2s ease, color .2s ease; }
+.cfg-seg button[aria-pressed=true] { background: var(--accent, #f6be00); color: #1a1a1a; }
+.cfg-drop { border: 1px solid var(--cg-line); border-radius: 10px; background: var(--cg-btn-bg); interpolate-size: allow-keywords; }
+.cfg-drop > summary { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 12px; cursor: pointer; list-style: none; font-size: 13px; }
+.cfg-drop > summary::-webkit-details-marker { display: none; }
+.cfg-drop > summary:focus-visible { outline: 2px solid var(--cg-accent); outline-offset: 2px; border-radius: 10px; }
+.cfg-drop > summary span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cfg-drop > summary em { font-style: normal; color: var(--cg-muted); font-size: 12px; }
+.cfg-drop > summary svg { flex: none; stroke: var(--cg-muted); transition: transform .25s ease; }
+.cfg-drop[open] > summary svg { transform: rotate(180deg); }
+.cfg-drop::details-content { block-size: 0; overflow: hidden; transition: block-size .25s ease, content-visibility .25s allow-discrete; }
+.cfg-drop[open]::details-content { block-size: auto; }
+.cfg-chips { display: grid; gap: 8px; padding: 4px 10px 10px; }
+.cfg-chips { gap: 4px; }
+.cfg-chips .cfg-chip { padding: 4px 8px; border-color: transparent; background: transparent; }
+.cfg-chips .cfg-chip:hover { background: var(--cg-accent-weak); }
+.cfg-chip { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--cg-line); border-radius: 10px; background: var(--cg-btn-bg); cursor: pointer; }
+.cfg-chip b { flex: 1; font-size: 13px; }
+.cfg-check { accent-color: var(--accent, #f6be00); width: 16px; height: 16px; margin: 0; }
+.cfg-color { appearance: none; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; flex: none; align-self: center; } /* seletor de cor em círculo */
+.cfg-color::-webkit-color-swatch-wrapper { padding: 0; }
+.cfg-color::-webkit-color-swatch { border: 1px solid var(--cg-line); border-radius: 50%; }
+.cfg-color::-moz-color-swatch { border: 1px solid var(--cg-line); border-radius: 50%; }
+.cfg-sec input.cfg-color { width: 30px; min-height: 0; height: 30px; padding: 0; border: 0; background: none; box-shadow: none; } /* vence o estilo global de inputs */
+.cfg-sec .cfg-chip input.cfg-color { width: 24px; height: 24px; }
+.cfg-color:focus-visible { outline: 2px solid var(--cg-accent); outline-offset: 2px; }
+.cfg-chip .cfg-color { width: 24px; height: 24px; }
+.cfg-inline { display: flex; align-items: end; gap: 12px; }
+.cfg-inline .grow { flex: 1; min-width: 0; }
+.cfg-inline .cfg-field input.cfg-color { margin: 3px 0; } /* 30 + 6 = altura dos campos de texto (36), para os títulos ficarem na mesma linha */
+.cfg-chips-head { padding-right: 8px; text-align: right; color: var(--cg-muted); font-size: 11px; font-weight: 600; }
+.cfg-sub { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--cg-line); border-radius: 10px; background: var(--cg-btn-bg); }
+.cfg-btnrow { display: grid; gap: 12px; }
+.cfg-btnprev { display: grid; place-items: center; min-height: 36px; padding: 0 8px; border: 1px solid #000; border-radius: 5px; color: #000; font: 700 11px/1.1 Arial, sans-serif; text-align: center; overflow: hidden; }
+.cfg-warn { margin: 0; color: var(--cg-accent); font-size: 12px; }
+.cfg-warn[hidden] { display: none; }
+@media (max-width: 980px) { .cfg-layout { grid-template-columns: 1fr; } .cfg-preview { position: static; order: -1; } }
+@media (max-width: 700px) { .cfg-sheet { grid-template-columns: 30px 1fr 1fr; } }
+@media (prefers-reduced-motion: reduce) { .cfg-fld::details-content, .cfg-fld > summary > svg, .cfg-sec::details-content, .cfg-sec > summary > svg, .cfg-drop::details-content, .cfg-drop > summary svg, .cfg-switch, .cfg-switch::after, .cfg-seg button { transition: none; } }
 
 /* ===== Layout Live Shop: box de produto (QR/barras + foto + tabela), box de logo e folha sem cabeçalho ===== */
 .sheet.lb-sheet { padding: 40px 30px 56px; gap: 8px; }
 .sheet.lb-sheet.a3 { padding: 56px 40px 70px; gap: 10px; }
-.sheet.lb-sheet::after, .sheet.lb-sheet .sheet-heading { display: none; }
-.card.lb { display: flex; flex-direction: column; gap: 3px; padding: 7px 8px 8px; background: #fff; border-radius: 12px; }
+/* header completo: faixa com título/subtítulo e logo do evento acima da grade, igual à Feira (reaproveita .sheet-heading e .sheet::after) */
+.sheet.lb-sheet:not(.lb-header-full)::after, .sheet.lb-sheet:not(.lb-header-full) .sheet-heading { display: none; }
+.sheet.lb-sheet.lb-header-full { padding-top: 165px; }
+.sheet.lb-sheet.a3.lb-header-full { padding-top: 245px; }
+/* altura das linhas definida por fitLiveRows (cards largos): linhas fixas, conjunto centralizado */
+.sheet.lb-sheet.cfg-grid { grid-template-rows: repeat(var(--rows), var(--rowh, minmax(0, 1fr))); align-content: center; }
+.card.lb { display: flex; flex-direction: column; gap: calc(3px * var(--u, 1)); padding: calc(8px * var(--u, 1)); background: #fff; border-radius: 12px; }
 .card.lb h3 { width: 100%; max-height: none; flex: none; text-align: center; font-size: 13.5px; line-height: 1.08; -webkit-line-clamp: 3; line-clamp: 3; }
 .card.lb .lb-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .card.lb .lb-left { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; }
 .card.lb .lb-right { position: relative; min-width: 0; overflow: hidden; }
+.card.lb:has(.lb-foot) .lb-right { overflow: visible; } /* com código no rodapé a foto pode descer pelo espaço em branco ao lado/acima dele */
 /* a coluna sempre corta e o JS prende a foto nela (apply em enablePhotoEditing). Moldura da edição: desenhada na coluna com as medidas da foto (--fl/--ft/--fr/--fb) */
 .card.lb .photo.photo-editing { outline: 0; }
 .card.lb .lb-right:has(.photo-editing)::after { content: ''; position: absolute; left: var(--fl, 0); top: var(--ft, 0); right: var(--fr, 0); bottom: var(--fb, 0); z-index: 3; box-sizing: border-box; border: 2px dashed #0c8794; pointer-events: none; }
@@ -2274,18 +2387,27 @@ button:disabled {
 .card.lb .lb-qty { margin: 0; text-align: center; font: 700 8.5px/1.15 Arial, sans-serif; color: #111; }
 .card.lb .lb-table { flex: none; width: 100%; border-collapse: collapse; font: 400 8.5px/1.25 Swiss721, "Arial Narrow", Arial, sans-serif; color: #111; table-layout: fixed; }
 .card.lb .lb-table th { padding: 1px 4px; text-align: left; font-weight: 700; background: #f4f4f4; }
+.card.lb .lb-table td { font-family: Swiss721Roman, "Arial Narrow", Arial, sans-serif; font-weight: 400; } /* modelo e código em Swiss721 regular; só o cabeçalho (Descrição / Código) fica em negrito */
+.card.lb .lb-table thead th { border-bottom: 1px solid #000; } /* linha fina preta entre o cabeçalho (Descrição / Código) e as linhas da tabela */
 .card.lb .lb-table th + th, .card.lb .lb-table td + td { width: calc(11ch + 8px); }
 .card.lb .lb-table td + td { text-align: right; }
 .card.lb .lb-table td { padding: 0 4px; overflow: hidden; white-space: nowrap; text-overflow: clip; }
 .card.lb .lb-table tbody tr:nth-child(odd) { background: #e4e4e4; }
+.card.lb .lb-body.solo { grid-template-columns: 1fr; }
+/* "Lista simples": sem cabeçalho, listras nem alinhamento à direita, como os códigos da Feira */
+.card.lb .lb-table.lb-list { table-layout: auto; }
+.card.lb .lb-table.lb-list tbody tr:nth-child(odd) { background: none; }
+/* a lista mantém a 1ª linha com os nomes das colunas ("Código"), em itálico como o "Códigos:" da Feira */
+.card.lb .lb-table.lb-list thead th { padding: 0 4px; background: none; border: 0; font-family: Swiss721Roman, "Arial Narrow", Arial, sans-serif; font-weight: 400; font-style: italic; }
+.card.lb .lb-table.lb-list th + th { width: auto; padding-left: 10px; }
+.card.lb .lb-table.lb-list td:first-child, .card.lb .lb-table.lb-list th:first-child { padding-left: 0; } /* na lista o texto encosta no recuo fixo de 8 px do card */
+.card.lb .lb-table.lb-list td + td { width: auto; padding-left: 10px; text-align: left; }
 .lb-logobox { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-width: 0; color: #fff; text-align: center; }
 .lb-logobox img { max-width: 100%; max-height: 52%; object-fit: contain; }
 .lb-logobox .lb-logo-empty { font: 700 13px Arial, sans-serif; opacity: .6; }
 .lb-attn { margin: 0; font: 400 12px/1.3 Swiss721Roman, "Arial Narrow", Arial, sans-serif; text-align: center; } /* texto em Swiss721 regular (o título do produto usa a Bold); mesmo tamanho do título "ATENÇÃO" */
 .lb-attn strong { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font: 700 12px/1.3 Swiss721, "Arial Narrow", Arial, sans-serif; letter-spacing: .04em; text-align: center; }
 .lb-attn strong::before, .lb-attn strong::after { content: ""; flex: 1; height: 1px; background: currentColor; } /* linhas laterais do título */
-.cg-config-grid label.cg-config-wide { grid-column: 1 / -1; }
-.cg-config-grid textarea { width: 100%; box-sizing: border-box; font: inherit; }
 
 /* ===== Live Shop: QR Code, botão, faixa de divisão e tamanhos por folha ===== */
 .sheet.lb-sheet { --u: 1; }
@@ -2309,10 +2431,6 @@ button:disabled {
 @media print {
     .card.lb .lb-qr-missing, .sheet-label { display: none; }
 }
-.cg-config-divisions { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0; padding: 8px 12px; border: 1px solid #cfd8dc; border-radius: 10px; }
-.cg-config-divisions legend { padding: 0 6px; font-size: 13px; font-weight: 700; }
-.cg-config-division { display: flex !important; align-items: center; gap: 8px; }
-.cg-config-division input[type=color] { width: 32px; height: 24px; padding: 0; }
 
 /* Texto legal e rodapé do Live Shop */
 .sheet-legal { position: absolute; z-index: 6; left: 40px; right: 40px; bottom: 7px; color: #fff; text-align: center; font: 400 calc(6.6px * var(--u, 1))/1.25 Arial, sans-serif; opacity: .92; pointer-events: none; }
@@ -2419,7 +2537,7 @@ button:disabled {
 .pages .bc-result { grid-template-columns: auto 1fr; align-items: center; gap: 10px; }
 .pages .bc-result-text { display: grid; gap: 2px; min-width: 0; }
 .pages .bc-pair { grid-template-columns: 1.4fr 1fr auto; align-items: end; }
-.pages .bc-row-del { display: grid; place-items: center; width: 30px; height: 30px; margin: 0; padding: 0 !important; border-radius: 8px; color: var(--cg-muted); cursor: pointer; }
+.pages .bc-row-del { display: grid; place-items: center; width: 36px; height: 36px; box-sizing: border-box; margin: 0; padding: 0 !important; border-radius: 8px; color: var(--cg-muted); cursor: pointer; }
 .pages .bc-row-del:hover:not(:disabled) { color: var(--danger, #b42318); border-color: var(--danger, #b42318); }
 .pages .bc-row-del:disabled { opacity: .4; cursor: not-allowed; }
 .pages .bc-row-add { width: 100%; margin: 0; padding: 8px 12px; text-align: center; font-size: 12px; font-weight: 600; cursor: pointer; border-style: dashed; }
@@ -2440,3 +2558,20 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
     .cg-fold::details-content, .cg-fold > summary, .cg-fold-chevron { transition: none; }
 }
+
+/* campo e botão ✕ da linha com a mesma altura, para alinharem lado a lado */
+.pages .bc-field input { height: 36px; box-sizing: border-box; }
+.pages .bc-field { margin: 0; }
+
+/* QR/código de barras no canto inferior direito do card (posição do código de barras na Feira): tabela à esquerda, código à direita */
+.card.lb .lb-foot { display: flex; align-items: flex-end; gap: 6px; flex: none; }
+.card.lb .lb-foot .lb-table, .card.lb .lb-foot .lb-tables { flex: 1; width: auto; min-width: 0; }
+.card.lb .lb-foot .lb-qr { width: calc(40px * var(--u)); }
+/* código de barras na mesma proporção da Feira (142 × 54 num card de ~340 px = 42% da largura) */
+.card.lb .ean { aspect-ratio: 142 / 54; max-height: none; }
+/* no rodapé o código de barras é maior (a foto cede espaço); com descrição + código a tabela ocupa a largura toda e o código vai para a linha de baixo, à direita */
+.card.lb .lb-foot .ean { flex: none; width: calc(100px * var(--u)); max-width: 100%; } /* proporcional ao card: 100 px no de 177 px */
+.card.lb .lb-foot.stack { flex-direction: column; align-items: stretch; gap: 3px; }
+.card.lb .lb-foot.stack .lb-table, .card.lb .lb-foot.stack .lb-tables { flex: none; width: 100%; }
+.card.lb .lb-foot.stack .ean { align-self: flex-end; }
+.card.lb .lb-foot .lb-qr-missing { width: 42%; aspect-ratio: auto; min-height: 28px; }

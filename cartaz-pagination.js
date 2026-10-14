@@ -6,7 +6,7 @@
 
   /* Configuração do cartaz (por template): produtos e colunas por folha. O padrão é o layout da Feira (6 boxes em 2 colunas no A4,
      9 em 3 no A3). Com `a3Auto`, o A3 acompanha o A4: capacidade x1,5 (arredondada para baixo) e colunas x1,25 (arredondadas). */
-  const DEFAULT_CONFIG = { capA4: 6, colsA4: 2, a3Auto: true, capA3: 9, colsA3: 3, paginateBy: 'brand', layout: 'feira', logoBox: false, footerLogo: true, codeType: 'barcode', button: true, buttonText: 'CLIQUE AQUI E COMPRE AGORA!', buttonColor: '#F6BE00', divisions: [], divisionColors: {}, legalEnabled: false, legalText: '', attentionTitle: 'ATENÇÃO', attentionColor: '#ffffff', attentionText: 'Para acessar as condições especiais, é indispensável estar logado com o seu perfil em nossa Plataforma B2B.' };
+  const DEFAULT_CONFIG = { capA4: 6, colsA4: 2, a3Auto: true, capA3: 9, colsA3: 3, paginateBy: 'brand', sheetFormats: 'both', layout: 'feira', logoBox: false, headerMode: 'compact', headerCorner: 'tl', footerLogo: true, codeType: 'barcode', showTitle: true, showPhoto: true, showCodeBox: true, showDesc: true, showCode: true, showQty: true, tableStyle: 'table', codePos: 'left', titleAlign: 'center', button: true, buttonText: 'CLIQUE AQUI E COMPRE AGORA!', buttonColor: '#F6BE00', divisions: [], showStrip: true, divisionColors: {}, legalEnabled: false, legalText: '', attentionTitle: 'ATENÇÃO', attentionColor: '#ffffff', attentionText: 'Para acessar as condições especiais, é indispensável estar logado com o seu perfil em nossa Plataforma B2B.' };
   let current = { ...DEFAULT_CONFIG };
   function resolve(config) {
     let c = { ...DEFAULT_CONFIG, ...config };
@@ -22,10 +22,10 @@
      produto quando as páginas são redistribuídas (vincular/desvincular). */
   function paginate(brandName, brandItems, members, prev) {
     let out = [];
-    let cfg = current, count0 = brandItems.length, format = count0 <= cfg.capA4 ? 'A4' : count0 <= cfg.capA3 ? 'A3' : count0 <= 2 * cfg.capA4 ? 'A4' : 'A3', capacity = format === 'A4' ? cfg.capA4 : cfg.capA3, columns = format === 'A4' ? cfg.colsA4 : cfg.colsA3, live = cfg.layout === 'liveshop', offset = live && cfg.logoBox ? 1 : 0 /* o box de logo ocupa a 1ª célula da folha */, standard = !live && columns === (format === 'A4' ? 2 : 3) /* centralizar/parear a última linha só existe na grade da Feira */, total = Math.ceil(brandItems.length / capacity), base = Math.floor(brandItems.length / total), extra = brandItems.length % total, start = 0;
+    let cfg = current, count0 = brandItems.length, format = cfg.sheetFormats === 'a4' ? 'A4' : cfg.sheetFormats === 'a3' ? 'A3' : count0 <= cfg.capA4 ? 'A4' : count0 <= cfg.capA3 ? 'A3' : count0 <= 2 * cfg.capA4 ? 'A4' : 'A3' /* sheetFormats: só A4, só A3 ou os dois (a regra automática) */, capacity = format === 'A4' ? cfg.capA4 : cfg.capA3, columns = format === 'A4' ? cfg.colsA4 : cfg.colsA3, live = cfg.layout === 'liveshop', header = live && cfg.logoBox ? (cfg.headerMode === 'full' ? 'full' : 'compact') : 'none', offset = header === 'compact' ? 1 : 0 /* header compacto: o box ocupa 1 célula da grade (canto em headerCorner); completo: fica acima da grade, como na Feira */, standard = !live && columns === (format === 'A4' ? 2 : 3) /* centralizar/parear a última linha só existe na grade da Feira */, total = Math.ceil(brandItems.length / capacity), base = Math.floor(brandItems.length / total), extra = brandItems.length % total, start = 0;
     for (let pageIndex = 0; pageIndex < total; pageIndex++) {
       let count = base + (pageIndex < extra ? 1 : 0), pageGroups = brandItems.slice(start, start += count), remainder = pageGroups.length % columns, lastRowIndex = Math.floor((pageGroups.length - 1) / columns), lastRowGroups = pageGroups.filter((group, index) => Math.floor(index / columns) === lastRowIndex), codeExtra = group => group.rows.length > 20 ? Math.min(150, Math.ceil((group.rows.length - 20) / 2) * 16 + 8) : 0, pairedExtraHeight = standard && format === 'A4' && pageGroups.length <= 4 && lastRowGroups.length === 2 ? Math.max(...lastRowGroups.map(codeExtra)) : 0;
-      out.push({ name: brandName + ' · ' + format + ' · pág ' + (pageIndex + 1) + '/' + total, brand: brandName, ...(members ? { brands: members } : {}), format, capacity, cols: columns, rows: Math.ceil((capacity + offset) / columns), ...(live ? { layout: 'liveshop', logoBox: !!offset, footerLogo: cfg.footerLogo !== false } : {}), items: pageGroups.map((group, index) => {
+      out.push({ name: brandName + ' · ' + format + ' · pág ' + (pageIndex + 1) + '/' + total, brand: brandName, ...(members ? { brands: members } : {}), format, capacity, cols: columns, rows: Math.ceil((capacity + offset) / columns), ...(live ? { layout: 'liveshop', logoBox: !!offset, header, corner: cfg.headerCorner || 'tl', footerLogo: cfg.footerLogo !== false } : {}), items: pageGroups.map((group, index) => {
         let lastRow = Math.floor(index / columns) === lastRowIndex, col = index % columns, center = standard && format === 'A4' && lastRow && remainder === 1, pair = standard && format === 'A3' && lastRow && remainder === 2;
         if (standard && format === 'A3' && lastRow && remainder === 1) col = 1;
         let extraHeight = center && pageGroups.length <= 3 ? codeExtra(group) : (lastRow ? pairedExtraHeight : 0); return { group, col: offset ? (index + offset) % columns : col, gridRow: Math.floor((index + offset) / columns), size: 1, center, pair, extraHeight };
@@ -36,21 +36,33 @@
     return out;
   }
 
-  /* Live Shop: posiciona os boxes da folha pela ordem, com "Destaque" (item.wide) ocupando 2 colunas. Se o destaque não cabe no resto da linha, a vaga é
-     preenchida pelo próximo box pequeno (mesma ideia do consolidado). A folha ganha linhas extras só se faltar espaço (page.baseRows guarda o mínimo original).
-     ponytail: pega o próximo pequeno da fila para a vaga, sem otimizar a ocupação da folha. */
+  /* Célula que o header compacto ocupa na grade de `rows` linhas: canto superior/inferior, esquerdo/direito (page.corner: tl, tr, bl, br). */
+  const headerCell = (page, rows) => ({ tl: 0, tr: page.cols - 1, bl: (rows - 1) * page.cols, br: rows * page.cols - 1 })[page.corner || 'tl'] ?? 0;
+
+  /* Live Shop: posiciona os boxes da folha pela ordem, com "Destaque" (item.wide) ocupando 2 colunas e o header compacto numa célula de canto. Se o destaque não cabe
+     no resto da linha, a vaga é preenchida pelo próximo box pequeno (mesma ideia do consolidado). A folha ganha linhas extras só se faltar espaço (page.baseRows
+     guarda o mínimo original). ponytail: pega o próximo pequeno da fila para a vaga, sem otimizar a ocupação da folha. */
   function placeLive(page) {
     if (page.layout !== 'liveshop') return;
-    const cols = page.cols, base = page.baseRows || (page.baseRows = page.rows), isWide = item => item.wide && cols >= 2, queue = page.items.slice();
-    let cell = page.logoBox ? 1 : 0;
-    const put = (item, span) => { item.col = cell % cols; item.gridRow = Math.floor(cell / cols); item.size = 1; item.span = span; cell += span; };
-    while (queue.length) {
-      const item = queue.shift();
-      if (isWide(item) && cell % cols > cols - 2) for (let free = cols - (cell % cols); free > 0; free--) { const next = queue.findIndex(entry => !isWide(entry)); if (next >= 0) put(queue.splice(next, 1)[0], 1); else cell++; }
-      put(item, isWide(item) ? 2 : 1);
+    const cols = page.cols, base = page.baseRows || (page.baseRows = page.rows), isWide = item => item.wide && cols >= 2;
+    for (let rows = base; ; rows++) {
+      const total = rows * cols, taken = page.logoBox ? headerCell(page, rows) : -1, queue = page.items.slice(), spots = [];
+      const free = (c, span) => c % cols + span <= cols && c + span <= total && !(taken >= c && taken < c + span);
+      let cell = 0;
+      const put = (item, span) => { spots.push([item, cell, span]); cell += span; };
+      while (queue.length && cell < total) {
+        const item = queue.shift(), span = isWide(item) ? 2 : 1;
+        while (cell < total && !free(cell, 1)) cell++;
+        if (span === 2) while (cell < total && !free(cell, 2)) { const next = queue.findIndex(entry => !isWide(entry)); if (next >= 0 && free(cell, 1)) put(queue.splice(next, 1)[0], 1); else cell++; }
+        if (cell >= total) { queue.unshift(item); break; }
+        put(item, span);
+      }
+      if (queue.length) continue; /* faltou espaço: tenta com mais uma linha */
+      spots.forEach(([item, at, span]) => { item.col = at % cols; item.gridRow = Math.floor(at / cols); item.size = 1; item.span = span; });
+      page.rows = rows;
+      page.empty = total - ((page.logoBox ? 1 : 0) + page.items.reduce((sum, item) => sum + item.span, 0)); /* células sem box na folha */
+      return;
     }
-    page.rows = Math.max(base, Math.ceil(cell / cols));
-    page.empty = page.rows * cols - ((page.logoBox ? 1 : 0) + page.items.reduce((sum, item) => sum + item.span, 0)); /* células sem box na folha */
   }
 
   // Junta as páginas das marcas `names` (ordem da lista) numa marca vinculada "A + B"; a nova entrada ocupa o lugar da primeira.
