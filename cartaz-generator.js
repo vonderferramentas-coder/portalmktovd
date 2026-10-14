@@ -156,7 +156,7 @@
     /* rodapé da folha: uma marca = o cartão de logo de sempre; marcas vinculadas = um cartão por marca que tem produto NA página */
     /* Grade fora do padrão da Feira (A4 2x3, A3 3x3): colunas/linhas vêm da página via --cols/--rows (ver .cfg-grid no CSS). */
     function customGrid(page) { return !!page.cols && !(page.format === 'A4' ? page.cols === 2 && page.rows === 3 : page.cols === 3 && page.rows === 3); }
-    const gridClass = page => (customGrid(page) ? ' cfg-grid' : '') + (page.layout === 'liveshop' ? ' lb-sheet' + (page.footerLogo ? ' lb-footer' : '') : ''), gridStyle = page => customGrid(page) ? ' style="--cols:' + page.cols + ';--rows:' + page.rows + '"' : '';
+    const gridClass = page => (customGrid(page) ? ' cfg-grid' : '') + (page.layout === 'liveshop' ? ' lb-sheet' + (page.footerLogo ? ' lb-footer' : '') + (page.header === 'full' ? ' lb-header-full' : '') : ''), gridStyle = page => customGrid(page) ? ' style="--cols:' + page.cols + ';--rows:' + page.rows + '"' : '';
     function pageFooter(page, logo) {
         if (!page.brands) return '<div class="sheet-footer" aria-hidden="true">' + (logo ? '<img src="' + e(logo) + '" alt="">' : '') + '</div>';
         let off = page.logoOff || [], shown = off.length ? page.brands.filter(brand => !off.includes(brand)) : [...new Set(page.items.map(item => groupBrand(item.group)))]; /* sem escolha manual: as marcas que têm produto na página; com escolha: as marcas marcadas, em TODAS as páginas do grupo (sempre há ao menos uma) */
@@ -238,10 +238,13 @@
     let lines = override ? override.html : codesHtml(group.rows.map(r => code(r.code)), twoCols), style = 'grid-column:' + (item.col + 1) + ';grid-row:' + (item.gridRow + 1) + ' / span ' + item.size + ';--card-extra:' + (item.extraHeight || 0) + 'px', eanSvg = noBarcodeFor(row) ? '<span class="ean-product-code">Consulte o item pelo código do produto.</span>' : barcodeSvg(row.principal), eanInfo = gtin(row.principal); return '<article class="card' + (big ? ' big' : '') + (a3 ? ' a3' : '') + (item.center ? ' center' : '') + (item.pair ? ' pair' : '') + (item.extraHeight ? ' expand' : '') + '" data-codes="' + codeCount + '"' + (hasBarcodeIssue(row) ? ' data-bad-barcode="1"' : '') + ' data-idx="' + idx + '" data-page="' + pageIndex + '" style="' + style + '">' + '<div class="cutwarn" hidden title="Esses códigos não aparecem no cartão - avise quem for revisar"></div>' + '<h3 contenteditable="true" spellcheck="true" oninput="updateTitle(this);centerPhoto(this.closest(\'.card\'))">' + (item.titleHtml ? CartazTitleFormat.clean(item.titleHtml) : e(displayTitle)) + '</h3><div class="photo" title="Dê dois cliques para editar a foto" style="transform:translate(' + photoState.x + 'px,' + photoState.y + 'px) scale(' + photoState.scale + ')">' + photo + '</div><div class="lines' + (twoCols ? ' two-cols' : '') + '" contenteditable="true" spellcheck="false" oninput="updateCodes(this)">' + lines + '</div>' + (eanSvg ? '<div class="ean' + (noBarcodeFor(row) || eanInfo.ok ? '' : ' ean-invalid') + '" onclick="addBarcode(this)" title="' + (eanInfo.ok ? 'Clique para editar o código de barras' : 'Dígito verificador não confere: clique para corrigir o código antes de imprimir') + '">' + eanSvg + '</div>' : '<div class="ean ean-missing" onclick="addBarcode(this)" title="Adicionar código de barras manualmente (EAN-8, UPC-A, EAN-13 ou ITF-14) - não aparece na impressão até ser preenchido">+ Código de barras</div>') + '<small>' + (S.codes[row.ovd] ? 'WMF ' + e(row.ovd) + ' encontrado' : 'WMF ' + e(row.ovd) + ' pendente') + '</small></article>' } /* A3: os códigos ficam numa coluna só, no tamanho normal; só reduz a fonte (.dense) se a lista alcançaria o título */
     /* Divisões (Osten, Dismatal, VONDER): cada divisão marcada em "Configurações do cartaz" repete as folhas com a faixa de cor e o link dela.
        O link sugerido de cada box é o domínio B2B da divisão + o Código FG da 1ª linha do produto (mesma linha que dá a foto); pode ser editado por box. */
-    const DIVISIONS = [{ id: 'osten', name: 'Osten', color: '#ED8B00', base: 'https://b2b.osten.com.br/produtos/' }, { id: 'dismatal', name: 'Dismatal', color: '#FFED00', base: 'https://b2b.dismatal.com.br/produtos/' }, { id: 'vonder', name: 'VONDER', color: '#F6BE00', base: 'https://b2b.vonder.com.br/produtos/' }];
+    const DIVISIONS = [{ id: 'osten', name: 'Osten', color: '#ED8B00', base: 'https://b2b.osten.com.br/produtos/' }, { id: 'dismatal', name: 'Dismatal', color: '#FFED00', base: 'https://b2b.dismatal.com.br/produtos/' }, { id: 'vonder', name: 'VONDER', color: '#F6BE00', base: 'https://b2b.vonder.com.br/produtos/' },
+        /* demais marcas do portal: sem loja B2B conhecida, então o link do box vem do link do grupo (ou é digitado à mão) */
+        { id: 'ferramentas-gerais', name: 'Ferramentas Gerais', color: '#005745' }, { id: 'toolmix', name: 'Toolmix', color: '#F26522' }, { id: 'dwt', name: 'DWT', color: '#285C4D' },
+        { id: 'nove54', name: 'Nove54', color: '#BD1D1D' }, { id: 'grupo-ovd', name: 'Grupo OVD', color: '#A6A6A6' }, { id: 'pilar-tecnologia', name: 'Pilar Tecnologia', color: '#003A5D' }];
     const divisionColor = division => S.config.divisionColors?.[division.id] || division.color;
     const activeDivisions = () => S.config.layout === 'liveshop' ? DIVISIONS.filter(division => S.config.divisions.includes(division.id)) : [];
-    const suggestedLink = (item, division) => { let fg = t(item.group.rows[0].fg); return (division && item.group.divLinks?.[division.id]) || (division && fg ? division.base + encodeURIComponent(fg) : t(item.group.link)); };
+    const suggestedLink = (item, division) => { let fg = t(item.group.rows[0].fg); return (division && item.group.divLinks?.[division.id]) || (division?.base && fg ? division.base + encodeURIComponent(fg) : t(item.group.link)); };
     const boxLink = (item, division) => item.links?.[division?.id || '_'] ?? suggestedLink(item, division);
     const validUrl = value => { try { return /^https?:$/.test(new URL(value).protocol); } catch (_) { return false; } };
     const inkFor = hex => { let n = parseInt(String(hex).replace('#', ''), 16) || 0, luma = .299 * (n >> 16) + .587 * ((n >> 8) & 255) + .114 * (n & 255); return luma > 150 ? '#000' : '#fff'; };
@@ -259,7 +262,7 @@
             dialog = $('linkDialog'), input = $('linkInput'), status = $('linkStatus'), save = $('linkSave'), toggle = $('linkButtonToggle'), suggested = suggestedLink(item, division);
         $('linkDialogTitle').textContent = 'Link do box' + (division ? ' · ' + division.name : '');
         $('linkDialogText').textContent = 'Vale só para este box' + (division ? ' na folha da divisão ' + division.name : '') + (suggested ? '. Link sugerido: ' + suggested : '. Sem Código FG para sugerir um link.');
-        input.value = boxLink(item, division); toggle.checked = item.showButton !== false; toggle.disabled = !(S.config.button && S.config.codeType === 'qr');
+        input.value = boxLink(item, division); toggle.checked = item.showButton !== false; toggle.disabled = !S.config.button;
         let check = () => { let value = input.value.trim(), ok = !value || validUrl(value); status.textContent = ok ? (value ? '' : 'Sem link: este box fica sem QR Code e sem botão.') : 'Informe um link completo, começando com http:// ou https://.'; status.dataset.kind = ok ? '' : 'bad'; save.disabled = !ok; };
         input.oninput = check; check(); $('linkSuggest').onclick = () => { input.value = suggested; check(); };
         save.onclick = () => { let value = input.value.trim(); snapshot(); item.links = { ...item.links }; if (value === suggested) delete item.links[slot]; else item.links[slot] = value; if (toggle.checked) delete item.showButton; else item.showButton = false; draw(); updateDashboard(); toast('Link do box atualizado.'); };
@@ -377,7 +380,7 @@
         return new Promise((resolve, reject) => {
             if (!/^image\//.test(file.type)) return reject(new Error('Envie uma imagem (PNG de preferência).')); if (file.size > 12 * 1024 * 1024) return reject(new Error('A imagem deve ter no máximo 12 MB.'));
             let reader = new FileReader(); reader.onerror = () => reject(new Error('Não foi possível ler a imagem.'));
-            reader.onload = () => { let image = new Image(); image.onerror = () => reject(new Error('A imagem não é válida.')); image.onload = () => { let k = Math.min(1, 640 / Math.max(image.width, image.height)), canvas = document.createElement('canvas'); canvas.width = Math.round(image.width * k); canvas.height = Math.round(image.height * k); canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); /* webp com transparência: a foto vai dentro da grade salva (SyncBackend), então precisa ser pequena */
+            reader.onload = () => { let image = new Image(); image.onerror = () => reject(new Error('A imagem não é válida.')); image.onload = () => { let k = Math.min(1, 800 / Math.max(image.width, image.height)), canvas = document.createElement('canvas'); canvas.width = Math.round(image.width * k); canvas.height = Math.round(image.height * k); canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); /* webp com transparência: a foto vai dentro da grade salva (SyncBackend), então precisa ser pequena */
                 let data = canvas.toDataURL(file.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp', .82); if (data.length > 400000) return reject(new Error('Imagem muito pesada para salvar na grade. Reduza a resolução ou o detalhe.')); resolve(data); }; image.src = reader.result; }; reader.readAsDataURL(file);
         });
     }
@@ -424,34 +427,52 @@
     function liveCard(item, idx, pageIndex, probe) {
         let group = item.group, row = group.rows[0], photoState = item.photo || { x: 0, y: 0, scale: 1 }, url = item.photoSrc || photoUrl(row.ovd), displayTitle = item.title || t(group.title), /* sem a marca no fim nem caixa alta forçada: o Live Shop usa o título como vem da planilha */
             photo = probe ? '' : (url ? '<img src="' + e(url) + '" alt="' + e(group.title) + '" crossorigin="anonymous" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>Foto indisponível<br>Cód. ' + e(row.ovd) + '</span>' : '<span>Sem código</span>'),
-            qr = S.config.codeType === 'qr', division = S.curDivision, link = qr ? boxLink(item, division) : '', qrImg = link ? qrSvg(link) : '',
+            qr = S.config.codeType === 'qr', division = S.curDivision, link = boxLink(item, division), qrImg = qr && link ? qrSvg(link) : '',
             eanInfo = gtin(row.principal), eanSvg = noBarcodeFor(row) ? '' : barcodeSvg(row.principal),
             marker = qr ? (qrImg ? '<div class="lb-qr" data-link="' + e(link) + '" onclick="editLink(this)" title="Clique para editar o link">' + qrImg + '</div>' : '<div class="lb-qr lb-qr-missing" onclick="editLink(this)" title="Sem link: clique para informar o link do QR Code - não aparece na impressão até ser preenchido">+ Link do QR Code</div>')
                 : eanSvg ? '<div class="ean' + (eanInfo?.ok ? '' : ' ean-invalid') + '" onclick="addBarcode(this)" title="Clique para editar o código de barras">' + eanSvg + '</div>' : '<div class="ean ean-missing" onclick="addBarcode(this)" title="Adicionar código de barras manualmente - não aparece na impressão até ser preenchido">+ Código de barras</div>',
-            button = qr && qrImg && S.config.button && item.showButton !== false ? '<div class="lb-btn" data-link="' + e(link) + '" onclick="editLink(this)" style="background:' + e(S.config.buttonColor) + ';color:' + inkFor(S.config.buttonColor) + '" title="Clique para editar o link">' + balancedBreak(S.config.buttonText) + '</div>' : '',
-            tableHtml = list => '<table class="lb-table"><thead><tr><th>Descrição</th><th>Código</th></tr></thead><tbody>' + list.map(r => '<tr><td>' + e(r.desc) + '</td><td>' + e(code(r.code)) + '</td></tr>').join('') + '</tbody></table>',
-            lines = item.rows || group.rows, half = Math.ceil(lines.length / 2), table = item.span > 1 && lines.length > 1 ? '<div class="lb-tables">' + tableHtml(lines.slice(0, half)) + tableHtml(lines.slice(half)) + '</div>' : tableHtml(lines), /* destaque (2 colunas): os códigos se dividem em duas tabelas lado a lado */
+            button = link && S.config.button && item.showButton !== false ? '<div class="lb-btn" data-link="' + e(link) + '" onclick="editLink(this)" style="background:' + e(S.config.buttonColor) + ';color:' + inkFor(S.config.buttonColor) + '" title="Clique para editar o link">' + balancedBreak(S.config.buttonText) + '</div>' : '',
+            on = key => S.config[key] !== false, asList = S.config.tableStyle === 'list', /* campos do card que o usuário pode ocultar (config do template) */
+            tableHtml = list => !(on('showDesc') || on('showCode')) ? '' : '<table class="lb-table' + (asList ? ' lb-list' : '') + '">' + ('<thead><tr>' + (on('showDesc') ? '<th>Descrição' + (asList ? ':' : '') + '</th>' : '') + (on('showCode') ? '<th>' + (asList ? (lines.length > 1 ? 'Códigos:' : 'Código:') : 'Código') + '</th>' : '') + '</tr></thead>') + '<tbody>' + list.map(r => '<tr>' + (on('showDesc') ? '<td>' + e(r.desc) + '</td>' : '') + (on('showCode') ? '<td>' + e(code(r.code)) + '</td>' : '') + '</tr>').join('') + '</tbody></table>',
+            lines = item.rows || group.rows, half = Math.ceil(lines.length / 2), table = !(on('showDesc') || on('showCode')) ? '' : item.span > 1 && lines.length > 1 ? '<div class="lb-tables">' + tableHtml(lines.slice(0, half)) + tableHtml(lines.slice(half)) + '</div>' : tableHtml(lines), /* destaque (2 colunas): os códigos se dividem em duas tabelas lado a lado */
             style = 'grid-column:' + (item.col + 1) + (item.span > 1 ? ' / span ' + item.span : '') + ';grid-row:' + (item.gridRow + 1);
-        return '<article class="card lb' + (item.flip ? ' flip' : '') + (item.span > 1 ? ' wide' : '') + '" data-codes="' + group.rows.length + '"' + (!qr && hasBarcodeIssue(row) ? ' data-bad-barcode="1"' : '') + ' data-idx="' + idx + '" data-page="' + pageIndex + '" style="' + style + '"><div class="cutwarn" hidden title="Essas linhas não aparecem no cartão - avise quem for revisar"></div>'
-            + '<h3 contenteditable="true" spellcheck="true" oninput="updateTitle(this)">' + (item.titleHtml ? CartazTitleFormat.clean(item.titleHtml) : e(displayTitle)) + '</h3>'
-            + '<div class="lb-body"><div class="lb-left">' + marker + button + (item.minQty ?? group.minQty ? '<p class="lb-qty">Quantidade mínima:<br>' + e(qtyText(item.minQty ?? group.minQty)) + '</p>' : '') + '</div>'
-            + '<div class="lb-right"><div class="photo" title="Dê dois cliques para editar a foto" style="transform:translate(' + photoState.x + 'px,' + photoState.y + 'px) scale(' + photoState.scale + ')">' + photo + '</div></div></div>'
-            + table + '</article>';
+        let corner = on('showCodeBox') && S.config.codePos === 'corner', left = (on('showCodeBox') && !corner ? marker : '') + button + (on('showQty') && (item.minQty ?? group.minQty) ? '<p class="lb-qty">Quantidade mínima:<br>' + e(qtyText(item.minQty ?? group.minQty)) + '</p>' : '');
+        return '<article class="card lb' + (item.flip ? ' flip' : '') + (item.span > 1 ? ' wide' : '') + '" data-codes="' + group.rows.length + '"' + (!qr && on('showCodeBox') && hasBarcodeIssue(row) ? ' data-bad-barcode="1"' : '') + ' data-idx="' + idx + '" data-page="' + pageIndex + '" style="' + style + '"><div class="cutwarn" hidden title="Essas linhas não aparecem no cartão - avise quem for revisar"></div>'
+            + (on('showTitle') ? '<h3 contenteditable="true" spellcheck="true" oninput="updateTitle(this)" style="text-align:' + (S.config.titleAlign || 'center') + '">' + (item.titleHtml ? CartazTitleFormat.clean(item.titleHtml) : e(displayTitle)) + '</h3>' : '')
+            + (left || on('showPhoto') ? '<div class="lb-body' + (!left || !on('showPhoto') ? ' solo' : '') + '">' + (left ? '<div class="lb-left">' + left + '</div>' : '')
+                + (on('showPhoto') ? '<div class="lb-right"><div class="photo" title="Dê dois cliques para editar a foto" style="transform:translate(' + photoState.x + 'px,' + photoState.y + 'px) scale(' + photoState.scale + ')">' + photo + '</div></div>' : '') + '</div>' : '')
+            + (corner ? '<div class="lb-foot' + (on('showDesc') ? ' stack' : '') + '">' + table + marker + '</div>' : table) + '</article>';
     }
     /* Box de logo (1ª célula da folha): logo do evento (a "Logo" do template) + o texto de atenção da configuração. */
-    function logoBoxHtml() { return '<div class="lb-logobox" style="grid-column:1;grid-row:1">' + (S.logo ? '<img src="' + e(S.logo) + '" alt="">' : '<span class="lb-logo-empty">Logo do evento</span>') + '<p class="lb-attn" style="color:' + e(S.config.attentionColor) + '"><strong>' + e(S.config.attentionTitle) + '</strong>' + e(S.config.attentionText).replace(/\n/g, '<br>') + '</p></div>'; }
+    function logoBoxHtml(page) { let corner = page.corner || 'tl', col = corner[1] === 'l' ? 1 : page.cols, row = corner[0] === 't' ? 1 : page.rows; return '<div class="lb-logobox" style="grid-column:' + col + ';grid-row:' + row + '">' + (S.logo ? '<img src="' + e(S.logo) + '" alt="">' : '<span class="lb-logo-empty">Logo do evento</span>') + '<p class="lb-attn" style="color:' + e(S.config.attentionColor) + '"><strong>' + e(S.config.attentionTitle) + '</strong>' + e(S.config.attentionText).replace(/\n/g, '<br>') + '</p></div>'; }
     /* Corta as linhas da tabela que não cabem no box (mantém ao menos 1 e uma área mínima para a foto) e avisa, como o corte de códigos da Feira. */
+    function fitButton(card) {
+        let btn = card.querySelector('.lb-btn'); if (btn && btn.firstChild) { btn.style.width = ''; let range = document.createRange(); range.selectNodeContents(btn); let wide = Math.max(0, ...[...range.getClientRects()].map(r => r.width)); if (wide) btn.style.width = Math.min(btn.parentNode.clientWidth, Math.ceil(wide) + 12) + 'px'; }
+    }
+    /* o Live Shop foi desenhado para um card de 177 px (4 colunas no A4): em cards maiores (2 ou 3 colunas, A3) tudo cresce na mesma proporção, via --u */
+    const LIVE_BASE_W = 177, cardScale = (card, span) => Math.max(.8, card.offsetWidth / (span > 1 ? span : 1) / LIVE_BASE_W).toFixed(3);
+    /* Cards largos (2 ou 3 colunas) não esticam até preencher a folha: a altura vira uma proporção do card (como no PDF da Feira, ~0,85 x a largura), o conjunto fica centralizado
+       na vertical e sobra espaço vazio embaixo. Nos cards pequenos (4+ colunas) nada muda: as linhas dividem a folha. */
+    const LIVE_RATIO = .85;
+    function fitLiveRows(sheet) {
+        if (!sheet.classList.contains('lb-sheet')) return; sheet.style.removeProperty('--rowh');
+        let style = getComputedStyle(sheet), colW = parseFloat(style.gridTemplateColumns.split(' ')[0]), page = S.pages[+sheet.dataset.page]; if (!colW || !page || colW / LIVE_BASE_W <= 1.3) return;
+        let gap = parseFloat(style.rowGap) || 0, room = sheet.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - gap * (page.rows - 1);
+        sheet.style.setProperty('--rowh', Math.floor(Math.min(colW * LIVE_RATIO, room / page.rows)) + 'px');
+    }
     function trimLive(card) {
+        card.style.setProperty('--u', cardScale(card, S.pages[+card.dataset.page].items[+card.dataset.idx].span));
         /* foto salva fora dos limites da coluna (zoom/posição antigos) é ajustada ao desenhar; a medição invisível não ajusta para não gravar medidas erradas */
         let ph = card.querySelector('.photo'), st = S.pages[+card.dataset.page].items[+card.dataset.idx].photo; if (ph && st && !card.closest('.cartaz-measure')) { clampPhoto(st, ph.parentNode); ph.style.transform = 'translate(' + st.x + 'px,' + st.y + 'px) scale(' + st.scale + ')'; }
         /* botão com laterais rentes ao texto: mede a linha mais larga já quebrada e encolhe o botão a ela (CSS puro não encolhe a caixa depois da quebra) */
-        let btn = card.querySelector('.lb-btn'); if (btn && btn.firstChild) { btn.style.width = ''; let range = document.createRange(); range.selectNodeContents(btn); let wide = Math.max(0, ...[...range.getClientRects()].map(r => r.width)); if (wide) btn.style.width = Math.min(btn.parentNode.clientWidth, Math.ceil(wide) + 12) + 'px'; }
-        checkTitle(card); let body = card.querySelector('.lb-body'), rows = [...card.querySelectorAll('.lb-table tbody tr')], warn = card.querySelector('.cutwarn'), item = S.pages[+card.dataset.page].items[+card.dataset.idx], removed = 0;
+        fitButton(card);
+        checkTitle(card); let body = card.querySelector('.lb-body') || card, rows = [...card.querySelectorAll('.lb-table tbody tr')], warn = card.querySelector('.cutwarn'), item = S.pages[+card.dataset.page].items[+card.dataset.idx], removed = 0;
         /* antes de cortar linhas, encolhe o título aos poucos (até 80%) para devolver espaço ao corpo */
         let h3 = card.querySelector('h3'), over = () => card.scrollHeight > card.clientHeight + 1 || body.scrollHeight > body.clientHeight + 1 || body.clientHeight < 40;
-        for (let k = 0.95; rows.length > 1 && over() && k >= 0.8; k -= 0.05) { h3.style.fontSize = 'calc(' + (11.5 * k).toFixed(2) + 'px * var(--u))'; checkTitle(card); }
+        for (let k = 0.95; rows.length > 1 && over() && k >= 0.8; k -= 0.05) { if (h3) h3.style.fontSize = 'calc(' + (11.5 * k).toFixed(2) + 'px * var(--u))'; checkTitle(card); }
         while (rows.length > 1 && (card.scrollHeight > card.clientHeight + 1 || body.scrollHeight > body.clientHeight + 1 || body.clientHeight < 40)) { rows.pop().remove(); removed++; }
         item.hiddenCodes = removed; if (warn && removed) { warn.hidden = false; warn.textContent = '⚠ +' + removed + ' linha' + (removed === 1 ? '' : 's') + ' fora do cartão'; }
+        if (ph && st && !card.closest('.cartaz-measure')) { clampPhoto(st, ph.parentNode); ph.style.transform = 'translate(' + st.x + 'px,' + st.y + 'px) scale(' + st.scale + ')'; } /* o rodapé já tem a altura final: reconfere a foto */
     }
     function fitLines(card) {
         let lines = card.querySelector('.lines'), h3 = card.querySelector('h3'); if (!lines || !h3) return; lines.style.maxHeight = '';
@@ -465,7 +486,7 @@
        Por isso calcula quantas linhas cabem em CADA coluna e redistribui as linhas visiveis de forma equilibrada. */ let lines = card.querySelector('.lines'), warn = card.querySelector('.cutwarn'); fitLines(card); if (!lines || lines.scrollHeight <= lines.clientHeight) return;
     let item = S.pages[+card.dataset.page].items[+card.dataset.idx], top = lines.getBoundingClientRect().top, showWarning = removed => { item.hiddenCodes = removed; if (warn && removed > 0) { warn.hidden = false; warn.textContent = '⚠ +' + removed + ' código' + (removed === 1 ? '' : 's') + ' fora do cartão'; } };
     if (lines.classList.contains('two-cols')) { let rows = [...lines.querySelectorAll('.code-pair')], cut = rows.findIndex(row => row.getBoundingClientRect().bottom - top > lines.clientHeight); if (cut < 0) return; let removed = rows.slice(cut).reduce((sum, row) => sum + row.querySelectorAll('.cd').length, 0); rows.slice(cut).forEach(row => row.remove()); showWarning(removed); return; }
-    let cut = [...lines.children].findIndex(child => child.getBoundingClientRect().bottom - top > lines.clientHeight); if (cut < 0) return; cut = Math.max(cut, 1); let removed = lines.children.length - cut; while (lines.children.length > cut) lines.removeChild(lines.lastElementChild); showWarning(removed); } function measureAllPages() { S.curDivision = activeDivisions()[0] || null; let probe = document.createElement('div'); probe.className = 'cartaz-measure'; probe.innerHTML = S.pages.map((page, pageIndex) => '<div class="sheet ' + page.format.toLowerCase() + gridClass(page) + '"' + gridStyle(page) + ' data-page="' + pageIndex + '">' + page.items.map((item, index) => card(item, index, pageIndex, true)).join('') + '</div>').join(''); document.body.append(probe); S.pages.forEach(page => page.items.forEach(item => item.hiddenCodes = 0)); probe.querySelectorAll('.sheet').forEach(sheet => sheet.querySelectorAll('.card').forEach(trimOverflow)); probe.remove(); } function addBarcode(el) { /* preenche na hora um EAN que faltou na planilha (coluna CODIGO PRINCIPAL vazia) - reusa
+    let cut = [...lines.children].findIndex(child => child.getBoundingClientRect().bottom - top > lines.clientHeight); if (cut < 0) return; cut = Math.max(cut, 1); let removed = lines.children.length - cut; while (lines.children.length > cut) lines.removeChild(lines.lastElementChild); showWarning(removed); } function measureAllPages() { S.curDivision = activeDivisions()[0] || null; let probe = document.createElement('div'); probe.className = 'cartaz-measure'; probe.innerHTML = S.pages.map((page, pageIndex) => '<div class="sheet ' + page.format.toLowerCase() + gridClass(page) + '"' + gridStyle(page) + ' data-page="' + pageIndex + '">' + page.items.map((item, index) => card(item, index, pageIndex, true)).join('') + '</div>').join(''); document.body.append(probe); S.pages.forEach(page => page.items.forEach(item => item.hiddenCodes = 0)); probe.querySelectorAll('.sheet').forEach(sheet => { fitLiveRows(sheet); sheet.querySelectorAll('.card').forEach(trimOverflow); }); probe.remove(); } function addBarcode(el) { /* preenche na hora um EAN que faltou na planilha (coluna CODIGO PRINCIPAL vazia) - reusa
         ean13() e o proprio fluxo de render (S.pages[...].group.rows[0].principal + draw()) em vez de
         desenhar o svg na mao, pra ficar identico a um codigo que veio da planilha. So aparece na tela
         (.ean-missing tem @media print{display:none} - ver .card .ean abaixo), então quem esquecer de
@@ -575,20 +596,31 @@
            contenteditable a cada letra digitada */
         if (twoCols !== el.classList.contains('two-cols')) { el.innerHTML = codesHtml(texts, twoCols); el.classList.toggle('two-cols', twoCols); card.dataset.codes = texts.length; }
         item.linesOverride = { html: el.innerHTML, count: texts.length, twoCols }; fitLines(card); }
-    /* limites da foto na coluna do Live Shop: zoom < 1 fica inteira dentro dela; zoom > 1 sempre a cobre. Usado ao editar e ao renderizar. */
+    /* Geometria da foto no Live Shop, calculada sobre a IMAGEM (não sobre o campo): a moldura de edição acompanha a foto e os limites valem para ela.
+       A foto fica dentro da coluna; com código no rodapé (.lb-foot) ela também pode descer pelo espaço em branco à direita do texto e acima do código de barras/QR,
+       sem encostar neles, e o zoom máximo é o maior que ainda cabe numa dessas áreas. value (x, y, scale) é ajustado no lugar; devolve a caixa da imagem em px da coluna. */
     function clampPhoto(value, side) {
-        let W = side.clientWidth, H = side.clientHeight, k = value.scale, kx = Math.abs(W * (k - 1)) / 2, ky = Math.abs(H * (k - 1)) / 2;
-        value.x = Math.max(-kx, Math.min(kx, value.x)); value.y = Math.max(-ky, Math.min(ky, value.y)); return { W, H, k };
+        let W = side.clientWidth, H = side.clientHeight, img = side.querySelector('img'), nw = img && img.naturalWidth || W, nh = img && img.naturalHeight || H, fit = Math.min(W / nw, H / nh, 1) /* object-fit: scale-down: não amplia foto menor que o campo */, w0 = nw * fit, h0 = nh * fit, card = side.closest('.card'), foot = card && card.querySelector('.lb-foot'), sx = side.offsetLeft, sy = side.offsetTop,
+            box = el => el ? { l: el.offsetLeft - sx, t: el.offsetTop - sy, r: el.offsetLeft - sx + el.offsetWidth, b: el.offsetTop - sy + el.offsetHeight } : null,
+            table = box(foot && foot.querySelector('.lb-table, .lb-tables')), mark = box(foot && foot.querySelector('.ean, .lb-qr')), tableR = table ? table.r : 0, markT = mark ? mark.t : foot ? box(foot).b : H;
+        if (!W || !H) return { W, H, l: 0, t: 0, r: W, b: H };
+        let fitA = Math.min(W / w0, H / h0), fitB = foot ? Math.min((W - tableR) / w0, markT / h0) : 0, k = Math.max(.5, Math.min(value.scale, Math.max(1, fitA, fitB))), w = w0 * k, h = h0 * k;
+        let l = Math.max(0, Math.min(W - w, W / 2 + value.x - w / 2)), t = Math.max(0, H / 2 + value.y - h / 2);
+        if (t + h > H + .5) { /* desceu da coluna: só vale à direita do texto do rodapé e acima do código */
+            if (foot && l < tableR && tableR + w <= W) l = tableR;
+            if (foot && l >= tableR - .5 && h <= markT) t = Math.min(t, markT - h); else t = Math.max(0, H - h);
+        }
+        value.scale = k; value.x = l + w / 2 - W / 2; value.y = t + h / 2 - H / 2;
+        return { W, H, l, t, r: l + w, b: t + h };
     }
     function enablePhotoEditing(photo) {
         let card = photo.closest('.card'), item = S.pages[+card.dataset.page].items[+card.dataset.idx], state = () => item.photo || (item.photo = { x: 0, y: 0, scale: 1 }), apply = () => {
             let value = state(), live = card.classList.contains('lb'), side = photo.parentNode;
             /* Live Shop: a foto NUNCA sai da própria coluna nem some. Menor que a coluna (zoom < 1) fica inteira dentro dela; maior (zoom > 1) sempre a cobre, sem vão. */
             if (live) {
-                let { W, H, k } = clampPhoto(value, side);
-                /* moldura da edição = caixa da foto (coluna escalada e deslocada) recortada pela coluna: sempre visível nos 4 lados */
-                let l = Math.max(0, W / 2 + value.x - W * k / 2), r = Math.min(W, W / 2 + value.x + W * k / 2), t = Math.max(0, H / 2 + value.y - H * k / 2), b = Math.min(H, H / 2 + value.y + H * k / 2);
-                side.style.setProperty('--fl', l + 'px'); side.style.setProperty('--fr', (W - r) + 'px'); side.style.setProperty('--ft', t + 'px'); side.style.setProperty('--fb', (H - b) + 'px');
+                let g = clampPhoto(value, side);
+                /* moldura da edição = caixa da própria foto (a imagem, não o campo) */
+                side.style.setProperty('--fl', g.l + 'px'); side.style.setProperty('--fr', (g.W - g.r) + 'px'); side.style.setProperty('--ft', g.t + 'px'); side.style.setProperty('--fb', (g.H - g.b) + 'px');
             }
             photo.style.transform = 'translate(' + value.x + 'px,' + value.y + 'px) scale(' + value.scale + ')';
             /* o mesmo box aparece em todas as divisões (Osten, Dismatal, VONDER) e divide o estado: replica na hora nas outras prévias */
@@ -615,12 +647,12 @@
     }
     /* HTML de UMA folha (uma divisão): usado pelo draw completo e pelo redesenho incremental das folhas alteradas */
     function sheetHtml(page, pageIndex, division) {
-        S.curDivision = division; let cells = page.items.map((item, index) => card(item, index, pageIndex)), logo = logoUrl(page.brand), filled = page.items.length, live = page.layout === 'liveshop'; if (live && page.logoBox) cells.unshift(logoBoxHtml()); for (let i = filled; !live && i < page.capacity; i++) cells.push('<div class="placeholder" aria-hidden="true"></div>'); return '<div class="sheet ' + page.format.toLowerCase() + (S.templates[page.format] ? ' custom-bg' : '') + (S.logo ? ' custom-logo' : '') + gridClass(page) + '"' + gridStyle(page) + ' data-page="' + pageIndex + '"' + (division ? ' data-division="' + division.id + '"' : '') + '>' + (division ? '<div class="lb-strip" style="background:' + divisionColor(division) + '" aria-hidden="true"></div>' : '') + (live && !page.footerLogo ? '' : pageFooter(page, logo)) + (live && S.config.legalEnabled && t(S.config.legalText) ? '<div class="sheet-legal">' + e(S.config.legalText).replace(/\n/g, '<br>') + '</div>' : '') + '<span class="sheet-page-number" aria-hidden="true">' + (pageIndex + 1) + '</span>' + (live ? '' : '<div class="sheet-heading" aria-hidden="true">' + headerHtml() + '</div>') + cells.join('') + '</div>';
+        S.curDivision = division; let cells = page.items.map((item, index) => card(item, index, pageIndex)), logo = logoUrl(page.brand), filled = page.items.length, live = page.layout === 'liveshop'; if (live && page.logoBox) cells.unshift(logoBoxHtml(page)); for (let i = filled; !live && i < page.capacity; i++) cells.push('<div class="placeholder" aria-hidden="true"></div>'); return '<div class="sheet ' + page.format.toLowerCase() + (S.templates[page.format] ? ' custom-bg' : '') + (S.logo ? ' custom-logo' : '') + gridClass(page) + '"' + gridStyle(page) + ' data-page="' + pageIndex + '"' + (division ? ' data-division="' + division.id + '"' : '') + '>' + (division && S.config.showStrip !== false ? '<div class="lb-strip" style="background:' + divisionColor(division) + '" aria-hidden="true"></div>' : '') + (live && !page.footerLogo ? '' : pageFooter(page, logo)) + (live && S.config.legalEnabled && t(S.config.legalText) ? '<div class="sheet-legal">' + e(S.config.legalText).replace(/\n/g, '<br>') + '</div>' : '') + '<span class="sheet-page-number" aria-hidden="true">' + (pageIndex + 1) + '</span>' + (live && page.header !== 'full' ? '' : '<div class="sheet-heading" aria-hidden="true">' + headerHtml() + '</div>') + cells.join('') + '</div>';
     }
     const brandPagesOf = page => S.pages.filter(x => x.brand === page.brand);
     const noteFor = (page, division) => !division || division === activeDivisions()[0] ? emptyNote(page, S.pages.indexOf(page), brandPagesOf(page).indexOf(page), brandPagesOf(page).length) : '';
     /* ajustes depois de inserir a folha no DOM: corte de linhas, centralização, edição de foto */
-    function finishSheet(sheet) { let page = S.pages[+sheet.dataset.page]; sheet.querySelectorAll('.card').forEach(trimOverflow); sheet.querySelectorAll('.card:not(.big):not(.lb)').forEach(centerPhoto); if (page.layout !== 'liveshop' && page.items.length < page.capacity) { let cards = [...sheet.querySelectorAll('.card')], style = getComputedStyle(sheet), top = parseFloat(style.paddingTop), bottom = sheet.clientHeight - parseFloat(style.paddingBottom), contentHeight = Math.max(...cards.map(card => card.offsetTop + card.offsetHeight)) - top, offset = Math.max(0, (bottom - top - contentHeight) / 2); cards.forEach(card => card.style.transform = (card.classList.contains('pair') ? 'translateX(calc(50% + 9px)) ' : '') + 'translateY(' + offset + 'px)') } sheet.querySelectorAll('.card .photo').forEach(enablePhotoEditing); }
+    function finishSheet(sheet) { let page = S.pages[+sheet.dataset.page]; fitLiveRows(sheet); sheet.querySelectorAll('.card').forEach(trimOverflow); sheet.querySelectorAll('.card:not(.big):not(.lb)').forEach(centerPhoto); if (page.layout !== 'liveshop' && page.items.length < page.capacity) { let cards = [...sheet.querySelectorAll('.card')], style = getComputedStyle(sheet), top = parseFloat(style.paddingTop), bottom = sheet.clientHeight - parseFloat(style.paddingBottom), contentHeight = Math.max(...cards.map(card => card.offsetTop + card.offsetHeight)) - top, offset = Math.max(0, (bottom - top - contentHeight) / 2); cards.forEach(card => card.style.transform = (card.classList.contains('pair') ? 'translateX(calc(50% + 9px)) ' : '') + 'translateY(' + offset + 'px)') } sheet.querySelectorAll('.card .photo').forEach(enablePhotoEditing); }
     /* Redesenho incremental: troca só as folhas das páginas alteradas (todas as divisões) e atualiza a lista, sem refazer título, formato de impressão e as demais folhas */
     function redrawPages(changed) {
         let current = S.curDivision;
@@ -697,7 +729,7 @@
     function templateName(tid) { return S.templateSets[tid].name; }
     /* Aplica a configuração do template vigente à paginação. Se já há páginas montadas com outra configuração (template trocado,
        configuração carregada depois da importação), refaz a paginação preservando as edições de título, foto e códigos. */
-    const pagSig = c => JSON.stringify([c.capA4, c.colsA4, c.capA3, c.colsA3, c.paginateBy, c.layout, c.logoBox, c.footerLogo]);
+    const pagSig = c => JSON.stringify([c.capA4, c.colsA4, c.capA3, c.colsA3, c.paginateBy, c.layout, c.logoBox, c.sheetFormats, c.headerMode, c.headerCorner, c.footerLogo]);
     function applyConfig() {
         let config = CartazPagination.setConfig(S.templateSets[S.activeTemplate].config), signature = pagSig(config); S.config = config;
         if (S.pages.length && S.pagedWith && S.pagedWith !== signature) repaginate(); else if (S.pages.length) drawWhenIdle(); /* o resto da config (QR, botão, divisões, textos) só muda o desenho, não a paginação */
@@ -712,49 +744,151 @@
     function templateMiniHtml(def) {
         let set = S.templateSets[def.id], vigente = S.activeTemplate === def.id, cover = set.A4 || set.A3;
         return '<div class="cg-template-card' + (vigente ? ' vigente' : '') + '" data-template-set="' + def.id + '">'
-            + '<div class="cg-template-mini-cover"' + (cover ? ' style="background-image:url(\'' + cover + '\')"' : '') + '>'
-            + (set.logo ? '<div class="cg-template-mini-logo" style="background-image:url(\'' + set.logo + '\')"></div>' : '')
+            + '<div class="cg-template-mini-cover">'
+            + (set.logo ? '<div class="cg-template-mini-logo"></div>' : '')
             + (vigente ? '<span class="cg-template-mini-badge">Vigente</span>' : '')
             + '<button type="button" class="cg-template-edit-btn" data-template-edit aria-label="Editar ' + e(set.name) + '" title="Editar template">' + PENCIL_ICON + '</button>'
             + '<div class="cg-template-mini-scrim"><div class="cg-template-mini-name">' + e(set.name) + '</div></div>'
             + '</div></div>';
     }
     function templateIdOf(el) { return el.closest('[data-template-set]').dataset.templateSet; }
+    /* o quadrinho mostra uma miniatura (340 px) do fundo e da logo, gerada uma vez por imagem; o fundo inteiro (1654 px, ~1 MB) só é usado na folha */
+    const thumbCache = new Map(), thumbPending = new Set();
+    function fillThumb(el, url, width, type) {
+        if (!el || !url) return; let paint = data => { if (el.isConnected) el.style.backgroundImage = 'url("' + data + '")'; }, hit = thumbCache.get(url); if (hit) return paint(hit);
+        let key = url + type, image = new Image; if (thumbPending.has(key)) { return; } thumbPending.add(key);
+        image.onload = () => { let canvas = document.createElement('canvas'); canvas.width = Math.min(width, image.naturalWidth); canvas.height = Math.round(canvas.width * image.naturalHeight / image.naturalWidth); canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); thumbCache.set(url, canvas.toDataURL(type, .8)); thumbPending.delete(key); tplSig = ''; renderTemplateCards(); };
+        image.onerror = () => thumbPending.delete(key); image.src = url;
+    }
+    let tplSig = '';
     function renderTemplateCards() {
+        if (!$('templatesFold').open) { tplSig = ''; return; } /* desenha quando o menu abre */
+        let defs = allTemplateDefs(), sig = JSON.stringify([S.activeTemplate, defs.map(d => { let x = S.templateSets[d.id]; return [d.id, x.name, (x.A4 || '').length, (x.A3 || '').length, (x.logo || '').length, thumbCache.has(x.A4 || x.A3) ? 1 : 0, thumbCache.has(x.logo) ? 1 : 0]; })]);
+        if (sig === tplSig) return; tplSig = sig;
         $('templateSets').innerHTML = allTemplateDefs().map(templateMiniHtml).join('') + '<button type="button" class="cg-template-card cg-template-add" id="templateAddBtn" aria-label="Criar novo template"><span class="cg-template-add-icon">+</span><span>Novo template</span></button>';
         $('templateSets').querySelectorAll('[data-template-edit]').forEach(button => button.onclick = () => openTemplateModal(templateIdOf(button)));
         $('templateAddBtn').onclick = createTemplate;
+        defs.forEach(d => { let set = S.templateSets[d.id], card = $('templateSets').querySelector('[data-template-set="' + d.id + '"]'); if (!card) return; fillThumb(card.querySelector('.cg-template-mini-cover'), set.A4 || set.A3, 340, 'image/jpeg'); fillThumb(card.querySelector('.cg-template-mini-logo'), set.logo, 200, 'image/png'); });
     }
+    $('templatesFold').addEventListener('toggle', () => { if (!$('templatesFold').open) return; tplSig = ''; renderTemplateCards(); Promise.all(allTemplateDefs().map(d => ensureHeavy(d.id))).then(() => renderTemplateCards()); });
     /* Box "Configurações do cartaz": edita a config do template vigente (grava junto do template, compartilhada via portalStore). */
     const CONFIG_FIELDS = { cfgCapA4: 'capA4', cfgColsA4: 'colsA4', cfgCapA3: 'capA3', cfgColsA3: 'colsA3' };
     function configIsDefault(tid) { let a = S.templateSets[tid].config, b = defaultConfig(tid); return Object.keys(b).every(key => JSON.stringify(a[key]) === JSON.stringify(b[key])); }
     function saveConfig(tid) { queueShared(tid + '-config', configIsDefault(tid) ? null : S.templateSets[tid].config); if (tid === S.activeTemplate) applyConfig(); }
+    let cfgDraft = null; /* rascunho do painel: { tid, base, config, header }; só vira configuração do template em "Aplicar" */
+    const cfgIsDirty = () => { let set = cfgDraft && S.templateSets[cfgDraft.tid]; return !!set && (JSON.stringify(cfgDraft.config) !== JSON.stringify(set.config) || JSON.stringify(cfgDraft.header) !== JSON.stringify(set.header)); };
+    let cfgOpen = new Set(); /* seções abertas (todas fechadas por padrão); o painel redesenha a cada mudança */
+    let divisionsOpen = false; /* o painel redesenha a cada mudança; lembra se o dropdown de divisões estava aberto */
+    /* Prévia do painel: o mesmo liveCard/logoBoxHtml da folha, com um produto fictício e a configuração em edição (ainda não gravada) */
+    const PREVIEW_PHOTO = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 100"><rect width="80" height="100" fill="#e9edef"/><path d="M22 70 40 28l18 42z" fill="#b6c0c6"/><circle cx="40" cy="22" r="8" fill="#c9d1d6"/></svg>');
+    function cfgPreviewHtml(config, hd) {
+        let keep = S.config, keepDivision = S.curDivision;
+        try {
+            S.config = { ...keep, ...config }; let division = DIVISIONS.find(d => config.divisions.includes(d.id)) || null; S.curDivision = division;
+            let group = { title: 'Produto de exemplo', minQty: '2', link: 'https://exemplo.com.br/produto', rows: ['A', 'B', 'C'].map((model, i) => ({ desc: 'Modelo ' + model, code: '60 01 10' + i + ' 000', fg: '', ovd: '', principal: '7891234567895' })) },
+                mode = config.logoBox ? config.headerMode : 'none', corner = config.headerCorner || 'tl', ph = '<div class="lb-ph-box"></div>', at = (col, row) => 'grid-column:' + col + ';grid-row:' + row;
+            /* mini folha de 2 colunas: o card de exemplo e vagas tracejadas; o header completo vira a faixa do topo, o compacto ocupa o canto escolhido */
+            let cells = mode === 'compact' ? { tl: [1, 1], tr: [2, 1], bl: [1, 2], br: [2, 2] }[corner] : null, free = [[1, 1], [2, 1], [1, 2], [2, 2]].filter(c => !cells || c[0] !== cells[0] || c[1] !== cells[1]);
+            if (mode === 'full') free.length = 2, free.forEach((c, i) => { c[1] = 2; c[0] = i + 1; });
+            let card = liveCard({ group, col: free[0][0] - 1, gridRow: free[0][1] - 1, span: 1, photoSrc: PREVIEW_PHOTO }, 0, 0).replace(/style="grid-column:[^"]*"/, 'style="' + at(free[0][0], free[0][1]) + '"');
+            let header = mode === 'full' ? '<div class="cfg-pv-head" style="grid-column:1/-1;grid-row:1"><div style="color:' + (hd.subColor || HEADER_DEFAULT.subColor) + '"><strong style="background:' + (hd.stripe || HEADER_DEFAULT.stripe) + ';color:' + (hd.titleColor || HEADER_DEFAULT.titleColor) + '">' + e(hd.title || HEADER_DEFAULT.title) + '</strong><span>' + e(hd.sub).replace(/\n/g, '<br>') + '</span></div>' + (S.logo ? '<img src="' + e(S.logo) + '" alt="">' : '<em>Logo do evento</em>') + '</div>'
+                : mode === 'compact' ? logoBoxHtml({ corner, cols: 2, rows: 2 }) : '';
+            return (division && config.showStrip !== false ? '<div class="lb-strip" style="background:' + divisionColor(division) + '"></div>' : '') + header + card + free.slice(1).map(c => '<div class="lb-ph-box" style="' + at(c[0], c[1]) + '"></div>').join('')
+                + (config.legalEnabled && t(config.legalText) ? '<div class="sheet-legal">' + e(config.legalText).replace(/\n/g, '<br>') + '</div>' : '');
+        } finally { S.config = keep; S.curDivision = keepDivision; }
+    }
     function renderConfigBox() {
-        let body = $('configBody'); if (!body) return; let tid = S.activeTemplate, set = S.templateSets[tid], config = set.config, resolved = S.config, auto = !!config.a3Auto, live = config.layout === 'liveshop', qr = config.codeType === 'qr';
-        let field = (id, label, value, max, disabled) => '<label>' + label + '<input type="number" id="' + id + '" min="1" max="' + max + '" step="1" value="' + value + '"' + (disabled ? ' disabled' : '') + '></label>',
+        let body = $('configBody'); if (!body) return; let tid = S.activeTemplate, set = S.templateSets[tid], draft = cfgDraft = (cfgDraft && cfgDraft.tid === tid && cfgDraft.base === set.config ? cfgDraft : { tid, base: set.config, config: JSON.parse(JSON.stringify(set.config)), header: { ...set.header } }), config = draft.config, header = draft.header, resolved = CartazPagination.resolve(config), auto = !!config.a3Auto, live = config.layout === 'liveshop', qr = config.codeType === 'qr';
+        let num = (id, label, value, max, disabled) => '<input type="number" id="' + id + '" aria-label="' + label + '" min="1" max="' + max + '" step="1" value="' + value + '"' + (disabled ? ' disabled' : '') + '>',
             option = (value, label, current) => '<option value="' + value + '"' + (current === value ? ' selected' : '') + '>' + label + '</option>',
-            check = (id, label, on, extra) => '<label class="cg-config-check"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + (extra || '') + '>' + label + '</label>';
-        body.innerHTML = '<p class="cg-config-note">Vale para o template vigente: <b>' + e(set.name) + '</b>. Cada template guarda as próprias configurações; ao trocar o template vigente, o cartaz volta ao layout dele.</p>'
-            + '<div class="cg-config-grid">' + field('cfgCapA4', 'Produtos por folha A4', config.capA4, 60) + field('cfgColsA4', 'Colunas no A4', config.colsA4, 8)
-            + check('cfgA3Auto', 'Calcular o A3 a partir do A4 <small>(capacidade ×1,5)</small>', auto)
-            + field('cfgCapA3', 'Produtos por folha A3', resolved.capA3, 120, auto) + field('cfgColsA3', 'Colunas no A3', resolved.colsA3, 12, auto)
-            + '<label>Modelo do box<select id="cfgLayout">' + option('feira', 'Feira (título, foto e códigos)', config.layout) + option('liveshop', 'Live Shop (QR/barras e tabela de modelos)', config.layout) + '</select></label>'
-            + '<label>Paginação<select id="cfgPaginate">' + option('brand', 'Por marca', config.paginateBy) + option('sequence', 'Sequência única (mistura as marcas)', config.paginateBy) + '</select></label>'
-            + (live ? check('cfgLogoBox', 'Box de logo do evento na primeira linha', config.logoBox) + '<label>Título do aviso<input id="cfgAttentionTitle" maxlength="40" value="' + e(config.attentionTitle) + '"></label><label>Cor do aviso<input type="color" id="cfgAttentionColor" value="' + e(config.attentionColor) + '"></label><label class="cg-config-wide">Texto de atenção do box de logo<textarea id="cfgAttention" rows="3" maxlength="240">' + e(config.attentionText) + '</textarea></label>' + check('cfgFooterLogo', 'Logo da marca no rodapé', config.footerLogo)
-                + '<label>Código no box<select id="cfgCodeType">' + option('barcode', 'Código de barras', config.codeType) + option('qr', 'QR Code (link de redirecionamento)', config.codeType) + '</select></label>'
-                + (qr ? check('cfgButton', 'Botão abaixo do QR Code', config.button) + '<label>Texto do botão<input id="cfgButtonText" maxlength="40" value="' + e(config.buttonText) + '"></label><label>Cor do botão<input type="color" id="cfgButtonColor" value="' + e(config.buttonColor) + '"></label>' : '')
-                + check('cfgLegalOn', 'Texto legal no rodapé', config.legalEnabled) + (config.legalEnabled ? '<label class="cg-config-wide">Texto legal <small>(fonte bem pequena, centralizado no rodapé)</small><textarea id="cfgLegal" rows="3" maxlength="600">' + e(config.legalText) + '</textarea></label>' : '')
-                + '<fieldset class="cg-config-wide cg-config-divisions"><legend>Divisões <small>(cada divisão marcada gera as mesmas folhas, com a faixa de cor e os links dela)</small></legend>' + DIVISIONS.map(d => '<label class="cg-config-division"><input type="checkbox" data-division="' + d.id + '"' + (config.divisions.includes(d.id) ? ' checked' : '') + '>' + d.name + '<input type="color" data-division-color="' + d.id + '" value="' + e(divisionColor(d)) + '" title="Cor da faixa de ' + d.name + '"></label>').join('') + '</fieldset>' : '')
-            + '</div><div class="cg-config-actions"><button type="button" class="secondary" id="cfgReset"' + (configIsDefault(tid) ? ' disabled' : '') + '>Restaurar padrão do template</button></div>';
-        let commit = () => saveConfig(tid), on = (id, key, read) => { let el = body.querySelector('#' + id); if (el) el.onchange = event => { config[key] = read(event.target); commit(); }; };
+            sw = (id, label, on, off) => '<input type="checkbox" class="cfg-switch" id="' + id + '" aria-label="' + label + '"' + (on ? ' checked' : '') + (off ? ' disabled' : '') + '>',
+            toggle = (id, title, hint, on) => '<div class="cfg-toggle"><span><b>' + title + '</b>' + (hint ? '<small>' + hint + '</small>' : '') + '</span>' + sw(id, title, on) + '</div>',
+            seg = (key, current, opts, cls) => '<div class="cfg-seg' + (cls ? ' ' + cls : '') + '" role="group">' + opts.map(([v, l]) => '<button type="button" data-seg="' + key + '" data-value="' + v + '" aria-pressed="' + (current === v) + '">' + l + '</button>').join('') + '</div>',
+            sec = (title, right, inner) => '<details class="cfg-sec" data-sec="' + title + '"' + (cfgOpen.has(title) ? ' open' : '') + '><summary><h3><i>' + String(++count).padStart(2, '0') + '</i>' + title + '</h3>' + (right || '') + CHEVRON + '</summary><div class="cfg-body">' + inner + '</div></details>',
+            lab = (text, inner, cls) => '<label class="cfg-field' + (cls ? ' ' + cls : '') + '"><span>' + text + '</span>' + inner + '</label>',
+            /* campo do card: dropdown interno (interruptor no cabeçalho, ajustes dentro); sem ajustes ou desligado, vira só uma linha com o interruptor */
+            field = (key, title, id, on, inner, off) => on && inner ? '<details class="cfg-fld" data-sec="f:' + key + '"' + (cfgOpen.has('f:' + key) ? ' open' : '') + '><summary><b>' + title + '</b>' + sw(id, title, on, off) + CHEVRON + '</summary><div class="cfg-body">' + inner + '</div></details>' : '<div class="cfg-fld cfg-fld-flat"><b>' + title + '</b>' + sw(id, title, on, off) + '</div>',
+            /* código de barras no canto inferior direito: só cabe o Código, em lista simples (a Descrição fica desligada e travada) */
+            tight = config.showCodeBox && config.codeType === 'barcode' && config.codePos === 'corner',
+            fmt = tight ? '<p class="cfg-hint">Com o código de barras no canto inferior direito os códigos ficam em lista simples, sem a Descrição: as informações juntas não cabem.</p>' : '<div class="cfg-field"><span>Formato dos códigos</span>' + seg('tableStyle', config.tableStyle, [['table', 'Tabela'], ['list', 'Lista simples']]) + '</div>',
+            btnMax = 22, count = 0, fullCap = config.colsA4 * 4, compactCap = config.colsA4 * 5 - 1; /* o header completo ocupa uma linha inteira das 5 do A4; o compacto, uma célula */
+        body.innerHTML = '<p class="cg-config-note">Vale para o template vigente: <b>' + e(set.name) + '</b>. Cada template guarda as próprias configurações; ao trocar o template vigente, o cartaz volta ao layout dele.</p><div class="cfg-layout"><div class="cfg-stack">'
+            + (live ? sec('Divisões', '',
+                '<p class="cfg-hint">Cada divisão marcada gera o mesmo conjunto de folhas, com a faixa na cor dela e os links dela.</p>' + toggle('cfgStrip', 'Linha colorida no topo da folha', 'Faixa na cor da divisão acima do header.', config.showStrip !== false) + '<details class="cfg-drop"' + (divisionsOpen ? ' open' : '') + '><summary><span>' + (config.divisions.length ? config.divisions.map(id => DIVISIONS.find(d => d.id === id)?.name).filter(Boolean).join(', ') : 'Nenhuma divisão') + '</span><em>' + config.divisions.length + ' de ' + DIVISIONS.length + '</em>' + PortalShell.svgIcon('<path d="m6 9 6 6 6-6"/>', 14) + '</summary><div class="cfg-chips"><div class="cfg-chips-head">Cor da faixa</div>'
+                + DIVISIONS.map(d => '<label class="cfg-chip"><input type="checkbox" class="cfg-check" data-division="' + d.id + '"' + (config.divisions.includes(d.id) ? ' checked' : '') + '><b>' + d.name + '</b><input type="color" class="cfg-color" data-division-color="' + d.id + '" value="' + e(divisionColor(d)) + '" title="Cor da faixa de ' + d.name + '"></label>').join('') + '</div></details>') : '')
+            + (live ? sec('Header', sw('cfgLogoBox', 'Header', config.logoBox),
+                '<div class="cfg-field"><span>Modelo do header</span>' + seg('headerMode', config.headerMode, [['full', 'Header completo'], ['compact', 'Header compacto']]) + '</div>'
+                + (config.headerMode === 'full'
+                    ? '<p class="cfg-hint">Faixa com título e subtítulo à esquerda e a logo do evento à direita, como na Feira. Ocupa a primeira linha da folha: até ' + fullCap + ' produtos por A4. O envio da logo fica em Editar template.</p>'
+                        + lab('Título', '<input id="cfgHdTitle" maxlength="60" autocomplete="off" value="' + e(header.title) + '">')
+                        + lab('Subtítulo <small>(cada linha vira uma linha no cartaz)</small>', '<textarea id="cfgHdSub" rows="2" maxlength="120">' + e(header.sub) + '</textarea>')
+                        + '<div class="cfg-colors">' + lab('Cor da faixa', '<input type="color" class="cfg-color" id="cfgHdStripe" value="' + header.stripe + '">') + lab('Cor do título', '<input type="color" class="cfg-color" id="cfgHdTitleColor" value="' + header.titleColor + '">') + lab('Cor do subtítulo', '<input type="color" class="cfg-color" id="cfgHdSubColor" value="' + header.subColor + '">') + '</div>'
+                    : '<p class="cfg-hint">Logo do evento e aviso num único box, no espaço de um card: até ' + compactCap + ' produtos por A4.</p>'
+                    + '<div class="cfg-field"><span>Posição do header</span>' + seg('headerCorner', config.headerCorner, [['tl', 'Superior esquerdo'], ['tr', 'Superior direito'], ['bl', 'Inferior esquerdo'], ['br', 'Inferior direito']], 'cfg-seg-2') + '</div>'
+                    + '<div class="cfg-inline">' + lab('Título do aviso', '<input id="cfgAttentionTitle" maxlength="40" value="' + e(config.attentionTitle) + '">', 'grow') + lab('Cor', '<input type="color" class="cfg-color" id="cfgAttentionColor" title="Cor do aviso" value="' + e(config.attentionColor) + '">') + '</div>'
+                    + lab('Texto do aviso', '<textarea id="cfgAttention" rows="3" maxlength="240">' + e(config.attentionText) + '</textarea>'))) : '')
+            + sec('Folha e grade', '',
+                '<div class="cfg-field"><span>Tipos de folha</span>' + seg('sheetFormats', config.sheetFormats, [['both', 'A4 e A3'], ['a4', 'Somente A4'], ['a3', 'Somente A3']]) + '</div>'
+                + '<div class="cfg-sheet"><span></span><span class="cfg-col">Produtos por folha</span><span class="cfg-col">Colunas</span>'
+                + (config.sheetFormats !== 'a3' ? '<b>A4</b>' + num('cfgCapA4', 'Produtos por folha A4', config.capA4, 60) + num('cfgColsA4', 'Colunas no A4', config.colsA4, 8) : '')
+                + (config.sheetFormats !== 'a4' ? '<b>A3</b>' + num('cfgCapA3', 'Produtos por folha A3', resolved.capA3, 120, auto) + num('cfgColsA3', 'Colunas no A3', resolved.colsA3, 12, auto) : '') + '</div>'
+                + (config.sheetFormats === 'both' ? toggle('cfgA3Auto', 'Calcular A3 automaticamente', 'Usa 1,5× a quantidade do A4. Desligue para definir o A3 à mão.', auto) : '')
+                + '<div class="cfg-field"><span>Paginação</span>' + seg('paginateBy', config.paginateBy, [['brand', 'Por marca'], ['sequence', 'Contínua']]) + '</div>')
+            + (live ? sec('Box do produto', '',
+                [['title', 'Título do produto', 'cfgShowTitle', config.showTitle, '<div class="cfg-field"><span>Alinhamento</span>' + seg('titleAlign', config.titleAlign, [['left', 'À esquerda'], ['center', 'Centralizado'], ['right', 'À direita'], ['justify', 'Justificado']]) + '</div>'],
+                 ['photo', 'Foto do produto', 'cfgShowPhoto', config.showPhoto, ''],
+                 ['codebox', 'QR Code / Código de barras', 'cfgShowCodeBox', config.showCodeBox, '<div class="cfg-field"><span>Tipo</span>' + seg('codeType', config.codeType, [['qr', 'QR Code'], ['barcode', 'Código de barras']]) + '</div>'
+                    + '<div class="cfg-field"><span>Posição no card</span>' + seg('codePos', config.codePos, [['left', 'Coluna ao lado'], ['corner', 'Canto inferior direito']]) + '</div>'
+                    + '<p class="cfg-hint">' + (qr ? 'O QR leva ao link de redirecionamento do produto.' : 'Imprime o código de barras do produto. No canto inferior direito ele fica maior (como na Feira) e a foto encolhe para dar espaço; na coluna ao lado ele é bem menor.') + '</p>'],
+                 ['desc', 'Descrição', 'cfgShowDesc', config.showDesc, fmt, tight],
+                 ['code', 'Código', 'cfgShowCode', config.showCode, fmt],
+                 ['qty', 'Quantidade mínima', 'cfgShowQty', config.showQty, ''],
+                 ['button', qr ? 'Botão abaixo do QR Code' : 'Botão abaixo do código de barras', 'cfgButton', config.button, '<p class="cfg-hint">' + (qr ? 'Reforça a chamada para quem não lê QR.' : 'Leva ao link do produto (precisa de link no box).') + '</p>'
+                    + '<div class="cfg-btnrow"><div class="cfg-inline">' + lab('Texto do botão <em id="cfgBtnCount" class="cfg-count">' + config.buttonText.length + '/' + btnMax + '</em>', '<input id="cfgButtonText" maxlength="40" value="' + e(config.buttonText) + '">', 'grow') + lab('Cor', '<input type="color" class="cfg-color" id="cfgButtonColor" title="Cor do botão" value="' + e(config.buttonColor) + '">') + '</div>'
+                    + '<div class="cfg-field"><span>Prévia</span><span class="cfg-btnprev" id="cfgBtnPrev" style="background:' + e(config.buttonColor) + '">' + e(config.buttonText) + '</span></div></div>'
+                    + '<p class="cfg-warn" id="cfgBtnWarn"' + (config.buttonText.length > btnMax ? '' : ' hidden') + '>Texto longo: acima de ' + btnMax + ' caracteres o botão pode cortar no cartaz. Ex.: “COMPRE AGORA”.</p>']
+                ].map(([key, title, id, on, inner, off]) => field(key, title, id, on, inner, off)).join(''))
+            + sec('Rodapé', '',
+                toggle('cfgFooterLogo', 'Logo da marca', '', config.footerLogo)
+                + toggle('cfgLegalOn', 'Texto legal', 'Fonte pequena, centralizada no rodapé.', config.legalEnabled)
+                + (config.legalEnabled ? '<textarea id="cfgLegal" rows="3" maxlength="600" aria-label="Texto legal">' + e(config.legalText) + '</textarea>' : '')) : '')
+            + '</div>' + (live ? '<aside class="cfg-preview"><h4>Prévia do card</h4><div class="cfg-pv" id="cfgPreview" aria-hidden="true"></div><p class="cfg-hint">Exemplo com dados fictícios; muda conforme você edita.</p></aside>' : '') + '</div><div class="cg-config-actions"><button type="button" class="secondary" id="cfgDiscard" disabled>Descartar</button><button type="button" class="secondary" id="cfgReset"' + (Object.keys(defaultConfig(tid)).every(key => JSON.stringify(config[key]) === JSON.stringify(defaultConfig(tid)[key])) ? ' disabled' : '') + '>Restaurar</button><button type="button" id="cfgApply" disabled>Aplicar</button><span class="cfg-dirty" id="cfgDirty" hidden>Alterações ainda não aplicadas à folha</span></div>';
+        body.querySelectorAll('details.cfg-sec, details.cfg-fld').forEach(d => d.addEventListener('toggle', () => cfgOpen[d.open ? 'add' : 'delete'](d.dataset.sec)));
+        /* a prévia é uma miniatura fiel: o card tem o tamanho real que terá na folha A4 desta configuração (colunas e linhas) e o conjunto é reduzido para caber no painel */
+        let refresh = () => { let dirty = cfgIsDirty(); body.querySelector('#cfgApply').disabled = body.querySelector('#cfgDiscard').disabled = !dirty; body.querySelector('#cfgDirty').hidden = !dirty; };
+        let paint = () => {
+            let pv = body.querySelector('#cfgPreview'); if (!pv) return;
+            let sheet = CartazPagination.resolve(config), cols = sheet.colsA4, rowsA4 = Math.ceil((sheet.capA4 + (config.logoBox && config.headerMode !== 'full' ? 1 : 0)) / cols), w = Math.round((794 - 60 - 8 * (cols - 1)) / cols), h = Math.round(w / LIVE_BASE_W > 1.3 ? Math.min(935 / rowsA4, w * LIVE_RATIO) : 935 / rowsA4);
+            pv.style.zoom = ''; pv.style.setProperty('--pw', w + 'px'); pv.style.setProperty('--ph', h + 'px'); pv.innerHTML = cfgPreviewHtml(config, header);
+            let card = pv.querySelector('.card.lb'); if (card) { card.style.setProperty('--u', cardScale(card, 1)); fitButton(card); }
+            pv.style.zoom = Math.min(1, 362 / (2 * w + 28)).toFixed(3);
+        }; paint();
+        body.querySelector('.cfg-drop')?.addEventListener('toggle', event => { divisionsOpen = event.target.open; });
+        body.querySelectorAll('[data-seg]').forEach(button => button.onclick = () => { config[button.dataset.seg] = button.dataset.value; if (button.dataset.seg === 'sheetFormats' && button.dataset.value === 'a3' && config.a3Auto) { config.a3Auto = false; config.capA3 = resolved.capA3; config.colsA3 = resolved.colsA3; } /* só A3: os números do A3 passam a ser seus */
+            if (config.showCodeBox && config.codeType === 'barcode' && config.codePos === 'corner') { config.showDesc = false; config.showCode = true; config.tableStyle = 'list'; } /* essa combinação só comporta o Código em lista simples */
+            if (button.dataset.seg === 'headerMode') config.capA4 = button.dataset.value === 'full' ? fullCap : compactCap; renderConfigBox(); });
+        let btnText = body.querySelector('#cfgButtonText'), btnColor = body.querySelector('#cfgButtonColor');
+        if (btnText) { let sync = () => { body.querySelector('#cfgBtnCount').textContent = btnText.value.length + '/' + btnMax; body.querySelector('#cfgBtnWarn').hidden = btnText.value.length <= btnMax; body.querySelector('#cfgBtnPrev').textContent = btnText.value; body.querySelector('#cfgBtnPrev').style.background = btnColor.value; }; btnText.oninput = btnColor.oninput = () => { config.buttonText = t(btnText.value) || CartazPagination.DEFAULT_CONFIG.buttonText; config.buttonColor = btnColor.value; sync(); paint(); refresh(); }; }
+        /* texto e cores do header completo ficam na peça "header" do template (mesmos dados do modal Editar template) */
+        [['cfgHdTitle', 'title'], ['cfgHdSub', 'sub'], ['cfgHdStripe', 'stripe'], ['cfgHdTitleColor', 'titleColor'], ['cfgHdSubColor', 'subColor']].forEach(([id, key]) => { let el = body.querySelector('#' + id); if (!el) return; el.oninput = () => { header[key] = el.value; paint(); refresh(); }; el.onchange = refresh; });
+        let commit = () => renderConfigBox(), on = (id, key, read) => { let el = body.querySelector('#' + id); if (el) { el.onchange = event => { config[key] = read(event.target); commit(); }; if (!el.oninput) el.oninput = event => { config[key] = read(event.target); paint(); refresh(); }; } };
         Object.entries(CONFIG_FIELDS).forEach(([id, key]) => on(id, key, input => Math.max(1, Math.floor(+input.value) || 1)));
         on('cfgA3Auto', 'a3Auto', input => { if (!input.checked) { config.capA3 = resolved.capA3; config.colsA3 = resolved.colsA3; } return input.checked; });
-        on('cfgPaginate', 'paginateBy', input => input.value); on('cfgLayout', 'layout', input => input.value); on('cfgLogoBox', 'logoBox', input => input.checked); on('cfgFooterLogo', 'footerLogo', input => input.checked);
-        on('cfgAttention', 'attentionText', input => input.value); on('cfgAttentionTitle', 'attentionTitle', input => input.value); on('cfgAttentionColor', 'attentionColor', input => input.value); on('cfgLegalOn', 'legalEnabled', input => input.checked); on('cfgLegal', 'legalText', input => input.value); on('cfgCodeType', 'codeType', input => input.value); on('cfgButton', 'button', input => input.checked);
+        [['cfgShowTitle', 'showTitle'], ['cfgShowPhoto', 'showPhoto'], ['cfgShowCodeBox', 'showCodeBox'], ['cfgShowQty', 'showQty'], ['cfgShowDesc', 'showDesc'], ['cfgShowCode', 'showCode'], ['cfgButton', 'button'], ['cfgStrip', 'showStrip']].forEach(([id, key]) => on(id, key, input => input.checked)); on('cfgLogoBox', 'logoBox', input => input.checked); on('cfgFooterLogo', 'footerLogo', input => input.checked);
+        on('cfgAttention', 'attentionText', input => input.value); on('cfgAttentionTitle', 'attentionTitle', input => input.value); on('cfgAttentionColor', 'attentionColor', input => input.value); on('cfgLegalOn', 'legalEnabled', input => input.checked); on('cfgLegal', 'legalText', input => input.value); on('cfgButton', 'button', input => input.checked);
         on('cfgButtonText', 'buttonText', input => t(input.value) || CartazPagination.DEFAULT_CONFIG.buttonText); on('cfgButtonColor', 'buttonColor', input => input.value);
         body.querySelectorAll('[data-division]').forEach(input => input.onchange = () => { config.divisions = DIVISIONS.map(d => d.id).filter(id => id === input.dataset.division ? input.checked : config.divisions.includes(id)); commit(); });
         body.querySelectorAll('[data-division-color]').forEach(input => input.onchange = () => { config.divisionColors = { ...config.divisionColors, [input.dataset.divisionColor]: input.value }; commit(); });
-        body.querySelector('#cfgReset').onclick = () => { set.config = defaultConfig(tid); commit(); };
+        body.querySelector('#cfgReset').onclick = () => { draft.config = defaultConfig(tid); commit(); };
+        body.querySelector('#cfgDiscard').onclick = () => { cfgDraft = null; renderConfigBox(); };
+        body.querySelector('#cfgApply').onclick = () => {
+            let headerChanged = JSON.stringify(header) !== JSON.stringify(set.header), configChanged = JSON.stringify(config) !== JSON.stringify(set.config);
+            if (headerChanged) { set.header = { ...header }; saveTemplatePiece(tid, 'header', headerIsDefaultValue(set.header) ? null : { ...set.header }); applyTemplates(); }
+            if (configChanged) { set.config = JSON.parse(JSON.stringify(config)); draft.base = set.config; saveConfig(tid); }
+            renderConfigBox(); toast('Configurações aplicadas à folha.');
+        };
+        refresh();
+        let fold = $('configFold'); if (fold && !fold.dataset.dirtyHook) { fold.dataset.dirtyHook = '1'; fold.addEventListener('toggle', () => { if (!fold.open && cfgDraft && cfgIsDirty()) toast('O painel tem alterações ainda não aplicadas.'); }); }
     }
     function createTemplate() {
         let id = 'custom-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -798,8 +932,8 @@
         body.querySelector('[data-header-title-color]').oninput = event => { modalDraft.header.titleColor = event.target.value; };
         body.querySelector('[data-header-sub-color]').oninput = event => { modalDraft.header.subColor = event.target.value; };
     }
-    function openTemplateModal(tid, isNew) {
-        let set = S.templateSets[tid];
+    async function openTemplateModal(tid, isNew) {
+        await ensureHeavy(tid); let set = S.templateSets[tid];
         modalDraft = { tid, isNew: !!isNew, name: set.name, A4: set.A4, A3: set.A3, A4Name: set.A4Name, A3Name: set.A3Name, logo: set.logo, logoName: set.logoName, header: { ...set.header }, active: S.activeTemplate === tid };
         $('templateModalTitle').textContent = isNew ? 'Novo template' : 'Editar ' + set.name;
         renderTemplateModalBody();
@@ -853,9 +987,10 @@
     function applyTemplates() {
         let style = document.getElementById('templateStyle') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'templateStyle' }));
         let header = S.header || HEADER_DEFAULT;
-        style.textContent = ['A4', 'A3'].filter(format => S.templates[format]).map(format => '.sheet.' + format.toLowerCase() + '.custom-bg{background-image:url("' + S.templates[format] + '")}').join('\n')
+        let css = ['A4', 'A3'].filter(format => S.templates[format]).map(format => '.sheet.' + format.toLowerCase() + '.custom-bg{background-image:url("' + S.templates[format] + '")}').join('\n')
             + (S.logo ? '\n.sheet.custom-logo::after{background-image:url("' + S.logo + '")}' : '')
             + '\n.sheet-heading{color:' + (header.subColor || HEADER_DEFAULT.subColor) + '}.sheet-heading strong{background:' + (header.stripe || HEADER_DEFAULT.stripe) + ';color:' + (header.titleColor || HEADER_DEFAULT.titleColor) + '}';
+        if (style.textContent !== css) style.textContent = css;
         renderTemplateCards();
         if (S.pages.length) drawWhenIdle();
     }
@@ -895,29 +1030,39 @@
        correspondente é limpo). "feira" também herda, só na 1a carga de qualquer máquina, o que já estava
        nas chaves antigas (sem prefixo de template) do sistema de template único anterior - sem isso, um
        navegador sem cache local perderia de vista o template que já estava no ar. */
+    /* Cada template tem 6 registros no portalStore; o fundo A4/A3 e a logo são imagens de até ~0,9 MB. O vigente carrega tudo; os demais carregam só nome, header e
+       configuração e deixam as imagens (ensureHeavy) para quando o menu "Template do cartaz" ou o editor de template for aberto. */
+    const HEAVY_PARTS = ['A4', 'A3', 'logo'], LIGHT_PARTS = ['header', 'name', 'config'], heavyLoaded = new Set(), tplCtx = {};
+    async function loadTemplatePart(tid, part, seeded, local) {
+        let set = S.templateSets[tid];
+                let record = await SyncBackend.get(SHARED_KEY + tid + '-' + part), value = record.v; sharedVersion[tid + '-' + part] = record.updated_at || 0;
+                if (!value && tid === 'feira' && !seeded && part !== 'name' && part !== 'config') { let legacy = await SyncBackend.get(SHARED_KEY + part); if (legacy.v) { value = legacy.v; queueShared(tid + '-' + part, value); } }
+                if (!value) { if (!seeded && local[part]) queueShared(tid + '-' + part, local[part]); else if (seeded && local[part]) { if (part === 'A4' || part === 'A3') { set[part] = ''; set[part + 'Name'] = ''; } else if (part === 'logo') { set.logo = ''; set.logoName = ''; } else if (part === 'name') set.name = defaultTemplateName(tid); else set.header = { ...HEADER_DEFAULT }; } return; }
+                if (part === 'A4' || part === 'A3') { set[part] = value.url; set[part + 'Name'] = value.name || 'Template enviado'; }
+                else if (part === 'logo') { set.logo = value.url; set.logoName = value.name || 'Logo enviada'; }
+                else if (part === 'name') set.name = value;
+                else if (part === 'config') set.config = { ...defaultConfig(tid), ...value };
+                else set.header = { title: t(value.title) || HEADER_DEFAULT.title, sub: value.sub ?? HEADER_DEFAULT.sub, stripe: value.stripe || HEADER_DEFAULT.stripe, titleColor: value.titleColor || HEADER_DEFAULT.titleColor, subColor: value.subColor || HEADER_DEFAULT.subColor };
+    }
+    async function ensureHeavy(tid) {
+        let ctx = tplCtx[tid]; if (heavyLoaded.has(tid)) return; if (!ctx) { heavyLoaded.add(tid); return; }
+        try { await Promise.all(HEAVY_PARTS.map(part => loadTemplatePart(tid, part, ctx.seeded, ctx.local))); heavyLoaded.add(tid); try { localStorage.setItem(ctx.seededKey, '1'); } catch (_) { } } catch (_) { /* sem rede: tenta de novo na próxima abertura */ }
+    }
     async function loadShared() {
         try {
-            let activeRecord = await SyncBackend.get(SHARED_KEY + 'active');
-            if (activeRecord.v && S.templateSets[activeRecord.v]) S.activeTemplate = activeRecord.v;
-            sharedVersion.active = activeRecord.updated_at || 0;
-            let customRecord = await SyncBackend.get(SHARED_KEY + CUSTOM_IDS_KEY);
+            let [activeRecord, customRecord] = await Promise.all([SyncBackend.get(SHARED_KEY + 'active'), SyncBackend.get(SHARED_KEY + CUSTOM_IDS_KEY)]);
             if (Array.isArray(customRecord.v)) { customTemplateIds = customRecord.v; customTemplateIds.forEach(id => { if (!S.templateSets[id]) S.templateSets[id] = blankTemplateSet(id); }); try { localStorage.setItem(TPL_KEY + CUSTOM_IDS_KEY, JSON.stringify(customTemplateIds)); } catch (_) { } }
             sharedVersion[CUSTOM_IDS_KEY] = customRecord.updated_at || 0;
-            for (let def of allTemplateDefs()) {
+            if (activeRecord.v && S.templateSets[activeRecord.v]) S.activeTemplate = activeRecord.v;
+            sharedVersion.active = activeRecord.updated_at || 0;
+            await Promise.all(allTemplateDefs().map(async def => {
                 let tid = def.id, set = S.templateSets[tid], seededKey = SHARED_SEEDED + '-' + tid, seeded = localStorage.getItem(seededKey) === '1',
-                    local = { A4: set.A4 && { name: set.A4Name, url: set.A4 }, A3: set.A3 && { name: set.A3Name, url: set.A3 }, logo: set.logo && { name: set.logoName, url: set.logo }, header: headerIsDefaultValue(set.header) ? null : set.header, name: set.name !== defaultTemplateName(tid) ? set.name : null };
-                for (let part of ['A4', 'A3', 'logo', 'header', 'name', 'config']) {
-                    let record = await SyncBackend.get(SHARED_KEY + tid + '-' + part), value = record.v; sharedVersion[tid + '-' + part] = record.updated_at || 0;
-                    if (!value && tid === 'feira' && !seeded && part !== 'name' && part !== 'config') { let legacy = await SyncBackend.get(SHARED_KEY + part); if (legacy.v) { value = legacy.v; queueShared(tid + '-' + part, value); } }
-                    if (!value) { if (!seeded && local[part]) queueShared(tid + '-' + part, local[part]); else if (seeded && local[part]) { if (part === 'A4' || part === 'A3') { set[part] = ''; set[part + 'Name'] = ''; } else if (part === 'logo') { set.logo = ''; set.logoName = ''; } else if (part === 'name') set.name = defaultTemplateName(tid); else set.header = { ...HEADER_DEFAULT }; } continue; }
-                    if (part === 'A4' || part === 'A3') { set[part] = value.url; set[part + 'Name'] = value.name || 'Template enviado'; }
-                    else if (part === 'logo') { set.logo = value.url; set.logoName = value.name || 'Logo enviada'; }
-                    else if (part === 'name') set.name = value;
-                    else if (part === 'config') set.config = { ...defaultConfig(tid), ...value };
-                    else set.header = { title: t(value.title) || HEADER_DEFAULT.title, sub: value.sub ?? HEADER_DEFAULT.sub, stripe: value.stripe || HEADER_DEFAULT.stripe, titleColor: value.titleColor || HEADER_DEFAULT.titleColor, subColor: value.subColor || HEADER_DEFAULT.subColor };
-                }
-                try { localStorage.setItem(seededKey, '1'); } catch (_) { }
-            }
+                    local = { A4: set.A4 && { name: set.A4Name, url: set.A4 }, A3: set.A3 && { name: set.A3Name, url: set.A3 }, logo: set.logo && { name: set.logoName, url: set.logo }, header: headerIsDefaultValue(set.header) ? null : set.header, name: set.name !== defaultTemplateName(tid) ? set.name : null },
+                    vigente = tid === S.activeTemplate;
+                tplCtx[tid] = { seeded, local, seededKey };
+                await Promise.all((vigente ? HEAVY_PARTS.concat(LIGHT_PARTS) : LIGHT_PARTS).map(part => loadTemplatePart(tid, part, seeded, local)));
+                if (vigente) { heavyLoaded.add(tid); try { localStorage.setItem(seededKey, '1'); } catch (_) { } }
+            }));
             let active = S.templateSets[S.activeTemplate];
             S.templates = { A4: active.A4, A3: active.A3 }; S.templateNames = { A4: active.A4Name, A3: active.A3Name }; S.logo = active.logo; S.logoName = active.logoName; S.header = active.header;
             try {
@@ -929,8 +1074,8 @@
             applyConfig(); applyTemplates();
         } catch (_) { /* sem rede/login: segue com o cache local */ }
     }
-    function setActiveTemplate(tid) {
-        if (tid === S.activeTemplate || !S.templateSets[tid]) return;
+    async function setActiveTemplate(tid) {
+        if (tid === S.activeTemplate || !S.templateSets[tid]) return; await ensureHeavy(tid);
         S.activeTemplate = tid; let set = S.templateSets[tid];
         S.templates = { A4: set.A4, A3: set.A3 }; S.templateNames = { A4: set.A4Name, A3: set.A3Name }; S.logo = set.logo; S.logoName = set.logoName; S.header = set.header;
         try { localStorage.setItem(TPL_KEY + 'active', tid); } catch (_) { }
@@ -971,6 +1116,9 @@
        img usam object-fit:contain).
        Logos: sem transform nem overflow envolvidos, só redimensiona o <img> mesmo - a centralização já
        vem do grid place-items:center do pai. */
+    /* O html2canvas assenta o texto do botão cerca de 0,8 px (css) mais baixo que o navegador: sobrava mais margem acima do que abaixo na exportação.
+       Compensa só no clone, subindo o texto (o CSS da prévia e da impressão segue igual). Medido nos pixels do export: folga de cima 5 px x 0 px embaixo. */
+    function fitClonedButtons(clonedSheet) { clonedSheet.querySelectorAll('.lb-btn').forEach(btn => { btn.style.paddingTop = 'calc(0.7px * var(--u))'; btn.style.paddingBottom = 'calc(1.3px * var(--u))'; }); }
     function fitClonedLogos(origSheet, clonedSheet) {
         let clones = [...clonedSheet.querySelectorAll('.sheet-footer img, .sheet-logo-card img')];
         [...origSheet.querySelectorAll('.sheet-footer img, .sheet-logo-card img')].forEach((origImg, i) => {
@@ -1008,7 +1156,7 @@
                 try {
                     let scale = Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight) * EXPORT_SCALE, w = img.naturalWidth * scale, h = img.naturalHeight * scale;
                     let canvas = document.createElement('canvas'); canvas.width = Math.round(boxW * EXPORT_SCALE); canvas.height = Math.round(boxH * EXPORT_SCALE);
-                    canvas.getContext('2d').drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+                    let ctx = canvas.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
                     headerLogoCache = { key, dataUrl: canvas.toDataURL('image/png') };
                 } catch (_) { resolve(); return; } /* CORS ou outro erro: mantém o ::after padrão, sem travar a exportação */
                 place(headerLogoCache.dataUrl).then(resolve);
@@ -1055,7 +1203,7 @@
             let neverUpscale = getComputedStyle(origImg).objectFit === 'scale-down', scale = Math.min(photo.offsetWidth / iw, photo.offsetHeight / ih, neverUpscale ? 1 : Infinity) * zoom, w = iw * scale, h = ih * scale;
             try {
                 let canvas = document.createElement('canvas'); canvas.width = Math.round(boxW * EXPORT_SCALE); canvas.height = Math.round(boxH * EXPORT_SCALE);
-                canvas.getContext('2d').drawImage(origImg, (boxW - w) / 2 * EXPORT_SCALE, (boxH - h) / 2 * EXPORT_SCALE, w * EXPORT_SCALE, h * EXPORT_SCALE);
+                let ctx = canvas.getContext('2d'); ctx.imageSmoothingQuality = 'high'; /* o padrão 'low' (bilinear) serrilha fotos grandes reduzidas para ~240 px de cartaz */ ctx.drawImage(origImg, (boxW - w) / 2 * EXPORT_SCALE, (boxH - h) / 2 * EXPORT_SCALE, w * EXPORT_SCALE, h * EXPORT_SCALE);
                 img.src = canvas.toDataURL();
                 img.style.position = 'absolute'; img.style.inset = '0'; img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'fill';
                 let clonePhoto = img.parentElement;
@@ -1130,7 +1278,7 @@
                 await yieldExportUi();
                 let canvas, image, box = sheet.getBoundingClientRect(), links = [...sheet.querySelectorAll('[data-link]')].map(el => { let r = el.getBoundingClientRect(); return { url: el.dataset.link, x: (r.left - box.left) / box.width, y: (r.top - box.top) / box.height, w: r.width / box.width, h: r.height / box.height }; }); /* QR e botão viram áreas clicáveis no PDF */
                 try {
-                    canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: EXPORT_SCALE, useCORS: true, logging: false, imageTimeout: 15000, onclone: async clonedDoc => { let clonedSheet = clonedDoc.querySelector(sheetSelector); if (!clonedSheet) return; fitClonedCards(sheet, clonedSheet); fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); await fitClonedHeaderLogo(sheet, clonedSheet); } });
+                    canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: EXPORT_SCALE, useCORS: true, logging: false, imageTimeout: 15000, onclone: async clonedDoc => { let clonedSheet = clonedDoc.querySelector(sheetSelector); if (!clonedSheet) return; fitClonedCards(sheet, clonedSheet); fitClonedButtons(clonedSheet); fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); await fitClonedHeaderLogo(sheet, clonedSheet); } });
                     if (exportCancelled) { let error = Error('Exportação cancelada.'); error.name = 'AbortError'; throw error; }
                     image = await canvasBlob(canvas);
                 } finally {
@@ -1195,7 +1343,7 @@
     /* inverter QR/botão e foto no box Live Shop: mesmo gesto da editoria Datas comemorativas - segurar e arrastar (Shift arrasta na hora).
        Um "fantasma" do lado segue o ponteiro, o lugar de origem fica tracejado, o outro lado desliza para abrir espaço e, ao soltar, o fantasma assenta. */
     document.addEventListener('pointerdown', event => {
-        let side = event.target.closest('.card.lb .lb-left, .card.lb .lb-right'), card = side && side.closest('.card'); if (!card || event.button) return;
+        let side = event.target.closest('.card.lb .lb-left, .card.lb .lb-right'), card = side && side.closest('.card'); if (!card || event.button || !card.querySelector('.lb-left') || !card.querySelector('.lb-right')) return;
         let startX = event.clientX, startY = event.clientY, dragging = false, timer, ghost, grabX, grabY, box = card.querySelector('.lb-body').getBoundingClientRect(), item = S.pages[+card.dataset.page].items[+card.dataset.idx],
             other = card.querySelector(side.classList.contains('lb-left') ? '.lb-right' : '.lb-left'), isLeft = side.classList.contains('lb-left'),
             wantFlip = () => ((lastX > box.left + box.width / 2) === isLeft), lastX = startX,

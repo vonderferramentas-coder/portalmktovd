@@ -68,6 +68,8 @@ Padrão do Gerador de Consolidado, reaproveitado no Gerador de Cartazes e em Dat
 - Ícones SVG de traço (`stroke="currentColor"`, 1,75 px) vindos de `PortalShell.svgIcon`; não duplique SVG no código.
 - Controle de ícone: caixa de 24 px, raio 6 px, fundo `--cg-accent-weak` no hover.
 
+- **Painéis de configuração** (referência: "Configurações do cartaz", `.cfg-*` em `cartaz-generator.css`): seções numeradas (01, 02…), cada uma um dropdown fechado por padrão (`.cfg-sec`, animação do §1), com **prévia ao vivo** ao lado quando houver resultado visual; ligar/desligar por **switch** (`.cfg-switch`, amarelo ligado); escolha entre poucas opções por **segmentado** (`.cfg-seg`); cor em quadradinho ao lado do campo; texto de ajuda pequeno e cinza abaixo do título; aviso em `--cg-accent`.
+
 ## 6. A detalhar
 
 - Paleta, tipografia e escala de espaçamento (hoje espalhadas em `styles.css` e `cartaz-generator.css`).
