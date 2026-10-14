@@ -33932,7 +33932,7 @@
     {
       "date": "2026-09-29",
       "followers": {
-        "Instagram": 639621
+        "Instagram": 639480
       },
       "source": "reconstruido",
       "insights": {
@@ -33963,7 +33963,7 @@
     {
       "date": "2026-10-01",
       "followers": {
-        "Instagram": 641944
+        "Instagram": 641803
       },
       "source": "reconstruido",
       "insights": {
@@ -33978,8 +33978,7 @@
     {
       "date": "2026-10-02",
       "followers": {
-        "Instagram": 643372,
-        "YouTube": 41223
+        "Instagram": 643231
       },
       "source": "reconstruido",
       "insights": {
@@ -34010,8 +34009,7 @@
     {
       "date": "2026-10-04",
       "followers": {
-        "Instagram": 646692,
-        "YouTube": 41241
+        "Instagram": 646551
       },
       "source": "reconstruido",
       "insights": {
@@ -34141,6 +34139,14 @@
         "Instagram": 655890,
         "Facebook": 46554,
         "YouTube": 41300
+      },
+      "insights": {
+        "Instagram": {
+          "follows": 1808,
+          "unfollows": 281,
+          "net": 1527,
+          "reach": 269004
+        }
       }
     },
     {
@@ -34159,7 +34165,7 @@
       }
     }
   ],
-  "updatedAt": "2026-10-14T04:30:52Z",
+  "updatedAt": "2026-10-14T11:41:15Z",
   "platforms": {
     "Instagram": {
       "accountId": "17841403154695997",
