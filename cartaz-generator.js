@@ -46,6 +46,7 @@
     }
     document.addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z' && !event.target.closest?.('input, textarea, [contenteditable]') && S.undo.length) { event.preventDefault(); undo(); } });
     $('undoBtn').onclick = undo;
+    $('preview').addEventListener('click', ev => { let button = ev.target.closest('[data-fill]'); if (button) setWide(button.dataset.fill, true); });
     function relayout(brand) { S.brand = brand; S.page = Math.max(0, S.pages.findIndex(page => page.brand === brand)); measureAllPages(); draw(); }
     /* "Por marca" gera folhas separadas para cada marca; "Sequência única" preenche as folhas em ordem, misturando as marcas. */
     const SEQUENCE_KEY = 'TODAS AS MARCAS';
@@ -54,13 +55,13 @@
         let buckets = new Map(); groups.forEach(group => { let brandName = groupBrand(group); if (!buckets.has(brandName)) buckets.set(brandName, []); buckets.get(brandName).push(group); }); return buckets;
     }
     /* Refaz a paginação inteira com a configuração atual. ponytail: trocar entre "por marca" e "sequência" desfaz os vínculos entre marcas. */
-    function repaginate() {
+    function repaginate(silent) {
         let prev = new Map(), order = [], byKey = new Map();
         S.pages.forEach(page => { page.items.forEach(item => prev.set(item.group, item)); if (!byKey.has(page.brand)) { byKey.set(page.brand, { members: page.brands, groups: [] }); order.push(page.brand); } byKey.get(page.brand).groups.push(...page.items.map(item => item.group)); });
         let next;
         if (S.config.paginateBy === 'sequence' || byKey.has(SEQUENCE_KEY)) next = [...bucketGroups(order.flatMap(key => byKey.get(key).groups))].sort(([a], [b]) => a.localeCompare(b, 'pt-BR')).flatMap(([key, groups]) => paginate(key, groups, null, prev));
         else next = order.flatMap(key => paginate(key, byKey.get(key).groups, byKey.get(key).members, prev));
-        snapshot(); S.pages = next; S.pagedWith = pagSig(S.config); S.linking = false; S.linkSel = [];
+        if (!silent) snapshot(); S.pages = next; S.pagedWith = pagSig(S.config); S.linking = false; S.linkSel = [];
         relayout(next.some(page => page.brand === S.brand) ? S.brand : (next[0]?.brand || ''));
     }
     function linkBrands(names) {
@@ -173,7 +174,7 @@
     async function loadSavedGrids() { try { let record = await SyncBackend.get(GRID_INDEX_KEY); savedGrids = Array.isArray(record.v) ? record.v : []; savedGridsVersion = record.updated_at || 0; } catch (_) { savedGrids = []; toast('Não foi possível carregar as planilhas salvas.'); } renderSavedGrids(); }
     async function saveGridIndex(entry) { let next = [entry, ...savedGrids.filter(grid => grid.id !== entry.id)].sort((a, b) => b.updatedAt - a.updatedAt), result = await SyncBackend.put(GRID_INDEX_KEY, next, savedGridsVersion); if (result.conflict) { let latest = await SyncBackend.get(GRID_INDEX_KEY), current = Array.isArray(latest.v) ? latest.v : [], retry = [entry, ...current.filter(grid => grid.id !== entry.id)].sort((a, b) => b.updatedAt - a.updatedAt); result = await SyncBackend.put(GRID_INDEX_KEY, retry, latest.updated_at || 0); if (result.conflict) throw Error('A lista foi alterada por outra pessoa. Tente salvar novamente.'); next = retry; } savedGrids = next; savedGridsVersion = result.updated_at || savedGridsVersion; }
     async function saveCurrentGrid() { if (!S.pages.length) return; let title = currentGridId ? (savedGrids.find(grid => grid.id === currentGridId)?.title || gridTitle()) : await requestGridTitle(gridTitle()); if (!t(title)) return; let button = $('saveGrid'); button.disabled = true; try { let now = Date.now(), id = currentGridId || crypto.randomUUID(), createdAt = currentGridCreatedAt || now, payload = { schema: 1, title: t(title), sourceName, createdAt, updatedAt: now, pages: S.pages, brandLogos: S.brandLogos }; let result = await SyncBackend.put(GRID_KEY + id, payload, currentGridVersion); if (result.conflict) throw Error('Esta grade foi alterada em outra sessão. Abra-a novamente antes de salvar.'); currentGridId = id; currentGridVersion = result.updated_at || currentGridVersion; currentGridCreatedAt = createdAt; await saveGridIndex({ id, title: payload.title, createdAt, updatedAt: now, productCount: S.pages.flatMap(page => page.items).reduce((sum, item) => sum + item.group.rows.length, 0), brandCount: new Set(S.pages.flatMap(page => page.brands || [page.brand])).size }); renderSavedGrids(); toast('Grade salva para edição compartilhada.'); } catch (error) { toast(error.message || 'Não foi possível salvar a grade.'); } finally { button.disabled = false; } }
-    async function openSavedGrid(grid) { try { let record = await SyncBackend.get(GRID_KEY + grid.id), payload = record.v; if (!payload || !Array.isArray(payload.pages)) throw Error('O conteúdo desta grade não foi encontrado.'); S.pages = payload.pages; S.pagedWith = pagSig(S.config); S.undo = []; updateUndo(); S.brandLogos = payload.brandLogos || {}; S.codes = {}; S.linking = false; S.linkSel = []; S.page = 0; S.brand = S.pages[0]?.brand || ''; sourceName = payload.sourceName || grid.title; currentGridId = grid.id; currentGridVersion = record.updated_at || 0; currentGridCreatedAt = payload.createdAt || grid.createdAt || Date.now(); $('work').hidden = false; $('printMenu').disabled = false; $('saveGrid').disabled = false; $('exportMenu').disabled = false; draw(); measureAllPages(); pages(); updateDashboard(); toast('Grade aberta para edição.'); } catch (error) { toast(error.message || 'Não foi possível abrir a grade.'); } }
+    async function openSavedGrid(grid) { try { let record = await SyncBackend.get(GRID_KEY + grid.id), payload = record.v; if (!payload || !Array.isArray(payload.pages)) throw Error('O conteúdo desta grade não foi encontrado.'); S.pages = payload.pages; S.pages.forEach(CartazPagination.placeLive); /* grades antigas não trazem o cálculo de espaços vazios */ S.pagedWith = pagSig(S.config); S.undo = []; updateUndo(); S.brandLogos = payload.brandLogos || {}; S.codes = {}; S.linking = false; S.linkSel = []; S.page = 0; S.brand = S.pages[0]?.brand || ''; sourceName = payload.sourceName || grid.title; currentGridId = grid.id; currentGridVersion = record.updated_at || 0; currentGridCreatedAt = payload.createdAt || grid.createdAt || Date.now(); $('work').hidden = false; $('printMenu').disabled = false; $('saveGrid').disabled = false; $('exportMenu').disabled = false; draw(); measureAllPages(); pages(); updateDashboard(); toast('Grade aberta para edição.'); $('preview').closest('.box').scrollIntoView({ behavior: 'smooth', block: 'start' }); /* Abrir leva ao início da prévia, com rolagem animada */ } catch (error) { toast(error.message || 'Não foi possível abrir a grade.'); } }
     async function deleteSavedGrid(grid) { if (!confirm('Excluir "' + grid.title + '"? Esta ação não pode ser desfeita.')) return; try { let next = savedGrids.filter(item => item.id !== grid.id), result = await SyncBackend.put(GRID_INDEX_KEY, next, savedGridsVersion); if (result.conflict) { await loadSavedGrids(); return deleteSavedGrid(grid); } savedGrids = next; savedGridsVersion = result.updated_at || savedGridsVersion; await SyncBackend.remove(GRID_KEY + grid.id); renderSavedGrids(); toast('Grade excluída.'); } catch (error) { toast(error.message || 'Não foi possível excluir a grade.'); } }
     function rowLines(r) { return code(r.code).length > 30 ? 2 : 1 } function fitRows(rows, budget) { let used = 1, out = []; for (const r of rows) { let need = rowLines(r); if (used + need > budget) break; used += need; out.push(r) } return out } function photoUrl(ovd) { let code = t(ovd).replace(/\D/g, ''); return code ? 'https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code=' + code : '' } /* Códigos de barras aceitos: EAN-8, UPC-A (12), EAN-13 e ITF-14. `ok` = dígito verificador (GTIN) confere. */
     const GTIN_TYPES = { 8: 'EAN-8', 12: 'UPC-A', 13: 'EAN-13', 14: 'ITF-14' };
@@ -268,28 +269,188 @@
     /* Layout Live Shop do box: título, [QR/código de barras + quantidade mínima | foto] e tabela Descrição | código (linhas zebradas).
        Reaproveita a edição de título (updateTitle), foto (.photo) e código de barras (addBarcode) do box da Feira. */
     const qtyText = value => { let v = t(value), digits = /^\d+$/.test(v) ? +v : 0; return digits ? String(digits).padStart(2, '0') + (digits === 1 ? ' unidade' : ' unidades') : v; };
+    /* quebra o texto do botão em 2 linhas equilibradas (ponto de quebra mais perto do meio), igual em todos os cards - inclusive no destaque, onde sobra largura */
+    function balancedBreak(text) {
+        let words = t(text).split(' ').filter(Boolean); if (words.length < 2) return '<span>' + e(text) + '</span>';
+        let best = 1, gap = Infinity; for (let i = 1; i < words.length; i++) { let d = Math.abs(words.slice(0, i).join(' ').length - words.slice(i).join(' ').length); if (d < gap) { gap = d; best = i; } }
+        return '<span>' + e(words.slice(0, best).join(' ')) + '<br>' + e(words.slice(best).join(' ')) + '</span>'; /* span: o botão é grid, um <br> solto viraria uma linha vazia */
+    }
+    /* depois de um arrasto o navegador dispara um click no elemento solto: engole esse click (e solta o ouvinte se ele não vier) */
+    function swallowNextClick(ms) { let eat = ev => { ev.stopPropagation(); ev.preventDefault(); }; document.addEventListener('click', eat, { capture: true, once: true }); setTimeout(() => document.removeEventListener('click', eat, true), ms); }
+    /* Reordenar os cards da marca pelo menu: mesmo gesto do Gerador de Consolidado - arrastar a alça ⋮⋮ (pointer events), um cartão fantasma segue o mouse,
+       o lugar vazio (tracejado) mostra onde o produto vai cair e os vizinhos deslizam (FLIP). Ao soltar, move o produto na lista da marca e
+       redistribui nas folhas mantendo a quantidade de cada folha. */
+    function applyCardOrder(items) {
+        let pagesOfBrand = S.pages.filter(page => page.brand === S.brand);
+        if (CartazCards.sameOrder(pagesOfBrand, items)) return pages();
+        let before = pagesOfBrand.map(page => page.items.slice()); snapshot(); CartazCards.distribute(pagesOfBrand, items);
+        redrawPages(pagesOfBrand.filter((page, i) => page.items.some((item, j) => item !== before[i][j])));
+    }
+    function bindCardDrag(root) {
+        let panel = root.closest('.pages');
+        root.querySelectorAll('.brand-card-row').forEach(card => {
+            /* segurar (350ms, ou Shift na hora) em qualquer ponto do cabeçalho do cardzinho arrasta; só a seta continua abrindo/fechando o cardzinho */
+            card.onpointerdown = down => {
+                if (down.button || !down.target.closest('.bc-head') || down.target.closest('.bc-kebab')) return;
+                let x = down.clientX, y = down.clientY, hold = 0, stop = () => { clearTimeout(hold); document.removeEventListener('pointermove', watch); document.removeEventListener('pointerup', stop); document.removeEventListener('pointercancel', stop); },
+                    watch = move => { if (Math.hypot(move.clientX - down.clientX, move.clientY - down.clientY) > 6) stop(); else { x = move.clientX; y = move.clientY; } };
+                if (down.shiftKey) { down.preventDefault(); return startDrag(down.clientX, down.clientY); }
+                hold = setTimeout(() => { stop(); startDrag(x, y); }, 350); document.addEventListener('pointermove', watch); document.addEventListener('pointerup', stop); document.addEventListener('pointercancel', stop);
+            };
+            let startDrag = (startX, startY) => {
+                card.querySelector('.bc-body')?.remove();
+                let box = card.getBoundingClientRect(), grabX = startX - box.left, grabY = startY - box.top, ghost = card.cloneNode(true);
+                ghost.classList.add('drag-ghost'); ghost.style.cssText = 'left:' + box.left + 'px;top:' + box.top + 'px;width:' + box.width + 'px'; document.body.style.cursor = 'grabbing'; panel.appendChild(ghost); /* dentro de .pages: os estilos dos controles do cardzinho são escopados nele */ card.classList.add('drag-placeholder');
+                let pointerY = startY, scrollSpeed = 0, frame = 0, ended = false, rowsOf = () => [...root.querySelectorAll('.brand-card-row')];
+                let place = () => {
+                    let before = rowsOf().filter(entry => entry !== card).find(entry => { let r = entry.getBoundingClientRect(); return pointerY < r.top + r.height / 2; }) || null;
+                    if (card.nextElementSibling === before) return;
+                    let first = new Map(rowsOf().map(entry => [entry, entry.getBoundingClientRect().top]));
+                    root.insertBefore(card, before);
+                    first.forEach((top, entry) => { let shift = top - entry.getBoundingClientRect().top; if (!shift || entry === card) return; entry.style.transition = 'none'; entry.style.transform = 'translateY(' + shift + 'px)'; requestAnimationFrame(() => { entry.style.transition = 'transform .18s ease'; entry.style.transform = ''; }); });
+                };
+                let tick = () => { if (ended) return; if (scrollSpeed) { panel.scrollTop += scrollSpeed; place(); } frame = requestAnimationFrame(tick); };
+                let onMove = move => { pointerY = move.clientY; ghost.style.transform = 'translate(' + (move.clientX - grabX - box.left) + 'px,' + (pointerY - grabY - box.top) + 'px) scale(1.02)'; let area = panel.getBoundingClientRect(); scrollSpeed = pointerY < area.top + 48 ? -8 : pointerY > area.bottom - 48 ? 8 : 0; place(); };
+                let finish = commit => {
+                    if (ended) return; ended = true; document.body.style.cursor = ''; cancelAnimationFrame(frame); document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('pointercancel', onCancel);
+                    swallowNextClick(400); /* o soltar não deve abrir/fechar o cardzinho */
+                    let slot = card.getBoundingClientRect(); ghost.style.transition = 'transform .16s ease, opacity .16s ease'; ghost.style.transform = 'translate(' + (slot.left - box.left) + 'px,' + (slot.top - box.top) + 'px)'; ghost.style.opacity = '.6';
+                    setTimeout(() => {
+                        ghost.remove(); card.classList.remove('drag-placeholder');
+                        if (!commit) { pages(); return; }
+                        let at = id => cardAt(id).item;
+                        applyCardOrder(rowsOf().map(row => at(row.querySelector('[data-open-card]').dataset.openCard)));
+                    }, 170);
+                };
+                let onUp = () => finish(true), onCancel = () => finish(false);
+                document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp); document.addEventListener('pointercancel', onCancel); tick();
+            };
+        });
+    }
+    /* Expandir/recolher com a mesma animação do editor de posts (grid-template-rows 1fr <-> 0fr, .25s). Abrir: renderiza fechado e solta no quadro seguinte.
+       Fechar: fecha o que está na tela e só tira do estado quando a transição termina (o redesenho da lista apagaria o elemento no meio). */
+    const COLLAPSE_MS = 250;
+    function animateOpen() { requestAnimationFrame(() => requestAnimationFrame(() => { $('list').querySelectorAll('.bc-collapse.is-closed').forEach(el => el.classList.remove('is-closed')); S.animBrand = false; S.animCard = null; })); }
+    function toggleCard(id) {
+        let list = S.openCard || (S.openCard = []), item = cardAt(id).item; /* guarda o item (não a posição): excluir, desfazer ou reordenar não deslocam o cardzinho aberto */
+        if (!list.includes(item)) { list.push(item); S.animCard = item; pages(); return animateOpen(); }
+        let body = $('list').querySelector('[data-open-card="' + id + '"]')?.closest('.brand-card-row')?.querySelector('.bc-collapse'); if (body) body.classList.add('is-closed');
+        setTimeout(() => { let at = list.indexOf(item); if (at >= 0) list.splice(at, 1); pages(); }, body ? COLLAPSE_MS : 0);
+    }
+    function toggleBrandCards() {
+        if (!S.cardsOpen) { S.cardsOpen = true; S.animBrand = true; pages(); return animateOpen(); }
+        let wrap = $('list').querySelector('.bc-collapse > .bc-collapse-inner > .brand-cards')?.closest('.bc-collapse'); if (wrap) wrap.classList.add('is-closed');
+        setTimeout(() => { S.cardsOpen = false; pages(); }, wrap ? COLLAPSE_MS : 0);
+    }
+    /* Menu "⋮" de cada cardzinho (Editar, Destaque, Substituir foto, Excluir produto): mesmo padrão do Gerador de Consolidado, em fixed para não ser cortado pela rolagem do painel */
+    const icon = paths => PortalShell.svgIcon(paths, 16);
+    const KEBAB = icon('<circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>'), MENU_ICONS = { edit: icon('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>'), star: icon('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'), upload: icon('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>'), trash: icon('<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>'), check: icon('<polyline points="20 6 9 17 4 12"/>'), up: icon('<path d="m18 15-6-6-6 6"/>'), down: icon('<path d="m6 9 6 6 6-6"/>') };
+    let cardMenu = null, photoTarget = null; const photoInput = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*', hidden: true }); document.body.appendChild(photoInput);
+    const cardAt = id => { let [pi, ii] = id.split(':').map(Number); return { page: S.pages[pi], item: S.pages[pi].items[ii] }; };
+    /* mover um produto uma posição na lista da marca (menu ⋮ e Alt+↑/↓): alternativa por teclado ao arrastar */
+    const brandItems = () => S.pages.filter(page => page.brand === S.brand).flatMap(page => page.items);
+    function moveCard(item, step) {
+        let next = CartazCards.move(brandItems(), item, step); if (!next) return; applyCardOrder(next);
+        requestAnimationFrame(() => [...$('list').querySelectorAll('[data-open-card]')].find(button => cardAt(button.dataset.openCard).item === item)?.focus()); /* o redesenho recria a lista: devolve o foco ao produto movido */
+    }
+    /* Aviso de espaço vazio: folha Live Shop com células sem box e o atalho que transforma o último produto em destaque */
+    function emptyNote(page, pageIndex, brandPageIndex, brandPages) {
+        let hint = page.layout === 'liveshop' && CartazCards.emptyHint(page); if (!hint) return '';
+        let where = brandPages > 1 ? 'Folha ' + (brandPageIndex + 1) + ' de ' + brandPages + ': ' : '', id = pageIndex + ':' + page.items.indexOf(hint.item);
+        return '<div class="empty-note" data-html2canvas-ignore><span>' + e(where) + hint.empty + (hint.empty === 1 ? ' espaço vazio.' : ' espaços vazios.') + ' Sugestão: tornar «' + e(plainTitle(hint.item) || 'produto') + '» destaque.</span><button type="button" data-fill="' + id + '">Preencher com destaque</button></div>';
+    }
+    /* Redesenho incremental: troca só o card editado (em todas as divisões) em vez de refazer a prévia e a lista inteiras */
+    function redrawCard(item) {
+        let hiddenBefore = S.pages.reduce((sum, page) => sum + page.items.reduce((inner, entry) => inner + (entry.hiddenCodes || 0), 0), 0), division = S.curDivision;
+        S.pages.forEach((page, pi) => page.items.forEach((entry, ii) => {
+            if (entry !== item) return;
+            document.querySelectorAll('#preview .card.lb[data-page="' + pi + '"][data-idx="' + ii + '"]').forEach(old => {
+                S.curDivision = DIVISIONS.find(d => d.id === old.closest('.sheet')?.dataset.division) || null; item.hiddenCodes = 0;
+                let holder = document.createElement('div'); holder.innerHTML = card(item, ii, pi); let fresh = holder.firstElementChild; old.replaceWith(fresh); trimOverflow(fresh); fresh.querySelectorAll('.photo').forEach(enablePhotoEditing);
+            });
+        }));
+        S.curDivision = division; updateDashboard();
+        return S.pages.reduce((sum, page) => sum + page.items.reduce((inner, entry) => inner + (entry.hiddenCodes || 0), 0), 0) !== hiddenBefore; /* true: mudou a contagem de códigos ocultos (alerta da marca) */
+    }
+    function setWide(id, on) { let { page, item } = cardAt(id); snapshot(); if (on) item.wide = true; else delete item.wide; CartazPagination.placeLive(page); redrawPages([page]); }
+    function readPhoto(file) {
+        return new Promise((resolve, reject) => {
+            if (!/^image\//.test(file.type)) return reject(new Error('Envie uma imagem (PNG de preferência).')); if (file.size > 12 * 1024 * 1024) return reject(new Error('A imagem deve ter no máximo 12 MB.'));
+            let reader = new FileReader(); reader.onerror = () => reject(new Error('Não foi possível ler a imagem.'));
+            reader.onload = () => { let image = new Image(); image.onerror = () => reject(new Error('A imagem não é válida.')); image.onload = () => { let k = Math.min(1, 640 / Math.max(image.width, image.height)), canvas = document.createElement('canvas'); canvas.width = Math.round(image.width * k); canvas.height = Math.round(image.height * k); canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); /* webp com transparência: a foto vai dentro da grade salva (SyncBackend), então precisa ser pequena */
+                let data = canvas.toDataURL(file.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp', .82); if (data.length > 400000) return reject(new Error('Imagem muito pesada para salvar na grade. Reduza a resolução ou o detalhe.')); resolve(data); }; image.src = reader.result; }; reader.readAsDataURL(file);
+        });
+    }
+    photoInput.onchange = async () => { let file = photoInput.files[0], item = photoTarget; photoInput.value = ''; if (!file || !item) return; try { let data = await readPhoto(file); snapshot(); item.photoSrc = data; item.photo = { x: 0, y: 0, scale: 1 }; draw(); toast('Foto do produto substituída.'); } catch (error) { toast(error.message); } };
+    function closeCardMenu() { if (!cardMenu) return; cardMenu.remove(); cardMenu = null; document.removeEventListener('pointerdown', onMenuOutside, true); document.removeEventListener('keydown', onMenuKey, true); document.removeEventListener('scroll', closeCardMenu, true); window.removeEventListener('resize', closeCardMenu); }
+    function onMenuOutside(event) { if (cardMenu && !cardMenu.contains(event.target) && !event.target.closest('.bc-kebab')) closeCardMenu(); }
+    function onMenuKey(event) { if (event.key === 'Escape') closeCardMenu(); }
+    function openCardMenu(button) {
+        let id = button.dataset.cardMenu, same = cardMenu && cardMenu.dataset.for === id; closeCardMenu(); if (same) return;
+        let { page, item } = cardAt(id), entries = [
+            { icon: MENU_ICONS.edit, label: 'Editar', run: () => { if (!(S.openCard || []).includes(item)) toggleCard(id); } },
+            { icon: MENU_ICONS.star, label: 'Destaque', checked: item.wide, disabled: page.cols < 2, run: () => setWide(id, !item.wide) },
+            { icon: MENU_ICONS.upload, label: 'Substituir foto', run: () => { photoTarget = item; photoInput.click(); } },
+            { icon: MENU_ICONS.up, label: 'Mover para cima', disabled: brandItems()[0] === item, run: () => moveCard(item, -1) },
+            { icon: MENU_ICONS.down, label: 'Mover para baixo', disabled: brandItems().at(-1) === item, run: () => moveCard(item, 1) },
+            'separator',
+            { icon: MENU_ICONS.trash, label: 'Excluir produto', danger: true, run: () => { snapshot(); page.items = page.items.filter(entry => entry !== item); repaginate(true); toast('Produto excluído. Ctrl+Z desfaz.'); } }];
+        let menu = document.createElement('div'); menu.className = 'card-menu'; menu.setAttribute('role', 'menu'); menu.dataset.for = id;
+        menu.innerHTML = entries.map((entry, index) => entry === 'separator' ? '<div class="card-menu-sep" role="separator"></div>' : '<button type="button" role="menuitem" class="card-menu-item' + (entry.danger ? ' danger' : '') + '" data-index="' + index + '"' + (entry.disabled ? ' disabled' : '') + '><span class="ico">' + entry.icon + '</span><span class="txt">' + entry.label + '</span>' + (entry.checked ? '<span class="check">' + MENU_ICONS.check + '</span>' : '') + '</button>').join('');
+        menu.onclick = event => { let target = event.target.closest('.card-menu-item'); if (!target || target.disabled) return; let entry = entries[+target.dataset.index]; closeCardMenu(); entry.run(); };
+        document.body.appendChild(cardMenu = menu);
+        /* do tamanho do cardzinho e colado logo abaixo dele (acima, se não houver espaço embaixo) */
+        let box = button.closest('.brand-card-row').getBoundingClientRect(), height = menu.offsetHeight; menu.style.width = box.width + 'px'; menu.style.minWidth = '0'; menu.style.left = box.left + 'px';
+        menu.style.top = (box.bottom + 4 + height > innerHeight - 8 ? Math.max(8, box.top - height - 4) : box.bottom + 4) + 'px'; menu.style.transformOrigin = box.bottom + 4 + height > innerHeight - 8 ? 'bottom center' : 'top center';
+        document.addEventListener('pointerdown', onMenuOutside, true); document.addEventListener('keydown', onMenuKey, true); document.addEventListener('scroll', closeCardMenu, true); window.addEventListener('resize', closeCardMenu);
+    }
+    const plainTitle = CartazCards.plainTitle;
+    /* miniatura da foto (a trocada ou a do código) para a lista e os resultados */
+    const thumb = item => { let url = item.photoSrc || photoUrl(item.group.rows[0].ovd); return url ? '<img class="bc-thumb" loading="lazy" src="' + e(url) + '" alt="" onerror="this.style.visibility=\'hidden\'">' : '<span class="bc-thumb"></span>'; };
+    /* Busca em TODAS as marcas (título, códigos e nome da marca): o resultado leva à marca, abre a lista dela e expande o cardzinho do produto */
+    function resultsHtml(text) {
+        if (!CartazCards.t(text)) return ''; let hits = CartazCards.search(S.pages, text);
+        return hits.length ? hits.slice(0, 30).map(({ page, item, id }) => '<button type="button" class="bc-result" data-result="' + id + '">' + thumb(item) + '<span class="bc-result-text"><strong>' + e(plainTitle(item) || '(sem título)') + '</strong><small>' + e(page.brand) + ' · ' + e(code(CartazCards.lines(item)[0]?.code || '')) + '</small></span></button>').join('') + (hits.length > 30 ? '<p class="bc-empty">Mostrando 30 de ' + hits.length + ' resultados: refine a busca.</p>' : '') : '<p class="bc-empty">Nenhum produto encontrado.</p>';
+    }
+    function bindResults() { $('list').querySelectorAll('[data-result]').forEach(button => button.onclick = () => goToResult(button.dataset.result)); }
+    function goToResult(id) {
+        let { page, item } = cardAt(id), cards = S.openCard || (S.openCard = []);
+        S.cardFilter = ''; /* chegou ao resultado: limpa a busca e some a lista de sugestões */ S.brand = page.brand; S.page = S.pages.findIndex(entry => entry.brand === S.brand); S.cardsOpen = true; if (!cards.includes(item)) cards.push(item);
+        draw();
+        requestAnimationFrame(() => { let row = [...$('list').querySelectorAll('[data-open-card]')].find(button => cardAt(button.dataset.openCard).item === item)?.closest('.brand-card-row'); if (!row) return; row.scrollIntoView({ block: 'center', behavior: 'smooth' }); row.classList.add('bc-flash'); setTimeout(() => row.classList.remove('bc-flash'), 1600); });
+    }
+    /* mesma seta do menu lateral (portal-shell.js): chevron para baixo que gira 180° quando aberto */
+    const CHEVRON = PortalShell.svgIcon('<path d="m6 9 6 6 6-6"/>', 14), CLOSE = PortalShell.svgIcon('<path d="M6 6l12 12M18 6 6 18"/>', 14);
     function liveCard(item, idx, pageIndex, probe) {
-        let group = item.group, row = group.rows[0], photoState = item.photo || { x: 0, y: 0, scale: 1 }, url = photoUrl(row.ovd), displayTitle = item.title || t(group.title), /* sem a marca no fim nem caixa alta forçada: o Live Shop usa o título como vem da planilha */
+        let group = item.group, row = group.rows[0], photoState = item.photo || { x: 0, y: 0, scale: 1 }, url = item.photoSrc || photoUrl(row.ovd), displayTitle = item.title || t(group.title), /* sem a marca no fim nem caixa alta forçada: o Live Shop usa o título como vem da planilha */
             photo = probe ? '' : (url ? '<img src="' + e(url) + '" alt="' + e(group.title) + '" crossorigin="anonymous" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>Foto indisponível<br>Cód. ' + e(row.ovd) + '</span>' : '<span>Sem código</span>'),
             qr = S.config.codeType === 'qr', division = S.curDivision, link = qr ? boxLink(item, division) : '', qrImg = link ? qrSvg(link) : '',
             eanInfo = gtin(row.principal), eanSvg = noBarcodeFor(row) ? '' : barcodeSvg(row.principal),
             marker = qr ? (qrImg ? '<div class="lb-qr" data-link="' + e(link) + '" onclick="editLink(this)" title="Clique para editar o link">' + qrImg + '</div>' : '<div class="lb-qr lb-qr-missing" onclick="editLink(this)" title="Sem link: clique para informar o link do QR Code - não aparece na impressão até ser preenchido">+ Link do QR Code</div>')
                 : eanSvg ? '<div class="ean' + (eanInfo?.ok ? '' : ' ean-invalid') + '" onclick="addBarcode(this)" title="Clique para editar o código de barras">' + eanSvg + '</div>' : '<div class="ean ean-missing" onclick="addBarcode(this)" title="Adicionar código de barras manualmente - não aparece na impressão até ser preenchido">+ Código de barras</div>',
-            button = qr && qrImg && S.config.button && item.showButton !== false ? '<div class="lb-btn" data-link="' + e(link) + '" onclick="editLink(this)" style="background:' + e(S.config.buttonColor) + ';color:' + inkFor(S.config.buttonColor) + '" title="Clique para editar o link">' + e(S.config.buttonText) + '</div>' : '',
-            rows = group.rows.map(r => '<tr><td>' + e(r.desc) + '</td><td>' + e(code(r.code)) + '</td></tr>').join(''),
-            style = 'grid-column:' + (item.col + 1) + ';grid-row:' + (item.gridRow + 1);
-        return '<article class="card lb" data-codes="' + group.rows.length + '"' + (!qr && hasBarcodeIssue(row) ? ' data-bad-barcode="1"' : '') + ' data-idx="' + idx + '" data-page="' + pageIndex + '" style="' + style + '"><div class="cutwarn" hidden title="Essas linhas não aparecem no cartão - avise quem for revisar"></div>'
+            button = qr && qrImg && S.config.button && item.showButton !== false ? '<div class="lb-btn" data-link="' + e(link) + '" onclick="editLink(this)" style="background:' + e(S.config.buttonColor) + ';color:' + inkFor(S.config.buttonColor) + '" title="Clique para editar o link">' + balancedBreak(S.config.buttonText) + '</div>' : '',
+            tableHtml = list => '<table class="lb-table"><thead><tr><th>Descrição</th><th>Código</th></tr></thead><tbody>' + list.map(r => '<tr><td>' + e(r.desc) + '</td><td>' + e(code(r.code)) + '</td></tr>').join('') + '</tbody></table>',
+            lines = item.rows || group.rows, half = Math.ceil(lines.length / 2), table = item.span > 1 && lines.length > 1 ? '<div class="lb-tables">' + tableHtml(lines.slice(0, half)) + tableHtml(lines.slice(half)) + '</div>' : tableHtml(lines), /* destaque (2 colunas): os códigos se dividem em duas tabelas lado a lado */
+            style = 'grid-column:' + (item.col + 1) + (item.span > 1 ? ' / span ' + item.span : '') + ';grid-row:' + (item.gridRow + 1);
+        return '<article class="card lb' + (item.flip ? ' flip' : '') + (item.span > 1 ? ' wide' : '') + '" data-codes="' + group.rows.length + '"' + (!qr && hasBarcodeIssue(row) ? ' data-bad-barcode="1"' : '') + ' data-idx="' + idx + '" data-page="' + pageIndex + '" style="' + style + '"><div class="cutwarn" hidden title="Essas linhas não aparecem no cartão - avise quem for revisar"></div>'
             + '<h3 contenteditable="true" spellcheck="true" oninput="updateTitle(this)">' + (item.titleHtml ? CartazTitleFormat.clean(item.titleHtml) : e(displayTitle)) + '</h3>'
-            + '<div class="lb-body"><div class="lb-left">' + marker + button + (group.minQty ? '<p class="lb-qty">Quantidade mínima:<br>' + e(qtyText(group.minQty)) + '</p>' : '') + '</div>'
+            + '<div class="lb-body"><div class="lb-left">' + marker + button + (item.minQty ?? group.minQty ? '<p class="lb-qty">Quantidade mínima:<br>' + e(qtyText(item.minQty ?? group.minQty)) + '</p>' : '') + '</div>'
             + '<div class="lb-right"><div class="photo" title="Dê dois cliques para editar a foto" style="transform:translate(' + photoState.x + 'px,' + photoState.y + 'px) scale(' + photoState.scale + ')">' + photo + '</div></div></div>'
-            + '<table class="lb-table"><thead><tr><th>Descrição</th><th>código</th></tr></thead><tbody>' + rows + '</tbody></table></article>';
+            + table + '</article>';
     }
     /* Box de logo (1ª célula da folha): logo do evento (a "Logo" do template) + o texto de atenção da configuração. */
-    function logoBoxHtml() { return '<div class="lb-logobox" style="grid-column:1;grid-row:1">' + (S.logo ? '<img src="' + e(S.logo) + '" alt="">' : '<span class="lb-logo-empty">Logo do evento</span>') + '<p class="lb-attn"><strong>ATENÇÃO</strong>' + e(S.config.attentionText).replace(/\n/g, '<br>') + '</p></div>'; }
+    function logoBoxHtml() { return '<div class="lb-logobox" style="grid-column:1;grid-row:1">' + (S.logo ? '<img src="' + e(S.logo) + '" alt="">' : '<span class="lb-logo-empty">Logo do evento</span>') + '<p class="lb-attn" style="color:' + e(S.config.attentionColor) + '"><strong>' + e(S.config.attentionTitle) + '</strong>' + e(S.config.attentionText).replace(/\n/g, '<br>') + '</p></div>'; }
     /* Corta as linhas da tabela que não cabem no box (mantém ao menos 1 e uma área mínima para a foto) e avisa, como o corte de códigos da Feira. */
     function trimLive(card) {
+        /* foto salva fora dos limites da coluna (zoom/posição antigos) é ajustada ao desenhar; a medição invisível não ajusta para não gravar medidas erradas */
+        let ph = card.querySelector('.photo'), st = S.pages[+card.dataset.page].items[+card.dataset.idx].photo; if (ph && st && !card.closest('.cartaz-measure')) { clampPhoto(st, ph.parentNode); ph.style.transform = 'translate(' + st.x + 'px,' + st.y + 'px) scale(' + st.scale + ')'; }
+        /* botão com laterais rentes ao texto: mede a linha mais larga já quebrada e encolhe o botão a ela (CSS puro não encolhe a caixa depois da quebra) */
+        let btn = card.querySelector('.lb-btn'); if (btn && btn.firstChild) { btn.style.width = ''; let range = document.createRange(); range.selectNodeContents(btn); let wide = Math.max(0, ...[...range.getClientRects()].map(r => r.width)); if (wide) btn.style.width = Math.min(btn.parentNode.clientWidth, Math.ceil(wide) + 12) + 'px'; }
         checkTitle(card); let body = card.querySelector('.lb-body'), rows = [...card.querySelectorAll('.lb-table tbody tr')], warn = card.querySelector('.cutwarn'), item = S.pages[+card.dataset.page].items[+card.dataset.idx], removed = 0;
-        while (rows.length > 1 && (card.scrollHeight > card.clientHeight + 1 || body.scrollHeight > body.clientHeight + 1 || body.clientHeight < 60)) { rows.pop().remove(); removed++; }
+        /* antes de cortar linhas, encolhe o título aos poucos (até 80%) para devolver espaço ao corpo */
+        let h3 = card.querySelector('h3'), over = () => card.scrollHeight > card.clientHeight + 1 || body.scrollHeight > body.clientHeight + 1 || body.clientHeight < 40;
+        for (let k = 0.95; rows.length > 1 && over() && k >= 0.8; k -= 0.05) { h3.style.fontSize = 'calc(' + (11.5 * k).toFixed(2) + 'px * var(--u))'; checkTitle(card); }
+        while (rows.length > 1 && (card.scrollHeight > card.clientHeight + 1 || body.scrollHeight > body.clientHeight + 1 || body.clientHeight < 40)) { rows.pop().remove(); removed++; }
         item.hiddenCodes = removed; if (warn && removed) { warn.hidden = false; warn.textContent = '⚠ +' + removed + ' linha' + (removed === 1 ? '' : 's') + ' fora do cartão'; }
     }
     function fitLines(card) {
@@ -359,13 +520,39 @@
         $('linkBar').innerHTML = S.linking ? '<p>Marque 2 ou mais marcas para colocá-las nas mesmas páginas.</p><div class="link-actions"><button type="button" id="linkConfirm"' + (S.linkSel.length < 2 ? ' disabled' : '') + '>Vincular (' + S.linkSel.length + ')</button><button type="button" id="linkCancel" class="secondary">Cancelar</button></div>' : '';
         let entries = brands.map(brand => { let pages=S.pages.filter(page=>page.brand===brand), items=pages.flatMap(page=>page.items), linked=pages[0].brands; return { brand, pages, items, linked, cards: items.length, missing: barcodeApplies() ? items.filter(item=>!barcodeOk(item.group.rows[0].principal)).length : 0, hidden: items.reduce((sum,item)=>sum+(item.hiddenCodes||0),0), noLogoNames: (linked||[brand]).filter(name=>!logoUrl(name)), noLogo: (linked||[brand]).some(name=>!logoUrl(name)), formats: new Set(pages.map(page=>page.format)) }; });
         entries = entries.filter(FILTERS[S.filter].test).sort((a, b) => ((S.sort.key === 'count' ? a.cards - b.cards : 0) || a.brand.localeCompare(b.brand, 'pt-BR')) * S.sort.dir);
+        /* cards da marca ativa (só Live Shop): seta no card da marca abre a lista; cada produto vira um cardzinho com "Destaque" e campos editáveis. Só monta quando aberto. */
+        let live = S.config?.layout === 'liveshop', openBrand = brand => live && brand === S.brand && !!S.cardsOpen,
+            caret = brand => live && brand === S.brand && !S.linking ? '<span class="brand-caret' + (openBrand(brand) ? ' open' : '') + '" role="button" tabindex="0" aria-label="Mostrar os cards da marca" aria-expanded="' + openBrand(brand) + '">' + CHEVRON + '</span>' : '',
+            field = (key, label, value) => '<label class="bc-field"><span>' + label + '</span><input data-ed="' + key + '" value="' + e(value) + '"></label>',
+            cardsMenu = brand => { if (!openBrand(brand)) return '';
+                return '<div class="bc-collapse' + (S.animBrand ? ' is-closed' : '') + '"><div class="bc-collapse-inner"><div class="brand-cards">' + S.pages.flatMap((page, pi) => page.brand === brand ? page.items.map((item, ii) => ({ item, pi, ii, cols: page.cols })) : []).map(({ item, pi, ii, cols }, n) => {
+                    let id = pi + ':' + ii, open = (S.openCard || []).includes(item), plain = plainTitle(item);
+                    return '<div class="brand-card-row' + (item.wide ? ' is-wide' : '') + '"><div class="bc-head"><button type="button" class="bc-open" data-open-card="' + id + '" title="' + e(plain) + ' — segure e arraste para reordenar; Alt+↑ / Alt+↓ move" aria-expanded="' + open + '"><span class="n">' + (n + 1) + '</span>' + thumb(item) + '<span class="t">' + e(plain).replace(/\//g, '/\u200b') + '</span></button><button type="button" class="bc-kebab" data-card-menu="' + id + '" aria-label="Opções do produto" aria-haspopup="menu">' + KEBAB + '</button></div>'
+                        + (open ? '<div class="bc-collapse' + (S.animCard === item ? ' is-closed' : '') + '"><div class="bc-collapse-inner"><div class="bc-body">'+ field('t:' + id, 'Título', plain) + field('q:' + id, 'Quantidade mínima', CartazCards.minQty(item)) + CartazCards.lines(item).map((r, ri, all) => '<div class="bc-pair">' + field('d:' + id + ':' + ri, 'Descrição', r.desc) + field('c:' + id + ':' + ri, 'Código', r.code) + '<button type="button" class="bc-row-del" data-row-del="' + id + ':' + ri + '" aria-label="Remover linha" title="Remover linha"' + (all.length < 2 ? ' disabled' : '') + '>' + CLOSE + '</button></div>').join('') + '<button type="button" class="bc-row-add" data-row-add="' + id + '">+ Adicionar linha</button></div></div></div>' : '') + '</div>'; }).join('') + '</div></div></div>'; };
+        let hintsHtml = brand => { if (!live || brand !== S.brand || S.linking) return ''; let brandPages = S.pages.filter(page => page.brand === brand); return brandPages.map((page, i) => { let pi = S.pages.indexOf(page), note = emptyNote(page, pi, i, brandPages.length); return note ? note.replace(' data-html2canvas-ignore', '').replace('empty-note', 'empty-note in-panel') : ''; }).join(''); };
         let countText = cards => '<small class="brand-count">(' + cards + (cards === 1 ? ' item' : ' itens') + ')</small>';
-        $('list').innerHTML = (entries.length ? '' : '<p class="pages-empty">Nenhuma marca neste filtro.</p>') + entries.map(entry => { let { brand, pages, items, linked, missing, hidden, noLogoNames } = entry, alerts=(missing||hidden||noLogoNames.length)?'<span class="brand-alerts">'+(noLogoNames.length?'<span class="brand-alert nologo" data-logo-missing="'+e(noLogoNames[0])+'" title="Sem logo padrão: '+e(noLogoNames.join(', '))+' (clique para escolher)">'+NOLOGO_ICON+'</span>':'')+(missing?'<span class="brand-alert missing" title="'+missing+' código(s) de barras ausente(s) ou inválido(s)">!</span>':'')+(hidden?'<span class="brand-alert hidden" title="'+hidden+' código(s) oculto(s)">!</span>':'')+'</span>':'', gear=name=>'<button class="brand-logo-settings" type="button" data-brand-logo="'+e(name)+'" title="Escolher logo" aria-label="Escolher logo de '+e(name)+'">⚙</button>';
-            if (linked) return '<div class="linked-group"><button type="button" class="linked-main '+(brand===S.brand?'active':'')+'" data-brand="'+e(brand)+'"><span class="linked-tag">'+LINK_ICON+'Marcas vinculadas</span><span class="linked-pages">'+pages.length+' página'+(pages.length===1?'':'s')+' '+pages[0].format+'</span>'+countText(entry.cards)+alerts+'</button>'+linked.map(name=>{let off=pages[0].logoOff||[], on=!off.includes(name), only=on&&linked.filter(other=>!off.includes(other)).length===1; return '<div class="linked-member"><strong>'+e(name)+'</strong>'+countText(items.filter(item=>groupBrand(item.group)===name).length)+'<label class="logo-toggle" title="'+(only?'Ao menos uma marca precisa mostrar a logo':'Mostrar o card da logo no rodapé')+'"><input type="checkbox" data-logo-key="'+e(brand)+'" data-logo-toggle="'+e(name)+'"'+(on?' checked':'')+(only?' disabled':'')+'><span>Logo</span></label>'+gear(name)+'</div>'}).join('')+'<button type="button" class="linked-unlink secondary" data-unlink="'+e(brand)+'">Desvincular</button></div>';
-            let picked = S.linkSel.includes(brand); return '<div class="brand-entry'+(S.linking?' picking':'')+'">'+(S.linking?'<input type="checkbox" class="brand-pick" data-pick="'+e(brand)+'"'+(picked?' checked':'')+' aria-label="Selecionar '+e(brand)+' para vincular">':'')+'<button class="'+((S.linking?picked:brand===S.brand)?'active':'')+'" data-brand="'+e(brand)+'"><strong>'+e(brand)+'</strong>'+countText(entry.cards)+alerts+'</button>'+gear(brand)+'</div>' }).join('');
+        let searchBox = S.pages.length ? '<input type="search" class="bc-search" placeholder="Buscar produto ou código" title="Busca em todas as marcas" value="' + e(S.cardFilter || '') + '" aria-label="Buscar produto em todas as marcas"><div class="bc-results">' + resultsHtml(S.cardFilter || '') + '</div>' : '';
+        $('list').innerHTML = searchBox + (entries.length ? '' : '<p class="pages-empty">Nenhuma marca neste filtro.</p>') + entries.map(entry => { let { brand, pages, items, linked, missing, hidden, noLogoNames } = entry, alerts=(missing||hidden||noLogoNames.length)?'<span class="brand-alerts">'+(noLogoNames.length?'<span class="brand-alert nologo" data-logo-missing="'+e(noLogoNames[0])+'" title="Sem logo padrão: '+e(noLogoNames.join(', '))+' (clique para escolher)">'+NOLOGO_ICON+'</span>':'')+(missing?'<span class="brand-alert missing" title="'+missing+' código(s) de barras ausente(s) ou inválido(s)">!</span>':'')+(hidden?'<span class="brand-alert hidden" title="'+hidden+' código(s) oculto(s)">!</span>':'')+'</span>':'', gear=name=>S.config?.footerLogo === false ? '' : '<button class="brand-logo-settings" type="button" data-brand-logo="'+e(name)+'" title="Escolher logo" aria-label="Escolher logo de '+e(name)+'">⚙</button>';
+            if (linked) return '<div class="linked-group"><button type="button" class="linked-main '+(brand===S.brand?'active':'')+'" data-brand="'+e(brand)+'"><span class="linked-tag">'+LINK_ICON+'Marcas vinculadas</span><span class="linked-pages">'+pages.length+' página'+(pages.length===1?'':'s')+' '+pages[0].format+'</span>'+countText(entry.cards)+alerts+caret(brand)+'</button>'+linked.map(name=>{let off=pages[0].logoOff||[], on=!off.includes(name), only=on&&linked.filter(other=>!off.includes(other)).length===1; return '<div class="linked-member"><strong>'+e(name)+'</strong>'+countText(items.filter(item=>groupBrand(item.group)===name).length)+'<label class="logo-toggle" title="'+(only?'Ao menos uma marca precisa mostrar a logo':'Mostrar o card da logo no rodapé')+'"><input type="checkbox" data-logo-key="'+e(brand)+'" data-logo-toggle="'+e(name)+'"'+(on?' checked':'')+(only?' disabled':'')+'><span>Logo</span></label>'+gear(name)+'</div>'}).join('')+'<button type="button" class="linked-unlink secondary" data-unlink="'+e(brand)+'">Desvincular</button></div>'+hintsHtml(brand)+cardsMenu(brand);
+            let picked = S.linkSel.includes(brand); return '<div class="brand-entry'+(S.linking?' picking':'')+'">'+(S.linking?'<input type="checkbox" class="brand-pick" data-pick="'+e(brand)+'"'+(picked?' checked':'')+' aria-label="Selecionar '+e(brand)+' para vincular">':'')+'<button class="'+((S.linking?picked:brand===S.brand)?'active':'')+'" data-brand="'+e(brand)+'"><strong>'+e(brand)+'</strong>'+countText(entry.cards)+alerts+caret(brand)+'</button>'+gear(brand)+'</div>'+hintsHtml(brand)+cardsMenu(brand) }).join('');
         renderPagesMenu(singles.length > 1); $('pagesStatus').innerHTML = 'Ordenado por: <b>' + sortLabel(S.sort.key) + ' ' + (S.sort.dir === 1 ? '↑' : '↓') + '</b>' + (isDefaultSort() ? '' : ' <button type="button" class="pages-reset" data-reset="sort">restaurar</button>') + (S.filter === 'all' ? '' : '<br>Filtrado por: <b>' + FILTERS[S.filter].label + '</b> <button type="button" class="pages-reset" data-reset="filter">limpar</button>'); $('pagesStatus').querySelectorAll('[data-reset]').forEach(button => button.onclick = () => resetView(button.dataset.reset));
         let togglePick = brand => { S.linkSel = S.linkSel.includes(brand) ? S.linkSel.filter(item => item !== brand) : [...S.linkSel, brand]; pages(); };
-        [...$('list').querySelectorAll('[data-brand]')].forEach(button=>button.onclick=event=>{ if (S.linking && singles.includes(button.dataset.brand)) return togglePick(button.dataset.brand); let alert = event.target.closest('.brand-alert'); S.brand=button.dataset.brand;S.page=S.pages.findIndex(page=>page.brand===S.brand);pages();draw(); if (alert?.classList.contains('nologo')) chooseBrandLogo(alert.dataset.logoMissing); else if (alert) goToProblem(alert.classList.contains('missing') ? 'missing' : 'hidden');}); [...$('list').querySelectorAll('[data-brand-logo]')].forEach(button=>button.onclick=()=>chooseBrandLogo(button.dataset.brandLogo));
+        [...$('list').querySelectorAll('[data-brand]')].forEach(button=>button.onclick=event=>{ if (event.target.closest('.brand-caret')) return toggleBrandCards(); if (S.linking && singles.includes(button.dataset.brand)) return togglePick(button.dataset.brand); let alert = event.target.closest('.brand-alert'); S.brand=button.dataset.brand;S.page=S.pages.findIndex(page=>page.brand===S.brand);pages();draw(); if (alert?.classList.contains('nologo')) chooseBrandLogo(alert.dataset.logoMissing); else if (alert) goToProblem(alert.classList.contains('missing') ? 'missing' : 'hidden');}); [...$('list').querySelectorAll('[data-brand-logo]')].forEach(button=>button.onclick=()=>chooseBrandLogo(button.dataset.brandLogo));
+        [...$('list').querySelectorAll('[data-card-menu]')].forEach(button => button.onclick = event => { event.stopPropagation(); openCardMenu(button); });
+        if ($('list').querySelector('.brand-cards')) bindCardDrag($('list').querySelector('.brand-cards'));
+        [...$('list').querySelectorAll('[data-open-card]')].forEach(button => { button.onclick = () => toggleCard(button.dataset.openCard); button.onkeydown = ev => { if (ev.altKey && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) { ev.preventDefault(); moveCard(cardAt(button.dataset.openCard).item, ev.key === 'ArrowUp' ? -1 : 1); } }; });
+        [...$('list').querySelectorAll('.brand-caret')].forEach(caret => caret.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); toggleBrandCards(); } });
+        $('list').querySelector('.bc-search')?.addEventListener('input', ev => { S.cardFilter = ev.target.value; $('list').querySelector('.bc-results').innerHTML = resultsHtml(ev.target.value); bindResults(); });
+        bindResults();
+        /* edição dos campos do cardzinho: grava ao sair do campo (Enter também) e troca só o card editado na prévia; a lista só é refeita se mudar o alerta de códigos ocultos */
+        [...$('list').querySelectorAll('[data-ed]')].forEach(input => { let start = input.value; input.onkeydown = ev => { if (ev.key === 'Enter') input.blur(); }; input.onblur = ev => {
+            if (input.value === start) return; let [kind, pi, ii, ri] = input.dataset.ed.split(':'), item = cardAt(pi + ':' + ii).item, next = ev.relatedTarget?.dataset?.ed; snapshot();
+            CartazCards.setField(item, kind, +ri, input.value); start = input.value;
+            if (kind === 't') input.closest('.brand-card-row').querySelector('.bc-open .t').textContent = plainTitle(item).replace(/\//g, '/\u200b');
+            if (redrawCard(item)) { pages(); if (next) $('list').querySelector('[data-ed="' + next + '"]')?.focus(); } }; });
+        [...$('list').querySelectorAll('[data-row-add]')].forEach(button => button.onclick = () => { let { item } = cardAt(button.dataset.rowAdd); snapshot(); CartazCards.addRow(item); redrawCard(item); pages(); });
+        [...$('list').querySelectorAll('[data-row-del]')].forEach(button => button.onclick = () => { let [pi, ii, ri] = button.dataset.rowDel.split(':'), { item } = cardAt(pi + ':' + ii); snapshot(); if (CartazCards.removeRow(item, +ri)) { redrawCard(item); pages(); } });
+        [...$('list').querySelectorAll('[data-fill]')].forEach(button => button.onclick = () => setWide(button.dataset.fill, true));
         [...$('list').querySelectorAll('[data-pick]')].forEach(input=>input.onchange=()=>togglePick(input.dataset.pick)); [...$('list').querySelectorAll('[data-unlink]')].forEach(button=>button.onclick=()=>unlinkBrands(button.dataset.unlink)); [...$('list').querySelectorAll('[data-logo-toggle]')].forEach(input=>input.onchange=()=>{ snapshot(); S.pages.filter(page=>page.brand===input.dataset.logoKey).forEach(page=>{ let off=new Set(page.logoOff||[]); input.checked?off.delete(input.dataset.logoToggle):off.add(input.dataset.logoToggle); page.logoOff=[...off]; }); draw(); });
         if ($('linkCancel')) $('linkCancel').onclick = () => { S.linking = false; S.linkSel = []; pages(); };
         if ($('linkConfirm')) $('linkConfirm').onclick = () => linkBrands(brands.filter(brand => S.linkSel.includes(brand)));
@@ -387,9 +574,27 @@
            reescrever el.innerHTML a cada tecla (mesmo sem mudar o layout) jogaria o cursor pro início do
            contenteditable a cada letra digitada */
         if (twoCols !== el.classList.contains('two-cols')) { el.innerHTML = codesHtml(texts, twoCols); el.classList.toggle('two-cols', twoCols); card.dataset.codes = texts.length; }
-        item.linesOverride = { html: el.innerHTML, count: texts.length, twoCols }; fitLines(card); } function enablePhotoEditing(photo) {
-        let card = photo.closest('.card'), item = S.pages[+card.dataset.page].items[+card.dataset.idx], state = () => item.photo || (item.photo = { x: 0, y: 0, scale: 1 }), apply = () => { let value = state(); photo.style.transform = 'translate(' + value.x + 'px,' + value.y + 'px) scale(' + value.scale + ')' };
-        photo.ondblclick = event => { event.preventDefault(); photo.classList.toggle('photo-editing'); toast(photo.classList.contains('photo-editing') ? 'Foto selecionada: arraste para mover e use a roda do mouse para redimensionar.' : 'Edição da foto concluída.'); };
+        item.linesOverride = { html: el.innerHTML, count: texts.length, twoCols }; fitLines(card); }
+    /* limites da foto na coluna do Live Shop: zoom < 1 fica inteira dentro dela; zoom > 1 sempre a cobre. Usado ao editar e ao renderizar. */
+    function clampPhoto(value, side) {
+        let W = side.clientWidth, H = side.clientHeight, k = value.scale, kx = Math.abs(W * (k - 1)) / 2, ky = Math.abs(H * (k - 1)) / 2;
+        value.x = Math.max(-kx, Math.min(kx, value.x)); value.y = Math.max(-ky, Math.min(ky, value.y)); return { W, H, k };
+    }
+    function enablePhotoEditing(photo) {
+        let card = photo.closest('.card'), item = S.pages[+card.dataset.page].items[+card.dataset.idx], state = () => item.photo || (item.photo = { x: 0, y: 0, scale: 1 }), apply = () => {
+            let value = state(), live = card.classList.contains('lb'), side = photo.parentNode;
+            /* Live Shop: a foto NUNCA sai da própria coluna nem some. Menor que a coluna (zoom < 1) fica inteira dentro dela; maior (zoom > 1) sempre a cobre, sem vão. */
+            if (live) {
+                let { W, H, k } = clampPhoto(value, side);
+                /* moldura da edição = caixa da foto (coluna escalada e deslocada) recortada pela coluna: sempre visível nos 4 lados */
+                let l = Math.max(0, W / 2 + value.x - W * k / 2), r = Math.min(W, W / 2 + value.x + W * k / 2), t = Math.max(0, H / 2 + value.y - H * k / 2), b = Math.min(H, H / 2 + value.y + H * k / 2);
+                side.style.setProperty('--fl', l + 'px'); side.style.setProperty('--fr', (W - r) + 'px'); side.style.setProperty('--ft', t + 'px'); side.style.setProperty('--fb', (H - b) + 'px');
+            }
+            photo.style.transform = 'translate(' + value.x + 'px,' + value.y + 'px) scale(' + value.scale + ')';
+            /* o mesmo box aparece em todas as divisões (Osten, Dismatal, VONDER) e divide o estado: replica na hora nas outras prévias */
+            if (live) document.querySelectorAll('.card.lb[data-page="' + card.dataset.page + '"][data-idx="' + card.dataset.idx + '"] .photo').forEach(other => { if (other !== photo) other.style.transform = photo.style.transform; });
+        };
+        photo.ondblclick = event => { event.preventDefault(); photo.classList.toggle('photo-editing'); if (card.classList.contains('lb')) apply(); toast(photo.classList.contains('photo-editing') ? 'Foto selecionada: arraste para mover e use a roda do mouse para redimensionar.' : 'Edição da foto concluída.'); };
         photo.onwheel = event => { if (!photo.classList.contains('photo-editing')) return; event.preventDefault(); snapshot('photo'); let value = state(); value.scale = Math.max(.5, Math.min(2, value.scale + (event.deltaY < 0 ? .1 : -.1))); apply(); };
         photo.onpointerdown = event => { if (!photo.classList.contains('photo-editing')) return; event.preventDefault(); snapshot('photo'); let startX = event.clientX, startY = event.clientY, value = state(), originX = value.x, originY = value.y; photo.setPointerCapture(event.pointerId); photo.onpointermove = move => { value.x = originX + move.clientX - startX; value.y = originY + move.clientY - startY; apply(); }; photo.onpointerup = () => { photo.onpointermove = null; photo.onpointerup = null; }; };
     } /* Cabeçalho: se o título/subtítulo chegariam na logo do canto, reduz a fonte (mínimo 60%) até caber */
@@ -408,11 +613,32 @@
         if (S.drawPending) return; S.drawPending = true;
         box.addEventListener('focusout', () => setTimeout(() => { S.drawPending = false; drawWhenIdle(); }, 0), { once: true });
     }
+    /* HTML de UMA folha (uma divisão): usado pelo draw completo e pelo redesenho incremental das folhas alteradas */
+    function sheetHtml(page, pageIndex, division) {
+        S.curDivision = division; let cells = page.items.map((item, index) => card(item, index, pageIndex)), logo = logoUrl(page.brand), filled = page.items.length, live = page.layout === 'liveshop'; if (live && page.logoBox) cells.unshift(logoBoxHtml()); for (let i = filled; !live && i < page.capacity; i++) cells.push('<div class="placeholder" aria-hidden="true"></div>'); return '<div class="sheet ' + page.format.toLowerCase() + (S.templates[page.format] ? ' custom-bg' : '') + (S.logo ? ' custom-logo' : '') + gridClass(page) + '"' + gridStyle(page) + ' data-page="' + pageIndex + '"' + (division ? ' data-division="' + division.id + '"' : '') + '>' + (division ? '<div class="lb-strip" style="background:' + divisionColor(division) + '" aria-hidden="true"></div>' : '') + (live && !page.footerLogo ? '' : pageFooter(page, logo)) + (live && S.config.legalEnabled && t(S.config.legalText) ? '<div class="sheet-legal">' + e(S.config.legalText).replace(/\n/g, '<br>') + '</div>' : '') + '<span class="sheet-page-number" aria-hidden="true">' + (pageIndex + 1) + '</span>' + (live ? '' : '<div class="sheet-heading" aria-hidden="true">' + headerHtml() + '</div>') + cells.join('') + '</div>';
+    }
+    const brandPagesOf = page => S.pages.filter(x => x.brand === page.brand);
+    const noteFor = (page, division) => !division || division === activeDivisions()[0] ? emptyNote(page, S.pages.indexOf(page), brandPagesOf(page).indexOf(page), brandPagesOf(page).length) : '';
+    /* ajustes depois de inserir a folha no DOM: corte de linhas, centralização, edição de foto */
+    function finishSheet(sheet) { let page = S.pages[+sheet.dataset.page]; sheet.querySelectorAll('.card').forEach(trimOverflow); sheet.querySelectorAll('.card:not(.big):not(.lb)').forEach(centerPhoto); if (page.layout !== 'liveshop' && page.items.length < page.capacity) { let cards = [...sheet.querySelectorAll('.card')], style = getComputedStyle(sheet), top = parseFloat(style.paddingTop), bottom = sheet.clientHeight - parseFloat(style.paddingBottom), contentHeight = Math.max(...cards.map(card => card.offsetTop + card.offsetHeight)) - top, offset = Math.max(0, (bottom - top - contentHeight) / 2); cards.forEach(card => card.style.transform = (card.classList.contains('pair') ? 'translateX(calc(50% + 9px)) ' : '') + 'translateY(' + offset + 'px)') } sheet.querySelectorAll('.card .photo').forEach(enablePhotoEditing); }
+    /* Redesenho incremental: troca só as folhas das páginas alteradas (todas as divisões) e atualiza a lista, sem refazer título, formato de impressão e as demais folhas */
+    function redrawPages(changed) {
+        let current = S.curDivision;
+        changed.forEach(page => {
+            let pi = S.pages.indexOf(page); page.items.forEach(item => item.hiddenCodes = 0);
+            document.querySelectorAll('#preview .sheet[data-page="' + pi + '"]').forEach(old => {
+                let division = DIVISIONS.find(d => d.id === old.dataset.division) || null, holder = document.createElement('div'); holder.innerHTML = sheetHtml(page, pi, division);
+                if (old.nextElementSibling?.classList.contains('empty-note')) old.nextElementSibling.remove();
+                let fresh = holder.firstElementChild; old.replaceWith(fresh); finishSheet(fresh); fresh.insertAdjacentHTML('afterend', noteFor(page, division));
+            });
+        });
+        S.curDivision = current; fitHeaders(); pages(); updateDashboard(); syncPagesHeight();
+    }
     function draw() {
         let selectedPages = (S.brand ? S.pages.filter(page => page.brand === S.brand) : S.pages).filter(page => (!S.printFormat || page.format === S.printFormat) && (!S.only || S.only.includes(page.brand))); if (!selectedPages.length) return; selectedPages.forEach(page => page.items.forEach(item => item.hiddenCodes = 0));
         $('title').textContent = 'Prévia editável · ' + S.brand; $('previewFormat').textContent = selectedPages.length + ' página' + (selectedPages.length === 1 ? '' : 's') + ' da marca';
-        $('preview').innerHTML = (activeDivisions().length ? activeDivisions() : [null]).flatMap(division => selectedPages.map(page => { S.curDivision = division; let pageIndex = S.pages.indexOf(page), cells = page.items.map((item, index) => card(item, index, pageIndex)), logo = logoUrl(page.brand), filled = page.items.length, live = page.layout === 'liveshop'; if (live && page.logoBox) cells.unshift(logoBoxHtml()); for (let i = filled; i < page.capacity; i++) cells.push('<div class="placeholder" aria-hidden="true"></div>'); return (division ? '<div class="sheet-label">' + e(division.name) + ' · ' + e(page.name) + '</div>' : '') + '<div class="sheet ' + page.format.toLowerCase() + (S.templates[page.format] ? ' custom-bg' : '') + (S.logo ? ' custom-logo' : '') + gridClass(page) + '"' + gridStyle(page) + ' data-page="' + pageIndex + '"' + (division ? ' data-division="' + division.id + '"' : '') + '>' + (division ? '<div class="lb-strip" style="background:' + divisionColor(division) + '" aria-hidden="true"></div>' : '') + (live && !page.footerLogo ? '' : pageFooter(page, logo)) + (live && S.config.legalEnabled && t(S.config.legalText) ? '<div class="sheet-legal">' + e(S.config.legalText).replace(/\n/g, '<br>') + '</div>' : '') + '<span class="sheet-page-number" aria-hidden="true">' + (pageIndex + 1) + '</span>' + (live ? '' : '<div class="sheet-heading" aria-hidden="true">' + headerHtml() + '</div>') + cells.join('') + '</div>'; })).join('');
-        [...$('preview').querySelectorAll('.sheet')].forEach(sheet => { let page = S.pages[+sheet.dataset.page]; sheet.querySelectorAll('.card').forEach(trimOverflow); sheet.querySelectorAll('.card:not(.big):not(.lb)').forEach(centerPhoto); if (page.layout !== 'liveshop' && page.items.length < page.capacity) { let cards = [...sheet.querySelectorAll('.card')], style = getComputedStyle(sheet), top = parseFloat(style.paddingTop), bottom = sheet.clientHeight - parseFloat(style.paddingBottom), contentHeight = Math.max(...cards.map(card => card.offsetTop + card.offsetHeight)) - top, offset = Math.max(0, (bottom - top - contentHeight) / 2); cards.forEach(card => card.style.transform = (card.classList.contains('pair') ? 'translateX(calc(50% + 9px)) ' : '') + 'translateY(' + offset + 'px)') } sheet.querySelectorAll('.card .photo').forEach(enablePhotoEditing); });
+        $('preview').innerHTML = (activeDivisions().length ? activeDivisions() : [null]).flatMap(division => selectedPages.map(page => (division ? '<div class="sheet-label">' + e(division.name) + ' · ' + e(page.name) + '</div>' : '') + sheetHtml(page, S.pages.indexOf(page), division) + noteFor(page, division))).join('');
+        [...$('preview').querySelectorAll('.sheet')].forEach(finishSheet);
         fitHeaders(); pages(); updateDashboard(); let printSize = document.getElementById('printPageSize') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'printPageSize' })); printSize.textContent = '@media print { @page { size: ' + (selectedPages[0].format === 'A3' ? 'A3 portrait' : 'A4 portrait') + '; margin: 0 } }'
         syncPagesHeight();
     }
@@ -514,7 +740,7 @@
             + field('cfgCapA3', 'Produtos por folha A3', resolved.capA3, 120, auto) + field('cfgColsA3', 'Colunas no A3', resolved.colsA3, 12, auto)
             + '<label>Modelo do box<select id="cfgLayout">' + option('feira', 'Feira (título, foto e códigos)', config.layout) + option('liveshop', 'Live Shop (QR/barras e tabela de modelos)', config.layout) + '</select></label>'
             + '<label>Paginação<select id="cfgPaginate">' + option('brand', 'Por marca', config.paginateBy) + option('sequence', 'Sequência única (mistura as marcas)', config.paginateBy) + '</select></label>'
-            + (live ? check('cfgLogoBox', 'Box de logo do evento na primeira linha', config.logoBox) + '<label class="cg-config-wide">Texto de atenção do box de logo<textarea id="cfgAttention" rows="3" maxlength="240">' + e(config.attentionText) + '</textarea></label>' + check('cfgFooterLogo', 'Logo da marca no rodapé', config.footerLogo)
+            + (live ? check('cfgLogoBox', 'Box de logo do evento na primeira linha', config.logoBox) + '<label>Título do aviso<input id="cfgAttentionTitle" maxlength="40" value="' + e(config.attentionTitle) + '"></label><label>Cor do aviso<input type="color" id="cfgAttentionColor" value="' + e(config.attentionColor) + '"></label><label class="cg-config-wide">Texto de atenção do box de logo<textarea id="cfgAttention" rows="3" maxlength="240">' + e(config.attentionText) + '</textarea></label>' + check('cfgFooterLogo', 'Logo da marca no rodapé', config.footerLogo)
                 + '<label>Código no box<select id="cfgCodeType">' + option('barcode', 'Código de barras', config.codeType) + option('qr', 'QR Code (link de redirecionamento)', config.codeType) + '</select></label>'
                 + (qr ? check('cfgButton', 'Botão abaixo do QR Code', config.button) + '<label>Texto do botão<input id="cfgButtonText" maxlength="40" value="' + e(config.buttonText) + '"></label><label>Cor do botão<input type="color" id="cfgButtonColor" value="' + e(config.buttonColor) + '"></label>' : '')
                 + check('cfgLegalOn', 'Texto legal no rodapé', config.legalEnabled) + (config.legalEnabled ? '<label class="cg-config-wide">Texto legal <small>(fonte bem pequena, centralizado no rodapé)</small><textarea id="cfgLegal" rows="3" maxlength="600">' + e(config.legalText) + '</textarea></label>' : '')
@@ -524,7 +750,7 @@
         Object.entries(CONFIG_FIELDS).forEach(([id, key]) => on(id, key, input => Math.max(1, Math.floor(+input.value) || 1)));
         on('cfgA3Auto', 'a3Auto', input => { if (!input.checked) { config.capA3 = resolved.capA3; config.colsA3 = resolved.colsA3; } return input.checked; });
         on('cfgPaginate', 'paginateBy', input => input.value); on('cfgLayout', 'layout', input => input.value); on('cfgLogoBox', 'logoBox', input => input.checked); on('cfgFooterLogo', 'footerLogo', input => input.checked);
-        on('cfgAttention', 'attentionText', input => input.value); on('cfgLegalOn', 'legalEnabled', input => input.checked); on('cfgLegal', 'legalText', input => input.value); on('cfgCodeType', 'codeType', input => input.value); on('cfgButton', 'button', input => input.checked);
+        on('cfgAttention', 'attentionText', input => input.value); on('cfgAttentionTitle', 'attentionTitle', input => input.value); on('cfgAttentionColor', 'attentionColor', input => input.value); on('cfgLegalOn', 'legalEnabled', input => input.checked); on('cfgLegal', 'legalText', input => input.value); on('cfgCodeType', 'codeType', input => input.value); on('cfgButton', 'button', input => input.checked);
         on('cfgButtonText', 'buttonText', input => t(input.value) || CartazPagination.DEFAULT_CONFIG.buttonText); on('cfgButtonColor', 'buttonColor', input => input.value);
         body.querySelectorAll('[data-division]').forEach(input => input.onchange = () => { config.divisions = DIVISIONS.map(d => d.id).filter(id => id === input.dataset.division ? input.checked : config.divisions.includes(id)); commit(); });
         body.querySelectorAll('[data-division-color]').forEach(input => input.onchange = () => { config.divisionColors = { ...config.divisionColors, [input.dataset.divisionColor]: input.value }; commit(); });
@@ -966,6 +1192,37 @@
     $('exportPickAll').onclick = () => { let boxes = [...$('exportPickList').querySelectorAll('label:not([hidden]) input')], all = boxes.every(box => box.checked); boxes.forEach(box => box.checked = !all); $('exportPickAll').textContent = all ? 'Marcar todas' : 'Desmarcar todas'; };
     $('exportPickGo').onclick = () => { let only = [...$('exportPickList').querySelectorAll('input:checked')].map(box => box.value); if (!only.length) { toast('Marque ao menos uma marca.'); return; } $('exportPickDialog').close(); runExport(pendingExportFormat, true, only); };
     document.addEventListener('click', event => { if (!event.target.closest('.action-menu')) closeActionMenus(); });
+    /* inverter QR/botão e foto no box Live Shop: mesmo gesto da editoria Datas comemorativas - segurar e arrastar (Shift arrasta na hora).
+       Um "fantasma" do lado segue o ponteiro, o lugar de origem fica tracejado, o outro lado desliza para abrir espaço e, ao soltar, o fantasma assenta. */
+    document.addEventListener('pointerdown', event => {
+        let side = event.target.closest('.card.lb .lb-left, .card.lb .lb-right'), card = side && side.closest('.card'); if (!card || event.button) return;
+        let startX = event.clientX, startY = event.clientY, dragging = false, timer, ghost, grabX, grabY, box = card.querySelector('.lb-body').getBoundingClientRect(), item = S.pages[+card.dataset.page].items[+card.dataset.idx],
+            other = card.querySelector(side.classList.contains('lb-left') ? '.lb-right' : '.lb-left'), isLeft = side.classList.contains('lb-left'),
+            wantFlip = () => ((lastX > box.left + box.width / 2) === isLeft), lastX = startX,
+            begin = () => {
+                dragging = true; card.querySelectorAll('.photo-editing').forEach(photo => { photo.onpointermove = null; photo.releasePointerCapture?.(event.pointerId); photo.classList.remove('photo-editing'); }); /* segurar e arrastar o lado encerra a edição da foto (e o enquadramento em andamento): sem moldura no fantasma nem foto invadindo o QR */
+                let r = side.getBoundingClientRect(); grabX = startX - r.left; grabY = startY - r.top;
+                ghost = document.createElement('div'); ghost.className = 'card lb lb-ghost'; ghost.style.cssText = 'left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;--u:' + getComputedStyle(card).getPropertyValue('--u');
+                ghost.append(side.cloneNode(true)); document.body.append(ghost); card.classList.add('lb-dragging'); side.classList.add('lb-ph'); toast('Arraste até o outro lado e solte');
+            },
+            slide = change => { let from = other.getBoundingClientRect().left; change(); let dx = from - other.getBoundingClientRect().left; if (!dx) return; other.style.transition = 'none'; other.style.transform = 'translateX(' + dx + 'px)'; other.getBoundingClientRect(); other.style.transition = 'transform .18s ease'; other.style.transform = ''; },
+            move = e => {
+                lastX = e.clientX; if (!dragging) { if (Math.hypot(e.clientX - startX, e.clientY - startY) > 6) clear(); return; }
+                ghost.style.transform = 'translate(' + (e.clientX - startX) + 'px,' + (e.clientY - startY) + 'px) scale(1.02)';
+                let flip = wantFlip(); if (flip !== card.classList.contains('flip')) slide(() => card.classList.toggle('flip', flip));
+            },
+            clear = () => { clearTimeout(timer); document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up); },
+            up = () => {
+                clear(); if (!dragging) return;
+                /* depois do arrasto o navegador dispara um click no elemento: engole, senão abriria o editor de link */
+                swallowNextClick(50);
+                let to = side.getBoundingClientRect(), flip = card.classList.contains('flip');
+                ghost.style.transition = 'transform .16s ease, opacity .16s ease'; ghost.style.transform = 'translate(' + (to.left - parseFloat(ghost.style.left)) + 'px,' + (to.top - parseFloat(ghost.style.top)) + 'px)'; ghost.style.opacity = '.6';
+                setTimeout(() => { ghost.remove(); if (!!item.flip !== flip) { snapshot(); if (flip) item.flip = true; else delete item.flip; } draw(); }, 170);
+            };
+        if (event.shiftKey) begin(); else timer = setTimeout(begin, 350);
+        document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+    });
     document.addEventListener('pointerdown', event => { if (!event.target.closest('.card .photo')) document.querySelectorAll('.photo.photo-editing').forEach(photo => photo.classList.remove('photo-editing')); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape') closeActionMenus(); });
     /* Validador de textos (cartaz-validator.js): observações sobre o título de cada card (acentos, pontuação, hífen, duplicidade,
@@ -1100,5 +1357,5 @@
        esses atributos só enxergam funcao GLOBAL, nao a closure deste IIFE, entao precisam ser expostas
        aqui (sem isso o clique/edicao falhava calado, sem erro visivel, com ReferenceError so no console) */
     $('preview').addEventListener('focusout', () => { if (activeDivisions().length > 1) setTimeout(drawWhenIdle, 0); }); /* ponytail: edição de título/códigos aparece nas outras divisões ao sair do campo; foto só no próximo redesenho */
-    window.editLink = editLink; window.addBarcode = addBarcode; window.centerPhoto = centerPhoto; window.updateTitle = updateTitle; window.updateCodes = updateCodes
+    window.editLink = editLink;  window.addBarcode = addBarcode; window.centerPhoto = centerPhoto; window.updateTitle = updateTitle; window.updateCodes = updateCodes
 })();

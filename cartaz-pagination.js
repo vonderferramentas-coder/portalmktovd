@@ -6,7 +6,7 @@
 
   /* Configuração do cartaz (por template): produtos e colunas por folha. O padrão é o layout da Feira (6 boxes em 2 colunas no A4,
      9 em 3 no A3). Com `a3Auto`, o A3 acompanha o A4: capacidade x1,5 (arredondada para baixo) e colunas x1,25 (arredondadas). */
-  const DEFAULT_CONFIG = { capA4: 6, colsA4: 2, a3Auto: true, capA3: 9, colsA3: 3, paginateBy: 'brand', layout: 'feira', logoBox: false, footerLogo: true, codeType: 'barcode', button: true, buttonText: 'CLIQUE AQUI E COMPRE AGORA!', buttonColor: '#F6BE00', divisions: [], divisionColors: {}, legalEnabled: false, legalText: '', attentionText: 'Para acessar as condições especiais, é indispensável estar logado com o seu perfil em nossa Plataforma B2B.' };
+  const DEFAULT_CONFIG = { capA4: 6, colsA4: 2, a3Auto: true, capA3: 9, colsA3: 3, paginateBy: 'brand', layout: 'feira', logoBox: false, footerLogo: true, codeType: 'barcode', button: true, buttonText: 'CLIQUE AQUI E COMPRE AGORA!', buttonColor: '#F6BE00', divisions: [], divisionColors: {}, legalEnabled: false, legalText: '', attentionTitle: 'ATENÇÃO', attentionColor: '#ffffff', attentionText: 'Para acessar as condições especiais, é indispensável estar logado com o seu perfil em nossa Plataforma B2B.' };
   let current = { ...DEFAULT_CONFIG };
   function resolve(config) {
     let c = { ...DEFAULT_CONFIG, ...config };
@@ -31,8 +31,26 @@
         let extraHeight = center && pageGroups.length <= 3 ? codeExtra(group) : (lastRow ? pairedExtraHeight : 0); return { group, col: offset ? (index + offset) % columns : col, gridRow: Math.floor((index + offset) / columns), size: 1, center, pair, extraHeight };
       }) });
     }
-    if (prev) out.forEach(page => page.items.forEach(item => { let old = prev.get(item.group); if (old) { if (old.title) { item.title = old.title; if (old.titleHtml) item.titleHtml = old.titleHtml; } if (old.photo) item.photo = old.photo; if (old.linesOverride) item.linesOverride = old.linesOverride; } }));
+    if (prev) out.forEach(page => page.items.forEach(item => { let old = prev.get(item.group); if (old) { if (old.title) { item.title = old.title; if (old.titleHtml) item.titleHtml = old.titleHtml; } if (old.photo) item.photo = old.photo; if (old.wide) item.wide = true; if (old.photoSrc) item.photoSrc = old.photoSrc; if (old.rows) item.rows = old.rows; if (old.minQty !== undefined) item.minQty = old.minQty; if (old.links) item.links = old.links; if (old.showButton === false) item.showButton = false; if (old.flip) item.flip = true; if (old.linesOverride) item.linesOverride = old.linesOverride; } }));
+    if (live) out.forEach(placeLive);
     return out;
+  }
+
+  /* Live Shop: posiciona os boxes da folha pela ordem, com "Destaque" (item.wide) ocupando 2 colunas. Se o destaque não cabe no resto da linha, a vaga é
+     preenchida pelo próximo box pequeno (mesma ideia do consolidado). A folha ganha linhas extras só se faltar espaço (page.baseRows guarda o mínimo original).
+     ponytail: pega o próximo pequeno da fila para a vaga, sem otimizar a ocupação da folha. */
+  function placeLive(page) {
+    if (page.layout !== 'liveshop') return;
+    const cols = page.cols, base = page.baseRows || (page.baseRows = page.rows), isWide = item => item.wide && cols >= 2, queue = page.items.slice();
+    let cell = page.logoBox ? 1 : 0;
+    const put = (item, span) => { item.col = cell % cols; item.gridRow = Math.floor(cell / cols); item.size = 1; item.span = span; cell += span; };
+    while (queue.length) {
+      const item = queue.shift();
+      if (isWide(item) && cell % cols > cols - 2) for (let free = cols - (cell % cols); free > 0; free--) { const next = queue.findIndex(entry => !isWide(entry)); if (next >= 0) put(queue.splice(next, 1)[0], 1); else cell++; }
+      put(item, isWide(item) ? 2 : 1);
+    }
+    page.rows = Math.max(base, Math.ceil(cell / cols));
+    page.empty = page.rows * cols - ((page.logoBox ? 1 : 0) + page.items.reduce((sum, item) => sum + item.span, 0)); /* células sem box na folha */
   }
 
   // Junta as páginas das marcas `names` (ordem da lista) numa marca vinculada "A + B"; a nova entrada ocupa o lugar da primeira.
@@ -78,5 +96,5 @@
     return { pages: next, key: brandKey };
   }
 
-  window.CartazPagination = { paginate, groupBrand, link, unlink, insertItem, twoCodeColumns, setConfig, resolve, DEFAULT_CONFIG };
+  window.CartazPagination = { paginate, groupBrand, link, unlink, insertItem, twoCodeColumns, setConfig, resolve, placeLive, DEFAULT_CONFIG };
 })();

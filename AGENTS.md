@@ -8,6 +8,10 @@ Portal estático (HTML/CSS/JS vanilla, sem framework/build step) multi-marca par
 
 Para arquitetura detalhada (módulos, fluxos, gotchas), veja [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
 
+## Padrões de interface
+
+Antes de criar ou alterar qualquer tela, leia [DESIGN.md](DESIGN.md) e siga os padrões dele (animação de dropdown e sanfona, tema claro e escuro, cursores, reordenar por arrastar). Se um padrão novo for decidido, registre-o lá.
+
 ## Documentação de arquitetura
 
 Sempre que uma alteração criar, remover ou modificar uma integração externa, serviço hospedado, fluxo automático, fonte de dados, credencial, dependência remota, regra de acesso ou diferencial relevante para a TI, atualize `docs/ARQUITETURA-E-INTEGRACOES.md` na mesma mudança.

@@ -111,6 +111,15 @@ try {
   eq([lp.items[3].col, lp.items[3].gridRow, lp.items[18].col, lp.items[18].gridRow], [0, 1, 3, 4], 'Live Shop: 4 por linha depois da 1a');
   CartazPagination.setConfig({ capA4: 19, colsA4: 4, layout: 'liveshop', logoBox: false });
   eq(paginate('X', groups(19))[0].items.map(i => i.gridRow).slice(0, 5), [0, 0, 0, 0, 1], 'Live Shop sem box de logo: 4 produtos na 1a linha');
+  // Destaque (2 colunas): com logo (célula 0) e 4 colunas, o destaque em 3º cabe na linha 0 (colunas 2-3); em 4º não cabe (col 3) e a vaga é preenchida pelo próximo pequeno
+  CartazPagination.setConfig({ capA4: 19, colsA4: 4, layout: 'liveshop', logoBox: true });
+  let lw = paginate('X', groups(19))[0], rows0 = lw.rows; lw.items[1].wide = true; CartazPagination.placeLive(lw);
+  eq([lw.items[1].col, lw.items[1].gridRow, lw.items[1].span], [2, 0, 2], 'destaque cabe em colunas 2-3');
+  lw.items[1].wide = false; lw.items[2].wide = true; lw.items.forEach(i => delete i.wide); lw.items[2].wide = true; CartazPagination.placeLive(lw);
+  eq([lw.items[2].col, lw.items[2].gridRow, lw.items[2].span], [0, 1, 2], 'destaque sem espaço na linha vai para a próxima, com vaga preenchida');
+  eq(new Set(lw.items.map(i => i.gridRow + ':' + i.col)).size, 19, 'nenhuma célula repetida');
+  lw.items.forEach(i => delete i.wide); CartazPagination.placeLive(lw);
+  eq(lw.rows, rows0, 'sem destaque, a folha volta ao nº de linhas original');
   CartazPagination.setConfig(CartazPagination.DEFAULT_CONFIG);
   eq(paginate('X', groups(6))[0].layout, undefined, 'Feira não ganha layout liveshop');
 

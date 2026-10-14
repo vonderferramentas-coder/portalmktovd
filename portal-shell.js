@@ -170,7 +170,7 @@
   }
   // Exposto para admin-users.js (script clássico, roda antes dele) reaproveitar o mesmo
   // recorte quadrado + compressão ao editar a foto de outro usuário pela tela de admin.
-  window.PortalShell = { readBrandPhoto };
+  window.PortalShell = { readBrandPhoto, svgIcon };
 
   function loadBrands(){
     try{

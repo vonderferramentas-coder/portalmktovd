@@ -1,0 +1,77 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste das regras do painel Cards da marca</title>
+<body data-result="running">RUNNING</body>
+<script src="../cartaz-pagination.js"></script>
+<script src="../cartaz-cards.js"></script>
+<script>
+// Roda em Chrome headless: chrome --headless=new --virtual-time-budget=3000 --dump-dom file:///.../tests/cartaz-cards.test.html
+try {
+  const { paginate, setConfig, DEFAULT_CONFIG } = CartazPagination, C = CartazCards;
+  const eq = (a, b, label) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(label + '\n  esperado: ' + JSON.stringify(b) + '\n  obtido:   ' + JSON.stringify(a)); };
+  const makeGroups = (n, brand) => Array.from({ length: n }, (_, i) => ({ title: 'Produto ' + (i + 1), rows: [{ brand, desc: 'Desc ' + (i + 1), code: '60 01 0' + String(10 + i) + ' 000' }, { brand, desc: 'Outra', code: '99 99 999 999' }] }));
+  const build = (n, brand = 'VONDER') => paginate(brand, makeGroups(n, brand));
+  const titles = items => items.map(item => C.plainTitle(item));
+
+  // Live Shop com box de logo: 4 colunas, 7 produtos por folha
+  setConfig({ capA4: 7, colsA4: 4, layout: 'liveshop', logoBox: true });
+  let pages = build(7), items = pages[0].items;
+
+  // busca: título, código, marca, sem acento/maiúscula; vazio não devolve nada
+  const mixed = [...build(3, 'VONDER'), ...build(2, 'Ação Ferramentas')];
+  eq(C.search(mixed, 'produto 2').map(hit => hit.id), ['0:1', '1:1'], 'busca por título em todas as marcas');
+  eq(C.search(mixed, '600 12').length, 0, 'código com espaço diferente não casa');
+  eq(C.search(mixed, '60 01 011').map(hit => hit.id), ['0:1', '1:1'], 'busca por código');
+  eq(C.search(mixed, 'acao').map(hit => hit.page.brand).filter((v, i, a) => a.indexOf(v) === i), ['Ação Ferramentas'], 'busca ignora acento e maiúscula na marca');
+  eq(C.search(mixed, '   '), [], 'busca vazia');
+
+  // mover: troca com o vizinho e devolve null nos extremos
+  eq(titles(C.move(items, items[2], -1)).slice(0, 3), ['Produto 1', 'Produto 3', 'Produto 2'], 'mover para cima');
+  eq(titles(C.move(items, items[2], 1)).slice(2, 4), ['Produto 4', 'Produto 3'], 'mover para baixo');
+  eq([C.move(items, items[0], -1), C.move(items, items[6], 1)], [null, null], 'extremos não movem');
+
+  // reordenar entre folhas mantém a quantidade de cada folha e reposiciona
+  setConfig({ capA4: 4, colsA4: 4, layout: 'liveshop', logoBox: true });
+  let two = build(7), all = two.flatMap(p => p.items), counts = two.map(p => p.items.length), reversed = all.slice().reverse();
+  eq(C.sameOrder(two, all), true, 'mesma ordem');
+  eq(C.sameOrder(two, reversed), false, 'ordem diferente');
+  C.distribute(two, reversed);
+  eq(two.map(p => p.items.length), counts, 'cada folha mantém a quantidade');
+  eq(titles(two.flatMap(p => p.items)), titles(reversed), 'nova ordem aplicada às folhas');
+  eq(two[0].items.map(i => i.gridRow * 4 + i.col), [1, 2, 3, 4], 'folha 1 reposicionada depois do box de logo');
+
+  // excluir: repaginar sem o item preserva a ordem dos demais
+  let kept = makeGroups(5, 'VONDER'); kept.splice(2, 1);
+  eq(paginate('VONDER', kept).flatMap(p => p.items).map(i => i.group.title), ['Produto 1', 'Produto 2', 'Produto 4', 'Produto 5'], 'exclusão mantém a ordem dos demais');
+
+  // edição de campos grava no item e não no grupo compartilhado
+  setConfig({ capA4: 7, colsA4: 4, layout: 'liveshop', logoBox: true });
+  let page = build(3)[0], it = page.items[0], group = it.group, originalDesc = group.rows[0].desc;
+  C.setField(it, 't', 0, 'Novo título'); C.setField(it, 'q', 0, '12'); C.setField(it, 'd', 1, 'Linha 2'); C.setField(it, 'c', 0, '11 22 333 444');
+  eq([C.plainTitle(it), C.minQty(it), C.lines(it)[1].desc, C.lines(it)[0].code], ['Novo título', '12', 'Linha 2', '11 22 333 444'], 'campos editados');
+  eq([group.rows[0].desc, group.rows[1].desc, group.minQty], [originalDesc, 'Outra', undefined], 'grupo compartilhado intacto');
+  it.titleHtml = '<b>Em negrito</b>'; eq(C.plainTitle(it), 'Em negrito', 'título formatado vira texto simples');
+  C.setField(it, 't', 0, 'Sem formato'); eq([it.titleHtml, C.plainTitle(it)], [undefined, 'Sem formato'], 'editar o título limpa a formatação');
+
+  // linhas: adicionar e remover (nunca fica sem linha)
+  C.addRow(it); eq(C.lines(it).length, 3, 'linha adicionada'); eq(C.lines(it)[2], { desc: '', code: '' }, 'linha nova vazia');
+  eq(C.removeRow(it, 2), true, 'remove a linha nova'); eq(C.removeRow(it, 0), true, 'remove outra'); eq(C.removeRow(it, 0), false, 'a última linha não sai'); eq(C.lines(it).length, 1, 'sobra 1 linha');
+  eq(group.rows.length, 2, 'adicionar/remover não mexe no grupo');
+
+  // espaço vazio: 4 colunas, logo + 5 produtos em folha de 7 + logo = 2 vazios; o último vira destaque para preencher
+  setConfig({ capA4: 7, colsA4: 4, layout: 'liveshop', logoBox: true });
+  let sparse = build(5)[0]; eq(sparse.empty, 2, 'espaços vazios na folha');
+  let hint = C.emptyHint(sparse); eq([hint.empty, C.plainTitle(hint.item)], [2, 'Produto 5'], 'sugestão: último produto');
+  let many = sparse.items[1]; many.group.rows.push({ brand: 'VONDER', desc: 'x', code: '1' }, { brand: 'VONDER', desc: 'y', code: '2' });
+  eq(C.plainTitle(C.emptyHint(sparse).item), 'Produto 2', 'sugestão: produto com mais linhas na tabela'); many.group.rows.length = 2;
+  hint.item.wide = true; CartazPagination.placeLive(sparse); eq(sparse.empty, 1, 'destaque ocupa 1 vaga');
+  let full = build(7)[0]; eq([full.empty, C.emptyHint(full)], [0, null], 'folha cheia não sugere');
+  let oneCol = paginate('X', makeGroups(3, 'X')); setConfig(DEFAULT_CONFIG); eq(C.emptyHint(paginate('X', makeGroups(2, 'X'))[0]), null, 'fora do Live Shop não sugere');
+
+  document.body.dataset.result = 'pass';
+  document.body.textContent = 'PASS: busca, mover, redistribuir, excluir, edição de campos, linhas e sugestão de espaço vazio';
+} catch (error) {
+  document.body.dataset.result = 'fail';
+  document.body.textContent = 'FAIL: ' + error.message;
+}
+</script>
