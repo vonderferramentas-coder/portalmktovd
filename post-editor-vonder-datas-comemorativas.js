@@ -225,6 +225,15 @@
   // embaixo com o selo preto do Grupo OVD, título em duas linhas sobre as fotos e o calço amarelo à esquerda.
   // O banner começa igual à arte (fotos e textos), mas tem os próprios textos e fotos: mexer aqui não muda o post.
   var BN={w:900,h:258,photoH:239,panelY:179,panelW:485,panelR:22,bar:'#FDC300'};
+  // degradê atrás da logo do Grupo OVD: o "Grupo" é amarelo, sem borda, e sumia sobre foto clara. Escuro colado ao selo preto (y 228), some para cima (90 px)
+  // e para a esquerda (acompanha a ponta inclinada do selo); montado uma vez num canvas à parte.
+  var SHADE={x:690,y:140,w:210,h:100},shadeCv=null;
+  function bnShade(){
+    if(shadeCv)return shadeCv;var c=document.createElement('canvas');c.width=SHADE.w;c.height=SHADE.h;var x=c.getContext('2d');
+    var v=x.createLinearGradient(0,0,0,SHADE.h-11);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(.4,'rgba(0,0,0,.28)');v.addColorStop(1,'rgba(0,0,0,.88)');x.fillStyle=v;x.fillRect(0,0,SHADE.w,SHADE.h);
+    x.globalCompositeOperation='destination-in';var h=x.createLinearGradient(0,0,100,0);h.addColorStop(0,'rgba(0,0,0,0)');h.addColorStop(1,'rgba(0,0,0,1)');x.fillStyle=h;x.fillRect(0,0,SHADE.w,SHADE.h);
+    return shadeCv=c
+  }
   var BN_DEFAULT={four:[2,3,0,1],two:[0,1],single:[0]};  // grade de 4: as duas de baixo antes das de cima, como no modelo
   var logoImg=null,logoP=null;
   // ordem das fotos no banner: uma permutação de 0..n-1 (vale o que veio salvo se for válido; senão a padrão da grade)
@@ -313,9 +322,8 @@
     var pitch=size*1.2,first=BN.panelY+(BN.photoH-BN.panelY)/2-(lines.length-1)*pitch/2+size*.35;
     ctx.fillStyle='#1e1e1e';if(mlist.length)lines.slice(0,3).forEach(function(l,i){drawRuns(ctx,'bnMsg',l,47,first+i*pitch,size)})
     }
-    // degradê escuro atrás da logo, nascendo do selo preto: o "Grupo" é amarelo, sem borda, e sumia sobre foto clara
-    var gl=ctx.createRadialGradient(836,228,0,836,228,70);gl.addColorStop(0,'rgba(0,0,0,.9)');gl.addColorStop(.55,'rgba(0,0,0,.52)');gl.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.save();ctx.beginPath();ctx.rect(0,0,BN.w,BN.photoH);ctx.clip();ctx.fillStyle=gl;ctx.fillRect(760,150,BN.w-760,90);ctx.restore();
+    // degradê escuro atrás da logo, nascendo da borda de cima do selo preto e subindo pela foto
+    ctx.save();ctx.beginPath();ctx.rect(0,0,BN.w,BN.photoH);ctx.clip();ctx.drawImage(bnShade(),SHADE.x,SHADE.y);ctx.restore();
     // barra amarela e selo preto do Grupo OVD
     ctx.fillStyle=BN.bar;ctx.fillRect(0,BN.photoH,BN.w,BN.h-BN.photoH);
     ctx.fillStyle='#000';ctx.beginPath();ctx.moveTo(777,228);ctx.lineTo(BN.w,228);ctx.lineTo(BN.w,BN.h);ctx.lineTo(763,BN.h);ctx.closePath();ctx.fill();
