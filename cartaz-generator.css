@@ -341,6 +341,7 @@ button:disabled {
     pointer-events: none;
 }
 .cutwarn {
+    cursor: pointer;
     position: absolute;
     top: 4px;
     right: 4px;
@@ -2372,6 +2373,7 @@ button:disabled {
 .sheet.lb-sheet.a3.lb-header-full { padding-top: 245px; }
 /* altura das linhas definida por fitLiveRows (cards largos): linhas fixas, conjunto centralizado */
 .sheet.lb-sheet.cfg-grid { grid-template-rows: repeat(var(--rows), var(--rowh, minmax(0, 1fr))); align-content: center; }
+.sheet.lb-sheet.cfg-grid { grid-template-columns: repeat(var(--cols), var(--colw, minmax(0, 1fr))); justify-content: center; } /* --colw: ver fitLiveRows */
 .card.lb { display: flex; flex-direction: column; gap: calc(3px * var(--u, 1)); padding: calc(8px * var(--u, 1)); background: #fff; border-radius: 12px; }
 .card.lb h3 { width: 100%; max-height: none; flex: none; text-align: center; font-size: 13.5px; line-height: 1.08; -webkit-line-clamp: 3; line-clamp: 3; }
 .card.lb .lb-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
@@ -2380,6 +2382,8 @@ button:disabled {
 .card.lb:has(.lb-foot) .lb-right { overflow: visible; } /* com código no rodapé a foto pode descer pelo espaço em branco ao lado/acima dele */
 /* a coluna sempre corta e o JS prende a foto nela (apply em enablePhotoEditing). Moldura da edição: desenhada na coluna com as medidas da foto (--fl/--ft/--fr/--fb) */
 .card.lb .photo.photo-editing { outline: 0; }
+.card.lb .photo img { -webkit-user-drag: none; user-select: none; } /* o arrasto é da foto (editor), não do navegador */
+.card.lb .photo.photo-editing { touch-action: none; cursor: grab; }
 .card.lb .lb-right:has(.photo-editing)::after { content: ''; position: absolute; left: var(--fl, 0); top: var(--ft, 0); right: var(--fr, 0); bottom: var(--fb, 0); z-index: 3; box-sizing: border-box; border: 2px dashed #0c8794; pointer-events: none; }
 @media print { .card.lb .lb-right::after { display: none !important; } }
 .card.lb .photo { top: 0; right: 0; bottom: 0; left: 0; width: auto; height: auto; margin: 0; align-self: auto; }
@@ -2391,6 +2395,8 @@ button:disabled {
 .card.lb .lb-table thead th { border-bottom: 1px solid #000; } /* linha fina preta entre o cabeçalho (Descrição / Código) e as linhas da tabela */
 .card.lb .lb-table th + th, .card.lb .lb-table td + td { width: calc(11ch + 8px); }
 .card.lb .lb-table td + td { text-align: right; }
+.card.lb .lb-table.lb-fit { table-layout: auto; }
+.card.lb .lb-table.lb-fit th + th, .card.lb .lb-table.lb-fit td + td { width: 1%; white-space: nowrap; } /* "Consulte códigos" é mais largo que um código: a coluna encolhe ao texto, encostada no fim da tabela, e o cabeçalho acompanha o início do texto */
 .card.lb .lb-table td { padding: 0 4px; overflow: hidden; white-space: nowrap; text-overflow: clip; }
 .card.lb .lb-table tbody tr:nth-child(odd) { background: #e4e4e4; }
 .card.lb .lb-body.solo { grid-template-columns: 1fr; }
@@ -2441,9 +2447,12 @@ button:disabled {
 /* ===== Live Shop: destaque (2 colunas) e lista de cards da marca ===== */
 /* destaque: QR+botão e foto formam um conjunto centralizado e próximo, em vez de cada um colado numa ponta */
 .card.lb.wide .lb-body { display: flex; justify-content: center; align-items: stretch; gap: 4px; }
-.card.lb.wide .lb-left { flex: 0 0 34%; }
-.card.lb.wide .lb-right { flex: 0 0 46%; }
-.card.lb.wide .lb-qr { width: calc(64px * var(--u)); }
+.card.lb.wide .lb-left { flex: 0 0 22.4%; } /* QR+botão e foto do destaque têm o tamanho de um card comum (a foto pode ganhar zoom pelo editor) */
+.card.lb.wide .lb-right { flex: 0 0 22.4%; }
+/* card comum com QR e foto lado a lado: mesmo modelo do destaque (corpo flex centralizado; --pk = zoom da caixa da foto; a coluna do QR cede espaço até o conteúdo dela) */
+.card.lb:not(.wide) .lb-body:has(> .lb-left):has(> .lb-right) { display: flex; justify-content: center; align-items: stretch; gap: 6px; }
+.card.lb:not(.wide) .lb-body:has(> .lb-left):has(> .lb-right) > .lb-left { flex: 0 1 calc(50% - 3px); min-width: min-content; }
+.card.lb:not(.wide) .lb-body:has(> .lb-left):has(> .lb-right) > .lb-right { flex: 0 0 calc((50% - 3px) * var(--pk, 1)); }
 .card.lb.wide .lb-left, .card.lb.wide .lb-right { align-self: center; height: 100%; justify-content: center; }
 .card.lb .lb-tables { display: flex; gap: 6px; flex: none; width: 100%; }
 .card.lb .lb-tables .lb-table { flex: 1; width: auto; min-width: 0; }
@@ -2496,6 +2505,10 @@ button:disabled {
 
 /* menu "⋮" do cardzinho (mesmo visual do menu do Gerador de Consolidado) */
 .pages .bc-kebab { display: grid; place-items: center; flex: none; width: 24px; height: 24px; margin: 0; padding: 0 !important; border: 0; border-radius: 6px; background: transparent; color: var(--cg-muted); cursor: pointer; }
+.pages .bc-cut { display: grid; place-items: center; flex: none; width: 17px; height: 16px; margin: 0; padding: 0 !important; border: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); background: #ef6b5b; color: #fff; font: 900 11px/1 Arial, sans-serif; cursor: pointer; }
+.pages .bc-undo { clip-path: none; background: #F6BE00; color: #3a2a00; width: 20px; height: 20px; border-radius: 50%; }
+.pages .bc-undo:hover { filter: brightness(1.08); }
+.pages .bc-undo svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .pages .bc-kebab:hover { background: var(--cg-accent-weak); color: var(--cg-ink); }
 .card-menu { position: fixed; z-index: 1500; min-width: 220px; padding: 6px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-lg); animation: card-menu-in .12s ease-out; transform-origin: top right; }
 @keyframes card-menu-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
