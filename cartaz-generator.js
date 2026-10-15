@@ -640,12 +640,12 @@
             k = Math.min(k, Math.max(.5, (body.clientWidth - gap - minLeft) / half));
         }
         if (write && st) st.scale = k;
-        if (wide) side.style.flexBasis = (22.4 * k).toFixed(1) + '%'; else side.style.setProperty('--pk', k.toFixed(3)); side.style.transform = ''; side.style.alignSelf = k < 1 ? 'center' : ''; side.style.height = k < 1 ? (k * 100).toFixed(1) + '%' : ''; /* zoom menor que 1 também encurta a caixa: foto alta (ex.: lata) não fica presa à altura do corpo */ ph.style.transform = ''; if (left) left.style.transform = ''; ['fl', 'ft', 'fr', 'fb'].forEach(name => side.style.setProperty('--' + name, '0px')); /* moldura da edição = a caixa inteira */
+        if (wide) side.style.flexBasis = (22.4 * k).toFixed(1) + '%'; else side.style.setProperty('--pk', k.toFixed(3)); side.style.left = ''; side.style.alignSelf = k < 1 ? 'center' : ''; side.style.height = k < 1 ? (k * 100).toFixed(1) + '%' : ''; /* zoom menor que 1 também encurta a caixa: foto alta (ex.: lata) não fica presa à altura do corpo */ ph.style.transform = ''; if (left) left.style.left = ''; ['fl', 'ft', 'fr', 'fb'].forEach(name => side.style.setProperty('--' + name, '0px')); /* moldura da edição = a caixa inteira */
         if (!left || !body || !body.offsetWidth || card.closest('.cartaz-measure')) return;
         /* limite = a menor folga entre o QR e a borda esquerda do corpo e entre a foto e a borda direita, medida pelas caixas na tela (não por offsetLeft) */
         let flip = card.classList.contains('flip') /* lados trocados: a foto fica à esquerda e o QR à direita */, b = body.getBoundingClientRect(), l = left.getBoundingClientRect(), r = side.getBoundingClientRect(), outerL = flip ? r : l, outerR = flip ? l : r, room = Math.min(outerL.left - b.left, b.right - outerR.right), dir = flip ? -1 : 1;
         let x = Math.max(0, Math.min(room, st && st.x || 0)); if (write && st) st.x = x; /* só a edição grava; os redesenhos e as outras divisões apenas leem */
-        side.style.transform = 'translateX(' + dir * x + 'px)'; left.style.transform = 'translateX(' + -dir * x + 'px)';
+        side.style.left = dir * x + 'px'; left.style.position = 'relative'; left.style.left = -dir * x + 'px'; /* deslocamento por posição relativa, não por transform: o html2canvas corta o overflow da caixa onde ela estava antes do transform, e a foto saía cortada no PDF */
     }
     const boxMode = card => !!(card.querySelector('.lb-body > .lb-left') && card.querySelector('.lb-body > .lb-right') && !card.querySelector('.lb-foot')); /* QR e foto lado a lado: a foto é uma caixa que cresce com o zoom e se afasta do QR */
     function photoFit(card, ph, st) {
