@@ -336,14 +336,17 @@ function siteEligible(query){return CATALOG_SLUG==='vonder'&&query.trim().length
 function usageTrack(tool,action,key){try{window.PortalUsage&&window.PortalUsage.track(tool,action,key?{dedupeKey:key}:{})}catch(e){}}
 // Cancela a consulta ao site em andamento e a espera pendente (o usuário continuou digitando).
 function abortSite(){siteToken++;clearTimeout(siteTimer);if(siteAbort){siteAbort.abort();siteAbort=null}}
-function runSiteSearch(query){
+// retry=true: refaz a consulta com um parâmetro extra, para não pegar de novo uma resposta de erro guardada no cache de borda do Worker.
+function runSiteSearch(query,retry){
  var q=query.trim(),token=++siteToken;
- if(siteCache[q]){siteSearch={q:q,status:'done',items:siteCache[q]};renderCatalogResults();return}
+ if(siteCache[q]&&!retry){siteSearch={q:q,status:'done',items:siteCache[q]};renderCatalogResults();return}
  if(siteAbort)siteAbort.abort();siteAbort=window.AbortController?new AbortController():null;
  siteSearch={q:q,status:'loading',items:[]};renderCatalogResults();
- fetch(SITE_API+'/product-search?q='+encodeURIComponent(q),siteAbort?{signal:siteAbort.signal}:{}).then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data}})}).then(function(r){
-  if(token!==siteToken)return;if(r.ok)siteCache[q]=r.data.items||[];siteSearch.status=r.ok?'done':'error';siteSearch.items=(r.ok&&r.data.items)||[];renderCatalogResults()
- }).catch(function(){if(token!==siteToken)return;siteSearch.status='error';renderCatalogResults()})
+ fetch(SITE_API+'/product-search?q='+encodeURIComponent(q)+(retry?'&_='+Date.now():''),siteAbort?{signal:siteAbort.signal}:{}).then(function(res){return res.json().then(function(data){return{ok:res.ok,status:res.status,data:data}},function(){return{ok:false,status:res.status,data:{}}})}).then(function(r){
+  if(token!==siteToken)return;
+  if(!r.ok&&!retry&&r.status>=500)return runSiteSearch(query,true); // o site FG falhou na hora: uma segunda tentativa automática
+  if(r.ok)siteCache[q]=r.data.items||[];siteSearch.status=r.ok?'done':'error';siteSearch.code=r.ok?0:r.status;siteSearch.items=(r.ok&&r.data.items)||[];renderCatalogResults()
+ }).catch(function(){if(token!==siteToken)return;if(!retry)return runSiteSearch(query,true);siteSearch.status='error';siteSearch.code=0;renderCatalogResults()})
 }
 // Só dispara sozinho quando o catálogo não tem nada para o termo; com resultados locais fica o link "Buscar no site".
 function scheduleSiteSearch(value){
@@ -367,7 +370,7 @@ function siteResultsHtml(query,hasLocal,localCount){
  var state=siteSearch.q===query.trim()?siteSearch.status:'idle',note=function(title,text,action){return'<div class="pe-catalog-empty"><strong>'+title+'</strong>'+(text?'<p>'+text+'</p>':'')+(action||'')+'</div>'};
  if(state==='idle')return hasLocal?'<button type="button" class="pe-catalog-more" id="siteMore">Não encontrou? Buscar no site</button>':skeletonHtml();
  if(state==='loading')return hasLocal?'<div class="pe-catalog-group">Buscando no site…</div>':skeletonHtml();
- if(state==='error')return note('Não foi possível consultar o site agora','Tente novamente ou use "Continuar sem catálogo".','<button type="button" class="pe-catalog-site" id="siteRetry">Tentar novamente</button>');
+ if(state==='error')return note('Não foi possível consultar o site agora','Tente novamente ou use "Continuar sem catálogo".'+(siteSearch.code?' (erro '+siteSearch.code+')':''),'<button type="button" class="pe-catalog-site" id="siteRetry">Tentar novamente</button>');
  if(!siteSearch.items.length)return note('Nenhum produto encontrado no site','Confira o nome ou o código, ou use "Continuar sem catálogo".');
  return'<div class="pe-catalog-group">Encontrados no site</div>'+siteSearch.items.map(function(item,index){var focused=localCount+index===catalogFocus;return'<button type="button" class="pe-catalog-item'+(focused?' is-focused':'')+'" data-site-index="'+index+'" role="option" aria-selected="'+focused+'">'+(item.thumb?'<img alt="" loading="lazy" decoding="async">':'<span class="pe-selected-thumb">＋</span>')+'<span><strong>'+escapeHtml(item.name)+'</strong><small>'+escapeHtml(item.code)+'</small></span><span>›</span></button>'}).join('')
 }
@@ -409,7 +412,7 @@ function renderCatalogResults(){
  });
  $$('#catalogResults [data-site-index]').forEach(function(btn){var item=siteSearch.items[Number(btn.dataset.siteIndex)],img=btn.querySelector('img');btn.addEventListener('click',function(){openSiteProduct(item.code,btn)});if(img)setImgWithFallback(img,[item.thumb],function(){var ph=document.createElement('span');ph.className='pe-selected-thumb';ph.textContent='＋';img.replaceWith(ph)})});
  $$('#catalogResults [data-browse]').forEach(function(btn){btn.addEventListener('click',function(){var input=$('#catalogSearch');input.value=btn.dataset.browse;input.dispatchEvent(new Event('input'));input.focus()})});
- var more=$('#siteMore'),retry=$('#siteRetry');if(more)more.addEventListener('click',function(){runSiteSearch(query)});if(retry)retry.addEventListener('click',function(){runSiteSearch(query)})
+ var more=$('#siteMore'),retry=$('#siteRetry');if(more)more.addEventListener('click',function(){runSiteSearch(query)});if(retry)retry.addEventListener('click',function(){runSiteSearch(query,true)})
 }
 // carrega o catálogo desta marca via CatalogProvider (ver catalog-provider.js) - nunca lê
 // JSON nem localStorage diretamente aqui, só consome a Promise; assim, se a origem do

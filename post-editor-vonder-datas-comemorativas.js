@@ -316,7 +316,10 @@
     // barra amarela e selo preto do Grupo OVD
     ctx.fillStyle=BN.bar;ctx.fillRect(0,BN.photoH,BN.w,BN.h-BN.photoH);
     ctx.fillStyle='#000';ctx.beginPath();ctx.moveTo(777,228);ctx.lineTo(BN.w,228);ctx.lineTo(BN.w,BN.h);ctx.lineTo(763,BN.h);ctx.closePath();ctx.fill();
-    if(logoImg)ctx.drawImage(logoImg,793,197,84,45)
+    if(logoImg){ /* sombra escura atrás da logo: o "Grupo" é amarelo, sem borda, e some quando a foto atrás é clara; duas passadas deixam a sombra densa */
+      ctx.save();ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=6;ctx.shadowOffsetX=0;ctx.shadowOffsetY=1.5;
+      ctx.drawImage(logoImg,793,197,84,45);ctx.drawImage(logoImg,793,197,84,45);ctx.restore()
+    }
   }
   // lista de fotos do banner, no mesmo molde da lista de fotos da arte: alça para reordenar, miniatura (clique envia outra foto só para o
   // banner), nome, zoom, centralizar e "usar a da arte"
