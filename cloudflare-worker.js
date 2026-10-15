@@ -67,7 +67,8 @@ const isVonderBrand=product=>/^vonder\b/i.test(String(product&&product.brand||''
 // Consultas ao site FG pelas rotas novas: cache de borda de 10 min (mesma URL = mesma resposta, sem nova ida ao site; acelera buscas
 // repetidas e protege o site e a cota do Worker). Barreira de origem: só o portal chama (o Origin é falsificável fora de um navegador,
 // então isto só barra uso casual; contra abuso de verdade há a regra de limite de requisições do Cloudflare, ver ARQUITETURA seção do Worker).
-const vtexFetch=url=>fetch(url,{headers:{Accept:'application/json'},cf:{cacheTtl:600,cacheEverything:true}});
+// Só respostas boas ficam 10 min no cache de borda; erro do site FG (429/5xx) não é guardado, senão a mesma busca falharia até o cache vencer.
+const vtexFetch=url=>fetch(url,{headers:{Accept:'application/json'},cf:{cacheTtlByStatus:{'200-299':600,'300-599':-1},cacheEverything:true}});
 const originAllowed=request=>ALLOWED_ORIGINS.has(request.headers.get('Origin')||'');
 const formatCode=digits=>digits.length===10?digits.replace(/^(\d{2})(\d{2})(\d{3})(\d{3})$/,'$1.$2.$3.$4'):digits;
 // Tabela de especificações do site (descrição do produto): linhas [rótulo, valor] em texto limpo.
