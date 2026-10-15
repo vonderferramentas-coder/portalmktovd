@@ -313,13 +313,13 @@
     var pitch=size*1.2,first=BN.panelY+(BN.photoH-BN.panelY)/2-(lines.length-1)*pitch/2+size*.35;
     ctx.fillStyle='#1e1e1e';if(mlist.length)lines.slice(0,3).forEach(function(l,i){drawRuns(ctx,'bnMsg',l,47,first+i*pitch,size)})
     }
+    // degradê escuro atrás da logo, nascendo do selo preto: o "Grupo" é amarelo, sem borda, e sumia sobre foto clara
+    var gl=ctx.createRadialGradient(836,228,0,836,228,70);gl.addColorStop(0,'rgba(0,0,0,.9)');gl.addColorStop(.55,'rgba(0,0,0,.52)');gl.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.save();ctx.beginPath();ctx.rect(0,0,BN.w,BN.photoH);ctx.clip();ctx.fillStyle=gl;ctx.fillRect(760,150,BN.w-760,90);ctx.restore();
     // barra amarela e selo preto do Grupo OVD
     ctx.fillStyle=BN.bar;ctx.fillRect(0,BN.photoH,BN.w,BN.h-BN.photoH);
     ctx.fillStyle='#000';ctx.beginPath();ctx.moveTo(777,228);ctx.lineTo(BN.w,228);ctx.lineTo(BN.w,BN.h);ctx.lineTo(763,BN.h);ctx.closePath();ctx.fill();
-    if(logoImg){ /* sombra escura atrás da logo: o "Grupo" é amarelo, sem borda, e some quando a foto atrás é clara; duas passadas deixam a sombra densa */
-      ctx.save();ctx.shadowColor='rgba(0,0,0,.8)';ctx.shadowBlur=6;ctx.shadowOffsetX=0;ctx.shadowOffsetY=1.5;
-      ctx.drawImage(logoImg,793,197,84,45);ctx.drawImage(logoImg,793,197,84,45);ctx.restore()
-    }
+    if(logoImg)ctx.drawImage(logoImg,793,197,84,45)
   }
   // lista de fotos do banner, no mesmo molde da lista de fotos da arte: alça para reordenar, miniatura (clique envia outra foto só para o
   // banner), nome, zoom, centralizar e "usar a da arte"
