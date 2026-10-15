@@ -225,12 +225,12 @@
   // embaixo com o selo preto do Grupo OVD, título em duas linhas sobre as fotos e o calço amarelo à esquerda.
   // O banner começa igual à arte (fotos e textos), mas tem os próprios textos e fotos: mexer aqui não muda o post.
   var BN={w:900,h:258,photoH:239,panelY:179,panelW:485,panelR:22,bar:'#FDC300'};
-  // degradê atrás da logo do Grupo OVD: o "Grupo" é amarelo, sem borda, e sumia sobre foto clara. Escuro colado ao selo preto (y 228), some para cima (~60 px)
+  // degradê atrás da logo do Grupo OVD: o "Grupo" é amarelo, sem borda, e sumia sobre foto clara. Escuro colado ao selo preto (y 228), some para cima (~75 px)
   // e para a esquerda (acompanha a ponta inclinada do selo); montado uma vez num canvas à parte.
-  var SHADE={x:720,y:170,w:180,h:70},shadeCv=null;
+  var SHADE={x:720,y:155,w:180,h:85},shadeCv=null;
   function bnShade(){
     if(shadeCv)return shadeCv;var c=document.createElement('canvas');c.width=SHADE.w;c.height=SHADE.h;var x=c.getContext('2d');
-    var v=x.createLinearGradient(0,0,0,SHADE.h-11);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(.5,'rgba(0,0,0,.1)');v.addColorStop(.8,'rgba(0,0,0,.34)');v.addColorStop(1,'rgba(0,0,0,.56)');x.fillStyle=v;x.fillRect(0,0,SHADE.w,SHADE.h);
+    var v=x.createLinearGradient(0,0,0,SHADE.h-11);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(.3,'rgba(0,0,0,.12)');v.addColorStop(.55,'rgba(0,0,0,.4)');v.addColorStop(.7,'rgba(0,0,0,.55)');v.addColorStop(1,'rgba(0,0,0,.66)');x.fillStyle=v;x.fillRect(0,0,SHADE.w,SHADE.h);
     x.globalCompositeOperation='destination-in';var h=x.createLinearGradient(0,0,70,0);h.addColorStop(0,'rgba(0,0,0,0)');h.addColorStop(1,'rgba(0,0,0,1)');x.fillStyle=h;x.fillRect(0,0,SHADE.w,SHADE.h);
     return shadeCv=c
   }
