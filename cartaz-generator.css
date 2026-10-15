@@ -573,16 +573,6 @@ button:disabled {
     background: #fff;
     border-radius: 12px;
 }
-.cg-sheet-note {
-    position: absolute;
-    left: 30px;
-    right: 30px;
-    bottom: 96px;
-    color: #d9edf0;
-    text-align: center;
-    font-size: 8px;
-    letter-spacing: .03em;
-}
 .sheet {
     display: block;
     padding: 0;
@@ -592,16 +582,6 @@ button:disabled {
 .sheet::after,
 .sheet::before {
     display: none;
-}
-.ai-template {
-    display: block;
-    width: 100%;
-    height: auto;
-}
-.template-note {
-    margin: 12px 0 0;
-    color: #52636c;
-    font-size: 13px;
 }
 .sheet {
     position: relative;
@@ -619,10 +599,6 @@ button:disabled {
 }
 .sheet::before,
 .sheet::after {
-    display: none;
-}
-.ai-template,
-.template-note {
     display: none;
 }
 .placeholder {
@@ -713,23 +689,6 @@ button:disabled {
     .card .photo.photo-editing {
         outline: none !important;
     }
-}
-.brand-filter {
-    display: grid;
-    gap: 6px;
-    margin: 0 0 12px;
-    font-size: 12px;
-    font-weight: 700;
-}
-.brand-filter select {
-    width: 100%;
-    min-height: 38px;
-    border: 1px solid var(--cg-line);
-    border-radius: 7px;
-    padding: 0 10px;
-    background: var(--cg-card);
-    color: var(--cg-ink);
-    font: inherit;
 }
 .preview {
     display: grid;
@@ -1096,14 +1055,6 @@ button:disabled {
     background: var(--cg-btn-bg);
     color: var(--cg-ink);
     border: 1px solid var(--cg-line);
-}
-.link-bar .link-start {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    width: 100%;
-    padding: 9px 10px;
 }
 .link-icon {
     width: 15px;
@@ -2296,8 +2247,6 @@ button:disabled {
 .cfg-fld[open]::details-content { block-size: auto; }
 .cfg-fld .cfg-body { padding: 2px 14px 14px; }
 .cfg-fld .cfg-btnrow { padding: 0; }
-.cfg-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; }
-@media (max-width: 700px) { .cfg-fields { grid-template-columns: 1fr; } }
 .cfg-seg-2 { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
 .cfg-pv .sheet-legal { position: static; grid-column: 1 / -1; margin-top: 6px; }
 .cfg-sec h3 { margin: 0; text-transform: none; letter-spacing: 0; display: flex; align-items: baseline; gap: 8px; font-size: 14px; font-weight: 700; color: var(--cg-ink); }
@@ -2311,7 +2260,6 @@ button:disabled {
 .cfg-sheet { display: grid; grid-template-columns: 36px 1fr 1fr; gap: 8px 12px; align-items: center; }
 .cfg-col { color: var(--cg-muted); font-size: 12px; font-weight: 600; }
 .cfg-sheet b { font-size: 13px; }
-.cfg-two { display: grid; gap: 12px; }
 .cfg-toggle { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .cfg-toggle span { display: grid; gap: 2px; font-size: 13px; }
 .cfg-toggle small { color: var(--cg-muted); font-size: 12px; }
@@ -2355,7 +2303,6 @@ button:disabled {
 .cfg-inline .grow { flex: 1; min-width: 0; }
 .cfg-inline .cfg-field input.cfg-color { margin: 3px 0; } /* 30 + 6 = altura dos campos de texto (36), para os títulos ficarem na mesma linha */
 .cfg-chips-head { padding-right: 8px; text-align: right; color: var(--cg-muted); font-size: 11px; font-weight: 600; }
-.cfg-sub { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--cg-line); border-radius: 10px; background: var(--cg-btn-bg); }
 .cfg-btnrow { display: grid; gap: 12px; }
 .cfg-btnprev { display: grid; place-items: center; min-height: 36px; padding: 0 8px; border: 1px solid #000; border-radius: 5px; color: #000; font: 700 11px/1.1 Arial, sans-serif; text-align: center; overflow: hidden; }
 .cfg-warn { margin: 0; color: var(--cg-accent); font-size: 12px; }

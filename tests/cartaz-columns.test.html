@@ -2,6 +2,7 @@
 <meta charset="utf-8">
 <title>Teste das colunas do Gerador de Cartazes</title>
 <body data-result="running">RUNNING</body>
+<script src="../vendor/xlsx.full.min.js"></script>
 <script src="../cartaz-columns.js"></script>
 <script>
 // Roda em Chrome headless: chrome --headless=new --dump-dom file:///.../tests/cartaz-columns.test.html
@@ -30,9 +31,6 @@ try {
   const numeric = [{ x: 3199000475, y: 'Adubadeira manual', z: 7898322710072 }, { x: 3880003155, y: 'Alicate amperímetro', z: 7898112603515 }];
   eq(run(['x', 'y', 'z'], numeric), { ovd: 'x', title: 'y', barcode: 'z' }, 'conteúdo: células numéricas');
 
-  document.body.dataset.result = 'pass';
-  document.body.textContent = 'PASS: colunas identificadas por cabeçalho (sinônimos, barras correto x antigo) e por conteúdo';
-} catch (error) {
   // Live Shop: modelo de cada linha, link e quantidade mínima (o título não vira a descrição)
   const live = CartazColumns.detect(['CÓDIGO OVD', 'CÓDIGO FG', 'NOME DO TÍTULO', 'DESCRIÇÃO/MODELO', 'CÓDIGO PRINCIPAL', 'MARCA', 'LINK', 'QUANTIDADE MÍNIMA'], []);
   eq([live.title, live.desc, live.link, live.minQty, live.ovd], ['NOME DO TÍTULO', 'DESCRIÇÃO/MODELO', 'LINK', 'QUANTIDADE MÍNIMA', 'CÓDIGO OVD'], 'colunas do Live Shop');
@@ -42,6 +40,19 @@ try {
   const links = CartazColumns.detect(['CÓDIGO OVD', 'CÓDIGO FG', 'NOME DO TÍTULO', 'LINK OSTEN', 'LINK DISMATAL', 'LINK VONDER', 'QUANTIDADE MÍNIMA'], []);
   eq([links.links, links.link, links.barcode], [{ osten: 'LINK OSTEN', dismatal: 'LINK DISMATAL', vonder: 'LINK VONDER' }, undefined, undefined], 'um link por divisão, sem coluna de barras');
 
+  // Linha pintada = produto principal: cor RGB e de tema contam; branco e sem preenchimento, não
+  const solid = fgColor => ({ patternType: 'solid', fgColor });
+  const sheet = { '!ref': 'A1:B5', A1: { v: 'Código comercial' }, B1: { v: 'Modelo' }, A2: { v: 1, s: solid({ rgb: 'BDD7EE' }) }, A3: { v: 2 }, A4: { v: 3, s: solid({ theme: 4, tint: .8 }) }, A5: { v: 4, s: solid({ rgb: 'FFFFFFFF' }) } };
+  eq(CartazColumns.markedRows(sheet, 'Código comercial', 4), [true, false, true, false], 'linhas pintadas');
+  eq(CartazColumns.markedRows(sheet, 'Coluna que não existe', 4), [false, false, false, false], 'cabeçalho ausente: ninguém marcado');
+  eq(CartazColumns.markedRows({ A1: { v: 'x' } }, 'x', 2), [false, false], 'planilha sem !ref nem estilos');
+  // Catálogo: OVD (com pontos) -> FG; sem codeFG fica de fora
+  const fg = CartazColumns.fgMap([{ code: '33.56.380.000', codeFG: 1086108 }, { code: '74.36.010.015' }, { code: '62.40.020.000', codeFG: '1101264' }]);
+  eq([fg.get('3356380000'), fg.get('7436010015'), fg.get('6240020000'), fg.size], ['1086108', undefined, '1101264', 2], 'mapa OVD -> FG');
+
+  document.body.dataset.result = 'pass';
+  document.body.textContent = 'PASS: colunas por cabeçalho e por conteúdo, colunas do Live Shop, linha pintada e mapa OVD -> FG';
+} catch (error) {
   document.body.dataset.result = 'fail';
   document.body.textContent = 'FAIL: ' + error.message;
 }

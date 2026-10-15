@@ -47,5 +47,19 @@
     return cols;
   }
 
-  window.CartazColumns = { detect, norm, BARCODE_LENGTHS };
+  // Linhas da planilha cujo código (coluna `header`) tem cor de preenchimento: a linha pintada é o produto principal do card.
+  // Branco e "sem preenchimento" não contam. Precisa do XLSX lido com { cellStyles: true }.
+  function markedRows(sheet, header, count) {
+    const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1'), cell = (r, c) => sheet[XLSX.utils.encode_cell({ r, c })];
+    let col = range.s.c; while (col <= range.e.c && String(cell(range.s.r, col)?.v ?? '').trim() !== header) col++;
+    return Array.from({ length: count }, (_, i) => {
+      const fill = cell(range.s.r + 1 + i, col)?.s;
+      return !!fill && fill.patternType === 'solid' && fill.fgColor?.theme !== 0 && !/^(FF)?FFFFFF$/i.test(fill.fgColor?.rgb || '');
+    });
+  }
+
+  // Código OVD (só dígitos) -> código FG, a partir do catálogo (data/catalog-vonder.json). Produto sem codeFG fica de fora.
+  const fgMap = catalog => new Map(catalog.filter(p => p.codeFG).map(p => [String(p.code).replace(/\D/g, ''), String(p.codeFG)]));
+
+  window.CartazColumns = { detect, norm, markedRows, fgMap, BARCODE_LENGTHS };
 })();

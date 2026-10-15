@@ -70,6 +70,10 @@ Padrão do Gerador de Consolidado, reaproveitado no Gerador de Cartazes e em Dat
 
 - **Painéis de configuração** (referência: "Configurações do cartaz", `.cfg-*` em `cartaz-generator.css`): seções numeradas (01, 02…), cada uma um dropdown fechado por padrão (`.cfg-sec`, animação do §1), com **prévia ao vivo** ao lado quando houver resultado visual; ligar/desligar por **switch** (`.cfg-switch`, amarelo ligado); escolha entre poucas opções por **segmentado** (`.cfg-seg`); cor em quadradinho ao lado do campo; texto de ajuda pequeno e cinza abaixo do título; aviso em `--cg-accent`.
 
+- **Alertas na lista lateral** (Gerador de Cartazes): triângulo vermelho (`.bc-cut`, `#ef6b5b`) no item que tem problema, ao lado do menu ⋯; clicar abre o modal que resolve. Ação reversível ganha um botão circular amarelo (`.bc-undo`, `#F6BE00`) com a seta de desfazer, só na lista, nunca na prévia da folha.
+- **Modal de decisão** (`<dialog class="cg-dialog">`): título, texto curto com a contagem do problema e dois botões — o que não muda nada ("Tratar na planilha") e o que aplica (`.save-grid`, amarelo). Fechar no × não altera nada. A ação aplicada entra no Ctrl+Z.
+- **Foto ao lado do QR** (cards Live Shop, comuns e destaque): a foto é uma caixa que cresce e encolhe com o zoom (roda do mouse, 0,5x a 2x, depois de duplo clique); o corpo do card é centralizado, então o QR cede espaço sozinho e o conjunto continua no meio. Arrastar a foto ou usar ← → (Shift = passo maior) afasta foto e QR em sentidos opostos até a borda do corpo; a posição fica na grade salva. Com os lados trocados (segurar e arrastar) o sentido se inverte. Foto em edição nunca dispara a troca de lados.
+
 ## 6. A detalhar
 
 - Paleta, tipografia e escala de espaçamento (hoje espalhadas em `styles.css` e `cartaz-generator.css`).
