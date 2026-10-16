@@ -458,6 +458,21 @@ export async function readQrHits(id) {
   return snap.docs.map(d => { const v = d.data(); return { t: v.t.toDate(), os: v.os, lang: v.lang }; });
 }
 
+// Biblioteca compartilhada de QR Codes (todos os usuários ativos veem; só o dono ou admin altera).
+export async function listQrCodes() {
+  await currentContext();
+  const snap = await getDocs(query(collection(db, 'qrCodes'), limit(2000)));
+  return snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+export async function writeQrCode(item) {
+  await currentContext();
+  await setDoc(doc(db, 'qrCodes', item.id), item);
+}
+export async function deleteQrCode(id) {
+  await currentContext();
+  await deleteDoc(doc(db, 'qrCodes', id));
+}
+
 export { app, auth, db, profileFor, audit };
 
 window.PortalFirebase = {

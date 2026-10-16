@@ -65,6 +65,13 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Biblioteca de QR Codes: todo usuário ativo lê; só o dono (ownerUid) ou admin altera/apaga.
+    match /qrCodes/{qrId} {
+      allow read: if activeUser();
+      allow create: if activeUser() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if activeUser() && (resource.data.ownerUid == request.auth.uid || currentUser().role == 'admin');
+    }
+
     match /usageDaily/{summaryId} {
       allow read: if activeUser() && (currentUser().role == 'admin' || currentUser().role == 'gestao');
       allow write: if false;
