@@ -706,6 +706,8 @@ O Gerador de QR Codes (`qr-code-generator.html`) pode gerar um QR que aponta par
 
 **Biblioteca compartilhada (16/10/2026):** os QR Codes e links rastreáveis salvos deixaram de ficar no `localStorage` de cada navegador e passaram para a coleção `qrCodes` (Firestore), visível a todo usuário ativo. Regra em `firestore.rules`: qualquer usuário ativo lê; cria com `ownerUid` igual ao próprio uid; só o dono ou admin altera/apaga. O card mostra quem criou. Os QRs antigos do navegador são migrados sozinhos na primeira abertura. A unicidade do link (`marca/pasta/arquivo`) agora vale entre todos os usuários. **Requer publicar `firestore.rules` no HML e na produção.**
 
+**Relatório por e-mail do QR (16/10/2026):** o menu "⋯" de cada card com rastreio ganhou "Relatório por e-mail" (visível a todos, não só ao dono). Lê os acessos reais (`readQrHits`, sem testes), monta o texto no navegador e abre um modal editável com "Copiar texto" e "Abrir no Outlook" (rascunho `.eml`), no mesmo padrão do relatório de Redes Sociais. Sem IA, sem envio automático e sem serviço novo: a pessoa revisa e envia pelo próprio Outlook.
+
 **Limites conhecidos (ponytail):** a criação pública permite inflar a contagem de propósito, e o horário vem do aparelho; se virar problema, trocar por um Worker com limite de taxa. Não há "visitante único". A contagem mede escaneamentos, não visitas à página da vaga nem candidaturas (isso depende das UTMs no destino e do analytics/ATS do RH). O cadastro dos QRs continua no `localStorage` do navegador (por marca do portal). Servidor: `www.ovd.com.br` só precisa servir arquivos estáticos; a regra precisa ser publicada manualmente no projeto Firebase correspondente (HML primeiro).
 
 ## 22. Monitoramento de menções no YouTube (02/10/2026)
