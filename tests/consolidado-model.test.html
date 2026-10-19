@@ -1,7 +1,9 @@
 <!doctype html><meta charset="utf-8"><title>Teste do modelo do consolidado</title>
-<pre id="result">Executando…</pre>
+<body data-result="running"><pre id="result">Executando…</pre></body>
 <script src="../consolidado-model.js"></script>
 <script>
+const assert = (condition, message) => { if (!condition) throw new Error(message); };
+try {
 const rows = [
   ['Chamado', 'Código', '', 'Data'],
   ['100', '6004185900', 'PODADOR VONDER', ''],
@@ -9,16 +11,17 @@ const rows = [
   ['101', '6240300000', 'PULVERIZADOR VONDER®', '']
 ];
 const groups = ConsolidadoModel.parseRows(rows);
-console.assert(groups.length === 2, 'deve criar um produto por chamado');
-console.assert(groups[0].rows.length === 2, 'deve manter códigos sem chamado no produto anterior');
-console.assert(groups[0].rows[0].code === '6004185900', 'deve preservar o primeiro código para a foto');
-console.assert(ConsolidadoModel.photoUrl(groups[0].rows[0].code).endsWith('6004185900'), 'foto deve usar o primeiro código');
-console.assert(ConsolidadoModel.formatCode('6004185900') === '60.04.185.900', 'deve formatar o código OVD');
-console.assert(ConsolidadoModel.monthNumber('Agosto') === 8, 'deve reconhecer a aba mensal');
+assert(groups.length === 2, 'deve criar um produto por chamado');
+assert(groups[0].rows.length === 2, 'deve manter códigos sem chamado no produto anterior');
+assert(groups[0].rows[0].code === '6004185900', 'deve preservar o primeiro código para a foto');
+assert(ConsolidadoModel.photoUrl(groups[0].rows[0].code).endsWith('6004185900'), 'foto deve usar o primeiro código');
+assert(ConsolidadoModel.formatCode('6004185900') === '60.04.185.900', 'deve formatar o código OVD');
+assert(ConsolidadoModel.monthNumber('Agosto') === 8, 'deve reconhecer a aba mensal');
 const marcas = ConsolidadoModel.parseRows([['Chamado', 'Código', 'Produto'], ['1', '6012181220', 'Politriz, CG252 VONDER'], ['', '6012252220', 'Politriz para piso, 220 V~, CG252 CLIPPER'], ['2', '6839657', 'Ponta rotativa CM3, RÖHM']]);
-console.assert(marcas.length === 3 && marcas[0].brand === 'vonder' && marcas[1].brand === 'multi' && marcas[2].brand === 'multi', 'marca no título (CLIPPER, RÖHM) deve separar e cair em Multimarcas');
+assert(marcas.length === 3 && marcas[0].brand === 'vonder' && marcas[1].brand === 'multi' && marcas[2].brand === 'multi', 'marca no título (CLIPPER, RÖHM) deve separar e cair em Multimarcas');
 const proprias = ConsolidadoModel.parseRows([['Chamado', 'Código', 'Produto'], ['1', '1', 'Alicate para anéis, NOVE54'], ['2', '2', 'Martelo DWT'], ['3', '3', 'Furadeira TOOLMIX'], ['4', '4', 'Pá VONDER']]);
-console.assert(proprias.map(g => g.brand).join() === 'nove54,dwt,toolmix,vonder', 'Nove54, DWT e Toolmix no título devem ir para a seção própria');
-console.assert(ConsolidadoModel.brandOf({ multi: true }) === 'multi' && ConsolidadoModel.brandOf({}) === 'vonder' && ConsolidadoModel.brandOf({ brand: 'dwt', multi: true }) === 'dwt', 'itens antigos (multi) continuam abrindo na seção certa');
-document.getElementById('result').textContent = 'OK — agrupamento, foto, código e mês validados.';
+assert(proprias.map(g => g.brand).join() === 'nove54,dwt,toolmix,vonder', 'Nove54, DWT e Toolmix no título devem ir para a seção própria');
+assert(ConsolidadoModel.brandOf({ multi: true }) === 'multi' && ConsolidadoModel.brandOf({}) === 'vonder' && ConsolidadoModel.brandOf({ brand: 'dwt', multi: true }) === 'dwt', 'itens antigos (multi) continuam abrindo na seção certa');
+document.body.dataset.result = 'pass'; document.getElementById('result').textContent = 'OK — agrupamento, foto, código e mês validados.';
+} catch (error) { document.body.dataset.result = 'fail'; document.getElementById('result').textContent = 'FAIL: ' + error.message; }
 </script>

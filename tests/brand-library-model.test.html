@@ -1,0 +1,43 @@
+<!doctype html><meta charset="utf-8"><title>Teste da biblioteca de marcas</title>
+<body data-result="running">Executando…</body>
+<script src="../post-editor-assets/brands-manifest.js"></script>
+<script src="../brand-library-model.js"></script>
+<script>
+const M = BrandLibraryModel;
+const eq = (actual, expected, label) => { if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(label + ': esperado ' + JSON.stringify(expected) + ', veio ' + JSON.stringify(actual)); };
+try {
+  // versões do mesmo logo caem na mesma marca
+  const g = M.autoGroup(['NOVE54', 'NOVE54 B', 'NOVE54_branco', 'NOVE54 SLOGAN', 'Black_Decker', 'Black_Decker_horiz_color', 'AWT', 'AWT RED FP', 'Apex', 'Apex Tool Group']);
+  eq(g.map(b => b.name + ':' + b.logos.length), ['Apex:1', 'Apex Tool Group:1', 'AWT:2', 'Black Decker:2', 'NOVE54:4'], 'agrupamento por nome-base');
+  eq(g.find(b => b.name === 'NOVE54').logos[0], { name: 'NOVE54', label: 'Principal' }, 'versão principal primeiro');
+  eq(M.versionLabel('Black_Decker_horiz_color'), 'horiz color', 'rótulo da versão');
+
+  // a lista real: nenhum logo some nem aparece duas vezes
+  const all = window.OVD_BRAND_MANIFEST, groups = M.autoGroup(all), flat = groups.flatMap(b => b.logos.map(l => l.name));
+  eq(flat.length, all.length, 'todos os logos da lista aparecem');
+  eq(new Set(flat).size, all.length, 'nenhum logo repetido');
+  eq(new Set(groups.map(b => b.id)).size, groups.length, 'ids de marca únicos');
+
+  // ajustes salvos: ocultar continua, logo novo entra agrupado, logo removido do código sai, enviado fica
+  const saved = { brands: [{ id: 'awt', name: 'AWT', logos: [{ name: 'AWT', label: 'Principal', hidden: true }, { name: 'AWT_velho', label: 'velho' }, { name: 'AWT_enviado', label: 'Novo', custom: true, docId: 'd1' }] }] };
+  const merged = M.merge(saved, ['AWT', 'AWT RED', 'Zeta']);
+  const awt = merged.brands.find(b => b.id === 'awt');
+  eq(awt.logos.map(l => l.name), ['AWT', 'AWT_enviado', 'AWT RED'], 'junta o salvo com o código atual');
+  eq(awt.logos[0].hidden, true, 'logo oculto continua oculto');
+  eq(merged.brands.some(b => b.name === 'Zeta'), true, 'marca nova do código aparece');
+  eq(M.merge(null, ['A', 'B']).brands.length, 2, 'sem nada salvo, agrupa tudo');
+
+  // o que as telas de uso recebem
+  const v = M.visibility(merged);
+  eq([...v.hidden], ['AWT'], 'logos ocultos');
+  eq(v.custom, [{ name: 'AWT_enviado', docId: 'd1' }], 'logos enviados');
+
+  // nome do logo enviado: único, sem caracteres de arquivo, sem repetir os já usados
+  const taken = new Set(['nova marca']);
+  eq(M.customName('Nova Marca', 'Principal', taken), 'Nova Marca_2', 'nome repetido ganha número');
+  eq(M.customName('Nova/Marca', 'Branco', new Set()), 'Nova Marca_Branco', 'caractere inválido sai e versão entra');
+  document.body.dataset.result = 'pass'; document.body.textContent = 'PASS (' + groups.length + ' marcas, ' + all.length + ' logos)';
+} catch (error) {
+  document.body.dataset.result = 'fail'; document.body.textContent = 'FAIL: ' + error.message;
+}
+</script>

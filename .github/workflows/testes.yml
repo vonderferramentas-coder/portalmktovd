@@ -107,6 +107,32 @@ jobs:
           cat /tmp/cartaz-validator-dump.html
           grep -q 'data-result="pass"' /tmp/cartaz-validator-dump.html
 
+      - name: Biblioteca de marcas - agrupamento e ajustes (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --allow-file-access-from-files --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 --dump-dom "file://$(pwd)/tests/brand-library-model.test.html" > /tmp/brand-library-dump.html
+          cat /tmp/brand-library-dump.html
+          grep -q 'data-result="pass"' /tmp/brand-library-dump.html
+
+      - name: Download de logos - EPS vetorial e PNG sem fundo (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          # compara o desenho gerado para o EPS com o do navegador em logos reais; o Chrome às vezes fotografa a página ainda em "running"
+          for tentativa in 1 2 3 4 5; do
+            "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --allow-file-access-from-files --user-data-dir="$(mktemp -d)" --virtual-time-budget=120000 --dump-dom "file://$(pwd)/tests/brand-export.test.html" > /tmp/brand-export-dump.html
+            cat /tmp/brand-export-dump.html
+            grep -q 'data-result="running"' /tmp/brand-export-dump.html || break
+            echo "Tentativa $tentativa terminou em running; repetindo."
+          done
+          grep -q 'data-result="pass"' /tmp/brand-export-dump.html
+
+      - name: Consolidado - marcas por título e itens antigos (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 --dump-dom "file://$(pwd)/tests/consolidado-model.test.html" > /tmp/consolidado-model-dump.html
+          cat /tmp/consolidado-model-dump.html
+          grep -q 'data-result="pass"' /tmp/consolidado-model-dump.html
+
       - name: Limpeza das artes salvas - prazos e lixeira
         run: python3 tests/purge_art_drafts.test.py
 

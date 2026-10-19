@@ -526,6 +526,7 @@
       // Permissões por perfil - deixou de ser um bloqueio fixo de código (ver histórico) porque
       // agora é o próprio admin quem decide, por perfil, se ela fica visível ou não
       { href:'admin-users.html', label:'Usuários e acessos', icon:'<path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6Z"/>', defaultHidden:true },
+      { href:'marcas.html', label:'Marcas', icon:'<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><path d="M7 7h.01"/>', defaultHidden:true },
       { href:'usage-dashboard.html', label:'Métricas de performance', icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 16v-3M12 16V8M17 16v-5"/>', defaultHidden:true }
     ] }
   ];

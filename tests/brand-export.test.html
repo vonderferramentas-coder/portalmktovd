@@ -1,0 +1,70 @@
+<!doctype html><meta charset="utf-8"><title>Teste do download de logos (EPS/PNG)</title>
+<body data-result="running">Executando…</body>
+<script src="../post-editor-assets/brands-manifest.js"></script>
+<script src="../brand-export.js"></script>
+<script>
+const eq = (actual, expected, label) => { if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(label + ': esperado ' + JSON.stringify(expected) + ', veio ' + JSON.stringify(actual)); };
+const svgUri = text => 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(text)));
+const failsWith = (fn, pattern, label) => { try { fn(); } catch (error) { if (!pattern.test(error.message)) throw new Error(label + ': erro inesperado ' + error.message); return; } throw new Error(label + ': deveria falhar'); };
+
+// Redesenha as operações geradas para o EPS no canvas e compara com o que o navegador desenha do mesmo SVG: se baterem, o percurso, as transformações e os recortes estão certos.
+function replay(ctx, ops, base) {
+  ctx.setTransform(...base);
+  const path = segs => { const p = new Path2D(); segs.forEach(s => { if (s[0] === 'M') p.moveTo(s[1], s[2]); else if (s[0] === 'L') p.lineTo(s[1], s[2]); else if (s[0] === 'C') p.bezierCurveTo(...s.slice(1)); else p.closePath(); }); return p; };
+  const rgb = c => 'rgb(' + c.map(v => Math.round(v * 255)).join(',') + ')';
+  ops.forEach(op => {
+    if (op.op === 'save') ctx.save(); else if (op.op === 'restore') ctx.restore(); else if (op.op === 'concat') ctx.transform(...op.m);
+    else if (op.op === 'clip') ctx.clip(path(op.segs), op.evenodd ? 'evenodd' : 'nonzero');
+    else if (op.op === 'fill') { ctx.fillStyle = rgb(op.color); ctx.fill(path(op.segs), op.evenodd ? 'evenodd' : 'nonzero'); }
+    else { ctx.strokeStyle = rgb(op.color); ctx.lineWidth = op.width; ctx.lineJoin = op.join; ctx.lineCap = op.cap; ctx.miterLimit = op.miter; ctx.stroke(path(op.segs)); }
+  });
+}
+async function mismatch(text, size = 300) {
+  const result = BrandExport.svgToEps(text, 't'), box = result.box, scale = size / Math.max(box.outW, box.outH);
+  const width = Math.max(1, Math.round(box.outW * scale)), height = Math.max(1, Math.round(box.outH * scale));
+  const mine = document.createElement('canvas'), ref = document.createElement('canvas'); mine.width = ref.width = width; mine.height = ref.height = height;
+  const a = mine.getContext('2d'); replay(a, result.ops, [box.sx * scale, 0, 0, box.sy * scale, -box.x * box.sx * scale, -box.y * box.sy * scale]);
+  const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = svgUri(text); });
+  ref.getContext('2d').drawImage(img, 0, 0, width, height);
+  const x = a.getImageData(0, 0, width, height).data, y = ref.getContext('2d').getImageData(0, 0, width, height).data; let bad = 0;
+  for (let k = 3; k < x.length; k += 4) if (Math.abs(x[k] - y[k]) > 90) bad++;
+  return bad / (width * height);
+}
+function loadWrapper(name) {
+  return new Promise(resolve => { const s = document.createElement('script'); s.src = '../post-editor-assets/brands-js/' + encodeURIComponent(name) + '.js'; s.onload = s.onerror = () => resolve((window.OVD_BRAND_LOGOS || {})[name]); document.head.appendChild(s); });
+}
+
+(async () => { try {
+  // regras básicas: caminho relativo, formas, estrutura do EPS
+  const simple = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 10" width="40" height="20"><path d="m2 2 l6 0 v4 z" fill="#ff0000"/><circle cx="14" cy="5" r="3" fill="blue"/><rect x="1" y="7" width="4" height="2" fill="none" stroke="#000" stroke-width="0.5"/></svg>';
+  const eps = BrandExport.svgToEps(simple, 'Teste');
+  eq(/^%!PS-Adobe-3.0 EPSF-3.0\n/.test(eps.eps), true, 'cabeçalho EPS');
+  eq(/%%BoundingBox: 0 0 40 20\n/.test(eps.eps), true, 'caixa do desenho em pontos');
+  eq(eps.flip, [2, 0, 0, -2, 0, 20], 'origem do EPS fica embaixo (y invertido)');
+  eq((eps.eps.match(/gsave/g) || []).length, (eps.eps.match(/grestore/g) || []).length, 'gsave e grestore em par');
+  if ((await mismatch(simple)) > 0.01) throw new Error('forma simples difere do desenho do navegador');
+  failsWith(() => BrandExport.svgToEps('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 0A5 5 0 0 1 10 10"/></svg>'), /não suportada/, 'arco');
+  failsWith(() => BrandExport.svgToEps('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="5" height="5" opacity=".5"/></svg>'), /transparência/, 'transparência');
+  failsWith(() => BrandExport.svgToEps('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><image href="x.png" width="5" height="5"/></svg>'), /imagem embutida/, 'imagem');
+
+  // logos reais: o que converte tem que bater com o navegador; o que tem imagem embutida tem que recusar com o motivo
+  let compared = 0, refused = 0;
+  for (const name of ['NOVE54 B', 'DWT B', '3m', 'bosch', 'VONDER_TIP_PTO', 'VONDER_KIDS_PB', 'TOOLMIX_vazada_branco', 'Black_Decker', 'VONDER_KIDS_ESP']) {
+    const uri = await loadWrapper(name); if (!uri) continue;
+    let text = BrandExport.svgText(uri), ratio;
+    try { ratio = await mismatch(text); } catch (error) { if (!/imagem embutida/.test(error.message)) throw new Error(name + ': ' + error.message); refused++; continue; }
+    if (ratio > 0.02) throw new Error(name + ': ' + Math.round(ratio * 1000) / 10 + '% dos pixels diferem do navegador');
+    compared++;
+  }
+  eq(compared >= 5, true, 'logos reais comparados (' + compared + ')');
+  eq(refused >= 1, true, 'logo com imagem embutida é recusado (' + refused + ')');
+
+  // PNG: transparente nos cantos e com o lado maior em 2000 px
+  const blob = await BrandExport.toPngBlob(svgUri(simple)), bmp = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = URL.createObjectURL(blob); });
+  eq(blob.type, 'image/png', 'tipo do arquivo');
+  eq([bmp.width, bmp.height], [2000, 1000], 'tamanho do PNG');
+  const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; const cx = c.getContext('2d'); cx.drawImage(bmp, 0, 0);
+  eq(cx.getImageData(1990, 5, 1, 1).data[3], 0, 'canto sem fundo (transparente)');
+  document.body.dataset.result = 'pass'; document.body.textContent = 'PASS (' + compared + ' logos comparados, ' + refused + ' recusado(s) por imagem embutida)';
+} catch (error) { document.body.dataset.result = 'fail'; document.body.textContent = 'FAIL: ' + error.message; } })();
+</script>

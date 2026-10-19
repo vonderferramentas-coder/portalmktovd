@@ -364,6 +364,24 @@ export async function readArtPhoto(hash) {
   return snapshot.exists() ? { bytes: snapshot.data().data.toUint8Array(), type: snapshot.data().type || 'image/jpeg' } : null;
 }
 
+// Logos enviados pela tela Marcas (Administração): 1 documento por logo, imagem como data: URI (SVG ou PNG/WebP já reduzido no navegador).
+// Quem lê: qualquer usuário ativo (editor de posts e cartaz usam). Quem grava/apaga: Admin e perfil Criação (ver firestore.rules).
+export async function readBrandLogo(id) {
+  await currentContext();
+  const snapshot = await getDoc(doc(db, 'brandLogos', String(id)));
+  return snapshot.exists() ? String(snapshot.data().data || '') : '';
+}
+
+export async function writeBrandLogo(id, data, type) {
+  const context = await currentContext();
+  await setDoc(doc(db, 'brandLogos', String(id)), { data: String(data), type: String(type), size: String(data).length, createdAt: serverTimestamp(), createdBy: context.user.uid });
+}
+
+export async function deleteBrandLogo(id) {
+  await currentContext();
+  await deleteDoc(doc(db, 'brandLogos', String(id)));
+}
+
 // Total de bytes de fotos (gravado pela limpeza diária, só Admin SDK); { photoBytes: 0 } enquanto a limpeza não rodou.
 export async function readArtStats() {
   await currentContext();
@@ -477,7 +495,7 @@ export { app, auth, db, profileFor, audit };
 
 window.PortalFirebase = {
   readPortalStore, writePortalStore, deletePortalStore, ensurePostsStore, writePost, deletePost, subscribeToPosts,
-  readArtDraft, writeArtDraft, listArtDrafts, lockArtDraft, releaseArtDraftLock, setArtDraftDeleted, renameArtDraft, writeArtPhoto, readArtPhoto, readArtStats,
+  readArtDraft, writeArtDraft, listArtDrafts, lockArtDraft, releaseArtDraftLock, setArtDraftDeleted, renameArtDraft, writeArtPhoto, readArtPhoto, readArtStats, readBrandLogo, writeBrandLogo, deleteBrandLogo,
   subscribeNotifications, markNotificationRead, currentContext, logout, requestPasswordReset,
   updateOwnProfile, recordUsageEvent, audit
 };
