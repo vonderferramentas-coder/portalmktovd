@@ -82,13 +82,23 @@
         <div class="profile-menu" id="profileMenu" role="listbox" aria-label="Perfis disponíveis"></div>
       </div>
     </section>
-    <section class="home-step home-tools-step" aria-labelledby="toolsTitle">
+    <div class="home-step home-map-head">
       <div class="home-step-heading"><span class="home-step-number">2</span>
         <div>
           <h2 id="toolsTitle">Escolha uma ferramenta</h2>
-          <p>Você entrará usando o perfil selecionado acima.</p>
+          <p>Clique numa ferramenta (ou, em Ver mapa, num galpão da cidade) ou use a busca. Você entrará usando o perfil selecionado acima.</p>
         </div>
+        <button type="button" class="hm-btn hm-toggle" id="hmToggle">Ver mapa</button>
       </div>
+    </div>
+    <section class="home-hero is-list" id="homeHero" aria-label="Mapa do portal">
+    <div class="hm-stage" id="hmStage" role="img"
+      aria-label="Mapa interativo da cidade do Grupo OVD: cada galpão é uma ferramenta do portal. Use Ver como lista para navegar pelo teclado.">
+      <canvas id="hmCanvas"></canvas><div class="hm-labels" id="hmLabels"></div>
+    </div>
+    <div class="hm-ui" id="hmUi"></div>
+    </section>
+    <section class="home-step home-tools-step" aria-labelledby="toolsTitle">
       <div class="tool-grid" id="toolGrid">
         <a class="tool-card" href="visual-editor.html"><span class="tool-icon"><svg width="24" height="24"
               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
@@ -198,6 +208,7 @@
   <script src="sync-backend.js"></script>
   <script src="portal-shell.js"></script>
   <script src="index.js"></script>
+  <script src="home-map.js"></script>
   <script type="module" src="home-auth.js"></script>
   <script type="module" src="mouse-light.js"></script>
 </body>

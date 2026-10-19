@@ -39,3 +39,63 @@ body.mouse-light-active.home-body::before{background:linear-gradient(180deg,var(
 .home-search input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;width:24px;height:24px;margin:0 -30px 0 0;border-radius:6px;cursor:pointer;background:var(--muted);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center/16px no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center/16px no-repeat}
 .home-search input::-webkit-search-cancel-button:hover{background:var(--accent-ink)}
 .home-search input:not(:placeholder-shown)~.home-search-icon{display:none}
+/* Mapa 3D (home-map.js), no padrão visual do WareTrack: começa abaixo do topo da Início (boas-vindas, busca e
+   perfil) e ocupa a largura toda da janela, sem moldura, com as bordas se dissolvendo no fundo da página.
+   Cores só por variáveis do tema (DESIGN.md §2); o amarelo da plataforma faz o papel do azul da referência. */
+.home-map-head{margin-top:42px}
+.home-map-head .home-step-heading{align-items:center}.home-map-head .home-step-heading>div{flex:1}
+.home-hero{position:relative;width:100vw;margin:4px 0 0 calc(50% - 50vw);height:clamp(640px,calc(100vh - 40px),980px);isolation:isolate}
+.hm-stage{position:absolute;inset:0;z-index:0;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 90px,#000 calc(100% - 110px),transparent 100%);mask-image:linear-gradient(to bottom,transparent 0,#000 90px,#000 calc(100% - 110px),transparent 100%)}
+.hm-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+.hm-stage canvas.is-drag{cursor:grabbing}.hm-stage canvas.is-hover{cursor:pointer}
+.hm-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hm-label{position:absolute;left:0;top:0;padding:3px 8px;border:1px solid var(--border);border-radius:7px;background:color-mix(in srgb,var(--card) 92%,transparent);color:var(--text);font-size:11px;font-weight:700;white-space:nowrap;box-shadow:var(--shadow-sm);transition:opacity .2s}
+.hm-label.is-truck{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-size:10.5px}
+.hm-label.is-sel{outline:2px solid var(--accent);outline-offset:1px}
+.hm-label.is-late{background:#ef6b5b;border-color:#ef6b5b;color:#fff}
+.hm-hint{position:absolute;left:50%;top:50%;z-index:2;transform:translate(-50%,-50%);padding:9px 14px;border-radius:11px;background:color-mix(in srgb,var(--text) 82%,transparent);color:var(--card);font-size:13px;font-weight:700;pointer-events:none;opacity:0;transition:opacity .2s}.hm-hint.is-on{opacity:1}
+/* camada de cards: só os cards recebem ponteiro, o resto passa pra cena */
+.hm-ui{position:absolute;inset:0;z-index:3;pointer-events:none}.hm-ui>*{pointer-events:auto}
+.hm-glass{background:color-mix(in srgb,var(--card) 90%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-md);color:var(--text)}
+.hm-ico{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;flex:0 0 auto;background:var(--accent-weak);color:var(--accent-ink)}
+.hm-sim{position:absolute;top:24px;left:24px;display:flex;align-items:center;gap:6px;padding:6px 8px}
+.hm-seg{display:flex;gap:2px;padding:2px;border-radius:9px;background:var(--surface-muted)}
+.hm-seg button{padding:5px 9px;border:0;border-radius:7px;background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.hm-seg button[aria-pressed="true"]{background:var(--card);color:var(--text);box-shadow:var(--shadow-sm)}
+.hm-pill{padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.hm-pill:hover{color:var(--text)}.hm-pill[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-weak);color:var(--accent-ink)}
+.hm-seg button:focus-visible,.hm-pill:focus-visible{outline:2px solid var(--accent)}
+.hm-sim-sep{width:1px;height:20px;background:var(--border)}
+.hm-state{position:absolute;top:76px;left:24px;width:460px;max-height:calc(100% - 430px);min-height:120px;overflow:auto;margin:0;padding:12px 14px;font:11px/1.55 ui-monospace,Consolas,monospace;white-space:pre-wrap}
+.hm-state[hidden]{display:none}
+.hm-zoom{position:absolute;top:24px;right:24px;padding:6px;display:flex;flex-direction:column;gap:2px;transition:right .25s ease}
+.hm-ui.has-panel .hm-zoom{right:374px}
+.hm-iconbtn{width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer}.hm-iconbtn:hover{background:var(--accent-weak);color:var(--text)}.hm-iconbtn:focus-visible{outline:2px solid var(--accent)}
+.hm-zoom hr{width:22px;margin:4px auto;border:0;border-top:1px solid var(--border)}
+.hm-panel{position:absolute;top:24px;right:24px;width:340px;max-height:calc(100% - 48px);overflow:auto;padding:14px 16px}
+.hm-panel[hidden]{display:none}
+.hm-panel-head{display:flex;align-items:flex-start;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.hm-panel-head small{display:block;color:var(--accent-ink);font-size:10px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
+.hm-panel-head strong{display:block;font-size:17px;line-height:1.25}.hm-panel-head span{display:block;margin-top:2px;color:var(--muted);font-size:12px}
+.hm-panel-head .hm-iconbtn{margin-left:auto;flex:0 0 auto}
+.hm-status{display:flex;align-items:center;gap:8px;margin:12px 0;color:var(--muted);font-size:12px}
+.hm-chip{display:inline-flex;align-items:center;padding:3px 9px;border-radius:7px;background:var(--surface-muted);color:var(--muted);font-size:11.5px;font-weight:700;white-space:nowrap}
+.hm-chip.is-ok{background:rgba(47,158,91,.14);color:#2f9e5b}.hm-chip.is-warn{background:var(--accent-weak);color:var(--accent-ink)}.hm-chip.is-bad{background:rgba(239,107,91,.14);color:#ef6b5b}
+.hm-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hm-tile{padding:9px 11px;border-radius:11px;background:var(--surface-muted)}.hm-tile small{display:block;color:var(--muted);font-size:10.5px}.hm-tile b{font-size:15px;line-height:1.25}.hm-tile i{color:var(--muted);font-size:11px;font-style:normal}
+.hm-tile.is-late b{color:#ef6b5b}
+.hm-bar{height:4px;margin-top:7px;border-radius:4px;background:var(--border);overflow:hidden}.hm-bar>span{display:block;height:100%;border-radius:inherit;background:var(--accent);transition:width .4s ease}
+.hm-panel h4{display:flex;justify-content:space-between;margin:14px 0 6px;font-size:12px}.hm-panel h4 span{color:var(--muted);font-weight:500}
+.hm-rows{display:flex;flex-direction:column}
+.hm-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border);font-size:12.5px}.hm-row:first-child{border-top:0}.hm-row>span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm-panel .hm-btn{display:block;width:100%;margin-top:14px}
+.hm-row b{display:block;font-size:12px}.hm-row small{color:var(--muted);font-size:10.5px}
+.hm-btn{padding:9px 14px;border:1px solid var(--border);border-radius:11px;background:var(--card);color:var(--text);font:inherit;font-size:12.5px;font-weight:700;text-decoration:none;text-align:center;box-shadow:var(--shadow-sm);cursor:pointer;transition:border-color .15s,color .15s,background .15s}.hm-btn:hover{border-color:var(--accent);color:var(--accent-ink)}.hm-btn:focus-visible{outline:3px solid var(--accent-weak);border-color:var(--accent-ink)}
+.hm-btn-accent{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}.hm-btn-accent:hover{background:var(--accent-hover);color:var(--on-accent)}
+/* modo lista: o mapa some e a grade de cards aparece no lugar */
+.home-hero:not(.is-list)~.home-tools-step{display:none}
+.home-hero.is-list{display:none}
+@media(max-width:720px){.home-hero{height:calc(100vh - 40px)}.hm-state{display:none}.hm-sim{top:24px;left:14px}.hm-zoom{right:14px;top:24px}.hm-panel{top:auto;bottom:14px;left:14px;right:14px;width:auto;max-height:55%}.hm-ui.has-panel .hm-zoom{right:14px}}
+@media(prefers-reduced-motion:reduce){.hm-zoom,.hm-bar>span,.hm-hint{transition:none}}
+.hm-label.is-tool{padding:4px 10px;font-size:12.5px;font-weight:800}
+.hm-label.is-me{background:var(--text);border-color:var(--text);color:var(--card);font-size:11.5px;box-shadow:0 0 0 3px var(--accent)}

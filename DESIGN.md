@@ -76,6 +76,9 @@ Padrão do Gerador de Consolidado, reaproveitado no Gerador de Cartazes e em Dat
 - **Modal de decisão** (`<dialog class="cg-dialog">`): título, texto curto com a contagem do problema e dois botões — o que não muda nada ("Tratar na planilha") e o que aplica (`.save-grid`, amarelo). Fechar no × não altera nada. A ação aplicada entra no Ctrl+Z.
 - **Foto ao lado do QR** (cards Live Shop, comuns e destaque): a foto é uma caixa que cresce e encolhe com o zoom (roda do mouse, 0,5x a 2x, depois de duplo clique); o corpo do card é centralizado, então o QR cede espaço sozinho e o conjunto continua no meio. Arrastar a foto ou usar ← → (Shift = passo maior) afasta foto e QR em sentidos opostos até a borda do corpo; a posição fica na grade salva. Com os lados trocados (segurar e arrastar) o sentido se inverte. Foto em edição nunca dispara a troca de lados.
 
+- **Cena/mapa 3D no meio da página** (mapa da Início, `home-map.js`): rolagem comum continua rolando a página; zoom só com **Ctrl/⌘ + rolagem** (aviso flutuante "Use Ctrl + rolagem…") ou pelos botões +/−. Arrastar move a câmera (`grab`/`grabbing`), item clicável vira `pointer`.
+- **Modo escuro em cena 3D = noite** (mapa da Início): luz azulada de lua, janelas dos galpões acesas, postes com halo no chão, faróis/lanternas e feixe de luz nos caminhões (só quando andam de frente), letreiros e emblemas brilhando. Modo claro = dia, sem nenhuma dessas luzes.
+
 ## 6. A detalhar
 
 - Paleta, tipografia e escala de espaçamento (hoje espalhadas em `styles.css` e `cartaz-generator.css`).
