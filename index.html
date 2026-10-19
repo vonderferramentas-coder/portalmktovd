@@ -53,6 +53,15 @@
       <h1 id="homeTitle">O que vamos criar hoje?</h1>
       <p>Escolha o perfil que deseja acessar e depois selecione uma ferramenta.</p>
     </section>
+    <form class="home-search" id="homeSearch" role="search" autocomplete="off">
+        <input type="search" id="homeSearchInput" placeholder="Buscar tela ou funcionalidade (ex.: QR Code, cartaz, seguidores)"
+          aria-label="Buscar telas e funcionalidades" aria-controls="toolGrid" />
+        <svg class="home-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+    </form>
     <section class="home-step" aria-labelledby="profileTitle">
       <div class="home-step-heading"><span class="home-step-number">1</span>
         <div>
@@ -70,7 +79,7 @@
             <path d="m6 9 6 6 6-6" />
           </svg>
         </button>
-        <div class="profile-menu" id="profileMenu" role="listbox" aria-label="Perfis disponíveis" hidden></div>
+        <div class="profile-menu" id="profileMenu" role="listbox" aria-label="Perfis disponíveis"></div>
       </div>
     </section>
     <section class="home-step home-tools-step" aria-labelledby="toolsTitle">
@@ -90,7 +99,7 @@
             </svg></span><span class="tool-copy"><span class="tool-tag">Planejamento</span><strong>Calendário de
               Postagens</strong><small>Organize pautas, datas, canais e briefings do mês.</small></span><span
             class="tool-arrow">→</span></a>
-        <a class="tool-card" href="followers-dashboard.html"><span class="tool-icon"><svg width="24" height="24"
+        <a class="tool-card" href="followers-dashboard.html" data-keywords="seguidores instagram facebook youtube crescimento"><span class="tool-icon"><svg width="24" height="24"
               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
               stroke-linejoin="round">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -106,7 +115,7 @@
               <circle cx="12" cy="12" r="3" />
             </svg></span><span class="tool-copy"><span class="tool-tag">Reputação</span><strong>Monitoramento</strong><small>Veja vídeos de outros canais do YouTube que falam da marca.</small></span><span
             class="tool-arrow">→</span></a>
-        <a class="tool-card" href="post-editor.html"><span class="tool-icon"><svg width="24" height="24"
+        <a class="tool-card" href="post-editor.html" data-keywords="arte artes feed story imagem design"><span class="tool-icon"><svg width="24" height="24"
               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
               stroke-linejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -116,7 +125,7 @@
             </svg></span><span class="tool-copy"><span class="tool-tag">Criação</span><strong>Editor de
               Posts</strong><small>Monte artes para feed e story a partir do catálogo.</small></span><span
             class="tool-arrow">→</span></a>
-        <a class="tool-card" href="gerador.html"><span class="tool-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z"/><path d="M19 15v4M17 17h4"/><path d="M5 16v3M3.5 17.5h3"/></svg></span><span class="tool-copy"><span class="tool-tag">Produção gráfica</span><strong>Gerador</strong><small>Cartazes, consolidado, cartões, QR Codes e códigos de barras em um só lugar.</small></span><span class="tool-arrow">→</span></a>
+        <a class="tool-card" href="gerador.html" data-keywords="cartaz cartazes live shop consolidado cartão cartões visita qr code link código de barras ean"><span class="tool-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.9 4.6 4.6 1.9-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z"/><path d="M19 15v4M17 17h4"/><path d="M5 16v3M3.5 17.5h3"/></svg></span><span class="tool-copy"><span class="tool-tag">Produção gráfica</span><strong>Gerador</strong><small>Cartazes, consolidado, cartões, QR Codes e códigos de barras em um só lugar.</small></span><span class="tool-arrow">→</span></a>
         <a class="tool-card" href="conecta-fg.html"><span class="tool-icon"><svg width="24" height="24"
               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
               stroke-linejoin="round">
@@ -153,7 +162,7 @@
             </svg></span><span class="tool-copy"><span class="tool-tag">Referência</span><strong>Templates</strong><small>Medidas,
               peso máximo e boas práticas por marketplace.</small></span><span
             class="tool-arrow">→</span></a>
-        <a class="tool-card" href="usage-dashboard.html"><span class="tool-icon"><svg width="24" height="24"
+        <a class="tool-card" href="usage-dashboard.html" data-keywords="uso acessos estatísticas relatório"><span class="tool-icon"><svg width="24" height="24"
               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
               stroke-linejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -161,7 +170,7 @@
             </svg></span><span class="tool-copy"><span class="tool-tag">Administração</span><strong>Métricas de
               performance</strong><small>Veja quanto cada ferramenta do portal é usada.</small></span><span
             class="tool-arrow">→</span></a>
-        <a class="tool-card" href="admin-users.html"><span class="tool-icon"><svg width="24" height="24"
+        <a class="tool-card" href="admin-users.html" data-keywords="permissões perfis login senha"><span class="tool-icon"><svg width="24" height="24"
               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
               stroke-linejoin="round">
               <circle cx="12" cy="8" r="3" />
@@ -171,6 +180,7 @@
               acessos</strong><small>Libere, bloqueie e acompanhe acessos ao portal.</small></span><span
             class="tool-arrow">→</span></a>
       </div>
+      <p class="home-search-empty" id="homeSearchEmpty" role="status" hidden>Nenhuma ferramenta encontrada para essa busca.</p>
     </section>
     <footer class="home-footer">
       <a href="termos-de-uso.html">Termos de Uso</a>

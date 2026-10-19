@@ -37,6 +37,8 @@
    - **Abrir:** renderize o conteúdo já com `.is-closed` e remova a classe no quadro seguinte (`requestAnimationFrame` duplo).
    - **Fechar:** adicione `.is-closed`, espere a transição (250 ms) e só então remova o conteúdo do estado/DOM. Se redesenhar a lista antes, o elemento some no meio da animação.
 
+3. **Dropdown flutuante com lista rolável ou sombra grande** (referência: `.profile-menu` em `index.css`): a grade `0fr ↔ 1fr` recalcula o layout a cada quadro e trava nesses casos. Revele com `clip-path: inset(0 -28px 100% -28px)` → `inset(0 -28px -32px -28px)` (sem `opacity` nem `will-change`: ambos promovem o elemento a uma camada própria e, ao fim da animação, o texto é redesenhado e dá uma "piscada"), `.25s ease`, e `visibility` com atraso de `.25s` ao fechar. O inset negativo deixa a sombra aparecer.
+
 **Menus flutuantes (⋮, popovers):** `position: fixed` para não serem cortados pela rolagem, entrada de `.12s` (`opacity` + `translateY(-4px) scale(.98)`), fecham com Esc, clique fora, rolagem e redimensionamento. Referência: `.card-menu` em `cartaz-generator.css` e `.square-menu` em `consolidado-generator.css`.
 
 ## 2. Tema claro e escuro
