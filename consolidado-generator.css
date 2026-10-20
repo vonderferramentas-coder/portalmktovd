@@ -87,3 +87,51 @@
 .start-actions{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:14px}
 .consolidado-code:empty{display:none}.square-summary .warn{color:#b45309;font-weight:700}.consolidado-dropzone .muted,.start-actions .muted{color:var(--muted);font-size:12px}
 #addProduct{margin:0 0 14px}
+
+/* Marcas próprias (Nove54, DWT, Toolmix): faixa na cor da marca com o logo branco (ao lado do cartão se for 1 produto, no topo se forem vários); liga/desliga na lista de produtos */
+.brand-toggles-wrap{margin:12px 0 4px}.brand-toggles{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}.brand-toggle{position:relative;display:inline-grid;place-items:center;width:88px;height:48px;padding:8px 10px;box-sizing:border-box;border-radius:8px;background:var(--c);color:#fff;font-size:13px;font-weight:700;cursor:pointer;opacity:.4;outline:2px solid transparent;outline-offset:2px;transition:opacity .15s,outline-color .15s}.brand-toggle:has(input:checked){opacity:1;outline-color:var(--text)}.brand-toggle:has(input:focus-visible){outline-color:var(--accent-ink,var(--text))}.brand-toggle img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}.brand-toggle input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
+.consolidado-section,.consolidado-multi{margin-top:0;border-top:4px solid #1c2326}.consolidado-section{padding:14px 0 0}.consolidado-section .consolidado-grid{padding-bottom:14px}.consolidado-brandlogo{display:grid;place-items:center}.consolidado-brandlogo img{display:block;width:70%;height:120px;object-fit:contain}.consolidado-brandhead{display:grid;place-items:center;height:96px}.consolidado-brandhead img{display:block;width:250px;height:64px;object-fit:contain}
+
+/* Painel de produtos: ritmo de espaçamento (16/20/24 px), marcas próprias entre divisórias e quadrados que ocupam a largura toda */
+.square-settings .section-heading{margin-bottom:6px}.square-settings>p{margin:0 0 16px}
+.brand-toggles-wrap{display:grid;gap:3px;margin:20px 0 22px;padding:16px 0 18px;border-block:1px solid var(--border)}.brand-toggles-title{font-size:13px;font-weight:700;color:var(--text)}.brand-toggles-hint{font-size:12px;color:var(--muted)}
+.brand-toggles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}.brand-toggle{width:auto}
+.square-group+.square-group{margin-top:24px}.square-group .group-title{margin:0 0 12px}
+
+/* Topo compacto: nome, mês, aba e planilha na mesma linha; sem planilha, a área de arrastar ocupa a linha toda abaixo dos campos */
+.setup-panel{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px}.setup-panel>label:first-child{flex:1 1 260px}.setup-panel>label:nth-child(2){flex:0 0 170px}.setup-panel>#sheetField{flex:0 0 190px}
+.setup-panel>.source-panel{flex:1 1 100%;margin:0}.setup-panel>.source-panel:has(.has-file){flex:0 1 470px}
+.setup-panel .consolidado-dropzone.has-file{height:var(--control-h);box-sizing:border-box;padding:0 8px 0 12px}.setup-panel .dz-file{gap:10px}.setup-panel .dz-file-icon{width:22px;height:26px;padding-bottom:3px;font-size:7px}.setup-panel .dz-file-name .muted{display:none}.setup-panel .dz-file .btn.small{height:26px}
+/* "Baixar PDF": a cor de destaque do Grupo OVD é um cinza claro (portal-shell.js) e o botão parecia desativado; aqui ele fica neutro escuro nos dois temas */
+#exportPdf{background:var(--text);color:var(--card)}#exportPdf:hover{background:var(--text);opacity:.85}#exportPdf:disabled{opacity:.4}
+
+/* Modal de confirmação (ask() em consolidado-generator.js): cores do tema, ação destrutiva em vermelho */
+.ask-dialog{width:min(440px,calc(100vw - 32px));padding:0;border:1px solid var(--border);border-radius:14px;background:var(--card);color:var(--text);box-shadow:0 20px 55px rgba(0,0,0,.35)}.ask-dialog::backdrop{background:rgba(10,14,20,.55)}.ask-dialog[open]{animation:square-menu-in .14s ease-out}
+.ask-dialog form{position:relative;padding:24px}.ask-dialog h2{margin:0;padding-right:32px;font-size:18px}.ask-dialog p{margin:8px 0 0;color:var(--muted);font-size:14px;line-height:1.45}.ask-dialog ul{display:grid;gap:8px;margin:14px 0 0;padding:0;list-style:none}.ask-dialog li{padding:10px 12px;border:1px solid var(--border);border-left:3px solid #b45309;border-radius:8px;background:var(--surface-muted);font-size:13px;line-height:1.4}
+.ask-close{position:absolute;top:12px;right:12px;display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--muted);font-size:22px;line-height:1;cursor:pointer}.ask-close:hover,.ask-close:focus-visible{background:var(--surface-muted);color:var(--text)}
+.ask-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.ask-actions .btn{flex:1 1 0}.ask-actions .btn.danger{background:var(--danger,#b42318);color:#fff}.ask-actions .btn.danger:hover{background:var(--danger,#b42318);opacity:.88}
+.ask-actions #askOk:not(.danger){background:var(--text);color:var(--card)}.ask-actions #askOk:not(.danger):hover{background:var(--text);opacity:.85}
+.header-actions{align-items:center}.dirty-badge{display:inline-flex;align-items:center;gap:7px;margin-right:4px;font-size:12.5px;font-weight:700;color:#b45309;white-space:nowrap}.dirty-badge::before{content:"";width:8px;height:8px;border-radius:50%;background:#e08a00}.dirty-badge[hidden]{display:none}
+
+/* Biblioteca: o primeiro quadrado cria um consolidado novo (contorno tracejado para se diferenciar dos salvos) */
+.saved-new{display:grid;align-content:center;justify-items:center;gap:6px;min-height:150px;padding:24px;border:2px dashed var(--border-strong);border-radius:var(--radius-lg);background:transparent;color:var(--text);font:inherit;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.saved-new strong{font-size:15px}.saved-new>span:last-child{font-size:12.5px;color:var(--muted)}.saved-new-plus{display:grid;place-items:center;width:42px;height:42px;margin-bottom:4px;border-radius:50%;background:var(--accent-weak);font-size:26px;font-weight:400;line-height:1}
+.saved-new:hover,.saved-new:focus-visible{border-color:var(--accent-ink);background:var(--accent-weak);outline:none}
+
+/* Biblioteca: busca/filtro, grupos por ano e cards com miniatura do cabeçalho, aviso de links e menu ⋮ (Duplicar / Excluir) */
+.saved-groups{display:grid;gap:28px}.saved-year-title{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:15px}
+.library-tools{display:flex;gap:10px;margin:0 0 20px}.library-tools input,.library-tools select{height:var(--control-h);padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:inherit;font-size:14px}.library-tools input{flex:1 1 auto;max-width:360px}.library-tools input:focus,.library-tools select:focus{outline:none;border-color:var(--accent-ink);box-shadow:0 0 0 3px var(--accent-weak)}.library-tools select[hidden]{display:none}
+.saved-card{position:relative}.saved-kebab{position:absolute;top:10px;right:10px;z-index:1;display:grid;place-items:center;width:30px;height:30px;padding:0;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--muted);cursor:pointer}.saved-kebab:hover,.saved-kebab:focus-visible{color:var(--text);border-color:var(--border-strong);outline:none}
+.saved-thumb{position:relative;flex:0 0 auto;height:46px;border-radius:9px;background:linear-gradient(#fcbc00 0 7px,#1c2326 7px 30px,#e4e4e4 30px)}.saved-thumb b{position:absolute;left:11px;top:7px;color:#fff;font-size:11px;font-weight:800;line-height:23px;letter-spacing:.08em}
+.saved-warn{color:#b45309;font-weight:700}.saved-warn::before{content:"";display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:#e08a00}.saved-ok{color:#237d54;font-weight:600}.library-empty{margin:18px 0 0;color:var(--muted);font-size:13px}
+.library-tools select{flex:0 0 170px}
+
+/* Seções da lista de produtos recolhíveis (DESIGN.md §1: grade 0fr↔1fr, .25s ease, seta gira 180° ao abrir) */
+.square-group .group-title{display:block}.group-toggle{display:flex;align-items:center;gap:8px;width:100%;padding:2px 0;border:0;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;text-align:left;cursor:pointer}.group-toggle:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px;border-radius:6px}.group-toggle .count-pill{margin-left:auto}
+.group-chevron{display:grid;place-items:center;color:var(--muted);transition:transform .25s ease}.square-group:not(.is-closed) .group-chevron{transform:rotate(180deg)}
+.square-collapse{display:grid;grid-template-rows:1fr;transition:grid-template-rows .25s ease}.square-group.is-closed .square-collapse{grid-template-rows:0fr}.square-collapse-inner{min-height:0;overflow:hidden}
+.square-group.is-closed .group-title{margin-bottom:0}
+@media (prefers-reduced-motion:reduce){.square-collapse,.group-chevron{transition:none}}
+
+/* Aviso rápido (toast): sem esta regra o texto aparecia solto no fim da página */
+.toast{position:fixed;right:20px;bottom:20px;z-index:3000;max-width:min(460px,calc(100vw - 40px));padding:12px 16px;border-radius:10px;background:var(--text);color:var(--card);font-size:13.5px;font-weight:600;box-shadow:var(--shadow-lg)}.toast[hidden]{display:none}

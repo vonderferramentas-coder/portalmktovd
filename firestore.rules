@@ -18,12 +18,16 @@ service cloud.firestore {
       return activeUser() && currentUser().role == 'admin';
     }
 
+    // Biblioteca de marcas de folheto/post (tela Marcas, em Administração): Admin e perfil Criação editam; todo usuário ativo lê.
+    function brandEditor() {
+      return activeUser() && (currentUser().role == 'admin' || currentUser().role == 'criacao');
+    }
     // Documentos de controle (quem pode ver o quê, pra onde notificações vão) - ninguém edita
     // isso direto na tela, sempre passa por uma ação administrativa. Sem essa checagem, um
     // usuário comum conseguiria se autopromover a admin escrevendo direto nesses documentos
     // pelo console do navegador (a tela de Usuários e acessos só bloqueia pela interface).
     function isControlDoc(id) {
-      return id in ['user-profiles-v1', 'page-permissions-v1', 'social-media-notification-routes-v1'];
+      return id in ['user-profiles-v1', 'page-permissions-v1', 'social-media-notification-routes-v1', 'brand-library-v1'];
     }
     // Seguidores/posts/vídeos/trends: só o GitHub Actions grava isso (Admin SDK, que ignora
     // estas regras por definição) - nenhum caminho legítimo de escrita pelo navegador. Travar
@@ -107,9 +111,19 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Imagens dos logos enviados pela tela Marcas (1 documento por logo, data: URI de SVG/PNG/WebP, teto de ~400 KB).
+    match /brandLogos/{logoId} {
+      allow read: if activeUser();
+      allow create, update: if brandEditor()
+        && request.resource.data.keys().hasOnly(['data', 'type', 'size', 'createdAt', 'createdBy'])
+        && request.resource.data.data is string && request.resource.data.data.size() <= 400000
+        && request.resource.data.type in ['image/svg+xml', 'image/png', 'image/webp'];
+      allow delete: if brandEditor();
+    }
+
     match /portalStore/{recordId} {
       allow read: if activeUser();
-      allow write: if activeUser() && (admin() || (!isControlDoc(recordId) && !isCollectedDataDoc(recordId)));
+      allow write: if activeUser() && (admin() || (recordId == 'brand-library-v1' && brandEditor()) || (!isControlDoc(recordId) && !isCollectedDataDoc(recordId)));
     }
   }
 }

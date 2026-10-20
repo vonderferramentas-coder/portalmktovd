@@ -28,12 +28,26 @@
     return text(value).replace(/\s+VONDER(?:®)?\s*$/i, '').replace(/^VONDER\s*-\s*/i, '').trim();
   }
 
-  // Multimarcas = título de outra marca. VONDER/VD no título é VONDER; senão vale uma marca conhecida ou, genericamente, uma marca em CAIXA ALTA no fim do título.
-  const OTHER_BRANDS = /\b(NORTON|CLIPPER|R[ÖO]HM|QUARTZOLIT|TASCHIBRA|NOVE54)\b/i;
-  function isMultibrand(title) {
+  // Seções do informativo, na ordem em que aparecem. Nove54/DWT/Toolmix são marcas próprias com faixa colorida e só entram em alguns consolidados.
+  const BRANDS = [
+    { key: 'vonder', label: 'VONDER' },
+    { key: 'nove54', label: 'Nove54', color: '#d9000d', logo: 'NOVE54 B' }, // CMYK 15/100/95/0
+    { key: 'dwt', label: 'DWT', color: '#ab2328', logo: 'DWT B' },
+    { key: 'toolmix', label: 'Toolmix', color: '#f26522', logo: 'TOOLMIX_vazada_branco' }, // logo todo branco sobre o fundo laranja (vetor extraído do .ai oficial vazado)
+    { key: 'multi', label: 'Multimarcas' }
+  ];
+  // Itens salvos antes das marcas próprias só têm `multi`.
+  const brandOf = item => item.brand || (item.multi ? 'multi' : 'vonder');
+
+  // Marca pelo título: VONDER/VD manda; depois as marcas próprias; senão vale uma marca conhecida ou, genericamente, uma marca em CAIXA ALTA no fim do título (Multimarcas).
+  const OTHER_BRANDS = /\b(NORTON|CLIPPER|R[ÖO]HM|QUARTZOLIT|TASCHIBRA)\b/i;
+  function detectBrand(title) {
     const value = text(title).replace(/[,\s]+$/, '');
-    if (/\b(VONDER|VD)\b/i.test(value)) return false;
-    return OTHER_BRANDS.test(value) || /(?:,|\s-)\s*[A-ZÀ-Ý][A-ZÀ-Ý &.]{3,}$/.test(value);
+    if (/\b(VONDER|VD)\b/i.test(value)) return 'vonder';
+    if (/\bNOVE ?54\b/i.test(value)) return 'nove54';
+    if (/\bDWT\b/i.test(value)) return 'dwt';
+    if (/\bTOOLMIX\b/i.test(value)) return 'toolmix';
+    return OTHER_BRANDS.test(value) || /(?:,|\s-)\s*[A-ZÀ-Ý][A-ZÀ-Ý &.]{3,}$/.test(value) ? 'multi' : 'vonder';
   }
 
   function parseRows(rows) {
@@ -46,9 +60,9 @@
       const call = columns.call < 0 ? '' : text(row[columns.call]).replace(/\.0$/, '');
       if (!code && !sourceTitle && !call) return;
       // linhas sem chamado de outra marca (ex.: NORTON CLIPPER logo após um produto VONDER) viram um produto próprio
-      const multi = isMultibrand(sourceTitle);
-      if (call || !current || (multi && !current.multi) || (current.multi && /\b(VONDER|VD)\b/i.test(sourceTitle))) {
-        current = { id: crypto.randomUUID(), call, title: displayTitle(sourceTitle) || 'Produto sem título', rows: [], link: '', photo: '', multi };
+      const brand = detectBrand(sourceTitle);
+      if (call || !current || (brand !== current.brand && (brand !== 'vonder' || /\b(VONDER|VD)\b/i.test(sourceTitle)))) {
+        current = { id: crypto.randomUUID(), call, title: displayTitle(sourceTitle) || 'Produto sem título', rows: [], link: '', photo: '', brand };
         groups.push(current);
       }
       if (!code && !sourceTitle) return;
@@ -78,5 +92,5 @@
     return code ? 'https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code=' + encodeURIComponent(code) : '';
   }
 
-  global.ConsolidadoModel = { MONTHS, parseRows, isMultibrand, monthNumber, monthLabel, formatCode, photoUrl };
+  global.ConsolidadoModel = { MONTHS, BRANDS, brandOf, parseRows, detectBrand, monthNumber, monthLabel, formatCode, photoUrl };
 })(window);

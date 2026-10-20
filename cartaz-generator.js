@@ -11,6 +11,7 @@
     function brandLogoDataUri(file, onReady) {
         let name = file.replace(/\.svg$/i, '');
         if (name in brandLogoCache) { let uri = brandLogoCache[name]; if (uri && onReady) onReady(uri); return uri; }
+        if (window.OVD_BRAND_LOGOS && window.OVD_BRAND_LOGOS[name]) { let uri = brandLogoCache[name] = window.OVD_BRAND_LOGOS[name]; if (onReady) onReady(uri); return uri; } /* logo já em memória (ex.: enviado pela tela Marcas): não tem arquivo em brands-js */
         if (onReady) (brandLogoWaiters[name] = brandLogoWaiters[name] || []).push(onReady);
         if (!brandLogoLoading.has(name)) {
             brandLogoLoading.add(name);
@@ -26,7 +27,7 @@
         }
         return '';
     }
-    function logoUrl(brand) { let saved=S.brandLogos[brand]; if(saved && saved.startsWith('data:')) return saved; let asset=logoCandidates(brand).find(item=>item.file===saved)||logoCandidates(brand)[0]; return asset?brandLogoDataUri(asset.file):''; } async function loadBrandAssets() { try { let assets=await fetch('post-editor-assets/brands/index.json').then(r=>r.ok?r.json():[]); S.brandAssets=Array.isArray(assets)?assets:[]; if(S.pages.length){pages();drawWhenIdle();} }catch(_){} } /* Linhas da planilha cujo código tem cor de preenchimento (qualquer cor que não seja branca). */
+    function logoUrl(brand) { let saved=S.brandLogos[brand]; if(saved && saved.startsWith('data:')) return saved; let asset=logoCandidates(brand).find(item=>item.file===saved)||logoCandidates(brand)[0]; return asset?brandLogoDataUri(asset.file):''; } async function loadBrandAssets() { try { let assets=await fetch('post-editor-assets/brands/index.json').then(r=>r.ok?r.json():[]); S.brandAssets=await BrandLibrary.overlayAssets(Array.isArray(assets)?assets:[]); if(S.pages.length){pages();drawWhenIdle();} }catch(_){} } /* Linhas da planilha cujo código tem cor de preenchimento (qualquer cor que não seja branca). */
     /* Sem coluna de link/FG na planilha, o código FG do produto principal vem do catálogo (data/catalog-vonder.json), pelo código OVD. Devolve quantos ficaram sem. */
     async function fillFg(groups) {
         let need = groups.filter(g => !g.rows[0].fg); if (!need.length) return 0;
