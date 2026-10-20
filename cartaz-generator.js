@@ -378,7 +378,7 @@
             document.querySelectorAll('#preview .card.lb[data-page="' + pi + '"][data-idx="' + ii + '"]').forEach(old => {
                 S.curDivision = DIVISIONS.find(d => d.id === old.closest('.sheet')?.dataset.division) || null; item.hiddenCodes = 0;
                 let holder = document.createElement('div'); holder.innerHTML = card(item, ii, pi); let fresh = holder.firstElementChild; old.replaceWith(fresh); trimOverflow(fresh); fresh.querySelectorAll('.photo').forEach(enablePhotoEditing);
-            });
+            }); syncQr();
         }));
         S.curDivision = division; updateDashboard();
         return S.pages.reduce((sum, page) => sum + page.items.reduce((inner, entry) => inner + (entry.hiddenCodes || 0), 0), 0) !== hiddenBefore; /* true: mudou a contagem de códigos ocultos (alerta da marca) */
@@ -446,13 +446,13 @@
             style = 'grid-column:' + (item.col + 1) + (item.span > 1 ? ' / span ' + item.span : '') + ';grid-row:' + (item.gridRow + 1);
         let corner = on('showCodeBox') && S.config.codePos === 'corner', left = (on('showCodeBox') && !corner ? marker : '') + button + (on('showQty') && (item.minQty ?? group.minQty) ? '<p class="lb-qty">Quantidade mínima:<br>' + e(qtyText(item.minQty ?? group.minQty)) + '</p>' : '');
         return '<article class="card lb' + (item.flip ? ' flip' : '') + (item.span > 1 ? ' wide' : '') + '" data-codes="' + lines.length + '"' + (!qr && on('showCodeBox') && hasBarcodeIssue(row) ? ' data-bad-barcode="1"' : '') + ' data-idx="' + idx + '" data-page="' + pageIndex + '" style="' + style + '"><div class="cutwarn" hidden role="button" onclick="cutDialog(this)" title="Essas linhas não aparecem no cartão - clique para ver as opções"></div>'
-            + (on('showTitle') ? '<h3 contenteditable="true" spellcheck="true" oninput="updateTitle(this)" style="text-align:' + (S.config.titleAlign || 'center') + '">' + (item.titleHtml ? CartazTitleFormat.clean(item.titleHtml) : e(displayTitle)) + '</h3>' : '')
+            + (on('showTitle') ? '<h3 contenteditable="true" spellcheck="true" oninput="updateTitle(this)" style="text-align:' + (S.config.titleAlign || 'center') + (item.titleScale ? ';font-size:calc(' + (11.5 * item.titleScale).toFixed(2) + 'px * var(--u))' : '') + '">' + (item.titleHtml ? CartazTitleFormat.clean(item.titleHtml, { keepBr: true }) : e(displayTitle)) + '</h3>' : '')
             + (left || on('showPhoto') ? '<div class="lb-body' + (!left || !on('showPhoto') ? ' solo' : '') + '">' + (left ? '<div class="lb-left">' + left + '</div>' : '')
                 + (on('showPhoto') ? '<div class="lb-right"><div class="photo" title="Dê dois cliques para editar a foto" style="transform:translate(' + photoState.x + 'px,' + photoState.y + 'px) scale(' + photoState.scale + ')">' + photo + '</div></div>' : '') + '</div>' : '')
             + (corner ? '<div class="lb-foot' + (on('showDesc') ? ' stack' : '') + '">' + table + marker + '</div>' : table) + '</article>';
     }
     /* Box de logo (1ª célula da folha): logo do evento (a "Logo" do template) + o texto de atenção da configuração. */
-    function logoBoxHtml(page) { let corner = page.corner || 'tl', col = corner[1] === 'l' ? 1 : page.cols, row = corner[0] === 't' ? 1 : page.rows; return '<div class="lb-logobox" style="grid-column:' + col + ';grid-row:' + row + '">' + (S.logo ? '<img src="' + e(S.logo) + '" alt="">' : '<span class="lb-logo-empty">Logo do evento</span>') + '<p class="lb-attn" style="color:' + e(S.config.attentionColor) + '"><strong>' + e(S.config.attentionTitle) + '</strong>' + e(S.config.attentionText).replace(/\n/g, '<br>') + '</p></div>'; }
+    function logoBoxHtml(page) { let title = S.config.attentionTitleOn !== false, text = S.config.attentionTextOn !== false, corner = page.corner || 'tl', col = corner[1] === 'l' ? 1 : page.cols, row = corner[0] === 't' ? 1 : page.rows; return '<div class="lb-logobox' + (title || text ? '' : ' solo') + '" style="grid-column:' + col + ';grid-row:' + row + '">' + (S.logo ? '<img src="' + e(S.logo) + '" alt="">' : '<span class="lb-logo-empty">Logo do evento</span>') + (title || text ? '<p class="lb-attn" style="color:' + e(S.config.attentionColor) + '">' + (title ? '<strong>' + e(S.config.attentionTitle) + '</strong>' : '') + (text ? e(S.config.attentionText).replace(/\n/g, '<br>') : '') + '</p>' : '') + '</div>'; }
     /* Corta as linhas da tabela que não cabem no box (mantém ao menos 1 e uma área mínima para a foto) e avisa, como o corte de códigos da Feira. */
     function fitButton(card) {
         let btn = card.querySelector('.lb-btn'); if (btn && btn.firstChild) { btn.style.width = ''; let range = document.createRange(); range.selectNodeContents(btn); let wide = Math.max(0, ...[...range.getClientRects()].map(r => r.width)); if (wide) btn.style.width = Math.min(btn.parentNode.clientWidth, Math.ceil(wide) + 12) + 'px'; }
@@ -461,14 +461,18 @@
     const LIVE_BASE_W = 177, LIVE_BASE_H = 199, /* altura do card de 4 colunas no A4 sem header (1123 - 40 - 56 - 4 x 8 de vão, em 5 linhas): é nela que cabem ~9 códigos */ cardScale = (card, span) => { let byWidth = card.offsetWidth / (span > 1 ? span : 1) / LIVE_BASE_W; /* card pequeno e mais baixo que o desenho (ex.: 3 colunas com header completo): o conteúdo escala pela altura, para os códigos não serem cortados; sobra largura, não altura */ return Math.max(.8, span > 1 || byWidth > 1.3 ? byWidth : Math.min(byWidth, card.offsetHeight / LIVE_BASE_H)).toFixed(3); };
     /* Cards largos (2 ou 3 colunas) não esticam até preencher a folha (nem na largura, se a altura não der): a altura vira uma proporção do card (LIVE_RATIO x a largura), o conjunto fica centralizado
        na vertical e sobra espaço vazio embaixo. Nos cards pequenos (4+ colunas) nada muda: as linhas dividem a folha. */
-    const LIVE_RATIO = 1;
+    const LIVE_RATIO = 1, LIVE_RATIO_TALL = 1.3;
     function fitLiveRows(sheet) {
         if (!sheet.classList.contains('lb-sheet')) return; sheet.style.removeProperty('--rowh'); sheet.style.removeProperty('--colw');
         let style = getComputedStyle(sheet), colW = parseFloat(style.gridTemplateColumns.split(' ')[0]), page = S.pages[+sheet.dataset.page]; if (!colW || !page || colW / LIVE_BASE_W <= 1.3) return;
         let gap = parseFloat(style.rowGap) || 0, room = sheet.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - gap * (page.rows - 1);
-        let rowH = Math.floor(Math.min(colW * LIVE_RATIO, room / page.rows)); sheet.style.setProperty('--rowh', rowH + 'px');
+        let ratio = page.rows >= 4 ? LIVE_RATIO_TALL : LIVE_RATIO, rowH = Math.floor(Math.min(colW * ratio, room / page.rows)); sheet.style.setProperty('--rowh', rowH + 'px'); /* 4+ linhas: o card pode passar da proporção e ocupar o espaço livre da folha */
         if (rowH < Math.floor(colW * LIVE_RATIO)) sheet.style.setProperty('--colw', Math.floor(rowH / LIVE_RATIO) + 'px'); /* sem altura para o card esticar na largura: as colunas encolhem para manter a proporção do card, e o fundo aparece nas laterais */
     }
+    /* QR de tamanho único no cartaz: cada card encolhe o QR até caber (trimLive guarda em data-qk) e todos adotam o menor valor */
+    function syncQr() { let cards = [...document.querySelectorAll('#preview .card.lb')], min = Math.min(1, ...cards.map(card => +card.dataset.qk || 1)); cards.forEach(card => card.style.setProperty('--qk', min));
+        let tk = Math.min(1, ...cards.map(card => +card.dataset.tk || 1)); /* idem para o título: todos adotam o menor encolhimento (o ajuste manual A+/A- de cada card é mantido por cima) */
+        cards.forEach(card => { let h3 = card.querySelector('h3'), item = S.pages[+card.dataset.page].items[+card.dataset.idx]; if (h3) h3.style.fontSize = 'calc(' + (11.5 * (item.titleScale || 1) * tk).toFixed(2) + 'px * var(--u))'; }); }
     function trimLive(card) {
         card.style.setProperty('--u', cardScale(card, S.pages[+card.dataset.page].items[+card.dataset.idx].span));
         /* foto salva fora dos limites da coluna (zoom/posição antigos) é ajustada ao desenhar; a medição invisível não ajusta para não gravar medidas erradas */
@@ -478,9 +482,22 @@
         checkTitle(card); let body = card.querySelector('.lb-body') || card, rows = [...card.querySelectorAll('.lb-table tbody tr')], warn = card.querySelector('.cutwarn'), item = S.pages[+card.dataset.page].items[+card.dataset.idx], removed = 0;
         /* antes de cortar linhas, encolhe o título aos poucos (até 80%) para devolver espaço ao corpo */
         let h3 = card.querySelector('h3'), over = () => card.scrollHeight > card.clientHeight + 1 || body.scrollHeight > body.clientHeight + 1 || body.clientHeight < 40;
-        for (let k = 0.95; rows.length > 1 && over() && k >= 0.8; k -= 0.05) { if (h3) h3.style.fontSize = 'calc(' + (11.5 * k).toFixed(2) + 'px * var(--u))'; checkTitle(card); }
-        while (rows.length > 1 && (card.scrollHeight > card.clientHeight + 1 || body.scrollHeight > body.clientHeight + 1 || body.clientHeight < 40)) { rows.pop().remove(); removed++; }
-        item.hiddenCodes = removed; if (warn && removed) { warn.hidden = false; warn.textContent = '⚠ +' + removed + ' linha' + (removed === 1 ? '' : 's') + ' fora do cartão'; }
+        /* o encolhimento nunca pode reduzir o nº de linhas do título: se um título que quebra em 2 linhas passaria a caber em 1 ao encolher, ele fica quebrado no tamanho cheio */
+        let lineCount = () => Math.round(h3.scrollHeight / parseFloat(getComputedStyle(h3).lineHeight)), full = h3 ? lineCount() : 0;
+        let titleSize = k => 'calc(' + (11.5 * (item.titleScale || 1) * k).toFixed(2) + 'px * var(--u))';
+        let tk = 1;
+        for (let k = 0.95; h3 && rows.length > 1 && over() && k >= 0.8; k -= 0.05) {
+            h3.style.fontSize = titleSize(k); tk = k;
+            if (lineCount() < full) { h3.style.fontSize = titleSize(1); tk = 1; break; }
+            checkTitle(card);
+        }
+        /* a coluna do QR (QR + botão + quantidade mínima) é o que mais prende a altura do corpo: encolhe o QR aos poucos (até 70%) antes de cortar códigos */
+        let qk = 1, left = card.querySelector('.lb-left'); card.style.removeProperty('--qk');
+        while (rows.length > 1 && (card.scrollHeight > card.clientHeight + 1 || body.scrollHeight > body.clientHeight + 1 || body.clientHeight < 40)) {
+            if (left && qk > .7 && left.scrollHeight >= body.clientHeight - 1 && left.querySelector('.lb-qr')) { qk = Math.round((qk - .05) * 100) / 100; card.style.setProperty('--qk', qk); continue; }
+            rows.pop().remove(); removed++;
+        }
+        card.dataset.qk = qk; card.dataset.tk = tk; item.hiddenCodes = removed; if (warn && removed) { warn.hidden = false; warn.textContent = '⚠ +' + removed + ' linha' + (removed === 1 ? '' : 's') + ' fora do cartão'; }
         photoFit(card, ph, st); /* o rodapé já tem a altura final: reconfere a foto */
     }
     function fitLines(card) {
@@ -608,7 +625,8 @@
     entra como uma linha a mais e sozinho já estoura a folga disponível (confirmado medindo caso real: com 2
     códigos curtos ainda faltam ~13px, com 3 faltam ~29px, independente do tamanho do cartão) - por isso a trava
     de seguranca abaixo (que mede a posicao REAL de .lines depois de renderizado) nunca libera a largura toda
-    com 2+ códigos, so serve pra cobrir o caso raro de um código único tao comprido que quebra em 3 linhas */ let h3 = card.querySelector('h3'), lines = card.querySelector('.lines'), photo = card.querySelector('.photo'); if (!h3 || !photo || card.classList.contains('a3') || card.classList.contains('lb')) return; let top = h3.offsetTop + h3.offsetHeight + 8, bottomBound = card.clientHeight - 66; photo.style.top = (top + Math.max(0, bottomBound - top - photo.offsetHeight) / 2) + 'px'; photo.style.bottom = 'auto'; photo.style.margin = '0'; let wide = +card.dataset.codes === 1 && lines && lines.offsetTop >= bottomBound + 8; photo.style.left = wide ? '28px' : 'auto'; photo.style.width = wide ? 'auto' : '110px' } function updateTitle(el) { snapshot('title'); let card = el.closest('.card'); fitLines(card); checkTitle(card); let item = S.pages[+card.dataset.page].items[+card.dataset.idx]; item.title = t(el.textContent); let html = CartazTitleFormat.sanitize(el); if (html) item.titleHtml = html; else delete item.titleHtml; } function updateCodes(el) { snapshot('codes'); let card = el.closest('.card'), item = S.pages[+card.dataset.page].items[+card.dataset.idx],
+    com 2+ códigos, so serve pra cobrir o caso raro de um código único tao comprido que quebra em 3 linhas */ let h3 = card.querySelector('h3'), lines = card.querySelector('.lines'), photo = card.querySelector('.photo'); if (!h3 || !photo || card.classList.contains('a3') || card.classList.contains('lb')) return; let top = h3.offsetTop + h3.offsetHeight + 8, bottomBound = card.clientHeight - 66; photo.style.top = (top + Math.max(0, bottomBound - top - photo.offsetHeight) / 2) + 'px'; photo.style.bottom = 'auto'; photo.style.margin = '0'; let wide = +card.dataset.codes === 1 && lines && lines.offsetTop >= bottomBound + 8; photo.style.left = wide ? '28px' : 'auto'; photo.style.width = wide ? 'auto' : '110px' } function updateTitle(el) { snapshot('title'); let card = el.closest('.card'); fitLines(card); checkTitle(card); let item = S.pages[+card.dataset.page].items[+card.dataset.idx]; item.title = t(el.textContent); let html = CartazTitleFormat.sanitize(el, { keepBr: !!el.closest('.card.lb') }); if (html) item.titleHtml = html; else delete item.titleHtml; } /* A+ / A- da barra de formatação (cartaz-title-format.js): tamanho do título do card, em passos de 5% (60% a 160%), guardado em item.titleScale */
+    document.addEventListener('titlesize', event => { let card = event.target.closest('.card.lb'); if (!card) return; let item = S.pages[+card.dataset.page].items[+card.dataset.idx], scale = Math.max(.6, Math.min(1.6, Math.round(((item.titleScale || 1) + .05 * event.detail) * 100) / 100)); snapshot('title'); if (scale === 1) delete item.titleScale; else item.titleScale = scale; draw(); }); function updateCodes(el) { snapshot('codes'); let card = el.closest('.card'), item = S.pages[+card.dataset.page].items[+card.dataset.idx],
         texts = [...el.querySelectorAll('.cd')].map(span => t(span.textContent)).filter(Boolean), twoCols = twoCodeColumns(texts.length, card.classList.contains('a3'));
         /* só reconstrói o HTML (1 <-> 2 colunas) quando apagar/adicionar código muda o layout que cabe -
            reescrever el.innerHTML a cada tecla (mesmo sem mudar o layout) jogaria o cursor pro início do
@@ -706,13 +724,13 @@
                 let fresh = holder.firstElementChild; old.replaceWith(fresh); finishSheet(fresh); fresh.insertAdjacentHTML('afterend', noteFor(page, division));
             });
         });
-        S.curDivision = current; fitHeaders(); pages(); updateDashboard(); syncPagesHeight();
+        S.curDivision = current; syncQr(); fitHeaders(); pages(); updateDashboard(); syncPagesHeight();
     }
     function draw() {
         let selectedPages = (S.brand ? S.pages.filter(page => page.brand === S.brand) : S.pages).filter(page => (!S.printFormat || page.format === S.printFormat) && (!S.only || S.only.includes(page.brand))); if (!selectedPages.length) return; selectedPages.forEach(page => page.items.forEach(item => item.hiddenCodes = 0));
         $('title').textContent = 'Prévia editável · ' + S.brand; $('previewFormat').textContent = selectedPages.length + ' página' + (selectedPages.length === 1 ? '' : 's') + ' da marca';
         $('preview').innerHTML = (activeDivisions().length ? activeDivisions() : [null]).flatMap(division => selectedPages.map(page => (division ? '<div class="sheet-label">' + e(division.name) + ' · ' + e(page.name) + '</div>' : '') + sheetHtml(page, S.pages.indexOf(page), division) + noteFor(page, division))).join('');
-        [...$('preview').querySelectorAll('.sheet')].forEach(finishSheet);
+        [...$('preview').querySelectorAll('.sheet')].forEach(finishSheet); syncQr();
         fitHeaders(); pages(); updateDashboard(); let printSize = document.getElementById('printPageSize') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'printPageSize' })); printSize.textContent = '@media print { @page { size: ' + (selectedPages[0].format === 'A3' ? 'A3 portrait' : 'A4 portrait') + '; margin: 0 } }'
         syncPagesHeight();
     }
@@ -868,8 +886,9 @@
                         + '<div class="cfg-colors">' + lab('Cor da faixa', '<input type="color" class="cfg-color" id="cfgHdStripe" value="' + header.stripe + '">') + lab('Cor do título', '<input type="color" class="cfg-color" id="cfgHdTitleColor" value="' + header.titleColor + '">') + lab('Cor do subtítulo', '<input type="color" class="cfg-color" id="cfgHdSubColor" value="' + header.subColor + '">') + '</div>'
                     : '<p class="cfg-hint">Logo do evento e aviso num único box, no espaço de um card: até ' + compactCap + ' produtos por A4.</p>'
                     + '<div class="cfg-field"><span>Posição do header</span>' + seg('headerCorner', config.headerCorner, [['tl', 'Superior esquerdo'], ['tr', 'Superior direito'], ['bl', 'Inferior esquerdo'], ['br', 'Inferior direito']], 'cfg-seg-2') + '</div>'
-                    + '<div class="cfg-inline">' + lab('Título do aviso', '<input id="cfgAttentionTitle" maxlength="40" value="' + e(config.attentionTitle) + '">', 'grow') + lab('Cor', '<input type="color" class="cfg-color" id="cfgAttentionColor" title="Cor do aviso" value="' + e(config.attentionColor) + '">') + '</div>'
-                    + lab('Texto do aviso', '<textarea id="cfgAttention" rows="3" maxlength="240">' + e(config.attentionText) + '</textarea>'))) : '')
+                    + field('attnTitle', 'Título do aviso', 'cfgAttnTitleOn', config.attentionTitleOn !== false, lab('Título', '<input id="cfgAttentionTitle" maxlength="40" value="' + e(config.attentionTitle) + '">', 'grow'))
+                    + field('attnText', 'Texto do aviso', 'cfgAttnTextOn', config.attentionTextOn !== false, lab('Texto', '<textarea id="cfgAttention" rows="3" maxlength="240">' + e(config.attentionText) + '</textarea>'))
+                    + (config.attentionTitleOn !== false || config.attentionTextOn !== false ? lab('Cor do aviso', '<input type="color" class="cfg-color" id="cfgAttentionColor" title="Cor do aviso" value="' + e(config.attentionColor) + '">') : ''))) : '')
             + sec('Folha e grade', '',
                 '<div class="cfg-field"><span>Tipos de folha</span>' + seg('sheetFormats', config.sheetFormats, [['both', 'A4 e A3'], ['a4', 'Somente A4'], ['a3', 'Somente A3']]) + '</div>'
                 + '<div class="cfg-sheet"><span></span><span class="cfg-col">Produtos por folha</span><span class="cfg-col">Colunas</span>'
@@ -918,7 +937,7 @@
         Object.entries(CONFIG_FIELDS).forEach(([id, key]) => on(id, key, input => Math.max(1, Math.floor(+input.value) || 1)));
         on('cfgA3Auto', 'a3Auto', input => { if (!input.checked) { config.capA3 = resolved.capA3; config.colsA3 = resolved.colsA3; } return input.checked; });
         [['cfgShowTitle', 'showTitle'], ['cfgShowPhoto', 'showPhoto'], ['cfgShowCodeBox', 'showCodeBox'], ['cfgShowQty', 'showQty'], ['cfgShowDesc', 'showDesc'], ['cfgShowCode', 'showCode'], ['cfgButton', 'button'], ['cfgStrip', 'showStrip']].forEach(([id, key]) => on(id, key, input => input.checked)); on('cfgLogoBox', 'logoBox', input => input.checked); on('cfgFooterLogo', 'footerLogo', input => input.checked);
-        on('cfgAttention', 'attentionText', input => input.value); on('cfgAttentionTitle', 'attentionTitle', input => input.value); on('cfgAttentionColor', 'attentionColor', input => input.value); on('cfgLegalOn', 'legalEnabled', input => input.checked); on('cfgLegal', 'legalText', input => input.value); on('cfgButton', 'button', input => input.checked);
+        on('cfgAttnTitleOn', 'attentionTitleOn', input => input.checked); on('cfgAttnTextOn', 'attentionTextOn', input => input.checked); on('cfgAttention', 'attentionText', input => input.value); on('cfgAttentionTitle', 'attentionTitle', input => input.value); on('cfgAttentionColor', 'attentionColor', input => input.value); on('cfgLegalOn', 'legalEnabled', input => input.checked); on('cfgLegal', 'legalText', input => input.value); on('cfgButton', 'button', input => input.checked);
         on('cfgButtonText', 'buttonText', input => t(input.value) || CartazPagination.DEFAULT_CONFIG.buttonText); on('cfgButtonColor', 'buttonColor', input => input.value);
         body.querySelectorAll('[data-division]').forEach(input => input.onchange = () => { config.divisions = DIVISIONS.map(d => d.id).filter(id => id === input.dataset.division ? input.checked : config.divisions.includes(id)); commit(); });
         body.querySelectorAll('[data-division-color]').forEach(input => input.onchange = () => { config.divisionColors = { ...config.divisionColors, [input.dataset.divisionColor]: input.value }; commit(); });
@@ -1540,6 +1559,8 @@
     $('vbarPrev').onclick = () => { review.index--; focusStep(); };
     $('vbarClose').onclick = closeReview;
     $('validatorFilters').onclick = event => { let button = event.target.closest('[data-filter]'); if (button) { validatorFilter = button.dataset.filter; renderValidator(); } };
+    // Enter no título do card Live Shop quebra a linha (<br>, gravado em item.titleHtml); Alt + Enter segue sendo atalho da revisão
+    document.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.altKey && !event.isComposing && event.target.closest?.('.card.lb h3[contenteditable]')) { event.preventDefault(); document.execCommand('insertLineBreak'); } });
     // atalhos da barra de revisão (Alt + seta / Enter): funcionam mesmo com o cursor num título, sem atrapalhar a digitação
     document.addEventListener('keydown', event => {
         if (!review || !event.altKey || $('validatorDialog').open) return;
