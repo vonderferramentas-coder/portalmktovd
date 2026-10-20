@@ -44,11 +44,12 @@
   }
   toggle.addEventListener('click', function(){ setList(!hero.classList.contains('is-list'), true); });
 
-  let saved = null;
-  try{ saved = localStorage.getItem(KEY); }catch(e){}
+  // o mapa é só para o perfil admin: o botão fica oculto para os demais (o papel chega do auth-guard, de forma assíncrona)
+  const adminGate = function(){ toggle.hidden = document.body.dataset.userRole !== 'admin'; };
+  adminGate(); new MutationObserver(adminGate).observe(document.body, { attributes: true, attributeFilter: ['data-user-role'] });
   const small = matchMedia('(max-width:720px)').matches || (navigator.hardwareConcurrency || 4) <= 2;
-  // por enquanto a lista é o padrão; o mapa só abre se a pessoa escolher "Ver mapa"
-  setList(saved !== 'map', false);
+  // a lista é sempre o padrão ao abrir a Início; o mapa só aparece se o admin clicar em "Ver mapa" (a escolha não é lembrada)
+  setList(true, false);
 
   // ---------- DOM helpers ----------
   const I = {
