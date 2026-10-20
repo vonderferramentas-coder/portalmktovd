@@ -562,7 +562,9 @@
     render();
   });
 
-  function renderChart(points, nets, grain) {
+  function renderChart(allPoints, nets, grain) {
+    // o dia de hoje ainda está sendo coletado e faria a curva despencar: fica fora do gráfico nos dois modos
+    const points = allPoints.length > 1 ? allPoints.filter(point => !isOpenDay(point.date)) : allPoints;
     const all = aggregate(points, grain);
     // só os últimos MAX_BUCKETS pontos são desenhados, mas o acumulado conta desde o início do período filtrado
     const offset = Math.max(0, all.length - MAX_BUCKETS), buckets = all.slice(offset);
