@@ -17,7 +17,7 @@
       node.childNodes.forEach(child => {
         if (child.nodeType === 3) { out += esc(child.nodeValue); return; }
         if (child.nodeType !== 1) return;
-        if (opts.keepBr && child.tagName === 'BR') { out += '<br>'; return; }
+        if (opts.keepBr && child.tagName === 'BR') { tagged = true; out += '<br>'; return; }
         const inner = walk(child), tag = opts.keepStrong && child.tagName === 'STRONG' ? 'strong' : TAGS[child.tagName];
         const normal = child.tagName === 'SPAN' ? [child.style.fontStyle === 'normal' || child.classList.contains('fn') ? 'fn' : '', child.style.fontWeight === 'normal' || child.style.fontWeight === '400' || child.classList.contains('wn') ? 'wn' : ''].filter(Boolean).join(' ') : '';
         if (normal && inner) { tagged = true; out += `<span class="${normal}">${inner}</span>`; return; }
@@ -39,13 +39,13 @@
     underline: '<path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" x2="20" y1="20" y2="20"/>'
   };
   const LABELS = { bold: 'Negrito', italic: 'Itálico', underline: 'Sublinhado' };
-  // Aumentar/reduzir o texto todo (só no Editor de Posts: título .pe-rich-title / caixa .pe-uso-edit): avisa a página pelo evento "titlesize" (detail = +1 ou -1)
+  // Aumentar/reduzir o texto todo (Editor de Posts: título .pe-rich-title / caixa .pe-uso-edit; Gerador de Cartazes: título do card Live Shop): avisa a página pelo evento "titlesize" (detail = +1 ou -1)
   const SIZE_ICONS = {
     sizeUp: '<path d="M2 20 8 6l6 14M4.5 15h7"/><path d="M17 9l3-3 3 3"/>',
     sizeDown: '<path d="M3 20 8 10l5 10M5 16.5h6"/><path d="M17 6l3 3 3-3"/>'
   };
   const SIZE_LABELS = { sizeUp: 'Aumentar o texto todo', sizeDown: 'Reduzir o texto todo' };
-  const SIZE_SEL = '.pe-rich-title, .pe-uso-edit';
+  const SIZE_SEL = '.pe-rich-title, .pe-uso-edit, .card.lb h3[contenteditable]';
 
   const bar = document.createElement('div');
   bar.className = 'cg-fmt';
