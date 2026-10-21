@@ -89,7 +89,7 @@
 
   function photoUrl(value) {
     const code = digits(value);
-    return code ? 'https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code=' + encodeURIComponent(code) : '';
+    return code ? (global.PORTAL_API || 'https://ecommerce-fg.vonderferramentas.workers.dev') + '/product-image?code=' + encodeURIComponent(code) : '';
   }
 
   global.ConsolidadoModel = { MONTHS, BRANDS, brandOf, parseRows, detectBrand, monthNumber, monthLabel, formatCode, photoUrl };

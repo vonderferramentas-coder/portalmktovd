@@ -25,7 +25,7 @@
 
   const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
   const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
-  const WORKER = 'https://ecommerce-fg.vonderferramentas.workers.dev';
+  const WORKER = window.PORTAL_API || 'https://ecommerce-fg.vonderferramentas.workers.dev'; // ver firebase-config.js
 
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/ /g, '&nbsp;');
   const photoUrl = code => 'https://app.ovd.com.br/fotos/produto?codigo=' + encodeURIComponent(code);

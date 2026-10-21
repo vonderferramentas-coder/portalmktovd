@@ -69,7 +69,9 @@ const isVonderBrand=product=>/^vonder\b/i.test(String(product&&product.brand||''
 // então isto só barra uso casual; contra abuso de verdade há a regra de limite de requisições do Cloudflare, ver ARQUITETURA seção do Worker).
 // Só respostas boas ficam 10 min no cache de borda; erro do site FG (429/5xx) não é guardado, senão a mesma busca falharia até o cache vencer.
 const vtexFetch=url=>fetch(url,{headers:{Accept:'application/json'},cf:{cacheTtlByStatus:{'200-299':600,'300-599':-1},cacheEverything:true}});
-const originAllowed=request=>ALLOWED_ORIGINS.has(request.headers.get('Origin')||'');
+// Pelo domínio do portal (functions/api/[[path]].js) a chamada é da mesma origem e o navegador não manda Origin num GET;
+// nesse caso vale o Sec-Fetch-Site, que o navegador também preenche sozinho.
+const originAllowed=request=>ALLOWED_ORIGINS.has(request.headers.get('Origin')||'')||request.headers.get('Sec-Fetch-Site')==='same-origin';
 const formatCode=digits=>digits.length===10?digits.replace(/^(\d{2})(\d{2})(\d{3})(\d{3})$/,'$1.$2.$3.$4'):digits;
 // Tabela de especificações do site (descrição do produto): linhas [rótulo, valor] em texto limpo.
 const specRows=product=>[...String(product.description||'').matchAll(/<th[^>]*>([\s\S]*?)<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>[plainText(m[1]),plainText(m[2])]);
@@ -132,7 +134,7 @@ async function productThumbs(request){
  return json(request,{thumbs});
 }
 export default {async fetch(request){
- const path=new URL(request.url).pathname;
+ const path=new URL(request.url).pathname.replace(/^\/api(?=\/)/,''); // /api/... = mesmas rotas servidas pelo Cloudflare Pages
  if(path==='/product-image'){if(request.method==='OPTIONS')return imageReply(null,204);try{return await productImage(request);}catch{return imageReply('Não foi possível carregar a imagem do produto.',502,{'Content-Type':'text/plain; charset=utf-8'});}}
  if(request.method==='OPTIONS')return reply(request,null,204);
  try{if(path==='/product-offer')return offer(request);if(path==='/product-link')return await productLink(request);if(path==='/product-catalog')return await productCatalog(request);if(path==='/product-search')return await productSearch(request);if(path==='/product-thumbs')return await productThumbs(request);return json(request,{error:'Rota não encontrada.'},404);}catch{return json(request,{error:'Não foi possível consultar a oferta.'},502);}
