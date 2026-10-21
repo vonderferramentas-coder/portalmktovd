@@ -29,6 +29,12 @@
   window.PORTAL_FIREBASE_CONFIG = PROD_HOSTNAMES.indexOf(window.location.hostname) !== -1
     ? PROD_CONFIG
     : HML_CONFIG;
+
+  // Rotas de foto/oferta/busca: no Cloudflare Pages (produção e previews) vêm do próprio domínio (functions/api/);
+  // GitHub Pages e teste local não rodam Functions e seguem no Worker. Quem lê usa o Worker se isto faltar.
+  window.PORTAL_API = /(^|\.)portalmktovd\.pages\.dev$/.test(window.location.hostname)
+    ? window.location.origin + '/api'
+    : 'https://ecommerce-fg.vonderferramentas.workers.dev';
 })();
 
 // Deixe vazio até a TI informar os domínios corporativos liberados, por exemplo ['@empresa.com.br'].

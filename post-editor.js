@@ -112,7 +112,8 @@ var CATALOG_PRODUCT_WIDTH=1600;
 // mesmo proxy CORS público usado pelo coletor de ofertas FG (ver cloudflare-worker.js), com uma
 // rota extra pra foto de produto. Não reduz o tamanho da foto (sem 'w'), então só entra pro
 // recorte automático (CATALOG_PRODUCT_WIDTH), nunca pras miniaturas do catálogo.
-function workerProductImageUrl(code){var digits=normalizeCode(code);if(!digits)return'';return'https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code='+encodeURIComponent(digits)}
+var PORTAL_API=window.PORTAL_API||'https://ecommerce-fg.vonderferramentas.workers.dev'; // ver firebase-config.js
+function workerProductImageUrl(code){var digits=normalizeCode(code);if(!digits)return'';return PORTAL_API+'/product-image?code='+encodeURIComponent(digits)}
 // Regra do portal: só web. Nenhuma requisição à máquina do usuário nem à rede local (endereços de loopback, IPs privados, nomes
 // internos como o do app de fotos): o Chrome pediria "Acessar outros dispositivos na sua rede local". A foto do produto vem do Worker
 // (HTTPS público), que busca no app.ovd. O workflow de testes barra a volta desses endereços no código das páginas.
@@ -329,7 +330,7 @@ function computeMatchingProducts(query){
 }
 // Busca no site (só perfil VONDER): complementa o catálogo quando ele não tem o produto. Lista nome+código via worker
 // (/product-search); ao escolher, /product-catalog traz os mesmos campos do catalog.json e a foto vem do app.ovd pelo código.
-var SITE_API='https://ecommerce-fg.vonderferramentas.workers.dev',siteSearch={q:'',status:'idle',items:[]},siteTimer=0,siteToken=0,siteAbort=null,siteCache={};
+var SITE_API=PORTAL_API,siteSearch={q:'',status:'idle',items:[]},siteTimer=0,siteToken=0,siteAbort=null,siteCache={};
 // O editor escolhe a logo pelo nome do produto; as linhas VONDER do site têm marca própria (VONDER AT e VONDER/TMX não têm logo própria).
 var SITE_BRAND_LOGO={'VONDER':'VONDER','VONDER PLUS':'Vonder_plus','VONDER CONSTRUTOR':'vonder_construtor','VONDER AT':'VONDER','VONDER/TMX':'VONDER'};
 function siteEligible(query){return CATALOG_SLUG==='vonder'&&query.trim().length>=3}
@@ -1097,7 +1098,7 @@ window.PostEditor={goToStep:goToStep,markSaved:function(){editDirty=false},redra
  $('#offerSkuModalCancel').addEventListener('click',close);modal.addEventListener('click',function(ev){if(ev.target===modal)close()});
  function chooseSku(offer){var box=$('#offerSkuOptions');$('#offerSkuModalDesc').textContent='Os SKUs possuem condições comerciais diferentes. Escolha qual oferta será divulgada; a arte terá apenas um código.';box.innerHTML='';offer.skus.forEach(function(sku){var item=document.createElement('button');item.type='button';item.innerHTML='<strong>'+escapeHtml(sku.variation||'SKU '+sku.sku)+' · Cód. '+escapeHtml(sku.sku)+'</strong><small>Por R$ '+money(sku.price)+(sku.listPrice?' · De R$ '+money(sku.listPrice):'')+(sku.available?'':' · indisponível')+'</small>';item.addEventListener('click',function(){close();applySku(offer,sku,false)});box.appendChild(item)});modal.hidden=false
  }
- button.addEventListener('click',function(){var url=urlField.value.trim();if(!url){urlField.focus();status('Cole o link da oferta da FG para continuar.',false);return};button.disabled=true;button.textContent='Consultando…';importStatus('Consultando a oferta no site da FG…');status('Consultando oferta no site da FG…',true);fetch('https://ecommerce-fg.vonderferramentas.workers.dev/product-offer?url='+encodeURIComponent(url)).then(function(res){return res.json().then(function(data){if(!res.ok)throw new Error(data.error||'Não foi possível consultar a oferta.');return data})}).then(function(offer){var skus=(offer.skus||[]).filter(function(s){return s.available});if(!skus.length)throw new Error('Nenhum SKU disponível foi encontrado.');offer.skus=skus;if(skus.length>1&&!skus.every(function(s){return sameCommercialOffer(s,skus[0])})){importStatus('Escolha um SKU para continuar.');chooseSku(offer)}else{applySku(offer,skus[0],skus.length>1)}}).catch(function(err){var message=err.message||'Não foi possível consultar a oferta.';importStatus(message);status(message,false)}).finally(function(){button.disabled=false;button.textContent='Puxar dados'})
+ button.addEventListener('click',function(){var url=urlField.value.trim();if(!url){urlField.focus();status('Cole o link da oferta da FG para continuar.',false);return};button.disabled=true;button.textContent='Consultando…';importStatus('Consultando a oferta no site da FG…');status('Consultando oferta no site da FG…',true);fetch(PORTAL_API+'/product-offer?url='+encodeURIComponent(url)).then(function(res){return res.json().then(function(data){if(!res.ok)throw new Error(data.error||'Não foi possível consultar a oferta.');return data})}).then(function(offer){var skus=(offer.skus||[]).filter(function(s){return s.available});if(!skus.length)throw new Error('Nenhum SKU disponível foi encontrado.');offer.skus=skus;if(skus.length>1&&!skus.every(function(s){return sameCommercialOffer(s,skus[0])})){importStatus('Escolha um SKU para continuar.');chooseSku(offer)}else{applySku(offer,skus[0],skus.length>1)}}).catch(function(err){var message=err.message||'Não foi possível consultar a oferta.';importStatus(message);status(message,false)}).finally(function(){button.disabled=false;button.textContent='Puxar dados'})
  })
 })();
 })();
