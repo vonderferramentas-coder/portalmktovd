@@ -210,6 +210,7 @@ Não existe padrão único: há mais de 20 classes "empty" e nenhum spinner. Reg
 
 - **Vazio:** bloco centralizado, texto `--muted`, borda tracejada, `--radius-md`, `padding:44px 20px`, 13px (`.list-empty`, `styles.css`). Quando houver ícone e título, siga `.marcas-empty` (`marcas.css`). Texto no formato "Nenhum(a) X …" com ponto final.
 - **Carregando:** skeleton com brilho (`.is-loading` + `marcas-shimmer` em `marcas.css`; `.pe-skeleton` em `post-editor.css`), com `animation:none` em `prefers-reduced-motion`. Evite "Carregando…" solto e não crie spinner.
+- **Item adicionado a partir de uma lista que continua aberta:** a linha confirma antes de sair: fundo `--success-bg`, texto `--success` e "✓ Adicionado" por ~0,55 s, depois recolhe a altura em `.25s ease` e só então sai do DOM (sem transição em `prefers-reduced-motion`). Referência: `.autocomplete-item.is-added`/`.is-leaving` (`styles.css`) e `renderProductAutocomplete` (`app.js`).
 - **Erro de campo:** `aria-invalid="true"` + `.is-invalid` (borda `--danger`, texto de ajuda `--danger`). Referência: `business-card-generator.css` e `conecta-fg.html`.
 - **Mensagem de região:** `role="alert"` para erro e `role="status"` para informação (referência: `.auth-message`, `.cf-alert`).
 - **Sem dados ainda** (coleta automática): texto explícito, como "Aguardando coleta" (`followers-dashboard.js`), nunca gráfico vazio sem explicação.
