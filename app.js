@@ -272,9 +272,13 @@
     function normalizeCode(s){
       return String(s||'').replace(/[.\s-]/g,'').toLowerCase();
     }
+    // miniaturas leves (120x120, ~3 KB, CDN do site FG) por código só com dígitos: vêm junto da busca
+    // no site ou em lote de /product-thumbs (loadProductThumbs). '' = o site não tem foto do produto.
+    const productThumbCache = {};
     function productImageUrl(code){
       const digits = String(code||'').replace(/\D/g,'');
       if(!digits) return '';
+      if(productThumbCache[digits]) return productThumbCache[digits];
       // O host de imagens estáticas da Vonder bloqueia embeds <img> de outros sites
       // (proteção contra hotlink além de um simples check de Referer - só "no-referrer"
       // não bastou). Por isso passamos por um proxy público que busca a imagem no servidor.
@@ -947,9 +951,32 @@
       const q = query.trim();
       if(!siteProductCache[q]) siteProductCache[q] = fetch(`${window.PORTAL_API||'https://portalmktovd.pages.dev/api'}/product-search?q=${encodeURIComponent(q)}`)
         .then(res=> res.ok ? res.json() : Promise.reject(res.status))
-        .then(data=> (data.items||[]).map(it=> ({ code: it.code||'', name: it.name })).filter(it=> it.name))
+        .then(data=> (data.items||[]).filter(it=> it.name).map(it=>{
+          const digits = String(it.code||'').replace(/\D/g,'');
+          if(digits && it.thumb) productThumbCache[digits] = it.thumb;
+          return { code: it.code||'', name: it.name };
+        }))
         .catch(()=>{ delete siteProductCache[q]; return []; });
       return siteProductCache[q];
+    }
+
+    // Pede em lote (até 20 por chamada, limite da rota) as miniaturas dos itens listados que ainda não
+    // estão no cache e preenche as <img data-thumb> do box quando chegam. Falha = fica a foto antiga.
+    const productThumbPending = new Set();
+    function loadProductThumbs(box, items){
+      const need = [...new Set(items.map(it=> String(it.code||'').replace(/\D/g,'')))]
+        .filter(d=> d.length>=5 && !(d in productThumbCache) && !productThumbPending.has(d)).slice(0,20);
+      const fill = ()=> box.querySelectorAll('img[data-thumb]').forEach(img=>{
+        const d = img.dataset.thumb;
+        if(d in productThumbCache){ img.removeAttribute('data-thumb'); img.src = productImageUrl(d); }
+      });
+      if(!need.length){ fill(); return; }
+      need.forEach(d=> productThumbPending.add(d));
+      fetch(`${window.PORTAL_API||'https://portalmktovd.pages.dev/api'}/product-thumbs?codes=${need.join(',')}`)
+        .then(res=> res.ok ? res.json() : Promise.reject(res.status))
+        .then(data=> data.thumbs || {}, ()=> ({})) // falha: cai na foto antiga (proxy) nesta sessão
+        .then(thumbs=> need.forEach(d=> productThumbCache[d] = thumbs[d] || ''))
+        .then(()=>{ need.forEach(d=> productThumbPending.delete(d)); fill(); });
     }
 
     // Autocomplete de produto (modal de postagem e "Aplicar editoria"): mostra na hora o catálogo
@@ -968,9 +995,13 @@
           || (item.codeFG && (normalizeStr(item.codeFG).includes(q) || normalizeCode(item.codeFG).includes(qCode))))
       ).sort((a,b)=> productMatchRank(a,q,qCode) - productMatchRank(b,q,qCode));
       const paint = (items, loading)=>{
-        const rows = items.map((item,i)=>
-          `<div class="autocomplete-item" data-idx="${i}"><img src="${productImageUrl(item.code)}" alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" /><span class="ac-name">${escapeHtml(item.name)}</span><span class="ac-code">${escapeHtml(item.code)}</span></div>`
-        ).join('');
+        // sem miniatura no cache ainda: <img> vazia que loadProductThumbs preenche (só as 20 primeiras;
+        // as demais usam direto a foto do proxy, com carregamento preguiçoso)
+        const rows = items.map((item,i)=>{
+          const d = String(item.code||'').replace(/\D/g,'');
+          const img = d && i<20 && !(d in productThumbCache) ? `data-thumb="${d}"` : `src="${productImageUrl(item.code)}" loading="lazy"`;
+          return `<div class="autocomplete-item" data-idx="${i}"><img ${img} alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" /><span class="ac-name">${escapeHtml(item.name)}</span><span class="ac-code">${escapeHtml(item.code)}</span></div>`;
+        }).join('');
         const tail = loading
           ? `<div class="autocomplete-item ac-loading"><span class="ac-name">Buscando no site…</span></div>`
           : (items.length ? '' : `<div class="autocomplete-item ac-manual"><span class="ac-name">+ Adicionar "${escapeHtml(query)}" (sem catálogo)</span></div>`);
@@ -979,6 +1010,7 @@
         const manual = box.querySelector('.ac-manual');
         if(manual) manual.addEventListener('mousedown', ev=>{ ev.preventDefault(); onPick({ code:'', name: query }); });
         box.style.display = 'block';
+        loadProductThumbs(box, items.slice(0,20));
       };
       if(query.length < 3){ paint(local, false); return; }
       paint(local, true);
@@ -986,7 +1018,7 @@
         if(input.value.trim() !== query || box.style.display === 'none') return; // continuou digitando ou fechou
         const known = new Set(local.map(item=> normalizeCode(item.code)).filter(Boolean));
         paint(local.concat(site.filter(item=> !isChosen(item) && !known.has(normalizeCode(item.code)))), false);
-      }), 400);
+      }), 250);
     }
 
     function showProductSuggestions(){
