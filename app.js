@@ -54,7 +54,15 @@
     let pendingProductRemovalIdx = null;
     // catálogo mestre de produtos (data/catalog-vonder.json, via CatalogProvider) - carregado
     // à parte do catálogo manual em APP_SETTINGS.catalog; os dois alimentam productCandidates()
-    let masterCatalog = [];
+    let masterCatalog = [], masterCatalogLoading = null, masterCatalogRetryAt = 0;
+    // uma carga por vez; se vier vazio (rede falhou), uma busca de produto tenta de novo, no máximo a cada 30 s
+    function loadMasterCatalog(){
+      if(masterCatalogLoading || Date.now() < masterCatalogRetryAt || typeof CatalogProvider==='undefined') return;
+      masterCatalogLoading = CatalogProvider.load('vonder').then(result=>{
+        masterCatalog = result.items||[]; masterCatalogLoading = null;
+        if(!masterCatalog.length) masterCatalogRetryAt = Date.now() + 30000;
+      });
+    }
     // imagens de referência anexadas no modal de criar/editar postagem (campo "Referências
     // salvas em:"): [{id,name,width,height,dataUrl}, ...] - refletem na pré-visualização do
     // briefing e são embutidas no .docx exportado
@@ -320,10 +328,12 @@
       wrap.innerHTML = '';
       selectedProducts.forEach((p, idx)=>{
         const chip = document.createElement('span'); chip.className = 'product-chip';
-        const img = p.code ? `<img src="${productImageUrl(p.code)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'" />` : '';
+        const img = p.code ? `<img ${productImgAttrs(p.code)} alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'" />` : '';
         chip.innerHTML = `${img}<div class="pc-body"><span class="pc-name">${escapeHtml(p.name)}</span>${p.code?`<span class="pc-code">${escapeHtml(p.code)}</span>`:''}</div><button type="button" class="pc-remove" data-idx="${idx}" aria-label="Remover produto">${UI_ICONS.x(12)}</button>`;
         wrap.appendChild(chip);
       });
+      loadProductThumbs(selectedProducts);
+      loadSiteDetails();
       wrap.querySelectorAll('.pc-remove').forEach(bt=> bt.addEventListener('click', ()=>{
         const i = parseInt(bt.dataset.idx,10);
         // se já tem conteúdo escrito, remover o produto também apaga esse conteúdo (as pautas e a
@@ -866,14 +876,6 @@
     // ============================================================
     // AUTOCOMPLETE DO CATÁLOGO DE PRODUTOS (campo "Nome do produto")
     // ============================================================
-    function addSelectedProduct(item){
-      if(item.code && selectedProducts.some(p=> normalizeCode(p.code)===normalizeCode(item.code))){ $('mProductName').value=''; hideProductSuggestions(); return; }
-      selectedProducts.push({ code: item.code||'', name: item.name });
-      $('mProductName').value = '';
-      hideProductSuggestions();
-      renderSelectedProducts();
-      $('mProductName').focus();
-    }
 
     // catálogo de produtos cadastrado em Configurações + catálogo mestre (data/catalog-vonder.json).
     // Itens manuais de Configurações têm prioridade quando o código se repete nos dois.
@@ -907,7 +909,29 @@
       if(!code) return null;
       const nc = normalizeCode(code);
       if(!nc) return null;
-      return masterCatalog.find(item=> item.code && normalizeCode(item.code)===nc) || null;
+      return masterCatalog.find(item=> item.code && normalizeCode(item.code)===nc) || siteDetailsCache[nc] || null;
+    }
+    // Dados ricos de produto fora do catálogo local (veio da busca no site): /product-catalog, uma vez por
+    // código na sessão, só na memória (a postagem continua gravando só código e nome). Quando chegam,
+    // pautas, título sugerido e briefing se refazem. null = o site não tem o produto.
+    const siteDetailsCache = {}, siteDetailsPending = new Set();
+    let siteDetailsDeferred = false;
+    function loadSiteDetails(){
+      if(masterCatalogLoading){ // talvez estejam no catálogo local: espera por ele uma vez só, e usa a lista do momento
+        if(!siteDetailsDeferred){ siteDetailsDeferred = true; masterCatalogLoading.then(()=>{ siteDetailsDeferred = false; loadSiteDetails(); }); }
+        return;
+      }
+      selectedProducts.forEach(p=>{
+        const nc = normalizeCode(p.code), digits = String(p.code||'').replace(/\D/g,'');
+        if(digits.length<5 || nc in siteDetailsCache || siteDetailsPending.has(nc)) return;
+        if(masterCatalog.some(item=> item.code && normalizeCode(item.code)===nc)) return;
+        siteDetailsPending.add(nc);
+        fetch(`${PORTAL_API_BASE}/product-catalog?code=${digits}`)
+          .then(res=> res.ok ? res.json() : (res.status===404 ? null : Promise.reject(res.status)))
+          // o nome é o da variação escolhida (ex.: "... 220 V"); a rota devolve o do produto
+          .then(data=>{ siteDetailsCache[nc] = data && data.name ? Object.assign({}, data, { name: p.name || data.name }) : null; }, ()=>{}) // erro de rede: tenta de novo depois
+          .then(()=>{ siteDetailsPending.delete(nc); if(siteDetailsCache[nc]) refreshModalDynamic(); });
+      });
     }
     // primeiro produto selecionado que tem dados ricos no catálogo mestre (produtos manuais,
     // sem correspondência, são pulados)
@@ -946,10 +970,11 @@
     // Busca no site FG (rota /product-search do functions/api, a mesma do Editor de Posts): cobre os
     // produtos que faltam no catálogo local - data/catalog-vonder.json parou em 10.001 itens e deixou
     // de fora linhas inteiras (ex.: óculos de segurança). Uma consulta por termo; erro não fica em cache.
+    const PORTAL_API_BASE = window.PORTAL_API || 'https://portalmktovd.pages.dev/api'; // ver firebase-config.js
     const siteProductCache = {};
     function searchSiteProducts(query){
       const q = query.trim();
-      if(!siteProductCache[q]) siteProductCache[q] = fetch(`${window.PORTAL_API||'https://portalmktovd.pages.dev/api'}/product-search?q=${encodeURIComponent(q)}`)
+      if(!siteProductCache[q]) siteProductCache[q] = fetch(`${PORTAL_API_BASE}/product-search?q=${encodeURIComponent(q)}`)
         .then(res=> res.ok ? res.json() : Promise.reject(res.status))
         .then(data=> (data.items||[]).filter(it=> it.name).map(it=>{
           const digits = String(it.code||'').replace(/\D/g,'');
@@ -960,19 +985,27 @@
       return siteProductCache[q];
     }
 
+    // atributos da <img> de um produto: miniatura já no cache, ou data-thumb para loadProductThumbs preencher
+    function productImgAttrs(code){
+      const d = String(code||'').replace(/\D/g,'');
+      if(d.length>=5 && !(d in productThumbCache)) return `data-thumb="${d}"`;
+      const src = productImageUrl(code);
+      return src ? `src="${src}" loading="lazy"` : '';
+    }
     // Pede em lote (até 20 por chamada, limite da rota) as miniaturas dos itens listados que ainda não
-    // estão no cache e preenche as <img data-thumb> do box quando chegam. Falha = fica a foto antiga.
+    // estão no cache. Quando chegam, preenche toda <img data-thumb> da página (um produto pedido pela
+    // lista pode já ter virado um chip na postagem). Falha = fica a foto antiga.
     const productThumbPending = new Set();
-    function loadProductThumbs(box, items){
+    function loadProductThumbs(items){
       const need = [...new Set(items.map(it=> String(it.code||'').replace(/\D/g,'')))]
         .filter(d=> d.length>=5 && !(d in productThumbCache) && !productThumbPending.has(d)).slice(0,20);
-      const fill = ()=> box.querySelectorAll('img[data-thumb]').forEach(img=>{
+      const fill = ()=> document.querySelectorAll('img[data-thumb]').forEach(img=>{
         const d = img.dataset.thumb;
         if(d in productThumbCache){ img.removeAttribute('data-thumb'); img.src = productImageUrl(d); }
       });
       if(!need.length){ fill(); return; }
       need.forEach(d=> productThumbPending.add(d));
-      fetch(`${window.PORTAL_API||'https://portalmktovd.pages.dev/api'}/product-thumbs?codes=${need.join(',')}`)
+      fetch(`${PORTAL_API_BASE}/product-thumbs?codes=${need.join(',')}`)
         .then(res=> res.ok ? res.json() : Promise.reject(res.status))
         .then(data=> data.thumbs || {}, ()=> ({})) // falha: cai na foto antiga (proxy) nesta sessão
         .then(thumbs=> need.forEach(d=> productThumbCache[d] = thumbs[d] || ''))
@@ -987,6 +1020,8 @@
       clearTimeout(box._siteTimer);
       const query = input.value.trim();
       const q = normalizeStr(query);
+      box._enter = null;
+      if(!masterCatalog.length) loadMasterCatalog(); // não carregou (rede lenta): tenta de novo
       if(q.length < 2){ box.style.display = 'none'; box.innerHTML = ''; return; }
       const qCode = normalizeCode(query);
       // códigos normalizados (com ou sem pontos) dos já escolhidos; atualizado a cada clique
@@ -997,24 +1032,39 @@
         normalizeStr(item.name).includes(q)
           || (item.code && (normalizeStr(item.code).includes(q) || normalizeCode(item.code).includes(qCode)))
           || (item.codeFG && (normalizeStr(item.codeFG).includes(q) || normalizeCode(item.codeFG).includes(qCode)))
-      ).sort((a,b)=> productMatchRank(a,q,qCode) - productMatchRank(b,q,qCode));
+      ).sort((a,b)=> productMatchRank(a,q,qCode) - productMatchRank(b,q,qCode)).slice(0, 50);
+      // ponytail: só os 50 primeiros do catálogo (uma busca de 2 letras acha milhares e travava a lista);
+      // quem não achou o produto refina o termo.
       // o que a busca achou mas já está na postagem: aparece como "Já adicionado" quando não sobra mais
       // nada, em vez do "+ Adicionar (sem catálogo)", que dava a entender que o produto não existe
       let alreadyChosen = [];
       const split = list=>{ alreadyChosen = []; return list.filter(item=> isChosen(item) ? (alreadyChosen.push(item), false) : true); };
       const local = split(found);
+      // Enter: escolhe o 1º resultado da lista (catálogo + site); se o site ainda está respondendo, espera
+      // por ele; só sem nenhum resultado vale o "+ Adicionar (sem catálogo)"
+      let loading_ = false;
+      box._enterPending = false;
+      let shown_ = [];
+      box._enter = ()=>{
+        // prefere o item com o código ou o nome exatos digitados; senão, o 1º da lista
+        const rows = [...box.querySelectorAll('.autocomplete-item[data-idx]:not(.is-added)')];
+        const exact = rows.find(el=>{ const item = shown_[Number(el.dataset.idx)]; return item && ((item.code && normalizeCode(item.code)===qCode) || normalizeStr(item.name)===q); });
+        if(!exact && loading_){ box._enterPending = true; return; } // o exato pode vir do site
+        const first = exact || rows[0] || box.querySelector('.ac-manual');
+        if(!first) return;
+        first.dispatchEvent(new MouseEvent('mousedown', { bubbles:true, cancelable:true }));
+        close(); // Enter escolhe um e encerra; um segundo Enter não adiciona o próximo da lista
+      };
       const close = ()=>{ clearTimeout(box._siteTimer); input.value = ''; box.style.display = 'none'; box.innerHTML = ''; };
       const paint = (items, loading)=>{
         // sem miniatura no cache ainda: <img> vazia que loadProductThumbs preenche (só as 20 primeiras;
         // as demais usam direto a foto do proxy, com carregamento preguiçoso)
         const rows = items.map((item,i)=>{
-          const d = String(item.code||'').replace(/\D/g,'');
-          const img = d && i<20 && !(d in productThumbCache) ? `data-thumb="${d}"` : `src="${productImageUrl(item.code)}" loading="lazy"`;
+          const img = i<20 ? productImgAttrs(item.code) : `src="${productImageUrl(item.code)}" loading="lazy"`;
           return `<div class="autocomplete-item" data-idx="${i}"><img ${img} alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" /><span class="ac-name">${escapeHtml(item.name)}</span><span class="ac-code">${escapeHtml(item.code)}</span></div>`;
         }).join('');
         const dupes = items.length ? '' : alreadyChosen.slice(0,20).map(item=>{
-          const src = productImageUrl(item.code);
-          return `<div class="autocomplete-item is-added ac-dupe">${src ? `<img src="${src}" loading="lazy"` : '<img'} alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" /><span class="ac-name">${escapeHtml(item.name)}</span><span class="ac-code">${UI_ICONS.check(12)} Já adicionado</span></div>`;
+          return `<div class="autocomplete-item is-added ac-dupe"><img ${productImgAttrs(item.code)} alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" /><span class="ac-name">${escapeHtml(item.name)}</span><span class="ac-code">${UI_ICONS.check(12)} Já adicionado</span></div>`;
         }).join('');
         const tail = loading
           ? `<div class="autocomplete-item ac-loading"><span class="ac-name">Buscando no site…</span></div>`
@@ -1045,7 +1095,8 @@
         const manual = box.querySelector('.ac-manual');
         if(manual) manual.addEventListener('mousedown', ev=>{ ev.preventDefault(); onPick({ code:'', name: query }); close(); });
         box.style.display = 'block';
-        loadProductThumbs(box, items.slice(0,20));
+        loadProductThumbs(items.length ? items.slice(0,20) : alreadyChosen.slice(0,20));
+        loading_ = loading; shown_ = items;
       };
       if(query.length < 3){ paint(local, false); return; }
       paint(local, true);
@@ -1054,6 +1105,7 @@
         const known = new Set(found.map(item=> normalizeCode(item.code)).filter(Boolean));
         // refaz a divisão com o que foi escolhido enquanto o site respondia
         paint(split(found.concat(site.filter(item=> !known.has(normalizeCode(item.code))))), false);
+        if(box._enterPending){ box._enterPending = false; box._enter(); }
       }), 250);
     }
 
@@ -3034,6 +3086,8 @@
       btn.addEventListener('click', ()=>{
         if(selectedProducts.length===0){ alert('Selecione um produto do catálogo antes de gerar a legenda.'); return; }
         const draft = generateCaptionDraft();
+        if(!draft) loadSiteDetails(); // se a consulta ao site falhou antes, tenta de novo agora
+        if(!draft && siteDetailsPending.size){ alert('Os dados do produto ainda estão chegando do site. Tente de novo em instantes.'); return; }
         if(!draft){ alert('O produto selecionado não tem dados de destaques/aplicações no catálogo - gere a legenda manualmente ou escolha outro produto.'); return; }
         const notes = $('mNotes');
         if(notes.value.trim() && !confirm('Isso substitui o texto atual do campo. Continuar?')) return;
@@ -3777,11 +3831,12 @@
           chipsWrap.innerHTML = '';
           row.products.forEach((p, idx)=>{
             const chip = document.createElement('span'); chip.className = 'product-chip';
-            const img = p.code ? `<img src="${productImageUrl(p.code)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'" />` : '';
+            const img = p.code ? `<img ${productImgAttrs(p.code)} alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'" />` : '';
             chip.innerHTML = `${img}<div class="pc-body"><span class="pc-name">${escapeHtml(p.name)}</span>${p.code?`<span class="pc-code">${escapeHtml(p.code)}</span>`:''}</div><button type="button" class="pc-remove" aria-label="Remover produto">${UI_ICONS.x(12)}</button>`;
             chip.querySelector('.pc-remove').addEventListener('click', ()=>{ row.products.splice(idx,1); renderRowProducts(); });
             chipsWrap.appendChild(chip);
           });
+          loadProductThumbs(row.products);
         }
         renderRowProducts();
 
@@ -3797,6 +3852,12 @@
         input.addEventListener('input', ev=> showSugg(ev.target.value));
         input.addEventListener('focus', ev=>{ if(ev.target.value.trim().length>=2) showSugg(ev.target.value); });
         input.addEventListener('blur', ()=> setTimeout(hideSugg, 150));
+        input.addEventListener('keydown', ev=>{
+          if(ev.key!=='Enter') return;
+          ev.preventDefault();
+          if(sugg.style.display!=='block') showSugg();
+          if(sugg._enter) sugg._enter();
+        });
 
         // "Editar card": garante que a data já tenha um card real e abre o modal de postagem
         // por cima deste (sem fechá-lo) - ao fechar o modal de postagem, esta lista reaparece
@@ -4435,14 +4496,9 @@
       $('mProductName').addEventListener('keydown', (ev)=>{
         if(ev.key!=='Enter') return;
         ev.preventDefault();
-        const q = ev.target.value.trim();
-        if(!q) return;
-        const qn = normalizeStr(q);
-        const qCode = normalizeCode(q);
-        const available = (APP_SETTINGS.catalog||[]).filter(item=> !selectedProducts.some(p=>p.code===item.code));
-        const match = available.find(item=> normalizeStr(item.name)===qn || normalizeStr(item.code)===qn || normalizeCode(item.code)===qCode)
-          || available.find(item=> normalizeStr(item.name).includes(qn) || normalizeStr(item.code).includes(qn) || normalizeCode(item.code).includes(qCode));
-        addSelectedProduct(match || { code:'', name: q });
+        const box = $('productSuggestions');
+        if(box.style.display!=='block') showProductSuggestions();
+        if(box._enter) box._enter();
       });
     }
 
@@ -5009,9 +5065,7 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
     loadSettings();
     renderAllDynamicUI();
     // catálogo mestre de produtos, pro autocomplete de Produto(s) - ver productCandidates()
-    if(typeof CatalogProvider!=='undefined'){
-      CatalogProvider.load('vonder').then(result=>{ masterCatalog = result.items||[]; });
-    }
+    loadMasterCatalog();
     // ícone escolhido (ainda) para a próxima rede a ser adicionada no formulário "Adicionar rede"
     let newNetIconValue = null;
     function refreshNewNetIconPicker(){

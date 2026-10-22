@@ -1,0 +1,30 @@
+<!doctype html><meta charset="utf-8"><title>Teste da rota /product-search (variações de produto)</title>
+<body data-result="running">Executando…</body>
+<script>
+// Carrega o cloudflare-worker.js com um fetch falso que devolve um produto do site FG com 2 variações (127 V e 220 V).
+const eq = (actual, expected, label) => { if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(label + ': esperado ' + JSON.stringify(expected) + ', veio ' + JSON.stringify(actual)); };
+const img = id => [{ imageUrl: 'https://ferramentasgerais.vteximg.com.br/arquivos/ids/' + id + '/foto.jpg?v=1' }];
+const site = [
+  { productReference: '6829774133', productName: 'Compressor VDCSI', brand: 'VONDER', description: '', items: [
+    { name: 'Compressor de Ar VDCSI 127 V~ - VONDER', referenceId: [{ Key: 'RefId', Value: '6829774122' }], images: img(1) },
+    { name: '220 V', referenceId: [{ Key: 'RefId', Value: '6829774133' }], images: img(2) } ] },
+  { productReference: '7055430000', productName: 'Óculos Maltês verde', brand: 'VONDER', description: '', items: [
+    { name: 'Óculos', referenceId: [{ Key: 'RefId', Value: '7055430000' }, { Key: 'EAN', Value: '7899999999999' }], images: img(3) } ] }
+];
+const fakeFetch = url => Promise.resolve(new Response(JSON.stringify(/RefId:6829774122/.test(url) ? [site[0]] : site), { status: 200 }));
+(async () => {
+  try {
+    const xhr = new XMLHttpRequest(); xhr.open('GET', '../cloudflare-worker.js', false); xhr.send();
+    const worker = new Function('fetch', xhr.responseText.replace('export default', 'return'))(fakeFetch);
+    // objeto simples: um Request do navegador não aceita o cabeçalho Origin
+    const search = q => worker.fetch({ url: 'https://portalmktovd.pages.dev/api/product-search?q=' + encodeURIComponent(q), method: 'GET', headers: new Headers({ Origin: 'https://portalmktovd.pages.dev' }) }).then(r => r.json());
+    const byCode = await search('68.29.774.122');
+    eq(byCode.items.map(i => [i.code, i.name, i.thumb.includes('/ids/1-120-120/')]), [['68.29.774.122', 'Compressor de Ar VDCSI 127 V~ - VONDER', true]], 'busca por código devolve a variação pedida');
+    const byText = await search('compressor');
+    eq(byText.items.map(i => i.code), ['68.29.774.122', '68.29.774.133', '70.55.430.000'], 'busca por texto lista cada variação e mantém produto simples');
+    eq(byText.items[1].name, 'Compressor VDCSI - 220 V', 'variação com rótulo curto ganha o nome do produto');
+    eq(byText.items[2].name, 'Óculos Maltês verde', 'produto sem variação mantém o nome do produto (referência extra, como EAN, não vira variação)');
+    document.body.dataset.result = 'pass'; document.body.textContent = 'ok';
+  } catch (e) { document.body.dataset.result = 'fail'; document.body.textContent = e.message; }
+})();
+</script>
