@@ -1,0 +1,39 @@
+<!doctype html><meta charset="utf-8"><title>Teste da acessibilidade dos modais do portal-shell</title>
+<body data-result="running">Executando…
+<button id="opener">abrir</button>
+<div id="bd" class="modal-backdrop" style="display:none"><div class="modal" role="dialog" aria-modal="true"><h2>Título</h2><button id="x" class="modal-close">x</button><input id="f"><button id="a">A</button><button id="z">Z</button></div></div>
+</body>
+<script>
+// Extrai o helper wireModalA11y do próprio portal-shell.js (não dá para carregar o arquivo inteiro: ele monta a sidebar e pede login)
+const eq = (actual, expected, label) => { if (actual !== expected) throw new Error(label + ': esperado ' + expected + ', veio ' + actual); };
+const key = (el, init) => el.dispatchEvent(new KeyboardEvent('keydown', Object.assign({ bubbles: true, cancelable: true }, init)));
+try {
+  const xhr = new XMLHttpRequest(); xhr.open('GET', '../portal-shell.js', false); xhr.send();
+  const match = xhr.responseText.match(/const MODAL_FOCUSABLE[\s\S]*?\n  }\n/);
+  if (!match) throw new Error('helper wireModalA11y não encontrado em portal-shell.js');
+  const wire = new Function(match[0] + '\nreturn wireModalA11y;')();
+  const bd = document.getElementById('bd'), opener = document.getElementById('opener'), dialog = bd.querySelector('[role=dialog]');
+  let closed = 0;
+  wire(bd, () => { closed++; bd.style.display = 'none'; });
+  const title = dialog.querySelector('h2');
+  eq(!!title.id && dialog.getAttribute('aria-labelledby') === title.id, true, 'aria-labelledby aponta para o h2');
+  opener.focus(); bd.style.display = 'flex';
+  setTimeout(() => {
+    try {
+      eq(document.activeElement.id, 'f', 'foco no primeiro campo ao abrir');
+      const z = document.getElementById('z'); z.focus(); key(z, { key: 'Tab' });
+      eq(document.activeElement.id, 'x', 'Tab no último volta ao primeiro');
+      key(document.getElementById('x'), { key: 'Tab', shiftKey: true });
+      eq(document.activeElement.id, 'z', 'Shift+Tab no primeiro vai ao último');
+      key(z, { key: 'Escape' });
+      setTimeout(() => {
+        try {
+          eq(closed + ':' + bd.style.display, '1:none', 'Esc fecha o modal');
+          eq(document.activeElement === opener, true, 'foco volta a quem abriu');
+          document.body.dataset.result = 'pass';
+        } catch (e) { document.body.dataset.result = 'fail'; document.body.append(e.message); }
+      }, 50);
+    } catch (e) { document.body.dataset.result = 'fail'; document.body.append(e.message); }
+  }, 80);
+} catch (e) { document.body.dataset.result = 'fail'; document.body.append(e.message); }
+</script>

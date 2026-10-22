@@ -344,17 +344,19 @@
        index.css, do botão do Google em auth.css e do item do menu lateral em styles.css). */
     .btn[hidden]{display:none}
     .btn svg{flex-shrink:0}
-    .btn:hover{background:var(--accent-hover);box-shadow:var(--shadow-sm)}
-    .btn:active{transform:translateY(1px)}
-    .btn:disabled{opacity:.55;cursor:not-allowed;pointer-events:none}
+    .btn:hover:not(:disabled){background:var(--accent-hover);box-shadow:var(--shadow-sm)}
+    .btn:active:not(:disabled){transform:translateY(1px)}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+    /* foco de teclado visível nos controles clicáveis que removem o outline padrão (DESIGN.md §14) */
+    :is(.btn,.btn-icon,.portal-nav-item,.portal-account-menu-item,.toolbar-more-item,.portal-brand-trigger,.view-toggle button):focus-visible{outline:2px solid var(--accent-text);outline-offset:2px}
     .btn.ghost{background:var(--card);color:var(--text);border:1px solid var(--border);font-weight:700}
-    .btn.ghost:hover{background:var(--surface-muted);border-color:var(--border-strong)}
+    .btn.ghost:hover:not(:disabled){background:var(--surface-muted);border-color:var(--border-strong)}
     /* variante "small", usada tanto para botões compactos com texto (Cancelar, Aplicar) quanto para
        ícones soltos (✕ de remover) - ambas as classes .btn.small e .btn.ghost.small compartilham a
        mesma altura reduzida, para não desalinhar quando aparecem juntas numa mesma linha */
     .btn.ghost.small,.btn.small{height:28px;padding:0 10px;font-size:12px}
     .btn.ghost.danger{color:var(--danger);border-color:var(--danger-border)}
-    .btn.ghost.danger:hover{background:var(--danger-bg);border-color:var(--danger)}
+    .btn.ghost.danger:hover:not(:disabled){background:var(--danger-bg);border-color:var(--danger)}
     .btn-icon{width:32px;height:32px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s,color .12s,border-color .12s}
     .btn-icon:hover{background:var(--surface-muted);color:var(--text);border-color:var(--border-strong)}
 
@@ -472,8 +474,8 @@
     .sched-day-chip:hover{border-color:var(--border-strong);color:var(--text)}
     .sched-day-chip input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
     .sched-day-chip:has(input:checked){background:var(--accent-weak);border-color:var(--accent-ink);color:var(--accent-ink);box-shadow:inset 0 -2px 0 var(--accent-ink)}
-    .sched-day-chip:has(input:disabled){opacity:.52;cursor:default;box-shadow:none}
-    .sched-day-chip:has(input:disabled) input{cursor:default}
+    .sched-day-chip:has(input:disabled){opacity:.52;cursor:not-allowed;box-shadow:none}
+    .sched-day-chip:has(input:disabled) input{cursor:not-allowed}
     .sched-all-days-chip{font-weight:700;letter-spacing:0;white-space:nowrap}
     .sched-nets{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;min-height:34px}
     .sched-net-choice{width:34px;height:34px}
@@ -899,7 +901,7 @@
     .cs-use:hover{background:var(--accent-hover)}
     /* pauta atualmente inserida no campo Texto - ver lastInsertedPautaBlock em app.js */
     .cs-card--active{border-color:var(--accent);background:var(--surface-muted)}
-    .cs-use:disabled{background:var(--border);color:var(--text-faint);cursor:default}
+    .cs-use:disabled{background:var(--border);color:var(--text-faint);cursor:not-allowed}
 
     /* Pré-visualização do briefing: título como cabeçalho, campos em linhas rotuladas
        (label + valor) em vez de um parágrafo corrido, e o conteúdo isolado num bloco à parte */
@@ -1050,7 +1052,7 @@
 :where(input[type=checkbox]:not(:is(.chip-net,.sched-day-chip,.sched-net-choice)>input)):hover:not(:disabled){border-color:var(--accent,#005745)}
 :where(input[type=checkbox]:not(:is(.chip-net,.sched-day-chip,.sched-net-choice)>input)):focus-visible{outline:2px solid var(--accent,#005745);outline-offset:2px}
 :where(input[type=checkbox]:not(:is(.chip-net,.sched-day-chip,.sched-net-choice)>input)):disabled{opacity:.5;cursor:not-allowed}
-@media (prefers-reduced-motion:reduce){:where(input[type=checkbox]),:where(input[type=checkbox])::before{transition:none!important}}
+@media (prefers-reduced-motion:reduce){:where(input[type=checkbox]),:where(input[type=checkbox])::before,.portal-notice{transition:none!important}}
 
 /* Barra flutuante Negrito/Itálico/Sublinhado (cartaz-title-format.js) - compartilhada pelo Gerador de Cartazes e pelo Gerador de Consolidado */
 .cg-fmt {

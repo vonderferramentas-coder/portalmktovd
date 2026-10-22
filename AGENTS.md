@@ -4,13 +4,13 @@
 
 Portal estático (HTML/CSS/JS vanilla, sem framework/build step) multi-marca para agência de marketing: calendário de postagens (`visual-editor.html`), editor de artes (`post-editor.html`), gerador de cartão de visita (`business-card-generator.html`), dashboard de seguidores (`followers-dashboard.html`) e central de inteligência de conteúdo (`intelligence-center.html`), todos atrás de autenticação Firebase e compartilhando `portal-shell.js`/`styles.css`.
 
-**Stack**: JS/HTML/CSS puro (sem bundler), Firebase (Auth + Firestore), Cloudflare Worker + PHP + PowerShell como proxies redundantes de imagem, GitHub Actions para coleta automática de dados de Instagram/Facebook (Meta Graph API) e YouTube (YouTube Data API v3) da VONDER.
+**Stack**: JS/HTML/CSS puro (sem bundler), Firebase (Auth + Firestore), Cloudflare Worker (proxy de foto, link e catálogo FG) e Cloudflare Worker agendador (único disparo dos coletores), GitHub Actions para coleta automática de Instagram/Facebook (Meta Graph API), YouTube (YouTube Data API v3) e Google Trends, hoje para VONDER e Ferramentas Gerais.
 
 Para arquitetura detalhada (módulos, fluxos, gotchas), veja [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
 
 ## Padrões de interface
 
-Antes de criar ou alterar qualquer tela, leia [DESIGN.md](DESIGN.md) e siga os padrões dele (animação de dropdown e sanfona, tema claro e escuro, cursores, reordenar por arrastar). Se um padrão novo for decidido, registre-o lá.
+Antes de criar ou alterar qualquer tela, leia [DESIGN.md](DESIGN.md) e siga os padrões dele (animação de dropdown e sanfona, tema claro e escuro, cursores, reordenar por arrastar, guias de margem de segurança nas artes). Se um padrão novo for decidido, registre-o lá.
 
 ## Documentação de arquitetura
 
@@ -70,7 +70,3 @@ Validar renderizando de verdade (Chrome headless) continua obrigatório para mud
 - Limite ~2 rodadas de screenshot por bug. Se a causa raiz não aparecer nessas tentativas, aplique o fix mais seguro disponível (de preferência espelhando um padrão que já funciona em outro lugar do mesmo código) e siga em frente, em vez de continuar escalando a investigação (introspecção de CSSOM, bissecção de stylesheet, etc.) até esgotar a dúvida.
 - Não monte um harness de teste novo para validar um caminho de código que já foi exercitado por um teste anterior na mesma tarefa (ex.: reabrir o mesmo modal/fluxo já testado) - revisão de código basta nesses casos.
 - Para reler código já visitado na mesma sessão, prefira grep num trecho específico a reler o arquivo inteiro em blocos grandes.
-
-## Guias de margem de segurança nas artes
-
-Toda arte de feed e story (qualquer editoria/marca, inclusive novas) deve ter as guias ciano de margem de segurança do editor (`SAFE_MARGINS` em `post-editor.js`): feed 135px cima / 66px laterais / 190px baixo; story 190px cima / 66px laterais / 190px baixo. Aparecem só ao arrastar/redimensionar o elemento que encosta nelas, barram momentaneamente (passa empurrando mais, como no Instagram) e não saem na exportação. Novos renderers precisam informar a caixa do elemento móvel via `setMoveBox`.

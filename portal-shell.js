@@ -84,6 +84,42 @@
   }
   window.PortalSyncConflict = { show:showSyncConflictModal, hide:hideSyncConflictModal };
 
+  // Acessibilidade comum dos modais abaixo (.modal-backdrop > [role="dialog"], abertos com
+  // style.display='flex'): rótulo pelo <h2>, Esc fecha, Tab fica preso dentro do modal, o foco
+  // entra ao abrir e volta ao elemento de origem ao fechar. Observa o style do backdrop em vez de
+  // mexer em cada open...Modal. O modal de conflito de sincronização tem a própria versão acima.
+  const MODAL_FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  let modalTitleSeq = 0;
+  function wireModalA11y(backdrop, close){
+    const dialog = backdrop.querySelector('[role="dialog"]');
+    const title = dialog.querySelector('h2');
+    if(title){ title.id = title.id || ('portalModalTitle' + (++modalTitleSeq)); dialog.setAttribute('aria-labelledby', title.id); }
+    dialog.tabIndex = -1;
+    const focusables = ()=> Array.from(dialog.querySelectorAll(MODAL_FOCUSABLE)).filter(el=> el.offsetParent !== null);
+    backdrop.addEventListener('keydown', ev=>{
+      if(ev.key==='Escape'){ ev.preventDefault(); close(); return; }
+      if(ev.key!=='Tab') return;
+      const list = focusables();
+      if(!list.length){ ev.preventDefault(); return; }
+      const first = list[0], last = list[list.length-1];
+      if(ev.shiftKey && (document.activeElement===first || document.activeElement===dialog)){ ev.preventDefault(); last.focus(); }
+      else if(!ev.shiftKey && document.activeElement===last){ ev.preventDefault(); first.focus(); }
+    });
+    let wasOpen = false, returnTo = null;
+    new MutationObserver(()=>{
+      const open = backdrop.style.display === 'flex';
+      if(open && !wasOpen){
+        returnTo = document.activeElement;
+        const field = dialog.querySelector('input:not([type=hidden]):not([disabled]),select:not([disabled]),textarea:not([disabled])');
+        (field && field.offsetParent !== null ? field : dialog).focus();
+      } else if(!open && wasOpen){
+        if(returnTo && returnTo.isConnected) returnTo.focus();
+        returnTo = null;
+      }
+      wasOpen = open;
+    }).observe(backdrop, { attributes:true, attributeFilter:['style'] });
+  }
+
   // ============================================================
   // MARCA ATIVA - resolvida já no topo do arquivo, de forma síncrona (precisa vir ANTES da
   // seção de TEMA logo abaixo: cada marca pode ter uma cor de destaque própria, então é preciso
@@ -786,6 +822,7 @@
     </div>`;
     document.body.appendChild(backdrop);
     const close = ()=>{ backdrop.style.display = 'none'; };
+    wireModalA11y(backdrop, close);
     backdrop.addEventListener('click', ev=>{ if(ev.target===backdrop) close(); });
     backdrop.querySelector('.modal-close').addEventListener('click', close);
     backdrop.querySelector('#cancelResetPassword').addEventListener('click', close);
@@ -1000,6 +1037,7 @@
     document.body.appendChild(backdrop);
     const stage = backdrop.querySelector('#cropStage');
     const close = ()=>{ backdrop.style.display = 'none'; cropImage = null; cropOnConfirm = null; };
+    wireModalA11y(backdrop, close);
     backdrop.addEventListener('click', ev=>{ if(ev.target===backdrop) close(); });
     backdrop.querySelector('.modal-close').addEventListener('click', close);
     backdrop.querySelector('#cropCancel').addEventListener('click', close);
@@ -1093,6 +1131,7 @@
     </div>`;
     document.body.appendChild(backdrop);
     const close = ()=>{ backdrop.style.display = 'none'; setProfileEditing(false); };
+    wireModalA11y(backdrop, close);
     backdrop.addEventListener('click', ev=>{ if(ev.target===backdrop) close(); });
     backdrop.querySelector('.modal-close').addEventListener('click', close);
     backdrop.querySelector('#profileEditToggle').addEventListener('click', ()=>setProfileEditing(true));
@@ -1248,6 +1287,7 @@
     </div>`;
     document.body.appendChild(backdrop);
     const close = ()=>{ backdrop.style.display = 'none'; };
+    wireModalA11y(backdrop, close);
     backdrop.addEventListener('click', ev=>{ if(ev.target===backdrop) close(); });
     backdrop.querySelector('.modal-close').addEventListener('click', close);
     backdrop.querySelector('#cancelNewBrand').addEventListener('click', close);
@@ -1367,6 +1407,7 @@
     </div>`;
     document.body.appendChild(backdrop);
     const close = ()=>{ backdrop.style.display = 'none'; };
+    wireModalA11y(backdrop, close);
     backdrop.addEventListener('click', ev=>{ if(ev.target===backdrop) close(); });
     backdrop.querySelector('.modal-close').addEventListener('click', close);
     // aba lateral escopada a este modal - não usa document.querySelectorAll pra não
