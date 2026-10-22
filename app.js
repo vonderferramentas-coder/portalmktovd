@@ -981,7 +981,8 @@
 
     // Autocomplete de produto (modal de postagem e "Aplicar editoria"): mostra na hora o catálogo
     // local e, após uma pausa na digitação, acrescenta o que o site tiver e o catálogo não.
-    // chosen = produtos já escolhidos (não reaparecem); onPick(item) recebe {code, name}.
+    // chosen = produtos já escolhidos (não reaparecem); onPick(item) recebe {code, name} e só registra o
+    // produto: a lista continua aberta, sem o item escolhido, para marcar vários do mesmo resultado.
     function renderProductAutocomplete(box, input, chosen, onPick){
       clearTimeout(box._siteTimer);
       const query = input.value.trim();
@@ -994,6 +995,7 @@
           || (item.code && (normalizeStr(item.code).includes(q) || normalizeCode(item.code).includes(qCode)))
           || (item.codeFG && (normalizeStr(item.codeFG).includes(q) || normalizeCode(item.codeFG).includes(qCode))))
       ).sort((a,b)=> productMatchRank(a,q,qCode) - productMatchRank(b,q,qCode));
+      const close = ()=>{ clearTimeout(box._siteTimer); input.value = ''; box.style.display = 'none'; box.innerHTML = ''; };
       const paint = (items, loading)=>{
         // sem miniatura no cache ainda: <img> vazia que loadProductThumbs preenche (só as 20 primeiras;
         // as demais usam direto a foto do proxy, com carregamento preguiçoso)
@@ -1006,9 +1008,15 @@
           ? `<div class="autocomplete-item ac-loading"><span class="ac-name">Buscando no site…</span></div>`
           : (items.length ? '' : `<div class="autocomplete-item ac-manual"><span class="ac-name">+ Adicionar "${escapeHtml(query)}" (sem catálogo)</span></div>`);
         box.innerHTML = rows + tail;
-        box.querySelectorAll('.autocomplete-item[data-idx]').forEach(el=> el.addEventListener('mousedown', ev=>{ ev.preventDefault(); onPick(items[Number(el.dataset.idx)]); }));
+        box.querySelectorAll('.autocomplete-item[data-idx]').forEach(el=> el.addEventListener('mousedown', ev=>{
+          ev.preventDefault();
+          const picked = items[Number(el.dataset.idx)];
+          onPick(picked);
+          const rest = items.filter(item=> item!==picked);
+          if(rest.length || loading){ const top = box.scrollTop; paint(rest, loading); box.scrollTop = top; } else close();
+        }));
         const manual = box.querySelector('.ac-manual');
-        if(manual) manual.addEventListener('mousedown', ev=>{ ev.preventDefault(); onPick({ code:'', name: query }); });
+        if(manual) manual.addEventListener('mousedown', ev=>{ ev.preventDefault(); onPick({ code:'', name: query }); close(); });
         box.style.display = 'block';
         loadProductThumbs(box, items.slice(0,20));
       };
@@ -1017,13 +1025,16 @@
       box._siteTimer = setTimeout(()=> searchSiteProducts(query).then(site=>{
         if(input.value.trim() !== query || box.style.display === 'none') return; // continuou digitando ou fechou
         const known = new Set(local.map(item=> normalizeCode(item.code)).filter(Boolean));
-        paint(local.concat(site.filter(item=> !isChosen(item) && !known.has(normalizeCode(item.code)))), false);
+        paint(local.filter(item=> !isChosen(item)).concat(site.filter(item=> !isChosen(item) && !known.has(normalizeCode(item.code)))), false);
       }), 250);
     }
 
     function showProductSuggestions(){
       const box = $('productSuggestions'); if(!box) return;
-      renderProductAutocomplete(box, $('mProductName'), selectedProducts, addSelectedProduct);
+      renderProductAutocomplete(box, $('mProductName'), selectedProducts, item=>{
+        selectedProducts.push({ code: item.code||'', name: item.name });
+        renderSelectedProducts();
+      });
     }
 
     // ============================================================
@@ -3752,7 +3763,7 @@
         function showSugg(){
           renderProductAutocomplete(sugg, input, row.products, mch=>{
             row.products.push({ code: mch.code||'', name: mch.name });
-            input.value=''; hideSugg(); renderRowProducts(); input.focus();
+            renderRowProducts();
           });
         }
         input.addEventListener('input', ev=> showSugg(ev.target.value));
