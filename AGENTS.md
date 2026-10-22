@@ -18,6 +18,18 @@ Sempre que uma alteração criar, remover ou modificar uma integração externa,
 
 Não registre tokens, senhas, chaves privadas nem dados pessoais desnecessários na documentação ou no código. Registre o nome do segredo e o local administrativo quando isso for necessário para operação.
 
+## Revisão de código antes de commit e push
+
+Todo pedido de commit ou push (para `hml`, `main` ou PR) começa por uma revisão:
+
+1. Rode o skill `code-review` sobre tudo o que vai no commit, inclusive arquivos novos.
+2. Corrija os achados que procedem e valide de novo (teste ou Chrome, como nas regras acima). Para os que não procedem, anote o motivo.
+3. Se as correções mudaram lógica, rode a revisão mais uma vez sobre o diff final (uma rodada extra, no máximo).
+4. Relate ao usuário em português simples cada achado e o que foi feito com ele: a saída do skill vem em inglês.
+5. Só então faça o commit e o push.
+
+Uma revisão já feita nesta sessão sobre exatamente o mesmo diff vale; não precisa repetir.
+
 ## Política de uso de IA do Grupo OVD (30/10/2025)
 
 Esta política vale para todo trabalho de IA neste projeto, inclusive o meu. Se um pedido ou uma ação minha ferir qualquer item abaixo, **pare e questione o usuário antes de continuar**; não execute em silêncio nem "resolva" por conta própria.

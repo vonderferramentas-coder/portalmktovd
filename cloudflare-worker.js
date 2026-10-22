@@ -110,6 +110,9 @@ const thumbUrl=(product,item=(product.items||[])[0])=>{const image=((item||{}).i
 // Busca por nome (ou código) de produto VONDER no site FG, para a lista "Encontrados no site" do editor de posts. Devolve só
 // nome e código (a foto e os demais dados vêm depois, em /product-catalog e /product-image, quando o usuário escolhe um item).
 // ponytail: sem gêmeo em PHP/PowerShell; no máximo 12 itens, sem paginação.
+// Nome da variação: no site FG o SKU costuma trazer o nome completo ("Compressor ... 127 V~ - VONDER"), mas pode vir só
+// o rótulo ("127 V"). ponytail: heurística pelo tamanho; rótulo curto vira "nome do produto - rótulo".
+const skuName=(label,name)=>!label?name:label.length>=25?label:name+' - '+label;
 async function productSearch(request){
  const q=(new URL(request.url).searchParams.get('q')||'').trim().slice(0,60),digits=q.replace(/\D/g,''),byCode=digits.length>=5&&/^[\d.\s-]+$/.test(q);
  if(!byCode&&q.length<3)return json(request,{error:'Digite ao menos 3 letras ou um código.'},400);
@@ -117,7 +120,15 @@ async function productSearch(request){
  if(!originAllowed(request))return json(request,{error:'Origem não permitida.'},403);
  const upstream=await vtexFetch('https://www.fg.com.br/api/catalog_system/pub/products/search'+query);
  if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
- const items=(await upstream.json()).filter(isVonderBrand).slice(0,12).map(product=>({name:specTake(specRows(product))(/^descri[cç][aã]o completa/i)||product.productName,brand:product.brand,code:formatCode(String(product.productReference||'').replace(/\D/g,'')),thumb:thumbUrl(product)})).filter(item=>item.code);
+ // Produto com variações (127 V / 220 V...): uma linha por variação, cada uma com a sua referência, nome e foto; na busca
+ // por código, só a variação pedida (antes voltava sempre a referência do produto, ex.: 68.29.774.122 virava .133).
+ const items=(await upstream.json()).filter(isVonderBrand).slice(0,12).flatMap(product=>{
+  const name=specTake(specRows(product))(/^descri[cç][aã]o completa/i)||product.productName;
+  const skus=(product.items||[]).map(item=>{const ref=(item.referenceId||[]).find(r=>r.Key==='RefId');return{item,code:String((ref&&ref.Value)||'').replace(/\D/g,'')};}).filter(sku=>sku.code);
+  if(skus.length<2)return[{name,brand:product.brand,code:formatCode(skus.length?skus[0].code:String(product.productReference||'').replace(/\D/g,'')),thumb:thumbUrl(product)}];
+  const asked=skus.filter(sku=>sku.code===digits);
+  return(byCode&&asked.length?asked:skus).map(sku=>({name:skuName(sku.item.name,name),brand:product.brand,code:formatCode(sku.code),thumb:thumbUrl(product,sku.item)}));
+ }).filter(item=>item.code).slice(0,24); // 12 produtos; um com muitas variações não esconde os outros
  return json(request,{items});
 }
 // Miniaturas (3 KB) de vários produtos do catálogo de uma vez, para a lista do editor de posts: a foto do app.ovd tem de 2 a 15 MB e

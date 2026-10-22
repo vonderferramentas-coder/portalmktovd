@@ -107,6 +107,13 @@ jobs:
           cat /tmp/cartaz-validator-dump.html
           grep -q 'data-result="pass"' /tmp/cartaz-validator-dump.html
 
+      - name: Rota /product-search - variações de produto (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --allow-file-access-from-files --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 --dump-dom "file://$(pwd)/tests/product-search.test.html" > /tmp/product-search-dump.html
+          cat /tmp/product-search-dump.html
+          grep -q 'data-result="pass"' /tmp/product-search-dump.html
+
       - name: Modais do portal-shell - rótulo, Esc, Tab e foco (Chrome headless)
         run: |
           CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
