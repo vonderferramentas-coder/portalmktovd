@@ -867,7 +867,7 @@
     // AUTOCOMPLETE DO CATÁLOGO DE PRODUTOS (campo "Nome do produto")
     // ============================================================
     function addSelectedProduct(item){
-      if(item.code && selectedProducts.some(p=>p.code===item.code)){ $('mProductName').value=''; hideProductSuggestions(); return; }
+      if(item.code && selectedProducts.some(p=> normalizeCode(p.code)===normalizeCode(item.code))){ $('mProductName').value=''; hideProductSuggestions(); return; }
       selectedProducts.push({ code: item.code||'', name: item.name });
       $('mProductName').value = '';
       hideProductSuggestions();
@@ -989,12 +989,20 @@
       const q = normalizeStr(query);
       if(q.length < 2){ box.style.display = 'none'; box.innerHTML = ''; return; }
       const qCode = normalizeCode(query);
-      const isChosen = item=> chosen.some(p=> item.code ? p.code===item.code : p.name===item.name);
-      const local = productCandidates().filter(item=> !isChosen(item) &&
-        (normalizeStr(item.name).includes(q)
+      // códigos normalizados (com ou sem pontos) dos já escolhidos; atualizado a cada clique
+      const chosenCodes = new Set(chosen.map(p=> normalizeCode(p.code)).filter(Boolean));
+      const chosenNames = new Set(chosen.filter(p=> !p.code).map(p=> p.name));
+      const isChosen = item=> item.code ? chosenCodes.has(normalizeCode(item.code)) : chosenNames.has(item.name);
+      const found = productCandidates().filter(item=>
+        normalizeStr(item.name).includes(q)
           || (item.code && (normalizeStr(item.code).includes(q) || normalizeCode(item.code).includes(qCode)))
-          || (item.codeFG && (normalizeStr(item.codeFG).includes(q) || normalizeCode(item.codeFG).includes(qCode))))
+          || (item.codeFG && (normalizeStr(item.codeFG).includes(q) || normalizeCode(item.codeFG).includes(qCode)))
       ).sort((a,b)=> productMatchRank(a,q,qCode) - productMatchRank(b,q,qCode));
+      // o que a busca achou mas já está na postagem: aparece como "Já adicionado" quando não sobra mais
+      // nada, em vez do "+ Adicionar (sem catálogo)", que dava a entender que o produto não existe
+      let alreadyChosen = [];
+      const split = list=>{ alreadyChosen = []; return list.filter(item=> isChosen(item) ? (alreadyChosen.push(item), false) : true); };
+      const local = split(found);
       const close = ()=>{ clearTimeout(box._siteTimer); input.value = ''; box.style.display = 'none'; box.innerHTML = ''; };
       const paint = (items, loading)=>{
         // sem miniatura no cache ainda: <img> vazia que loadProductThumbs preenche (só as 20 primeiras;
@@ -1004,16 +1012,22 @@
           const img = d && i<20 && !(d in productThumbCache) ? `data-thumb="${d}"` : `src="${productImageUrl(item.code)}" loading="lazy"`;
           return `<div class="autocomplete-item" data-idx="${i}"><img ${img} alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" /><span class="ac-name">${escapeHtml(item.name)}</span><span class="ac-code">${escapeHtml(item.code)}</span></div>`;
         }).join('');
+        const dupes = items.length ? '' : alreadyChosen.slice(0,20).map(item=>{
+          const src = productImageUrl(item.code);
+          return `<div class="autocomplete-item is-added ac-dupe">${src ? `<img src="${src}" loading="lazy"` : '<img'} alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" /><span class="ac-name">${escapeHtml(item.name)}</span><span class="ac-code">${UI_ICONS.check(12)} Já adicionado</span></div>`;
+        }).join('');
         const tail = loading
           ? `<div class="autocomplete-item ac-loading"><span class="ac-name">Buscando no site…</span></div>`
-          : (items.length ? '' : `<div class="autocomplete-item ac-manual"><span class="ac-name">+ Adicionar "${escapeHtml(query)}" (sem catálogo)</span></div>`);
-        box.innerHTML = rows + tail;
+          : (items.length || dupes ? '' : `<div class="autocomplete-item ac-manual"><span class="ac-name">+ Adicionar "${escapeHtml(query)}" (sem catálogo)</span></div>`);
+        box.innerHTML = rows + (loading ? '' : dupes) + tail;
         // escolhido: a linha confirma ("✓ Adicionado", em verde) por ~0,55 s e então recolhe (.25s, DESIGN.md);
         // o produto já entrou na lista no clique. Se a lista se redesenhar no meio (chegou o site), tudo bem.
         box.querySelectorAll('.autocomplete-item[data-idx]').forEach(el=> el.addEventListener('mousedown', ev=>{
           ev.preventDefault();
           if(el.classList.contains('is-added')) return;
-          onPick(items[Number(el.dataset.idx)]);
+          const picked = items[Number(el.dataset.idx)];
+          onPick(picked);
+          if(picked.code) chosenCodes.add(normalizeCode(picked.code)); else chosenNames.add(picked.name);
           el.classList.add('is-added');
           el.querySelector('.ac-code').innerHTML = `${UI_ICONS.check(12)} Adicionado`;
           setTimeout(()=>{
@@ -1027,6 +1041,7 @@
             }, 250);
           }, 550);
         }));
+        box.querySelectorAll('.ac-dupe').forEach(el=> el.addEventListener('mousedown', ev=> ev.preventDefault())); // mantém o foco no campo
         const manual = box.querySelector('.ac-manual');
         if(manual) manual.addEventListener('mousedown', ev=>{ ev.preventDefault(); onPick({ code:'', name: query }); close(); });
         box.style.display = 'block';
@@ -1036,8 +1051,9 @@
       paint(local, true);
       box._siteTimer = setTimeout(()=> searchSiteProducts(query).then(site=>{
         if(input.value.trim() !== query || box.style.display === 'none') return; // continuou digitando ou fechou
-        const known = new Set(local.map(item=> normalizeCode(item.code)).filter(Boolean));
-        paint(local.filter(item=> !isChosen(item)).concat(site.filter(item=> !isChosen(item) && !known.has(normalizeCode(item.code)))), false);
+        const known = new Set(found.map(item=> normalizeCode(item.code)).filter(Boolean));
+        // refaz a divisão com o que foi escolhido enquanto o site respondia
+        paint(split(found.concat(site.filter(item=> !known.has(normalizeCode(item.code))))), false);
       }), 250);
     }
 
