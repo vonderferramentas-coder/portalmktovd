@@ -1008,12 +1008,24 @@
           ? `<div class="autocomplete-item ac-loading"><span class="ac-name">Buscando no site…</span></div>`
           : (items.length ? '' : `<div class="autocomplete-item ac-manual"><span class="ac-name">+ Adicionar "${escapeHtml(query)}" (sem catálogo)</span></div>`);
         box.innerHTML = rows + tail;
+        // escolhido: a linha confirma ("✓ Adicionado", em verde) por ~0,55 s e então recolhe (.25s, DESIGN.md);
+        // o produto já entrou na lista no clique. Se a lista se redesenhar no meio (chegou o site), tudo bem.
         box.querySelectorAll('.autocomplete-item[data-idx]').forEach(el=> el.addEventListener('mousedown', ev=>{
           ev.preventDefault();
-          const picked = items[Number(el.dataset.idx)];
-          onPick(picked);
-          const rest = items.filter(item=> item!==picked);
-          if(rest.length || loading){ const top = box.scrollTop; paint(rest, loading); box.scrollTop = top; } else close();
+          if(el.classList.contains('is-added')) return;
+          onPick(items[Number(el.dataset.idx)]);
+          el.classList.add('is-added');
+          el.querySelector('.ac-code').innerHTML = `${UI_ICONS.check(12)} Adicionado`;
+          setTimeout(()=>{
+            el.style.height = el.offsetHeight + 'px';
+            void el.offsetHeight; // fixa a altura atual antes de animar até 0
+            el.classList.add('is-leaving');
+            el.style.height = '0px';
+            setTimeout(()=>{
+              el.remove();
+              if(!loading && input.value.trim()===query && !box.querySelector('.autocomplete-item[data-idx]')) close();
+            }, 250);
+          }, 550);
         }));
         const manual = box.querySelector('.ac-manual');
         if(manual) manual.addEventListener('mousedown', ev=>{ ev.preventDefault(); onPick({ code:'', name: query }); close(); });
