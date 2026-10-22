@@ -112,7 +112,7 @@ var CATALOG_PRODUCT_WIDTH=1600;
 // mesmo proxy CORS público usado pelo coletor de ofertas FG (ver cloudflare-worker.js), com uma
 // rota extra pra foto de produto. Não reduz o tamanho da foto (sem 'w'), então só entra pro
 // recorte automático (CATALOG_PRODUCT_WIDTH), nunca pras miniaturas do catálogo.
-var PORTAL_API=window.PORTAL_API||'https://ecommerce-fg.vonderferramentas.workers.dev'; // ver firebase-config.js
+var PORTAL_API=window.PORTAL_API||'https://portalmktovd.pages.dev/api'; // ver firebase-config.js
 function workerProductImageUrl(code){var digits=normalizeCode(code);if(!digits)return'';return PORTAL_API+'/product-image?code='+encodeURIComponent(digits)}
 // Regra do portal: só web. Nenhuma requisição à máquina do usuário nem à rede local (endereços de loopback, IPs privados, nomes
 // internos como o do app de fotos): o Chrome pediria "Acessar outros dispositivos na sua rede local". A foto do produto vem do Worker

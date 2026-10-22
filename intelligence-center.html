@@ -153,6 +153,7 @@
     .section-divider-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .28s ease, opacity .22s ease; opacity: 1 }
     .section-divider-body.is-collapsed { grid-template-rows: 0fr; opacity: 0 }
     .section-divider-body-inner { overflow: hidden; min-height: 0 }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important } }
   </style>
 </head>
 

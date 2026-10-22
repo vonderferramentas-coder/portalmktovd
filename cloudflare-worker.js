@@ -1,5 +1,6 @@
-// Cloudflare Worker - coletor público de ofertas da Ferramentas Gerais.
-// Único proxy de foto/oferta/catálogo do portal (o PHP e os proxies PowerShell locais foram removidos em 06/10/2026: o portal só fala com a web).
+// Rotas de foto/oferta/catálogo do portal. Desde 21/10/2026 rodam no Cloudflare Pages em /api/* (functions/api/[[path]].js
+// importa este arquivo; publica sozinho a cada push) e todas as páginas usam essas rotas (window.PORTAL_API em firebase-config.js).
+// O Worker ecommerce-fg (workers.dev) com este mesmo código ficou sem uso, só como plano de volta - não precisa mais ser republicado.
 const ALLOWED_ORIGINS=new Set(['https://vonderferramentas-coder.github.io','https://portalmktovd.pages.dev','https://hml.portalmktovd.pages.dev','http://localhost:5500','http://127.0.0.1:5500']);
 const FG_HOST=/(^|\.)fg\.com\.br$/i;
 function cors(request){const origin=request.headers.get('Origin')||'';const allowed=ALLOWED_ORIGINS.has(origin)?origin:'https://vonderferramentas-coder.github.io';return {'Access-Control-Allow-Origin':allowed,'Access-Control-Allow-Methods':'GET, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Vary':'Origin'};}

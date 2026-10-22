@@ -89,6 +89,7 @@
     #monTableWrap select.mon-status[data-status="ignorado"] { background: #f3f4f6; border-color: #d1d5db; color: #6b7280 }
     #monTableWrap select.mon-status option { background: var(--card); color: var(--text) }
     #monTableWrap select.mon-status:disabled { opacity: .5; cursor: progress }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important } }
   </style>
 </head>
 

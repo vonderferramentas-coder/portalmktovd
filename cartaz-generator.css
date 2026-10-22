@@ -846,14 +846,14 @@ button:disabled {
 .cg-dialog {
     width: min(420px, calc(100vw - 32px));
     border: 1px solid var(--cg-line);
-    border-radius: 14px;
+    border-radius: var(--radius-lg);
     padding: 0;
     background: var(--cg-card);
     color: var(--cg-ink);
     box-shadow: 0 20px 55px #0005;
 }
 .cg-dialog::backdrop {
-    background: #001d2b99;
+    background: var(--backdrop);
 }
 .cg-dialog form {
     padding: 24px;

@@ -529,10 +529,12 @@ function buildEditModal() {
     btn.disabled = true;
     try {
       const nextUsers = latestUsers.map(user => user.id === id ? Object.assign({}, user, patch) : user);
-      await updateDoc(doc(db, 'users', id), patch);
+      // as rotas vão antes do updateDoc: se o admin troca o próprio perfil, depois dele ele deixa de ser admin e as regras barram a escrita
+      await syncNotificationRoutes(nextUsers);
+      try { await updateDoc(doc(db, 'users', id), patch); }
+      catch (error) { await syncNotificationRoutes().catch(() => {}); throw error; }
       latestUsers = nextUsers;
       renderUserRows();
-      await syncNotificationRoutes(nextUsers);
       await audit('user_updated', { targetUid: id, name, email, role });
       close();
       show('Usuário atualizado.', true);
