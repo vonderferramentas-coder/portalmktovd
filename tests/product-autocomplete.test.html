@@ -1,0 +1,36 @@
+<!doctype html><meta charset="utf-8"><title>Teste da busca de produto do calendário (resultado exato e ordem)</title>
+<body data-result="running">Executando…</body>
+<script>
+// Extrai do app.js as funções puras da busca de produto (não dá para carregar o arquivo inteiro: ele monta o calendário e pede login)
+const eq = (actual, expected, label) => { if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(label + ': esperado ' + JSON.stringify(expected) + ', veio ' + JSON.stringify(actual)); };
+try {
+  const xhr = new XMLHttpRequest(); xhr.open('GET', '../app.js', false); xhr.send();
+  const take = name => { const m = xhr.responseText.match(new RegExp('function ' + name + '\\([^)]*\\)\\{[\\s\\S]*?\\n    \\}')); if (!m) throw new Error(name + ' não encontrada em app.js'); return m[0]; };
+  const fns = ['normalizeStr', 'normalizeCode', 'exactProductMatch', 'productMatchRank'].map(take).join('\n');
+  const { normalizeStr, normalizeCode, exactProductMatch, productMatchRank } = new Function(fns + '\nreturn { normalizeStr, normalizeCode, exactProductMatch, productMatchRank };')();
+  const search = query => { const q = normalizeStr(query.trim()), qCode = normalizeCode(query.trim()); return { q, qCode }; };
+
+  const items = [
+    { code: '70.55.430.000', name: 'Óculos de segurança Maltês verde VONDER' },
+    { code: '68.29.774.122', name: 'Compressor de Ar VDCSI 127 V~ - VONDER' },
+    { code: '', name: 'Produto manual' }
+  ];
+  let s = search('7055430000');
+  eq(exactProductMatch(items, s.q, s.qCode).code, '70.55.430.000', 'código sem pontos acha o produto com pontos');
+  s = search('oculos de seguranca maltes verde vonder');
+  eq(exactProductMatch(items, s.q, s.qCode).code, '70.55.430.000', 'nome sem acento acha o produto');
+  s = search('compressor');
+  eq(exactProductMatch(items, s.q, s.qCode), null, 'trecho do nome não é resultado exato');
+
+  // 60 itens que começam pelo termo, e o exato no fim: depois de ordenar, ele vem primeiro (antes do corte de 50)
+  const list = Array.from({ length: 60 }, (_, i) => ({ code: '10.00.000.' + String(i).padStart(3, '0'), name: 'Martelo modelo ' + i }));
+  list.push({ code: '10.00.999.000', name: 'Martelo' });
+  s = search('Martelo');
+  const sorted = list.slice().sort((a, b) => productMatchRank(a, s.q, s.qCode) - productMatchRank(b, s.q, s.qCode));
+  eq(sorted[0].name, 'Martelo', 'nome exato vem antes dos 60 que só começam pelo termo');
+  s = search('10.00.999.000');
+  eq(list.slice().sort((a, b) => productMatchRank(a, s.q, s.qCode) - productMatchRank(b, s.q, s.qCode))[0].code, '10.00.999.000', 'código exato vem primeiro');
+
+  document.body.dataset.result = 'pass'; document.body.textContent = 'ok';
+} catch (e) { document.body.dataset.result = 'fail'; document.body.textContent = e.message; }
+</script>
