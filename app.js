@@ -60,7 +60,7 @@
       if(masterCatalogLoading || Date.now() < masterCatalogRetryAt || typeof CatalogProvider==='undefined') return;
       masterCatalogLoading = CatalogProvider.load('vonder').then(result=>{
         masterCatalog = result.items||[]; masterCatalogLoading = null;
-        masterCatalogByCode = new Map(masterCatalog.filter(item=> item.code).map(item=> [normalizeCode(item.code), item]));
+        masterCatalogByCode = new Map(masterCatalog.filter(item=> item.code).reverse().map(item=> [normalizeCode(item.code), item])); // reverse: código repetido fica com o 1º item
         if(!masterCatalog.length) masterCatalogRetryAt = Date.now() + 30000;
       });
     }
@@ -905,7 +905,8 @@
     // pó..." antes de "Escova para aspirador"
     function productMatchRank(item, q, qCode){
       const name = normalizeStr(item.name||'');
-      if((q && name===q) || (qCode && [item.code, item.codeFG].some(c=> c && normalizeCode(c)===qCode))) return -1; // exatos na frente de tudo
+      // exatos na frente de tudo (mesma regra de exactProductMatch, inline por ser o caminho de cada tecla)
+      if((q && name===q) || (qCode && ((item.code && normalizeCode(item.code)===qCode) || (item.codeFG && normalizeCode(item.codeFG)===qCode)))) return -1;
       if(q && name.startsWith(q)) return 0;
       if(qCode && item.code && normalizeCode(item.code).startsWith(qCode)) return 0;
       if(qCode && item.codeFG && normalizeCode(item.codeFG).startsWith(qCode)) return 0;
@@ -927,7 +928,7 @@
     // Dados ricos de produto fora do catálogo local (veio da busca no site): /product-catalog, uma vez por
     // código na sessão, só na memória (a postagem continua gravando só código e nome). Quando chegam,
     // título sugerido, pautas e briefing se refazem. null = o site não tem o produto.
-    const siteDetailsCache = {}, siteDetailsPending = new Set(), siteDetailsRetryAt = {};
+    const siteDetailsCache = {}, siteDetailsPending = new Set(), siteDetailsRetryAt = {}, siteDetailsFails = {};
     let siteDetailsDeferred = false;
     function loadSiteDetails(){
       if(masterCatalogLoading){ // talvez estejam no catálogo local: espera por ele uma vez só, e usa a lista do momento
@@ -944,7 +945,9 @@
           .then(res=> res.ok ? res.json() : (res.status===404 || res.status===400 ? null : Promise.reject(res.status)))
           // o nome é o da variação escolhida (ex.: "... 220 V"); a rota devolve o do produto
           .then(data=>{ siteDetailsCache[nc] = data && data.name ? Object.assign({}, data, { name: p.name || data.name }) : null; },
-                ()=>{ siteDetailsRetryAt[nc] = Date.now() + 30000; setTimeout(loadSiteDetails, 30500); })
+                // até 3 tentativas automáticas, só com o modal aberto; depois, quando a pessoa mexe nos produtos ou pede a legenda
+                ()=>{ siteDetailsRetryAt[nc] = Date.now() + 30000; siteDetailsFails[nc] = (siteDetailsFails[nc]||0) + 1;
+                      if(siteDetailsFails[nc] < 3) setTimeout(()=>{ if($('modalBackdrop').style.display === 'flex') loadSiteDetails(); }, 30500); })
           .then(()=>{ siteDetailsPending.delete(nc); if(siteDetailsCache[nc]) onSiteDetailsArrived(); });
       });
     }
@@ -1129,13 +1132,13 @@
       if(query.length < 3){ paint(local, false); return; }
       paint(local, true);
       box._siteTimer = setTimeout(()=> searchSiteProducts(query).then(site=>{
-        if(input.value.trim() !== query || box.style.display === 'none'){ box._enterPending = false; return; } // continuou digitando ou fechou
+        if(input.value.trim() !== query || box.style.display === 'none'){ if(box.style.display === 'none') box._enterPending = false; return; } // continuou digitando (o Enter pendente é da busca nova) ou fechou
         const known = new Set(found.map(item=> normalizeCode(item.code)).filter(Boolean));
         const fresh = site.filter(item=> !known.has(normalizeCode(item.code)));
         // refaz a divisão com o que foi escolhido enquanto o site respondia
         const rest = split(found).slice(0, LOCAL_LIMIT);
         alreadyChosen = alreadyChosen.concat(fresh.filter(isChosen));
-        paint(byRank(rest.concat(fresh.filter(item=> !isChosen(item)))), false);
+        paint(rest.concat(byRank(fresh.filter(item=> !isChosen(item)))), false); // os do site entram depois: a lista não pula sob o ponteiro
         if(box._enterPending){ box._enterPending = false; box._enter(); }
       }), 250);
     }
