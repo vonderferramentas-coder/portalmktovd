@@ -1108,6 +1108,7 @@
     .portal-nav-subitem{font-size:12.5px;padding:5px 10px}
     .portal-nav-subitem svg{width:15px;height:15px}
     .portal-sidebar.collapsed .portal-nav-sub,.portal-sidebar.collapsed .portal-nav-toggle{display:none}
+    .portal-sidebar.collapsed .portal-nav-parent-row .portal-nav-item{padding-right:11px}
     @media (max-width:760px){.portal-nav-sub,.portal-nav-toggle{display:none!important}.portal-nav-parent-row .portal-nav-item{padding-right:11px}}
     /* a sidebar continua rolando (roda do mouse/teclado) quando o dropdown a deixa mais alta que a tela, mas sem a barra, que comia largura e cortava os rótulos */
     .portal-sidebar{scrollbar-width:none}

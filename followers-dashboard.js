@@ -65,7 +65,7 @@
   const NETWORKS = [
     { name:'Instagram', color:'#E94683', icon:'icons/instagram.svg', connected: !!(integration && integration.instagram) },
     { name:'Facebook',  color:'#287BE0', icon:'icons/facebook.svg',  connected: !!(integration && integration.facebook) },
-    { name:'YouTube',   color:'#F04444', icon:'icons/youtube.svg',   connected: !!(integration && integration.youtube) },
+    { name:'YouTube',   color:'#FF0000', icon:'icons/youtube.svg',   connected: !!(integration && integration.youtube) },
     // TikTok usa preto (#111827) como cor de marca no card "Comunidade total" (fundo, sempre
     // legível) - mas essa mesma cor em linha/ponto/legenda do gráfico fica preto sobre preto no
     // tema escuro (fundo do card também é bem escuro). colorChart é só para esses três usos

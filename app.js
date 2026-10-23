@@ -2611,8 +2611,8 @@
     // CONFIGURAÇÕES DA APLICAÇÃO - redes, editorias, formatos,
     // status, catálogo de produtos e metas (persistidas no localStorage)
     // ============================================================
-    const BRAND_COLORS = { Instagram:'#E4405F', Facebook:'#1877F2', LinkedIn:'#0A66C2', TikTok:'#010101', Blog:'#ef4444', Email:'#374151' };
-    const BRAND_SHORT_NAMES = { Instagram:'IG', LinkedIn:'LI', TikTok:'TT', Blog:'BL', Email:'EM' };
+    const BRAND_COLORS = { Instagram:'#E4405F', Facebook:'#1877F2', LinkedIn:'#0A66C2', TikTok:'#010101', YouTube:'#FF0000', Blog:'#ef4444', Email:'#374151' };
+    const BRAND_SHORT_NAMES = { Instagram:'IG', LinkedIn:'LI', TikTok:'TT', YouTube:'YT', Blog:'BL', Email:'EM' };
     // formatos padrão por rede - cada rede tem seu próprio conjunto (ex: Reels só existe no Instagram),
     // cada formato com as dimensões (px) e extensões de arquivo aceitas
     const NETWORK_DEFAULT_FORMATS = {
@@ -2631,6 +2631,10 @@
         { name:'Artigo', width:1200, height:644, extensions:['JPG','PNG'] }
       ],
       TikTok: [{ name:'Vídeo', width:1080, height:1920, extensions:['MP4'] }],
+      YouTube: [
+        { name:'Vídeo', width:1920, height:1080, extensions:['MP4'] },
+        { name:'Shorts', width:1080, height:1920, extensions:['MP4'] }
+      ],
       Blog: [{ name:'Post', width:1200, height:630, extensions:['JPG','PNG'] }],
       Email: [{ name:'Email', width:600, height:800, extensions:['JPG','PNG'] }]
     };
@@ -2688,6 +2692,7 @@
         { name:'Facebook', shortName:'FB', color:'#1877F2', formats: NETWORK_DEFAULT_FORMATS.Facebook.map(f=>Object.assign({},f)) },
         { name:'TikTok', shortName:'TT', color:'#010101', formats: NETWORK_DEFAULT_FORMATS.TikTok.map(f=>Object.assign({},f)) },
         { name:'LinkedIn', shortName:'LI', color:'#0A66C2', formats: NETWORK_DEFAULT_FORMATS.LinkedIn.map(f=>Object.assign({},f)) },
+        { name:'YouTube', shortName:'YT', color:'#FF0000', formats: NETWORK_DEFAULT_FORMATS.YouTube.map(f=>Object.assign({},f)) },
         { name:'Blog', shortName:'BL', color:'#ef4444', formats: NETWORK_DEFAULT_FORMATS.Blog.map(f=>Object.assign({},f)) },
         { name:'Email', shortName:'EM', color:'#374151', formats: NETWORK_DEFAULT_FORMATS.Email.map(f=>Object.assign({},f)) }
       ],
@@ -4335,9 +4340,9 @@
     // EXPORTAÇÃO CSV E UTILITÁRIOS GERAIS
     // ============================================================
     // baixa um arquivo de texto no navegador (usado pela exportação CSV)
-    function download(name, text){
+    function download(name, text, type){
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([text],{type:'text/plain'}));
+      a.href = URL.createObjectURL(new Blob([text],{type: type||'text/plain'}));
       a.download = name;
       document.body.appendChild(a);
       a.click();
@@ -4366,6 +4371,30 @@
         rows.push([csvEscape(p.date), csvEscape(p.title), csvEscape(channelVal), csvEscape(placeVal), csvEscape(typeVal), csvEscape(p.status||''), csvEscape(p.collab? 'true':'false'), csvEscape(p.notes), csvEscape(editoriasVal), csvEscape(productCodesVal), csvEscape(productNamesVal), csvEscape(p.id)].join(','));
       });
       download('calendar_posts.csv', rows.join('\n'));
+    }
+
+    // baixa uma planilha (CSV com ";" e BOM, abre direto no Excel pt-BR) com um código de produto por linha,
+    // sem repetição, para montar a planilha de validação do catálogo
+    function exportProductCodes(){
+      const byKey = new Map();
+      (state.posts||[]).slice().sort((a,b)=> (a.date||'').localeCompare(b.date||'')).forEach(p=>{
+        getPostProducts(p).forEach(x=>{
+          if(!x.code && !x.name) return;
+          // chave com código E nome: o mesmo código com nomes diferentes aparece em linhas separadas
+          const key = (x.code||'')+'\u0001'+(x.name||'');
+          if(!byKey.has(key)) byKey.set(key, { code: x.code||'', name: x.name||'', dates: [] });
+          const dates = byKey.get(key).dates;
+          if(!dates.includes(p.date)) dates.push(p.date);
+        });
+      });
+      if(byKey.size===0){ alert('Nenhum produto nas postagens para exportar'); return; }
+      // nome começando com = + - @ viraria fórmula no Excel; código só de dígitos (ou 1E5) perderia zeros à esquerda
+      const safe = v => { const s = String(v==null?'':v); return /^[=+\-@]/.test(s) ? "'"+s : s; };
+      const cell = v => '"'+v.replace(/"/g,'""')+'"';
+      const codeCell = v => /^\d+$|^\d+e\d+$/i.test(v) ? '="'+v+'"' : cell(safe(v));
+      const rows = [['Código','Produto','Postagens','Datas'].map(cell).join(';')];
+      byKey.forEach(r=> rows.push([codeCell(r.code), cell(safe(r.name)), cell(String(r.dates.length)), cell(r.dates.join(' | '))].join(';')));
+      download('codigos_produtos.csv', '﻿'+rows.join('\r\n'), 'text/csv;charset=utf-8');
     }
 
     // escapa caracteres especiais de HTML para evitar quebra de layout/XSS ao injetar texto do usuário
@@ -4899,13 +4928,14 @@
         }
       });
       $('toolbarMoreMenu').addEventListener('click', ev=> ev.stopPropagation());
-      ['exportBriefingBtn','exportCsvBtn','resetMonthBtn'].forEach(id=>{
+      ['exportBriefingBtn','exportCsvBtn','exportProductCodesBtn','resetMonthBtn'].forEach(id=>{
         const action = $(id); if(action) action.addEventListener('click', closeToolbarMoreMenu);
       });
       document.addEventListener('click', closeToolbarMoreMenu);
       document.addEventListener('keydown', ev=>{ if(ev.key==='Escape') closeToolbarMoreMenu(); });
     }
     const _exportCsvBtn = $('exportCsvBtn'); if(_exportCsvBtn) _exportCsvBtn.addEventListener('click', exportCSV);
+    const _exportCodesBtn = $('exportProductCodesBtn'); if(_exportCodesBtn) _exportCodesBtn.addEventListener('click', exportProductCodes);
     if($('exportBriefingBtn')) $('exportBriefingBtn').addEventListener('click', openExportBriefingModal);
     const _resetMonthBtn = $('resetMonthBtn'); if(_resetMonthBtn) _resetMonthBtn.addEventListener('click', resetMonth);
     // botão que abre o modal de filtros

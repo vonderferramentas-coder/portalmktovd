@@ -2344,7 +2344,7 @@ button:disabled {
 .card.lb .lb-table td + td { text-align: right; }
 .card.lb .lb-table.lb-fit { table-layout: auto; }
 .card.lb .lb-table.lb-fit th + th, .card.lb .lb-table.lb-fit td + td { width: 1%; white-space: nowrap; } /* "Consulte códigos" é mais largo que um código: a coluna encolhe ao texto, encostada no fim da tabela, e o cabeçalho acompanha o início do texto */
-.card.lb .lb-table td { padding: 0 4px; overflow: hidden; white-space: nowrap; text-overflow: clip; }
+.card.lb .lb-table td { padding: 0 4px; overflow-x: clip; overflow-y: visible; white-space: nowrap; text-overflow: clip; } /* só a horizontal é contida (fitCells garante que o texto cabe na largura): o clip vertical cortava o rabinho do "g" de "kg" no PDF */
 .card.lb .lb-table tbody tr:nth-child(odd) { background: #e4e4e4; }
 .card.lb .lb-body.solo { grid-template-columns: 1fr; }
 /* "Lista simples": sem cabeçalho, listras nem alinhamento à direita, como os códigos da Feira */

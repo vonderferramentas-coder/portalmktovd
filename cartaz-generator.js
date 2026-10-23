@@ -473,12 +473,23 @@
     function syncQr() { let cards = [...document.querySelectorAll('#preview .card.lb')], min = Math.min(1, ...cards.map(card => +card.dataset.qk || 1)); cards.forEach(card => card.style.setProperty('--qk', min));
         let tk = Math.min(1, ...cards.map(card => +card.dataset.tk || 1)); /* idem para o título: todos adotam o menor encolhimento (o ajuste manual A+/A- de cada card é mantido por cima) */
         cards.forEach(card => { let h3 = card.querySelector('h3'), item = S.pages[+card.dataset.page].items[+card.dataset.idx]; if (h3) h3.style.fontSize = 'calc(' + (11.5 * (item.titleScale || 1) * tk).toFixed(2) + 'px * var(--u))'; }); }
+    /* Nenhuma informação da tabela pode ser cortada: o tamanho padrão da fonte vale enquanto o texto cabe na coluna; se não cabe, a fonte da célula encolhe até caber (mínimo 70%) e,
+       só se ainda assim não couber, o texto quebra em 2 linhas (a altura extra entra na conta do corte de linhas do trimLive, que avisa "fora do cartão"). */
+    function fitCells(card) {
+        /* folga de 1 px: o html2canvas desenha o texto um pouco mais largo que o navegador e, na exportação, a célula não corta mais (ver fitClonedCells) */
+        let cells = [...card.querySelectorAll('.lb-table td')].filter(cell => cell.firstChild), range = document.createRange(), need = cell => { range.selectNodeContents(cell); return range.getBoundingClientRect().width; };
+        cells.forEach(cell => { cell.style.fontSize = ''; cell.style.whiteSpace = ''; });
+        /* mede tudo primeiro e só depois aplica, para não forçar um reflow por célula */
+        let over = cells.map(cell => { let style = getComputedStyle(cell), room = cell.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 1, width = need(cell); return room > 0 && width > room ? { cell, room, width, size: parseFloat(style.fontSize) } : null; }).filter(Boolean);
+        over.forEach(o => o.cell.style.fontSize = Math.max(o.size * o.room / o.width, o.size * .7).toFixed(2) + 'px');
+        over.forEach(o => { if (need(o.cell) > o.room) o.cell.style.whiteSpace = 'normal'; });
+    }
     function trimLive(card) {
         card.style.setProperty('--u', cardScale(card, S.pages[+card.dataset.page].items[+card.dataset.idx].span));
         /* foto salva fora dos limites da coluna (zoom/posição antigos) é ajustada ao desenhar; a medição invisível não ajusta para não gravar medidas erradas */
         let ph = card.querySelector('.photo'), st = S.pages[+card.dataset.page].items[+card.dataset.idx].photo; photoFit(card, ph, st);
         /* botão com laterais rentes ao texto: mede a linha mais larga já quebrada e encolhe o botão a ela (CSS puro não encolhe a caixa depois da quebra) */
-        fitButton(card);
+        fitButton(card); fitCells(card);
         checkTitle(card); let body = card.querySelector('.lb-body') || card, rows = [...card.querySelectorAll('.lb-table tbody tr')], warn = card.querySelector('.cutwarn'), item = S.pages[+card.dataset.page].items[+card.dataset.idx], removed = 0;
         /* antes de cortar linhas, encolhe o título aos poucos (até 80%) para devolver espaço ao corpo */
         let h3 = card.querySelector('h3'), over = () => card.scrollHeight > card.clientHeight + 1 || body.scrollHeight > body.clientHeight + 1 || body.clientHeight < 40;
@@ -1181,6 +1192,9 @@
     /* O html2canvas assenta o texto do botão cerca de 0,8 px (css) mais baixo que o navegador: sobrava mais margem acima do que abaixo na exportação.
        Compensa só no clone, subindo o texto (o CSS da prévia e da impressão segue igual). Medido nos pixels do export: folga de cima 5 px x 0 px embaixo. */
     function fitClonedButtons(clonedSheet) { clonedSheet.querySelectorAll('.lb-btn').forEach(btn => { btn.style.paddingTop = 'calc(0.7px * var(--u))'; btn.style.paddingBottom = 'calc(1.3px * var(--u))'; }); }
+    /* O html2canvas 1.4.1 corta a célula nos DOIS eixos (até com overflow-x:clip + overflow-y:visible) e pinta o fundo cinza da linha seguinte por cima do rabinho do "g" de "kg" da linha de cima.
+       No clone: sem corte (fitCells já garante a largura) e célula posicionada, que o html2canvas desenha por cima de todos os fundos de linha. */
+    function fitClonedCells(clonedSheet) { clonedSheet.querySelectorAll('.lb-table td').forEach(cell => { cell.style.overflow = 'visible'; cell.style.position = 'relative'; }); }
     function fitClonedLogos(origSheet, clonedSheet) {
         let clones = [...clonedSheet.querySelectorAll('.sheet-footer img, .sheet-logo-card img')];
         [...origSheet.querySelectorAll('.sheet-footer img, .sheet-logo-card img')].forEach((origImg, i) => {
@@ -1340,7 +1354,7 @@
                 await yieldExportUi();
                 let canvas, image, box = sheet.getBoundingClientRect(), links = [...sheet.querySelectorAll('[data-link]')].map(el => { let r = el.getBoundingClientRect(); return { url: el.dataset.link, x: (r.left - box.left) / box.width, y: (r.top - box.top) / box.height, w: r.width / box.width, h: r.height / box.height }; }); /* QR e botão viram áreas clicáveis no PDF */
                 try {
-                    canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: EXPORT_SCALE, useCORS: true, logging: false, imageTimeout: 15000, onclone: async clonedDoc => { let clonedSheet = clonedDoc.querySelector(sheetSelector); if (!clonedSheet) return; fitClonedCards(sheet, clonedSheet); fitClonedButtons(clonedSheet); fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); await fitClonedHeaderLogo(sheet, clonedSheet); } });
+                    canvas = await html2canvas(sheet, { backgroundColor: '#003e55', scale: EXPORT_SCALE, useCORS: true, logging: false, imageTimeout: 15000, onclone: async clonedDoc => { let clonedSheet = clonedDoc.querySelector(sheetSelector); if (!clonedSheet) return; fitClonedCards(sheet, clonedSheet); fitClonedButtons(clonedSheet); fitClonedCells(clonedSheet); fitClonedPhotos(sheet, clonedSheet); fitClonedLogos(sheet, clonedSheet); await fitClonedHeaderLogo(sheet, clonedSheet); } });
                     if (exportCancelled) { let error = Error('Exportação cancelada.'); error.name = 'AbortError'; throw error; }
                     image = await canvasBlob(canvas);
                 } finally {
