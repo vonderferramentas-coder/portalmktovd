@@ -54,12 +54,13 @@
     let pendingProductRemovalIdx = null;
     // catálogo mestre de produtos (data/catalog-vonder.json, via CatalogProvider) - carregado
     // à parte do catálogo manual em APP_SETTINGS.catalog; os dois alimentam productCandidates()
-    let masterCatalog = [], masterCatalogLoading = null, masterCatalogRetryAt = 0;
+    let masterCatalog = [], masterCatalogByCode = new Map(), masterCatalogLoading = null, masterCatalogRetryAt = 0;
     // uma carga por vez; se vier vazio (rede falhou), uma busca de produto tenta de novo, no máximo a cada 30 s
     function loadMasterCatalog(){
       if(masterCatalogLoading || Date.now() < masterCatalogRetryAt || typeof CatalogProvider==='undefined') return;
       masterCatalogLoading = CatalogProvider.load('vonder').then(result=>{
         masterCatalog = result.items||[]; masterCatalogLoading = null;
+        masterCatalogByCode = new Map(masterCatalog.filter(item=> item.code).reverse().map(item=> [normalizeCode(item.code), item])); // reverse: código repetido fica com o 1º item
         if(!masterCatalog.length) masterCatalogRetryAt = Date.now() + 30000;
       });
     }
@@ -280,11 +281,15 @@
     function normalizeCode(s){
       return String(s||'').replace(/[.\s-]/g,'').toLowerCase();
     }
+    // só os dígitos do código (forma usada pelas rotas do site e pelo cache de miniaturas)
+    function codeDigits(s){
+      return String(s||'').replace(/\D/g,'');
+    }
     // miniaturas leves (120x120, ~3 KB, CDN do site FG) por código só com dígitos: vêm junto da busca
     // no site ou em lote de /product-thumbs (loadProductThumbs). '' = o site não tem foto do produto.
     const productThumbCache = {};
     function productImageUrl(code){
-      const digits = String(code||'').replace(/\D/g,'');
+      const digits = codeDigits(code);
       if(!digits) return '';
       if(productThumbCache[digits]) return productThumbCache[digits];
       // O host de imagens estáticas da Vonder bloqueia embeds <img> de outros sites
@@ -614,20 +619,23 @@
     let currentContentSuggestionsKey = null;
     function contentSuggestionsContextKey(){
       const editorias = Array.from(document.querySelectorAll('.mEditoria:checked')).map(e=>e.value).sort().join(',');
-      const productKey = selectedProducts.map(p=>p.code||p.name).join(',');
+      // "\u0001" = o produto já tem dados ricos: quando eles chegam do site, a chave muda e as pautas se refazem
+      const productKey = selectedProducts.map(p=> (p.code||p.name) + (productDetailsByCode(p.code) ? '\u0001' : '')).join(',');
       return editorias + '|' + productKey;
     }
 
     function renderContentSuggestions(forceRegenerate){
       const box = $('contentSuggestions'); if(!box) return;
       const key = contentSuggestionsContextKey();
+      const previousKey = currentContentSuggestionsKey;
       if(forceRegenerate || key !== currentContentSuggestionsKey){
         currentContentSuggestions = pickContentSuggestions();
         currentContentSuggestionsKey = key;
-        // contexto mudou (produto/editoria) ou pediu pautas novas - as 3 pautas em uso antes já
-        // não correspondem a nenhuma das novas, então a próxima "Usar no conteúdo" deve inserir,
-        // não tentar substituir um texto que não existe mais nessas sugestões
-        lastInsertedPautaBlock = null;
+        // contexto mudou (produto/editoria) ou pediu pautas novas: a próxima "Usar no conteúdo" insere.
+        // Exceção: se só chegaram os dados do produto (mesmos produtos e editorias) e a pauta usada ainda
+        // está no texto, ela é trocada por cima - senão o Conteúdo ficava com duas pautas
+        const onlyDetails = !forceRegenerate && previousKey!==null && key.replace(/\u0001/g,'')===previousKey.replace(/\u0001/g,'');
+        if(!(onlyDetails && lastInsertedPautaBlock && ($('mNotes').value||'').includes(lastInsertedPautaBlock))) lastInsertedPautaBlock = null;
       }
       const multiEditoria = document.querySelectorAll('.mEditoria:checked').length > 1;
       const suggestions = currentContentSuggestions;
@@ -888,11 +896,17 @@
       return manual.concat(fromMaster);
     }
 
+    // item com o código ou o nome exatos digitados (q e qCode já normalizados), ou null
+    function exactProductMatch(items, q, qCode){
+      return items.find(item=> (qCode && [item.code, item.codeFG].some(c=> c && normalizeCode(c)===qCode)) || (q && normalizeStr(item.name||'')===q)) || null;
+    }
     // resultados que começam pelo termo buscado (no nome ou em algum código, OVD ou FG) vêm antes
     // dos que só contêm o termo em outro ponto - ex.: buscar "aspirador" mostra "Aspirador de
     // pó..." antes de "Escova para aspirador"
     function productMatchRank(item, q, qCode){
       const name = normalizeStr(item.name||'');
+      // exatos na frente de tudo (mesma regra de exactProductMatch, inline por ser o caminho de cada tecla)
+      if((q && name===q) || (qCode && ((item.code && normalizeCode(item.code)===qCode) || (item.codeFG && normalizeCode(item.codeFG)===qCode)))) return -1;
       if(q && name.startsWith(q)) return 0;
       if(qCode && item.code && normalizeCode(item.code).startsWith(qCode)) return 0;
       if(qCode && item.codeFG && normalizeCode(item.codeFG).startsWith(qCode)) return 0;
@@ -909,12 +923,12 @@
       if(!code) return null;
       const nc = normalizeCode(code);
       if(!nc) return null;
-      return masterCatalog.find(item=> item.code && normalizeCode(item.code)===nc) || siteDetailsCache[nc] || null;
+      return masterCatalogByCode.get(nc) || siteDetailsCache[nc] || null;
     }
     // Dados ricos de produto fora do catálogo local (veio da busca no site): /product-catalog, uma vez por
     // código na sessão, só na memória (a postagem continua gravando só código e nome). Quando chegam,
-    // pautas, título sugerido e briefing se refazem. null = o site não tem o produto.
-    const siteDetailsCache = {}, siteDetailsPending = new Set();
+    // título sugerido, pautas e briefing se refazem. null = o site não tem o produto.
+    const siteDetailsCache = {}, siteDetailsPending = new Set(), siteDetailsRetryAt = {}, siteDetailsFails = {};
     let siteDetailsDeferred = false;
     function loadSiteDetails(){
       if(masterCatalogLoading){ // talvez estejam no catálogo local: espera por ele uma vez só, e usa a lista do momento
@@ -922,16 +936,24 @@
         return;
       }
       selectedProducts.forEach(p=>{
-        const nc = normalizeCode(p.code), digits = String(p.code||'').replace(/\D/g,'');
-        if(digits.length<5 || nc in siteDetailsCache || siteDetailsPending.has(nc)) return;
-        if(masterCatalog.some(item=> item.code && normalizeCode(item.code)===nc)) return;
+        const nc = normalizeCode(p.code), digits = codeDigits(p.code);
+        if(digits.length<5 || nc in siteDetailsCache || siteDetailsPending.has(nc) || masterCatalogByCode.has(nc)) return;
+        if(Date.now() < (siteDetailsRetryAt[nc]||0)) return;
         siteDetailsPending.add(nc);
         fetch(`${PORTAL_API_BASE}/product-catalog?code=${digits}`)
-          .then(res=> res.ok ? res.json() : (res.status===404 ? null : Promise.reject(res.status)))
+          // 404/400: o site não tem o produto (não muda na sessão); outro erro (429, 403 do firewall, 5xx): tenta de novo em 30 s
+          .then(res=> res.ok ? res.json() : (res.status===404 || res.status===400 ? null : Promise.reject(res.status)))
           // o nome é o da variação escolhida (ex.: "... 220 V"); a rota devolve o do produto
-          .then(data=>{ siteDetailsCache[nc] = data && data.name ? Object.assign({}, data, { name: p.name || data.name }) : null; }, ()=>{}) // erro de rede: tenta de novo depois
-          .then(()=>{ siteDetailsPending.delete(nc); if(siteDetailsCache[nc]) refreshModalDynamic(); });
+          .then(data=>{ siteDetailsCache[nc] = data && data.name ? Object.assign({}, data, { name: p.name || data.name }) : null; },
+                // até 3 tentativas automáticas, só com o modal aberto; depois, quando a pessoa mexe nos produtos ou pede a legenda
+                ()=>{ siteDetailsRetryAt[nc] = Date.now() + 30000; siteDetailsFails[nc] = (siteDetailsFails[nc]||0) + 1;
+                      if(siteDetailsFails[nc] < 3) setTimeout(()=>{ if($('modalBackdrop').style.display === 'flex') loadSiteDetails(); }, 30500); })
+          .then(()=>{ siteDetailsPending.delete(nc); if(siteDetailsCache[nc]) onSiteDetailsArrived(); });
       });
+    }
+    function onSiteDetailsArrived(){
+      if($('modalBackdrop').style.display !== 'flex') return; // modal fechado
+      refreshModalDynamic();
     }
     // primeiro produto selecionado que tem dados ricos no catálogo mestre (produtos manuais,
     // sem correspondência, são pulados)
@@ -977,7 +999,7 @@
       if(!siteProductCache[q]) siteProductCache[q] = fetch(`${PORTAL_API_BASE}/product-search?q=${encodeURIComponent(q)}`)
         .then(res=> res.ok ? res.json() : Promise.reject(res.status))
         .then(data=> (data.items||[]).filter(it=> it.name).map(it=>{
-          const digits = String(it.code||'').replace(/\D/g,'');
+          const digits = codeDigits(it.code);
           if(digits && it.thumb) productThumbCache[digits] = it.thumb;
           return { code: it.code||'', name: it.name };
         }))
@@ -987,29 +1009,32 @@
 
     // atributos da <img> de um produto: miniatura já no cache, ou data-thumb para loadProductThumbs preencher
     function productImgAttrs(code){
-      const d = String(code||'').replace(/\D/g,'');
+      const d = codeDigits(code);
       if(d.length>=5 && !(d in productThumbCache)) return `data-thumb="${d}"`;
       const src = productImageUrl(code);
       return src ? `src="${src}" loading="lazy"` : '';
     }
-    // Pede em lote (até 20 por chamada, limite da rota) as miniaturas dos itens listados que ainda não
-    // estão no cache. Quando chegam, preenche toda <img data-thumb> da página (um produto pedido pela
-    // lista pode já ter virado um chip na postagem). Falha = fica a foto antiga.
+    // Pede em lotes de 20 (limite da rota) as miniaturas dos itens listados que ainda não estão no cache.
+    // Quando chegam, preenche toda <img data-thumb> da página (um produto pedido pela lista pode já ter
+    // virado um chip na postagem). Falha = fica a foto antiga.
     const productThumbPending = new Set();
     function loadProductThumbs(items){
-      const need = [...new Set(items.map(it=> String(it.code||'').replace(/\D/g,'')))]
-        .filter(d=> d.length>=5 && !(d in productThumbCache) && !productThumbPending.has(d)).slice(0,20);
+      const need = [...new Set(items.map(it=> codeDigits(it.code)))]
+        .filter(d=> d.length>=5 && !(d in productThumbCache) && !productThumbPending.has(d));
       const fill = ()=> document.querySelectorAll('img[data-thumb]').forEach(img=>{
         const d = img.dataset.thumb;
         if(d in productThumbCache){ img.removeAttribute('data-thumb'); img.src = productImageUrl(d); }
       });
       if(!need.length){ fill(); return; }
       need.forEach(d=> productThumbPending.add(d));
-      fetch(`${PORTAL_API_BASE}/product-thumbs?codes=${need.join(',')}`)
-        .then(res=> res.ok ? res.json() : Promise.reject(res.status))
-        .then(data=> data.thumbs || {}, ()=> ({})) // falha: cai na foto antiga (proxy) nesta sessão
-        .then(thumbs=> need.forEach(d=> productThumbCache[d] = thumbs[d] || ''))
-        .then(()=>{ need.forEach(d=> productThumbPending.delete(d)); fill(); });
+      for(let i=0; i<need.length; i+=20){
+        const batch = need.slice(i, i+20);
+        fetch(`${PORTAL_API_BASE}/product-thumbs?codes=${batch.join(',')}`)
+          .then(res=> res.ok ? res.json() : Promise.reject(res.status))
+          .then(data=> data.thumbs || {}, ()=> ({})) // falha: cai na foto antiga (proxy) nesta sessão
+          .then(thumbs=> batch.forEach(d=> productThumbCache[d] = thumbs[d] || ''))
+          .then(()=>{ batch.forEach(d=> productThumbPending.delete(d)); fill(); });
+      }
     }
 
     // Autocomplete de produto (modal de postagem e "Aplicar editoria"): mostra na hora o catálogo
@@ -1028,18 +1053,21 @@
       const chosenCodes = new Set(chosen.map(p=> normalizeCode(p.code)).filter(Boolean));
       const chosenNames = new Set(chosen.filter(p=> !p.code).map(p=> p.name));
       const isChosen = item=> item.code ? chosenCodes.has(normalizeCode(item.code)) : chosenNames.has(item.name);
-      const found = productCandidates().filter(item=>
+      let found = productCandidates().filter(item=>
         normalizeStr(item.name).includes(q)
           || (item.code && (normalizeStr(item.code).includes(q) || normalizeCode(item.code).includes(qCode)))
           || (item.codeFG && (normalizeStr(item.codeFG).includes(q) || normalizeCode(item.codeFG).includes(qCode)))
-      ).sort((a,b)=> productMatchRank(a,q,qCode) - productMatchRank(b,q,qCode)).slice(0, 50);
-      // ponytail: só os 50 primeiros do catálogo (uma busca de 2 letras acha milhares e travava a lista);
-      // quem não achou o produto refina o termo.
+      );
+      const byRank = list=> list.map(item=> [productMatchRank(item,q,qCode), item]).sort((a,b)=> a[0]-b[0]).map(pair=> pair[1]);
+      found = byRank(found);
+      // ponytail: a lista mostra só os 50 primeiros do catálogo ainda não escolhidos (uma busca de 2 letras
+      // acha milhares e travava a lista); o exato vem antes do corte; quem não achou refina o termo.
+      const LOCAL_LIMIT = 50;
       // o que a busca achou mas já está na postagem: aparece como "Já adicionado" quando não sobra mais
       // nada, em vez do "+ Adicionar (sem catálogo)", que dava a entender que o produto não existe
       let alreadyChosen = [];
       const split = list=>{ alreadyChosen = []; return list.filter(item=> isChosen(item) ? (alreadyChosen.push(item), false) : true); };
-      const local = split(found);
+      const local = split(found).slice(0, LOCAL_LIMIT);
       // Enter: escolhe o 1º resultado da lista (catálogo + site); se o site ainda está respondendo, espera
       // por ele; só sem nenhum resultado vale o "+ Adicionar (sem catálogo)"
       let loading_ = false;
@@ -1047,11 +1075,13 @@
       let shown_ = [];
       box._enter = ()=>{
         // prefere o item com o código ou o nome exatos digitados; senão, o 1º da lista
+        const target = exactProductMatch(shown_.concat(alreadyChosen), q, qCode);
+        if(target && isChosen(target)){ close(); return; } // o digitado já está na postagem
         const rows = [...box.querySelectorAll('.autocomplete-item[data-idx]:not(.is-added)')];
-        const exact = rows.find(el=>{ const item = shown_[Number(el.dataset.idx)]; return item && ((item.code && normalizeCode(item.code)===qCode) || normalizeStr(item.name)===q); });
+        const exact = target && rows.find(el=> shown_[Number(el.dataset.idx)]===target);
         if(!exact && loading_){ box._enterPending = true; return; } // o exato pode vir do site
         const first = exact || rows[0] || box.querySelector('.ac-manual');
-        if(!first) return;
+        if(!first){ close(); return; }
         first.dispatchEvent(new MouseEvent('mousedown', { bubbles:true, cancelable:true }));
         close(); // Enter escolhe um e encerra; um segundo Enter não adiciona o próximo da lista
       };
@@ -1075,6 +1105,7 @@
         box.querySelectorAll('.autocomplete-item[data-idx]').forEach(el=> el.addEventListener('mousedown', ev=>{
           ev.preventDefault();
           if(el.classList.contains('is-added')) return;
+          if(ev.isTrusted) box._enterPending = false; // clique da pessoa substitui um Enter que esperava o site
           const picked = items[Number(el.dataset.idx)];
           onPick(picked);
           if(picked.code) chosenCodes.add(normalizeCode(picked.code)); else chosenNames.add(picked.name);
@@ -1101,10 +1132,13 @@
       if(query.length < 3){ paint(local, false); return; }
       paint(local, true);
       box._siteTimer = setTimeout(()=> searchSiteProducts(query).then(site=>{
-        if(input.value.trim() !== query || box.style.display === 'none') return; // continuou digitando ou fechou
+        if(input.value.trim() !== query || box.style.display === 'none'){ if(box.style.display === 'none') box._enterPending = false; return; } // continuou digitando (o Enter pendente é da busca nova) ou fechou
         const known = new Set(found.map(item=> normalizeCode(item.code)).filter(Boolean));
+        const fresh = site.filter(item=> !known.has(normalizeCode(item.code)));
         // refaz a divisão com o que foi escolhido enquanto o site respondia
-        paint(split(found.concat(site.filter(item=> !known.has(normalizeCode(item.code))))), false);
+        const rest = split(found).slice(0, LOCAL_LIMIT);
+        alreadyChosen = alreadyChosen.concat(fresh.filter(isChosen));
+        paint(rest.concat(byRank(fresh.filter(item=> !isChosen(item)))), false); // os do site entram depois: a lista não pula sob o ponteiro
         if(box._enterPending){ box._enterPending = false; box._enter(); }
       }), 250);
     }
@@ -3087,7 +3121,8 @@
         if(selectedProducts.length===0){ alert('Selecione um produto do catálogo antes de gerar a legenda.'); return; }
         const draft = generateCaptionDraft();
         if(!draft) loadSiteDetails(); // se a consulta ao site falhou antes, tenta de novo agora
-        if(!draft && siteDetailsPending.size){ alert('Os dados do produto ainda estão chegando do site. Tente de novo em instantes.'); return; }
+        if(!draft && selectedProducts.some(p=> Date.now() < (siteDetailsRetryAt[normalizeCode(p.code)]||0))){ alert('O site não respondeu agora. Tente gerar a legenda de novo em alguns segundos.'); return; }
+        if(!draft && (siteDetailsPending.size || masterCatalogLoading)){ alert('Os dados do produto ainda estão chegando do site. Tente de novo em instantes.'); return; }
         if(!draft){ alert('O produto selecionado não tem dados de destaques/aplicações no catálogo - gere a legenda manualmente ou escolha outro produto.'); return; }
         const notes = $('mNotes');
         if(notes.value.trim() && !confirm('Isso substitui o texto atual do campo. Continuar?')) return;
@@ -3851,7 +3886,7 @@
         }
         input.addEventListener('input', ev=> showSugg(ev.target.value));
         input.addEventListener('focus', ev=>{ if(ev.target.value.trim().length>=2) showSugg(ev.target.value); });
-        input.addEventListener('blur', ()=> setTimeout(hideSugg, 150));
+        input.addEventListener('blur', ()=>{ sugg._enterPending = false; setTimeout(hideSugg, 150); });
         input.addEventListener('keydown', ev=>{
           if(ev.key!=='Enter') return;
           ev.preventDefault();
@@ -4492,7 +4527,8 @@
     if($('mProductName')){
       $('mProductName').addEventListener('input', (ev)=> showProductSuggestions(ev.target.value));
       $('mProductName').addEventListener('focus', (ev)=>{ if(ev.target.value.trim().length>=2) showProductSuggestions(ev.target.value); });
-      $('mProductName').addEventListener('blur', ()=> setTimeout(hideProductSuggestions, 150));
+      // saiu do campo: um Enter que esperava o site deixa de valer (a postagem pode ser salva em seguida)
+      $('mProductName').addEventListener('blur', ()=>{ $('productSuggestions')._enterPending = false; setTimeout(hideProductSuggestions, 150); });
       $('mProductName').addEventListener('keydown', (ev)=>{
         if(ev.key!=='Enter') return;
         ev.preventDefault();
