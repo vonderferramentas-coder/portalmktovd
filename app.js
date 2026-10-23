@@ -27,7 +27,11 @@
     const notificationTargetParams = new URLSearchParams(location.search);
     const requestedPostId = notificationTargetParams.get('post');
     const requestedPostDate = notificationTargetParams.get('date');
+    // ?date=AAAA-MM-DD&commemorative=1 (sugestão "Criar post" da Início) abre o fluxo da data comemorativa daquele dia
+    const requestedCommemorative = notificationTargetParams.has('commemorative') && /^\d{4}-\d{2}-\d{2}$/.test(requestedPostDate || '');
     let requestedPostOpened = false;
+    // o fluxo da data comemorativa só abre depois da 1ª leitura das configurações da nuvem (datas personalizadas e editorias da marca)
+    let settingsPulled = false;
     if(/^\d{4}-\d{2}-\d{2}$/.test(requestedPostDate || '')){
       const [requestedYear,requestedMonth] = requestedPostDate.split('-').map(Number);
       viewDate = new Date(requestedYear, requestedMonth-1, 1);
@@ -994,17 +998,21 @@
     // de fora linhas inteiras (ex.: óculos de segurança). Uma consulta por termo; erro não fica em cache.
     const PORTAL_API_BASE = window.PORTAL_API || 'https://portalmktovd.pages.dev/api'; // ver firebase-config.js
     const siteProductCache = {};
-    function searchSiteProducts(query){
+    // strict: falha (rede, firewall) rejeita em vez de devolver [] - a colagem de códigos precisa distinguir
+    // "o site não tem" de "não deu para perguntar"; o autocomplete segue tratando falha como lista vazia
+    function searchSiteProducts(query, strict){
       const q = query.trim();
-      if(!siteProductCache[q]) siteProductCache[q] = fetch(`${PORTAL_API_BASE}/product-search?q=${encodeURIComponent(q)}`)
-        .then(res=> res.ok ? res.json() : Promise.reject(res.status))
-        .then(data=> (data.items||[]).filter(it=> it.name).map(it=>{
-          const digits = codeDigits(it.code);
-          if(digits && it.thumb) productThumbCache[digits] = it.thumb;
-          return { code: it.code||'', name: it.name };
-        }))
-        .catch(()=>{ delete siteProductCache[q]; return []; });
-      return siteProductCache[q];
+      if(!siteProductCache[q]){
+        const p = siteProductCache[q] = fetch(`${PORTAL_API_BASE}/product-search?q=${encodeURIComponent(q)}`)
+          .then(res=> res.ok ? res.json() : Promise.reject(res.status))
+          .then(data=> (data.items||[]).filter(it=> it.name).map(it=>{
+            const digits = codeDigits(it.code);
+            if(digits && it.thumb) productThumbCache[digits] = it.thumb;
+            return { code: it.code||'', name: it.name };
+          }));
+        p.catch(()=>{ if(siteProductCache[q]===p) delete siteProductCache[q]; });
+      }
+      return strict ? siteProductCache[q] : siteProductCache[q].catch(()=> []);
     }
 
     // atributos da <img> de um produto: miniatura já no cache, ou data-thumb para loadProductThumbs preencher
@@ -1152,6 +1160,100 @@
     }
 
     // ============================================================
+    // COLAR VÁRIOS CÓDIGOS NO CAMPO DE PRODUTO - do texto colado sai tudo que tem cara de código (dígitos e
+    // pontos, 5+ dígitos; nenhum código do catálogo tem vírgula, dois-pontos, traço ou espaço), então vale
+    // separar por vírgula, dois-pontos, traço, quebra de linha ou tópicos, e até "código - nome" por linha.
+    // Com 2 ou mais, a prévia mostra cada um (catálogo/site, já na postagem ou fora do catálogo) e só
+    // adiciona no "Adicionar"; 1 código ou texto comum segue a colagem normal (busca de sempre).
+    // ============================================================
+    const PASTE_MAX = 60; // ponytail: cada código fora do catálogo local vira 1 busca no site; acima disso, colar em partes
+    function extractProductCodes(text){
+      const seen = new Set();
+      // código com pontos no formato OVD (00.00.000.000) ou só dígitos (5+): datas (23.10.2026) e preços (12.345) ficam de fora
+      return (String(text||'').match(/\b\d{2}(?:\.\d{2,3}){2,}\b|\b\d{5,}\b/g) || [])
+        .filter(c=> !seen.has(normalizeCode(c)) && seen.add(normalizeCode(c)));
+    }
+    // {code, name, found, error}: catálogo local (código OVD ou FG) e, se não achar, a busca do site com o código exato.
+    // error: o site não respondeu (rede, firewall) - não é o mesmo que "fora do catálogo"
+    async function resolveProductCode(code, candidates){
+      const k = normalizeCode(code);
+      const local = exactProductMatch(candidates, null, k);
+      if(local) return { code: local.code || code, name: local.name, found: true };
+      let list;
+      try{ list = await searchSiteProducts(code, true); }catch(e){ return { code, name: code, found: false, error: true }; }
+      const site = list.find(item=> normalizeCode(item.code)===k);
+      return site ? { code: site.code, name: site.name, found: true } : { code, name: code, found: false };
+    }
+    function hideProductPaste(){ const box = $('productPasteBox'); if(box){ box.hidden = true; box.innerHTML = ''; box._token = null; } }
+    function openProductPaste(codes){
+      const box = $('productPasteBox'); if(!box) return;
+      hideProductSuggestions();
+      const token = {}, extra = Math.max(0, codes.length - PASTE_MAX);
+      box._token = token;
+      // já no card: pelo código (catálogo) ou pelo nome (produto manual, que guarda o código colado no nome)
+      const inCard = code=>{ const k = normalizeCode(code); return selectedProducts.some(p=> normalizeCode(p.code || p.name)===k); };
+      const rows = codes.slice(0, PASTE_MAX).map(code=> ({ code, state: inCard(code) ? 'dupe' : 'loading' }));
+      const TAG = { missing: 'Fora do catálogo', dupe: 'Já adicionado', error: 'Busca falhou' }, total = rows.length;
+      const ready = r=> r.state==='found' || r.state==='missing';
+      // fora do catálogo entra como produto manual (mesmo formato do "+ Adicionar (sem catálogo)"); nunca duplica o que já está no card
+      const push = r=>{ const p = r.state==='found' ? { code: r.item.code, name: r.item.name } : { code:'', name: r.code }; if(!inCard(p.code || p.name)) selectedProducts.push(p); };
+      const paint = ()=>{
+        // a lista se redesenha a cada código resolvido: devolve o foco ao mesmo botão (teclado)
+        const f = box.contains(document.activeElement) && document.activeElement.dataset ? document.activeElement.dataset : null, fKey = f && f.pp ? f.pp + (f.i || '') : null;
+        const add = rows.filter(ready).length, busy = rows.some(r=> r.state==='loading'), failed = rows.filter(r=> r.state==='error').length;
+        const status = busy ? 'Buscando no catálogo…' : failed ? `${failed} não ${failed===1?'pôde':'puderam'} ser buscado${failed===1?'':'s'}: cole de novo para tentar` : extra ? `Só os ${PASTE_MAX} primeiros; cole o resto depois` : 'Adicione um por um ou todos de uma vez';
+        box.innerHTML = `<div class="pp-head"><strong>${total} código${total===1?'':'s'} colado${total===1?'':'s'}</strong><span role="status">${status}</span></div>`
+          + `<ul class="pp-list">${rows.map((r, i)=>{
+            const name = r.state==='loading' ? 'Buscando…' : r.state==='missing' ? 'Entra só com o código' : r.state==='error' ? 'Sem resposta do site' : escapeHtml(r.item ? r.item.name : (selectedProducts.find(p=> normalizeCode(p.code || p.name)===normalizeCode(r.code)) || {}).name || r.code);
+            const right = r.state==='added' ? `<span class="pp-tag">${UI_ICONS.check(12)} Adicionado</span>`
+              : (TAG[r.state] ? `<span class="pp-tag">${TAG[r.state]}</span>` : '') + (ready(r) ? `<button type="button" class="pp-add" data-pp="one" data-i="${i}" aria-label="Adicionar ${escapeHtml(r.item.name)}">Adicionar</button>` : '');
+            return `<li class="pp-row is-${r.state}" data-i="${i}"><img ${productImgAttrs(r.code)} alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" /><span class="pp-body"><span class="pp-name">${name}</span><span class="pp-code">${escapeHtml(r.item ? r.item.code : r.code)}</span></span>${right}</li>`;
+          }).join('')}</ul>`
+          + `<div class="pp-foot"><button type="button" class="btn ghost small" data-pp="cancel">Cancelar</button><button type="button" class="btn small" data-pp="add"${busy || !add ? ' disabled' : ''}>Adicionar ${add===rows.length || add===1 ? '' : 'os '}${add} produto${add===1?'':'s'}</button></div>`;
+        loadProductThumbs(rows);
+        if(fKey){ const el = [...box.querySelectorAll('[data-pp]')].find(e=> e.dataset.pp + (e.dataset.i || '')===fKey) || box.querySelector('[data-pp="one"]') || box.querySelector('[data-pp="add"]:not([disabled])') || box.querySelector('[data-pp="cancel"]'); if(el) el.focus({ preventScroll: true }); }
+      };
+      box.hidden = false; paint();
+      // até 4 buscas no site por vez (60 de uma vez sobrecarregariam o Worker)
+      const queue = rows.filter(r=> r.state==='loading'), candidates = productCandidates(); // catálogo montado uma vez por colagem
+      const worker = async ()=>{
+        while(queue.length){
+          const r = queue.shift(), res = await resolveProductCode(r.code, candidates);
+          if(box._token!==token) return; // cancelada ou substituída por outra colagem
+          r.item = res;
+          // o código FG de um produto já no card (ou já resolvido por outra linha) também é duplicado
+          const k = normalizeCode(res.code), twin = rows.some(o=> o!==r && o.item && (o.state==='found' || o.state==='added') && normalizeCode(o.item.code)===k);
+          r.state = res.error ? 'error' : inCard(res.code) || twin ? 'dupe' : res.found ? 'found' : 'missing';
+          paint();
+        }
+      };
+      for(let i = 0; i < 4; i++) worker();
+      // sem nada a adicionar na prévia, ela fecha e o campo limpa (os códigos já viraram produtos)
+      const doneIfEmpty = ()=>{ if(!rows.some(r=> ready(r) || r.state==='loading' || r.state==='added')){ hideProductPaste(); $('mProductName').value = ''; } };
+      box.onclick = ev=>{
+        const b = ev.target.closest('[data-pp]'); if(!b || b.disabled) return;
+        if(b.dataset.pp==='one'){
+          // um por um (DESIGN.md §11): a linha confirma "✓ Adicionado" por ~0,55 s, recolhe a altura em .25s e sai da prévia
+          const r = rows[Number(b.dataset.i)]; if(!r || !ready(r)) return;
+          push(r); renderSelectedProducts(); r.state = 'added'; paint();
+          setTimeout(()=>{
+            if(box._token!==token) return;
+            const li = box.querySelector(`.pp-row[data-i="${rows.indexOf(r)}"]`);
+            const drop = ()=>{ if(box._token!==token) return; rows.splice(rows.indexOf(r), 1); paint(); doneIfEmpty(); };
+            if(!li || matchMedia('(prefers-reduced-motion: reduce)').matches){ drop(); return; }
+            li.style.height = li.offsetHeight + 'px'; void li.offsetHeight;
+            li.classList.add('is-leaving'); li.style.height = '0px';
+            setTimeout(drop, 250);
+          }, 550);
+          return;
+        }
+        // Adicionar todos: os códigos já viraram produtos, o campo limpa. Cancelar: o colado fica no campo para ajustar
+        if(b.dataset.pp==='add'){ rows.forEach(r=>{ if(ready(r)) push(r); }); renderSelectedProducts(); $('mProductName').value = ''; }
+        hideProductPaste();
+      };
+    }
+
+    // ============================================================
     // ÍCONES SVG - redes sociais e formatos (Feed/Story)
     // ============================================================
     // no estilo "app icon" (círculo colorido + glifo branco), igual aos ícones de arquivo em
@@ -1278,136 +1380,18 @@
     function todayStr(){ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
     // ============================================================
-    // DATAS COMEMORATIVAS - feriados nacionais + datas comerciais de referência para
-    // planejamento de conteúdo, exibidas ao lado do número do dia na grade do mês. Datas fixas
-    // (mesmo dia todo ano) ficam num dicionário "MM-DD"; datas móveis (baseadas na Páscoa, ou no
-    // "enésimo dia da semana do mês", como Dia das Mães/Pais e Black Friday) são calculadas em
-    // tempo real para o ano exibido e guardadas em cache por ano, já que o cálculo da Páscoa
-    // não é trivial de refazer a cada célula do calendário.
+    // DATAS COMEMORATIVAS - feriados nacionais + datas comerciais de referência, exibidas ao lado do
+    // número do dia na grade do mês. A lista e o cálculo das móveis ficam em commemorative-dates.js
+    // (a Início usa o mesmo arquivo nas sugestões do galpão do Calendário).
     // ============================================================
-    const FIXED_COMMEMORATIVE_DATES = {
-      '01-01': ['Confraternização Universal'],
-      '03-06': ['Data Magna de Pernambuco'],
-      '03-08': ['Dia Internacional da Mulher'],
-      '03-15': ['Dia Mundial do Consumidor'],
-      '03-19': ['Dia do Carpinteiro e Marceneiro'],
-      '03-20': ['Início do Outono'],
-      '03-22': ['Dia Mundial da Água'],
-      '03-25': ['Data Magna do Ceará'],
-      '04-05': ['Emancipação de Novo Hamburgo'],
-      '04-21': ['Tiradentes', 'Dia do Metalúrgico'],
-      '04-22': ['Descobrimento do Brasil'],
-      '04-23': ['Dia do Serralheiro'],
-      '05-01': ['Dia do Trabalho'],
-      '05-11': ['Aniversário de Aparecida de Goiânia'],
-      '05-18': ['Dia do Vidraceiro'],
-      '05-25': ['Dia da Indústria e do Trabalhador Rural'],
-      '06-05': ['Dia Mundial do Meio Ambiente'],
-      '06-12': ['Dia dos Namorados'],
-      '06-13': ['Dia de Santo Antônio'],
-      '06-15': ['Aniversário de Itajaí'],
-      '06-20': ['Dia do Revendedor'],
-      '06-21': ['Início do Inverno'],
-      '06-24': ['Dia de São João'],
-      '07-02': ['Independência da Bahia'],
-      '07-04': ['Dia Internacional do Cooperativismo'],
-      '07-09': ['Revolução Constitucionalista', 'Fundação de Cabo de Santo Agostinho'],
-      '07-16': ['Dia de N. Sra. do Carmo', 'Dia do Comerciante'],
-      '07-26': ['Dia de N. Sra. Sant’Ana'],
-      '07-28': ['Dia do Agricultor'],
-      '08-15': ['Dia de N. Sra. do Desterro'],
-      '08-17': ['Aniversário de Barbalha'],
-      '09-07': ['Independência do Brasil'],
-      '09-08': ['Dia de N. Sra. da Luz dos Pinhais'],
-      '09-15': ['Dia do Cliente'],
-      '09-19': ['Dia do Comprador'],
-      '09-20': ['Revolução Farroupilha'],
-      '09-23': ['Dia do Soldador'],
-      '09-27': ['Dia do Encanador'],
-      '09-30': ['Dia da Secretária'],
-      '10-01': ['Dia do Vendedor'],
-      '10-12': ['Dia de Nossa Sra. Aparecida', 'Dia das Crianças'],
-      '10-15': ['Aniversário VONDER'],
-      '10-17': ['Dia do Eletricista'],
-      '10-18': ['Dia do Pintor'],
-      '10-26': ['Dia do Trabalhador da Construção Civil'],
-      '10-30': ['Dia do Balconista e Comerciário'],
-      '10-31': ['Dia Municipal da Reforma Protestante e Ação de Graças'],
-      '11-02': ['Finados'],
-      '11-14': ['Emancipação de Aparecida de Goiânia'],
-      '11-15': ['Proclamação da República'],
-      '11-20': ['Dia Nacional de Zumbi e da Consciência Negra'],
-      '11-27': ['Dia do Técnico e Engenheiro de Segurança no Trabalho'],
-      '12-08': ['Dia de N. Sra. da Imaculada Conceição'],
-      '12-11': ['Dia do Engenheiro'],
-      '12-13': ['Dia do Pedreiro'],
-      '12-15': ['Dia do Jardineiro', 'Dia do Arquiteto e Urbanista'],
-      '12-20': ['Dia do Mecânico'],
-      '12-21': ['Início do Verão'],
-      '12-25': ['Natal']
-    };
-    // início da Primavera (horário de Brasília) é o único marco sazonal que oscila entre 22 e 23/09
-    // ponytail: só 2026/2027 conferidos; demais anos assumem 22/09 - revisar ao incluir novos anos
-    const SPRING_START_DAY = { 2027: 23 };
-    // data da Páscoa (algoritmo de Gauss/computus gregoriano) - base de todos os feriados móveis
-    function easterDate(year){
-      const a = year % 19, b = Math.floor(year/100), c = year % 100;
-      const d = Math.floor(b/4), e = b % 4, f = Math.floor((b+8)/25);
-      const g = Math.floor((b-f+1)/3), h = (19*a+b-d-g+15) % 30;
-      const i = Math.floor(c/4), k = c % 4, l = (32+2*e+2*i-h-k) % 7;
-      const m = Math.floor((a+11*h+22*l)/451);
-      const month = Math.floor((h+l-7*m+114)/31);
-      const day = ((h+l-7*m+114) % 31) + 1;
-      return new Date(year, month-1, day);
-    }
-    function addDays(date, days){ const d = new Date(date); d.setDate(d.getDate()+days); return d; }
-    // enésima ocorrência de um dia da semana (0=Dom...6=Sáb) num mês - usado pra Dia das Mães
-    // (2º domingo de maio) e Dia dos Pais (2º domingo de agosto)
-    function nthWeekdayOfMonth(year, month, weekday, n){
-      const first = new Date(year, month, 1);
-      const offset = (weekday - first.getDay() + 7) % 7;
-      return new Date(year, month, 1 + offset + (n-1)*7);
-    }
-    // última ocorrência de um dia da semana num mês - usado pra Black Friday (última 6ª de novembro)
-    function lastWeekdayOfMonth(year, month, weekday){
-      const last = new Date(year, month+1, 0);
-      const offset = (last.getDay() - weekday + 7) % 7;
-      return new Date(year, month, last.getDate() - offset);
-    }
+    const FIXED_COMMEMORATIVE_DATES = CommemorativeDates.FIXED;
+    const movableCommemorativeDates = CommemorativeDates.movable;
     function ymd(date){ return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; }
-    const movableCommemorativeDatesCache = {};
-    function movableCommemorativeDates(year){
-      if(movableCommemorativeDatesCache[year]) return movableCommemorativeDatesCache[year];
-      const easter = easterDate(year);
-      const map = {};
-      map[ymd(addDays(easter,-47))] = 'Carnaval';
-      map[ymd(addDays(easter,-2))] = 'Paixão de Cristo';
-      map[ymd(easter)] = 'Páscoa';
-      map[ymd(addDays(easter,39))] = 'Ascensão do Senhor';
-      map[`${year}-09-${SPRING_START_DAY[year]||22}`] = 'Início da Primavera';
-      map[ymd(addDays(easter,60))] = 'Corpus Christi';
-      map[ymd(nthWeekdayOfMonth(year,4,0,2))] = 'Dia das Mães'; // maio, domingo
-      map[ymd(nthWeekdayOfMonth(year,7,0,2))] = 'Dia dos Pais'; // agosto, domingo
-      const blackFriday = lastWeekdayOfMonth(year,10,5); // novembro, sexta
-      map[ymd(blackFriday)] = 'Black Friday';
-      map[ymd(addDays(blackFriday,3))] = 'Cyber Monday';
-      movableCommemorativeDatesCache[year] = map;
-      return map;
-    }
     // nome(s) da(s) data(s) comemorativa(s) em "YYYY-MM-DD" (fixas/móveis + personalizadas
     // cadastradas em Configurações), unidos por " · " quando mais de uma cair no mesmo dia -
     // ou null se o dia não corresponder a nenhuma
     function commemorativeDateNames(dateStr){
-      const names = [];
-      names.push(...(FIXED_COMMEMORATIVE_DATES[dateStr.slice(5)] || []));
-      const year = Number(dateStr.slice(0,4));
-      const movable = movableCommemorativeDates(year)[dateStr];
-      if(movable) names.push(movable);
-      (APP_SETTINGS.customDates||[]).forEach(c=>{
-        const matches = c.recurring ? c.date.slice(5)===dateStr.slice(5) : c.date===dateStr;
-        if(matches) names.push(c.name);
-      });
-      return Array.from(new Set(names));
+      return CommemorativeDates.names(dateStr, APP_SETTINGS.customDates);
     }
     function commemorativeDateName(dateStr){
       const names = commemorativeDateNames(dateStr);
@@ -2441,7 +2425,7 @@
       $('mDate').value = defaultDate;
       renderModalStatus();
       // limpa os campos do formulário
-      $('mTitle').value=''; $('mNotes').value=''; $('mProductName').value='';
+      $('mTitle').value=''; $('mNotes').value=''; $('mProductName').value=''; hideProductPaste();
       $('mBriefingLink').value=''; $('mReferencesLink').value=''; $('mArtsLink').value='';
       $('mImageLink').value=''; $('mImageNotes').value='';
       if($('mNoProduct')) $('mNoProduct').checked = false;
@@ -2566,7 +2550,7 @@
       $('mImageLink').value=''; $('mImageNotes').value='';
       if($('mNoProduct')) $('mNoProduct').checked = false;
       document.querySelectorAll('.mNet').forEach(n=>n.checked=false);
-      document.querySelectorAll('.mEditoria').forEach(e=>e.checked=false); $('mProductName').value=''; selectedProducts=[]; renderSelectedProducts();
+      document.querySelectorAll('.mEditoria').forEach(e=>e.checked=false); $('mProductName').value=''; hideProductPaste(); selectedProducts=[]; renderSelectedProducts();
       editingReferenceImages = []; renderReferenceImages();
       renderModalFormatsUI();
     }
@@ -2985,6 +2969,7 @@
       }catch(e){
         setSyncStatus('Sem conexão com o servidor - usando cópia local', 'warn');
       }
+      if(!settingsPulled){ settingsPulled = true; openRequestedPostWhenReady(); } // sem conexão, segue com a cópia local
     }
 
     // ============================================================
@@ -4188,7 +4173,7 @@
       document.querySelectorAll('.mEditoria').forEach(e=>{ e.checked = false; });
       if(post.editoria){ const arr = Array.isArray(post.editoria)?post.editoria:[post.editoria]; arr.forEach(ed=>{ const el = Array.from(document.querySelectorAll('.mEditoria')).find(x=>x.value===ed); if(el) el.checked = true; }); }
       if($('mCommemorativePostType')) $('mCommemorativePostType').value = post.commemorativePostType || 'custom';
-      $('mProductName').value = '';
+      $('mProductName').value = ''; hideProductPaste();
       selectedProducts = getPostProducts(post).slice();
       renderSelectedProducts();
       hideProductSuggestions();
@@ -4206,6 +4191,17 @@
     }
 
     function openRequestedPostWhenReady(){
+      if(requestedCommemorative){
+        if(requestedPostOpened || (SYNC_ENABLED && !settingsPulled)) return false;
+        // outro modal aberto (aviso, conflito): tenta de novo até ele fechar, senão o fluxo prometido pela Início nunca abriria
+        if(anyModalOpen() || [...document.querySelectorAll('.modal-backdrop')].some(el=> getComputedStyle(el).display!=='none')){ clearTimeout(openRequestedPostWhenReady._retry); openRequestedPostWhenReady._retry = setTimeout(openRequestedPostWhenReady, 500); return false; }
+        requestedPostOpened = true;
+        if(!commemorativeDateNames(requestedPostDate).length) return false; // data que não existe mais nas configurações: só mostra o mês
+        openCommemorativeFromDay(requestedPostDate);
+        // tira o commemorative da URL: recarregar a página não reabre o fluxo (a data continua, o mês é o mesmo)
+        try{ const u = new URL(location.href); u.searchParams.delete('commemorative'); history.replaceState(history.state, '', u); }catch(e){}
+        return true;
+      }
       if(!requestedPostId || requestedPostOpened || anyModalOpen()) return false;
       const post = state.posts.find(item=>item.id===requestedPostId);
       if(!post) return false;
@@ -4554,11 +4550,29 @@
     });
     document.querySelectorAll('input[name="mType"]').forEach(el=> el.addEventListener('change', refreshModalDynamic));
     if($('mProductName')){
-      $('mProductName').addEventListener('input', (ev)=> showProductSuggestions(ev.target.value));
+      $('mProductName').addEventListener('input', (ev)=>{ hideProductPaste(); showProductSuggestions(ev.target.value); });
+      $('mProductName').addEventListener('paste', (ev)=>{
+        const codes = extractProductCodes((ev.clipboardData || window.clipboardData).getData('text'));
+        if(codes.length < 2) return; // 1 código ou texto comum: colagem normal e busca de sempre
+        // o colado continua visível no campo (quebras de linha viram ", ": o campo é de uma linha só), sem disparar
+        // o "input", que fecharia a prévia e abriria a busca comum
+        ev.preventDefault();
+        const text = (ev.clipboardData || window.clipboardData).getData('text').trim().replace(/\s*[\r\n]+\s*/g, ', ');
+        ev.target.value = text; // substitui: colar de novo (ex.: depois de "Busca falhou") não duplica os códigos
+        openProductPaste(codes);
+      });
       $('mProductName').addEventListener('focus', (ev)=>{ if(ev.target.value.trim().length>=2) showProductSuggestions(ev.target.value); });
       // saiu do campo: um Enter que esperava o site deixa de valer (a postagem pode ser salva em seguida)
       $('mProductName').addEventListener('blur', ()=>{ $('productSuggestions')._enterPending = false; setTimeout(hideProductSuggestions, 150); });
       $('mProductName').addEventListener('keydown', (ev)=>{
+        const paste = $('productPasteBox');
+        if(paste && !paste.hidden && (ev.key==='Escape' || ev.key==='Enter')){
+          // prévia de códigos colados aberta: Enter confirma (se já terminou de buscar), Esc descarta
+          ev.preventDefault(); ev.stopPropagation();
+          const b = paste.querySelector(ev.key==='Enter' ? '[data-pp="add"]' : '[data-pp="cancel"]');
+          if(b && !b.disabled) b.click();
+          return;
+        }
         if(ev.key!=='Enter') return;
         ev.preventDefault();
         const box = $('productSuggestions');
