@@ -1,0 +1,101 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste das sugestões do galpão do Calendário</title>
+<body data-result="running">RUNNING</body>
+<script src="../commemorative-dates.js"></script>
+<script src="../home-suggestions.js"></script>
+<script>
+// Roda em Chrome headless: chrome --headless=new --dump-dom file:///.../tests/home-suggestions.test.html
+try {
+  const eq = (a, b, label) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(label + '\n  esperado: ' + JSON.stringify(b) + '\n  obtido:   ' + JSON.stringify(a)); };
+  const names = CommemorativeDates.names;
+  const run = (posts, extra) => HomeSuggestions.calendar(Object.assign({ posts, settings: { videoWeeklyTarget: 0 }, social: null, today: new Date(2026, 9, 15), names }, extra));
+  const texts = list => list.map(s => s.text);
+
+  // datas: as do app.js continuam iguais (fixa, móvel e personalizada)
+  eq(names('2026-10-18'), ['Dia do Pintor'], 'data fixa');
+  eq(names('2026-11-27'), ['Dia do Técnico e Engenheiro de Segurança no Trabalho', 'Black Friday'], 'fixa + móvel no mesmo dia');
+  eq(names('2026-05-10', [{ date: '2025-05-10', name: 'Evento X', recurring: true }]), ['Dia das Mães', 'Evento X'], 'personalizada recorrente');
+
+  // 1) data comemorativa sem card: 15/10 → Dia do Pintor (18/10) em 3 dias, urgente; com card que cita o nome, some
+  let s = run([]);
+  const pintor = s.find(x => x.text.includes('Dia do Pintor'));
+  eq([pintor.text, pintor.tone, pintor.action.href], ['Faltam 03 dias para Dia do Pintor', 'bad', 'visual-editor.html?date=2026-10-18&commemorative=1'], 'Dia do Pintor');
+  eq(texts(s).includes('Hoje é Aniversário VONDER'), true, 'data de hoje');
+  eq(texts(s).some(t => t.includes('Finados')), false, 'fora da janela de 10 dias');
+  s = run([{ id: 'a', date: '2026-10-16', title: 'Post dia do pintor', noProduct: true, status: 'Rascunho' }]);
+  eq(texts(s).some(t => t.includes('Dia do Pintor')), false, 'coberta por card que cita o nome');
+  s = run([{ id: 'a', date: '2026-10-18', title: 'Homenagem', editoria: ['Datas comemorativas'], noProduct: true }]);
+  eq(texts(s).some(t => t.includes('Dia do Pintor')), false, 'coberta por card da editoria no dia');
+
+  // 2) card futuro sem produto (e não marcado "sem produto")
+  s = run([{ id: 'p1', date: '2026-10-20', title: 'Card Y', products: [] }, { id: 'p2', date: '2026-10-21', title: 'Inst', noProduct: true }, { id: 'p3', date: '2026-10-22', title: 'Ok', products: [{ code: '1', name: 'X' }] }]);
+  const pend = s.filter(x => x.text.startsWith('Pendente'));
+  eq(pend.map(x => [x.text, x.action.href]), [['Pendente escolha de produtos em "Card Y"', 'visual-editor.html?post=p1&date=2026-10-20']], 'produto pendente');
+
+  // 3) cards que passaram da data não viram sugestão (removido a pedido do Marketing)
+  s = run([{ id: 'l1', date: '2026-10-10', title: 'A', status: 'Em produção', noProduct: true }]);
+  eq(texts(s).some(t => t.includes('passa')), false, 'sem aviso de atrasados');
+
+  // 4) vídeos: meta 2/semana em outubro (31 dias) = 9; tipo vem de channels ou do campo legado
+  s = run([{ id: 'v1', date: '2026-10-02', type: 'Video', noProduct: true, status: 'Publicado' }, { id: 'v2', date: '2026-10-30', channels: [{ types: ['Video'] }], noProduct: true }], { settings: { videoWeeklyTarget: 2 } });
+  eq(texts(s).filter(t => t.includes('vídeo')), ['Só 2 vídeos no calendário de outubro (meta: 9)'], 'vídeos abaixo da meta');
+  eq(texts(run([], { settings: { videoWeeklyTarget: 0 } })).some(t => t.includes('vídeo')), false, 'sem meta, sem aviso');
+
+  // 5) mais curtido do ano: produto pelo card do mesmo dia; posts de outro ano não contam
+  const social = [{ timestamp: '2026-03-02T12:00:00+0000', likeCount: 900, caption: 'x' }, { timestamp: '2025-01-01T12:00:00+0000', likeCount: 5000 }, { timestamp: '2026-04-01T12:00:00+0000', likeCount: 100 }];
+  s = run([{ id: 'c', date: '2026-03-02', title: 'Lixadeira', products: [{ code: '60.01', name: 'Lixadeira LX 900' }], status: 'Publicado' }], { social });
+  const top = s.find(x => x.tone === 'info');
+  eq([top.text, top.sub], ['Potencial de repetir conteúdo sobre Lixadeira LX 900', 'Mais curtido de 2026 no Instagram: 900 curtidas'], 'mais curtido com produto');
+
+  // 5) dias abaixo da meta diária (collab não conta): hoje (15/10) com 3 cards bate a meta; os outros 13 dias não
+  const three = [1, 2, 3].map(i => ({ id: 'd' + i, date: '2026-10-15', noProduct: true })).concat([{ id: 'c', date: '2026-10-16', collab: true, noProduct: true }]);
+  let s2 = run(three, { settings: { videoWeeklyTarget: 0, TARGET: 3 } });
+  const low = s2.find(x => x.text.includes('abaixo da meta'));
+  eq([low.text, low.sub, low.action.href], ['13 dias das próximas 2 semanas abaixo da meta de 3 posts/dia', '16/10 (0) · 17/10 (0) · 18/10 (0) · 19/10 (0) …', 'visual-editor.html?date=2026-10-16'], 'dias abaixo da meta');
+
+  // 6) editoria esquecida: sem card de -30 a +14 dias; "Datas comemorativas" fica de fora
+  s2 = run([{ id: 'e1', date: '2026-10-01', editoria: ['Dicas'], noProduct: true }, { id: 'e2', date: '2026-08-01', editoria: ['Lançamentos'], noProduct: true }],
+    { settings: { videoWeeklyTarget: 0, editorias: ['Dicas', { name: 'Lançamentos' }, { name: 'Datas comemorativas' }, 'Bastidores'] } });
+  eq(s2.filter(x => x.text.startsWith('Editoria')).map(x => [x.text, x.sub]), [
+    ['Editoria "Lançamentos" sem posts há mais de 30 dias', 'Último em 01/08/2026 · nada planejado nas próximas 2 semanas'],
+    ['Editoria "Bastidores" sem posts há mais de 30 dias', 'Nenhum post registrado · nada planejado nas próximas 2 semanas']], 'editoria esquecida');
+
+  // 7) formatos do mês (a partir de 5 cards)
+  const fmt = (place, n) => Array.from({ length: n }, (_, i) => ({ id: place + i, date: '2026-10-0' + (i + 1), noProduct: true, channels: [{ channel: 'Instagram', places: [place] }] }));
+  eq(texts(run(fmt('Feed', 5))).filter(t => t.includes('feed') || t.includes('Story')), ['Outubro só tem posts de feed'], 'só feed');
+  eq(texts(run(fmt('Feed', 4).concat(fmt('Reels', 1)))).filter(t => t.includes('Story')), ['Nenhum Story planejado em outubro'], 'sem Story');
+  eq(texts(run(fmt('Feed', 4).concat(fmt('Stories', 1)))).some(t => t.includes('Story') || t.includes('só tem')), false, 'com Story, sem aviso');
+
+  // 8) próximo mês vazio: só a 10 dias ou menos da virada
+  eq(texts(run([], { today: new Date(2026, 9, 25) })).filter(t => t.includes('novembro')), ['Faltam 07 dias para novembro e ele tem só 0 cards'], 'próximo mês vazio');
+  eq(texts(run([])).some(t => t.includes('novembro')), false, 'longe da virada, sem aviso');
+
+  // 9) Google Trends: termo em alta com produto, sem card desse produto; os sem variação ou sem produto ficam de fora
+  const trends = { categories: { a: { periods: { '30d': { terms: [
+    { term: 'lixadeira', variation: '+80%', matchedProducts: [{ code: 'X1', name: 'Lixadeira LX 900' }] },
+    { term: 'serra', variation: null, matchedProducts: [{ code: 'X2', name: 'Serra' }] },
+    { term: 'chainsaw man', variation: '+60%', matchedProducts: [] }] } } } } };
+  s2 = run([], { trends });
+  eq(s2.filter(x => x.text.includes('em alta')).map(x => [x.text, x.sub]), [['"lixadeira" em alta nas buscas (+80%)', 'Produto: Lixadeira LX 900 · sem card nos últimos e próximos 30 dias']], 'tendência em alta');
+  eq(texts(run([{ id: 't', date: '2026-10-20', products: [{ code: 'X1', name: 'Lixadeira' }] }], { trends })).some(t => t.includes('em alta')), false, 'produto já planejado');
+
+  // 10) Reels engajando mais e pouco planejados; 11) melhor dia da semana (terça) livre na próxima semana
+  const ig = [];
+  for (let i = 0; i < 28; i++) { const d = new Date(2026, 8, 6 + i), tue = d.getDay() === 2;
+    ig.push({ timestamp: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T12:00:00`, likeCount: tue ? 300 : 100, mediaProductType: i % 4 === 0 ? 'REELS' : 'FEED' }); }
+  ig.filter(p => p.mediaProductType === 'REELS').forEach(p => { p.likeCount *= 4; });
+  s2 = run(fmt('Feed', 4).map(p => Object.assign(p, { date: '2026-10-2' + p.date.slice(-1) })), { social: ig });
+  eq(texts(s2).filter(t => t.startsWith('Reels')).length, 1, 'Reels engajam mais');
+  eq(s2.filter(x => x.text.startsWith('Terça')).map(x => [x.sub, x.action.href]), [['Terça, 20/10 está sem post', 'visual-editor.html?date=2026-10-20']], 'melhor dia da semana');
+
+  // ordem: urgentes primeiro, informativo por último
+  eq(s.map(x => x.tone), s.map(x => x.tone).slice().sort((a, b) => ({ bad: 0, warn: 1, info: 2 })[a] - ({ bad: 0, warn: 1, info: 2 })[b]), 'ordenação por urgência');
+
+  document.body.dataset.result = 'pass';
+  document.body.textContent = 'PASS: datas comemorativas, produto pendente, sem atrasados, meta de vídeos, mais curtido, dias abaixo da meta, editoria esquecida, formatos, próximo mês, Google Trends, Reels, melhor dia e ordenação';
+} catch (error) {
+  document.body.dataset.result = 'fail';
+  document.body.textContent = 'FAIL: ' + error.message;
+}
+</script>

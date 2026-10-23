@@ -93,6 +93,13 @@ jobs:
           cat /tmp/cartaz-pagination-dump.html
           grep -q 'data-result="pass"' /tmp/cartaz-pagination-dump.html
 
+      - name: Início — sugestões do galpão do Calendário e datas comemorativas (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 --dump-dom "file://$(pwd)/tests/home-suggestions.test.html" > /tmp/home-suggestions-dump.html
+          cat /tmp/home-suggestions-dump.html
+          grep -q 'data-result="pass"' /tmp/home-suggestions-dump.html
+
       - name: Gerador de Cartazes — painel Cards da marca (busca, mover, linhas, espaço vazio) (Chrome headless)
         run: |
           CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"

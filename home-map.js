@@ -632,6 +632,119 @@
       buildings.push(t);
     });
 
+    // equipe do pátio (decorativa, não é dado): um recebimento de mercadoria em cada galpão, no maior vão do pátio que não
+    // é vaga de doca. Paletes chegam na pilha de RECEBIMENTO (perto da rua); a empilhadeira leva um por vez, do topo, até a
+    // CONFERÊNCIA (junto à fachada, até 3); o conferente confere cada palete novo na prancheta; o carregador puxa com a
+    // paleteira só os já conferidos para dentro do galpão, pela porta. Recebimento vazio = nova entrega depois de uns segundos.
+    const crew = [], U = .3, TRAVEL = .06;
+    const SKIN = new THREE.Color(dark ? '#a57a5c' : '#e0b08a'), PANTS = new THREE.Color(dark ? '#2b3b57' : '#3b5578'),
+      VEST = new THREE.Color('#ff7a1a'), STRIPE = new THREE.Color('#e9eef2'), HAT = new THREE.Color('#ffc61a');
+    const CMAT = {};
+    function pb(w, hh, d, color, x, y, z, parent){ // peça da equipe: geometria e material compartilhados
+      const k = color.getHexString(), m = new THREE.Mesh(geoBox(w, hh, d), CMAT[k] || (CMAT[k] = new THREE.MeshLambertMaterial({ color: color })));
+      m.position.set(x, y, z); parent.add(m); return m; // sem sombra: são ~70 peças por galpão (a sombra dobraria o custo)
+    }
+    function pallet(parent){ const u = new THREE.Group(); pb(.34, .04, .34, C.wood, 0, .02, 0, u); pb(.3, .24, .3, C.box, 0, .16, 0, u); parent.add(u); return u; }
+    function stackAt(x, z){ const g = new THREE.Group(); g.position.set(x, .13, z); scene.add(g); return [0, 1, 2].map(function(i){ const u = pallet(g); u.position.y = i * U; return u; }); }
+    function person(){
+      const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+      // membro articulado no ombro/quadril: segmento + ponta (bota ou mão)
+      const limb = function(x, y, len, color, end, foot){ const p = new THREE.Group(); p.position.set(x, y, 0); pb(.07, len, .08, color, 0, -len / 2, 0, p); pb(.075, .05, foot ? .12 : .07, end, 0, -len - .02, foot ? .02 : 0, p); body.add(p); return p; };
+      const legL = limb(-.05, .27, .22, PANTS, C.ink, true), legR = limb(.05, .27, .22, PANTS, C.ink, true);
+      pb(.2, .22, .12, VEST, 0, .38, 0, body); pb(.205, .03, .125, STRIPE, 0, .35, 0, body); pb(.205, .03, .125, STRIPE, 0, .42, 0, body);
+      const armL = limb(-.135, .48, .19, VEST, SKIN), armR = limb(.135, .48, .19, VEST, SKIN);
+      pb(.11, .11, .11, SKIN, 0, .555, 0, body); pb(.16, .025, .17, HAT, 0, .62, .015, body); pb(.13, .06, .13, HAT, 0, .65, 0, body);
+      const clip = pb(.1, .13, .015, C.wall, .06, .4, .13, body); clip.visible = false;
+      const cargo = new THREE.Group(); cargo.position.set(0, 0, .32); g.add(cargo); pallet(cargo).position.y = .02;
+      pb(.03, .3, .03, C.ink, 0, .17, -.17, cargo).rotation.x = .5; cargo.visible = false; // paleteira: palete + cabo
+      scene.add(g); return { g: g, body: body, legL: legL, legR: legR, armL: armL, armR: armR, clip: clip, cargo: cargo, x: 0, z: 0, ang: 0, ph: 0 };
+    }
+    function forklift(){
+      const g = new THREE.Group();
+      pb(.42, .2, .62, C.trim2, 0, .2, -.06, g); pb(.4, .17, .2, C.ink, 0, .385, -.29, g); // chassi e contrapeso
+      [[-.18, .08], [.18, .08], [-.18, -.24], [.18, -.24]].forEach(function(p){ pb(.03, .34, .03, C.ink, p[0], .5, p[1], g); }); pb(.42, .03, .42, C.ink, 0, .68, -.08, g);
+      pb(.14, .15, .1, VEST, 0, .37, -.1, g); pb(.09, .09, .09, SKIN, 0, .49, -.1, g); pb(.12, .03, .12, HAT, 0, .55, -.1, g); // motorista
+      pb(.04, .62, .04, C.ink, -.15, .39, .24, g); pb(.04, .62, .04, C.ink, .15, .39, .24, g); // torre
+      const lift = new THREE.Group(); lift.position.set(0, TRAVEL, .27); g.add(lift);
+      pb(.34, .12, .03, C.ink, 0, .07, 0, lift); pb(.05, .025, .4, C.ink, -.1, .015, .2, lift); pb(.05, .025, .4, C.ink, .1, .015, .2, lift);
+      const load = pallet(lift); load.position.set(0, .03, .2); load.visible = false;
+      [-.22, .22].forEach(function(x){ [.14, -.24].forEach(function(z){ cyl(.08, .06, C.ink, x, .08, z, g, true).castShadow = false; }); });
+      scene.add(g); return { g: g, lift: lift, load: load, x: 0, z: 0, ang: 0, fork: true };
+    }
+    // passos das rotinas: cada um recebe (ator, dt) e devolve true quando terminou
+    const turnBy = function(a, ang, dt){ let da = ang - a.ang; da = Math.atan2(Math.sin(da), Math.cos(da)); a.ang += Math.sign(da) * Math.min(Math.abs(da), dt * 4); return Math.abs(da); };
+    const goTo = function(x, z, v){ return function(a, dt){
+      const dx = x - a.x, dz = z - a.z, d = Math.hypot(dx, dz);
+      if(d < .01){ a.walking = false; return true; }
+      const off = turnBy(a, Math.atan2(dx, dz), dt);
+      a.walking = off < .2;
+      if(!a.walking) return false; // manobra parado antes de andar
+      const st = Math.min(d, dt * v); a.x += dx / d * st; a.z += dz / d * st; a.ph += dt * 9; return false;
+    }; };
+    // ré: anda sem virar (empilhadeira saindo da pilha de frente para ela)
+    const backTo = function(x, z, v){ return function(a, dt){ const dx = x - a.x, dz = z - a.z, d = Math.hypot(dx, dz); if(d < .01) return true; const st = Math.min(d, dt * v); a.x += dx / d * st; a.z += dz / d * st; return false; }; };
+    const face = function(ang){ return function(a, dt){ a.walking = false; return turnBy(a, ang, dt) < .02; }; };
+    const raise = function(level){ return function(a, dt){ const d = level() - a.lift.position.y; a.lift.position.y += Math.sign(d) * Math.min(Math.abs(d), dt * .5); return Math.abs(d) < .005; }; };
+    const until = function(ok){ return function(a){ a.walking = false; return ok(); }; };
+    const pause = function(s){ let t = 0; return function(a, dt){ t += dt; if(t < s) return false; t = 0; return true; }; };
+    const act = function(fn){ return function(a){ fn(a); return true; }; };
+    const pose = function(name, s){ let t = 0; return function(a, dt){ a.pose = name; t += dt; a.pt = t; if(t < s) return false; a.pose = null; t = 0; return true; }; };
+    // ponytail: a rotina é uma lista fixa de passos repetida em laço (sem replanejar no meio); serve para cena decorativa
+    function run(a, dt){ if(!dt) return; if(a.i == null) a.i = 0; let n = a.steps.length; while(n-- && a.steps[a.i](a, dt)) a.i = (a.i + 1) % a.steps.length; }
+
+    buildings.forEach(function(t){
+      const front = t.docks[0].z - SLOT, back = t.z + IN, lanes = t.docks.map(function(d){ return [d.x - .7, d.x + .7]; }).sort(function(a, b){ return a[0] - b[0]; });
+      let x0 = t.x - IN + .3, gap = null;
+      lanes.concat([[t.x + IN - .3, Infinity]]).forEach(function(l){ if(!gap || l[0] - x0 > gap[1] - gap[0]) gap = [x0, l[0]]; x0 = Math.max(x0, l[1]); });
+      const wide = gap[1] - gap[0] > 1.2, fx = wide ? gap[0] + .45 : (gap[0] + gap[1]) / 2, side = wide || fx < t.x ? 1 : -1;
+      const zA = back - .35, zB = front + .45, doorX = fx + side * 1.05, R0 = .47; // R0: do centro da empilhadeira ao centro do palete no garfo
+      // porta de pessoal na fachada, se a fachada passa por ali
+      const bb = new THREE.Box3().setFromObject(t.g), doors = [];
+      if(doorX > bb.min.x + .3 && doorX < bb.max.x - .3) doors.push(box(.5, .66, .03, C.trim2, doorX, .13 + .33, front + .015), box(.4, .58, .03, C.ink, doorX, .13 + .29, front + .03));
+      const Y = { yard: true, t: t, A: 1 + Math.floor(Math.random() * 3), B: 0, fresh: 0, ok: 0, wait: 0, unitsA: stackAt(fx, zA), unitsB: stackAt(fx, zB), doors: doors };
+      const f = forklift(); f.x = fx; f.z = zB + R0 + .5; f.ang = 0;
+      f.steps = [goTo(fx, zA - R0, .8), until(function(){ return Y.A > 0; }), raise(function(){ return (Y.A - 1) * U; }),
+        act(function(a){ Y.A--; a.load.visible = true; }), raise(function(){ return TRAVEL + .04; }), backTo(fx, zA - R0 - .5, .5),
+        goTo(fx, zB + R0 + .5, .8), goTo(fx, zB + R0, .5), until(function(){ return Y.B < 3; }), raise(function(){ return Y.B * U; }),
+        act(function(a){ Y.B++; Y.fresh++; a.load.visible = false; }), raise(function(){ return TRAVEL; }), backTo(fx, zB + R0 + .5, .5)];
+      const cf = person(); cf.x = fx + side * .55; cf.z = zB + .55; cf.ang = Math.atan2(-side, -.6); cf.clip.visible = true;
+      cf.steps = [until(function(){ return Y.fresh > 0; }), face(Math.atan2(-side, -.3)), pose('confere', 1.4), act(function(){ Y.fresh--; Y.ok++; }), face(Math.atan2(-side, -.6))];
+      const home = [fx + side * 1.15, zB + 1.35], cg = person(); cg.x = home[0]; cg.z = home[1]; cg.ang = Math.PI;
+      cg.steps = [until(function(){ return Y.ok > 0; }), goTo(fx + side * .5, zB + .02, .45), face(-side * Math.PI / 2),
+        act(function(a){ Y.B--; Y.ok--; a.cargo.visible = true; }), goTo(doorX, front + .45, .4), goTo(doorX, front + .12, .3),
+        act(function(a){ a.inside = true; }), pause(1.6), act(function(a){ a.inside = false; a.cargo.visible = false; }),
+        goTo(home[0], home[1], .45), face(Math.PI)];
+      [f, cf, cg].forEach(function(a){ a.y = Y; crew.push(a); });
+      crew.push(Y);
+    });
+    function poseActor(a){
+      a.g.position.set(a.x, .13, a.z); a.g.rotation.y = a.ang;
+      if(a.fork) return;
+      const sw = a.walking ? Math.sin(a.ph) * .6 : 0;
+      a.legL.rotation.x = sw; a.legR.rotation.x = -sw;
+      a.body.position.y = a.walking ? Math.abs(Math.sin(a.ph)) * .018 : 0;
+      if(a.cargo.visible) a.armL.rotation.x = a.armR.rotation.x = -.7; // segura o cabo da paleteira
+      else if(a.pose === 'confere'){ a.armL.rotation.x = -1; a.armR.rotation.x = a.pt < .5 ? -.9 : -2.6 + Math.sin(a.pt * 12) * .15; } // ergue o braço: conferido
+      else if(a.clip.visible){ a.armL.rotation.x = -1; a.armR.rotation.x = -.8 + Math.sin(performance.now() / 160) * .12; } // anota na prancheta
+      else { a.armL.rotation.x = -sw * .8; a.armR.rotation.x = sw * .8; }
+    }
+    // dt 0 (pausado / movimento reduzido) só atualiza visibilidade e pose. No modo leve a equipe some e não anda (~70 peças por galpão)
+    function moveCrew(dt){
+      if(leve) dt = 0;
+      crew.forEach(function(a){
+        if(a.yard){ // pilhas do recebimento e da conferência; recebimento vazio = nova entrega
+          const on = !leve && !a.t.card.hidden && a.t.g.visible;
+          if(a.A === 0 && (a.wait += dt) > 4){ a.A = 3; a.wait = 0; }
+          a.unitsA.forEach(function(u, i){ u.visible = on && i < a.A; }); a.unitsB.forEach(function(u, i){ u.visible = on && i < a.B; });
+          a.doors.forEach(function(m){ m.visible = a.t.g.visible; });
+          return;
+        }
+        run(a, dt);
+        a.g.visible = !leve && !a.inside && !a.y.t.card.hidden && a.y.t.g.visible;
+        poseActor(a);
+      });
+    }
+
     // instancia tudo que foi acumulado
     function instanced(geo, list, opts){
       if(!list.length) return;
@@ -673,7 +786,8 @@
       ['Hortas em casa com pulverizadores', 'Pulverizadores VONDER', 'Instagram'], ['Compactadores na construção civil', 'Compactador VONDER', 'LinkedIn'],
       ['Estética automotiva: portfólio FG', 'Linha automotiva FG', 'Instagram'], ['Perfurar parede sem erro', 'Brocas VONDER', 'Blog']];
     const V_BOT = 4.2, V_ME = 7, MAX_PAUTAS = 3;
-    const myName = ((document.getElementById('homeUserSlot') || {}).textContent || '').trim().split(/\s+/)[0] || 'Você';
+    // só o <span> do nome: o slot também tem o botão "Sair" (home-auth.js), que vazava pro rótulo ("LucasSair")
+    const myName = ((document.querySelector('#homeUserSlot > span') || {}).textContent || '').trim().split(/\s+/)[0] || 'Você';
     const store = { t: 0, speed: 1, paused: false, clock0: Date.now(), kpi: { mes: 41, atrasadas: 0, concluidas: 0 },
       tools: tools, trucks: [], log: [], nextPauta: 1040 };
     const clock = function(t){ const d = new Date(store.clock0 + t * 60000); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }; // 1 s simulado = 1 min
@@ -861,23 +975,71 @@
     const beamMat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .5, map: glowTex(function(x){
       const g = x.createLinearGradient(0, 0, 0, 128); g.addColorStop(0, 'rgba(255,240,190,.9)'); g.addColorStop(1, 'rgba(255,240,190,0)');
       x.fillStyle = g; x.beginPath(); x.moveTo(20, 0); x.lineTo(44, 0); x.lineTo(64, 128); x.lineTo(0, 128); x.closePath(); x.fill(); }, 64, 128) });
+    // modelo do caminhão-baú de cabine avançada (referência: "Seaside Town Truck", phi-sato), nas cores da frota VONDER.
+    // Frente pra +z. Montado uma vez: as peças de cada material viram uma geometria só, compartilhada pelos 9 caminhões
+    // (~15 chamadas de desenho por caminhão em vez de ~80).
+    const TRUCK = (function(){
+      const M = { white: VD.white, black: VD.black, trim: new THREE.Color('#4a4a4a'), metal: new THREE.Color('#9aa0a6'), seat: new THREE.Color('#5d6670'),
+        dash: new THREE.Color('#2b2b2b'), yellow: VD.yellow, plate: new THREE.Color('#dfe3e6'), amber: new THREE.Color('#ffb020'), head: new THREE.Color('#fffbe8'), tail: new THREE.Color('#d83a2e') };
+      const parts = {}, put = function(m, geo, x, y, z){ geo.translate(x, y, z); (parts[m] = parts[m] || []).push(geo); };
+      const b = function(m, w, hh, d, x, y, z){ put(m, new THREE.BoxGeometry(w, hh, d), x, y, z); };
+      const both = function(fn){ [-1, 1].forEach(fn); };
+      // rodas: pneu + cubo; atrás, rodado duplo
+      const wheel = function(x, z){ put('black', new THREE.CylinderGeometry(.2, .2, .12, 18).rotateZ(Math.PI / 2), x, .2, z); put('metal', new THREE.CylinderGeometry(.09, .09, .13, 12).rotateZ(Math.PI / 2), x, .2, z); };
+      both(function(s){ wheel(s * .42, 1.13); wheel(s * .43, -1.08); wheel(s * .3, -1.08); });
+      both(function(s){ b('black', .06, .1, 3.2, s * .28, .32, -.15); });                       // longarinas do chassi
+      // cabine: saia na frente da roda, corpo, faixa VONDER amarela/preta, grade, faróis, para-choque e placa
+      b('white', .98, .16, .36, 0, .3, 1.54); b('white', .98, .48, .77, 0, .62, 1.335);
+      b('yellow', .99, .07, .775, 0, .5, 1.335); b('black', .99, .03, .775, 0, .555, 1.335);
+      both(function(s){ b('black', .02, .05, .5, s * .495, .4, 1.13); b('black', .012, .025, .08, s * .493, .78, 1.12); }); // arco da roda e maçaneta
+      b('dash', .3, .12, .02, 0, .72, 1.725); [.69, .72, .75].forEach(function(y){ b('metal', .26, .015, .012, 0, y, 1.737); });
+      both(function(s){ b('dash', .16, .11, .015, s * .3, .42, 1.722); b('head', .13, .08, .02, s * .3, .42, 1.728); b('amber', .06, .05, .02, s * .43, .42, 1.725); }); // farol com moldura escura
+      b('black', 1.04, .12, .12, 0, .24, 1.77); b('plate', .2, .06, .012, 0, .24, 1.836);
+      // vidros com o interior à mostra: colunas, para-brisa, laterais, parede de trás, teto, painel, bancos e volante
+      both(function(s){ b('white', .05, .42, .05, s * .465, 1.07, 1.695); b('white', .05, .42, .05, s * .465, 1.07, .975); b('glass', .015, .4, .68, s * .47, 1.07, 1.335); });
+      b('glass', .88, .4, .015, 0, 1.07, 1.7); b('white', .98, .42, .03, 0, 1.07, .965); b('white', 1, .05, .8, 0, 1.305, 1.335);
+      b('dash', .9, .1, .14, 0, .91, 1.6);
+      both(function(s){ b('seat', .26, .08, .24, s * .22, .9, 1.15); b('seat', .26, .3, .06, s * .22, 1.07, 1.02); });
+      put('dash', new THREE.TorusGeometry(.07, .012, 6, 14).rotateX(-Math.PI / 2 + .55), .22, 1.0, 1.47);
+      both(function(s){ b('black', .12, .018, .018, s * .55, 1, 1.66); b('black', .035, .15, .07, s * .62, 1, 1.64); }); // retrovisores
+      // baú: piso, cantoneiras e frisos, portas traseiras (vão, dobradiças, trancas), lanternas e para-choque
+      b('black', .96, .06, 2.7, 0, .39, -.45);
+      both(function(s){ b('trim', .045, 1.16, .045, s * .5, .99, .9); b('trim', .045, 1.16, .045, s * .5, .99, -1.8); b('trim', .045, .045, 2.7, s * .5, 1.56, -.45); b('trim', .045, .045, 2.7, s * .5, .42, -.45); });
+      b('trim', .015, 1.06, .012, 0, .99, -1.807);
+      both(function(s){
+        [.6, .99, 1.38].forEach(function(y){ b('metal', .07, .025, .012, s * .47, y, -1.807); });
+        [.1, .36].forEach(function(x){ b('metal', .018, 1.04, .014, s * x, .99, -1.81); });
+        b('tail', .1, .06, .02, s * .32, .32, -1.81); b('amber', .05, .06, .02, s * .43, .32, -1.81);
+        b('metal', .02, .02, 1.55, s * .49, .27, -.1); b('metal', .02, .02, 1.55, s * .49, .35, -.1); // proteção lateral
+      });
+      b('metal', .92, .05, .05, 0, .25, -1.76);
+      b('dash', .1, .14, .3, .4, .32, .55); b('black', .04, .04, .3, -.38, .26, .6); // tanque e escapamento
+      // une as peças por material (todas indexadas, com position/normal/uv)
+      const merge = function(list){
+        const pos = [], nor = [], uv = [], idx = []; let off = 0;
+        list.forEach(function(g){
+          pos.push.apply(pos, g.attributes.position.array); nor.push.apply(nor, g.attributes.normal.array); uv.push.apply(uv, g.attributes.uv.array);
+          g.index.array.forEach(function(i){ idx.push(i + off); }); off += g.attributes.position.count;
+        });
+        const out = new THREE.BufferGeometry();
+        out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); out.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        out.setIndex(idx); return out;
+      };
+      return Object.keys(parts).map(function(m){
+        const mat = m === 'glass' ? new THREE.MeshLambertMaterial({ color: C.glass, transparent: true, opacity: .4 }) : new THREE.MeshLambertMaterial({ color: M[m] });
+        if(dark && (m === 'head' || m === 'tail')) glow({ material: mat }, m === 'head' ? new THREE.Color('#fff4d0') : RED); // faróis e lanternas acesos à noite
+        return { geo: merge(parts[m]), mat: mat, glass: m === 'glass' };
+      });
+    })();
     store.trucks.forEach(function(tr){
       const g = new THREE.Group();
-      box(.8, .16, 3.3, VD.black, 0, .26, -.1, g);
-      const trailer = new THREE.Mesh(new THREE.BoxGeometry(.95, 1.15, 2.7), [sideMat, sideMat, blackMat, blackMat, blackMat, blackMat]);
-      trailer.position.set(0, .96, -.45); trailer.castShadow = trailer.receiveShadow = true; g.add(trailer);
-      box(.95, .95, .7, VD.white, 0, .78, 1.35, g);
-      box(.97, .32, .52, VD.white, 0, 1.4, 1.28, g);
-      box(.97, .14, .72, VD.yellow, 0, .5, 1.35, g); box(.97, .08, .72, VD.black, 0, .61, 1.35, g);
-      box(.85, .32, .02, VD.black, 0, .98, 1.71, g); box(.95, .12, .05, VD.black, 0, .34, 1.72, g);
-      [-1.55, -1.15, .9, 1.45].forEach(function(z){ [-.42, .42].forEach(function(x){ cyl(.19, .14, VD.black, x, .19, z, g, true); }); });
-      // faróis, lanternas e feixe de luz (só à noite; o feixe some quando está de ré ou parado)
-      if(dark){
-        [-.3, .3].forEach(function(x){ glow(box(.2, .1, .04, VD.white, x, .52, 1.73, g), new THREE.Color('#fff4d0')); glow(box(.2, .08, .04, VD.black, x, .5, -1.82, g), RED); });
-        tr.beam = new THREE.Mesh(beamGeo, beamMat); tr.beam.position.set(0, .05, 4.3); g.add(tr.beam);
-      }
+      TRUCK.forEach(function(p){ const m = new THREE.Mesh(p.geo, p.mat); m.castShadow = !p.glass; m.receiveShadow = true; g.add(m); });
+      const trailer = new THREE.Mesh(new THREE.BoxGeometry(1, 1.14, 2.7), [sideMat, sideMat, blackMat, blackMat, blackMat, blackMat]);
+      trailer.position.set(0, .99, -.45); trailer.castShadow = trailer.receiveShadow = true; g.add(trailer);
+      // feixe de luz dos faróis (só à noite; some quando está de ré ou parado)
+      if(dark){ tr.beam = new THREE.Mesh(beamGeo, beamMat); tr.beam.position.set(0, .05, 4.3); g.add(tr.beam); }
       // carga: 5 luzes no teto do baú = etapa da pauta que ele leva (laranja = atrasada)
-      tr.lights = [-1.55, -1.05, -.55, -.05, .45].map(function(z){ return box(.62, .05, .36, VD.off, 0, 1.56, z, g).material; });
+      tr.lights = [-1.55, -1.05, -.55, -.05, .45].map(function(z){ return box(.62, .05, .36, VD.off, 0, 1.585, z, g).material; });
       if(tr.me){
         const ring = new THREE.Mesh(new THREE.RingGeometry(1.75, 2.05, 48), new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, opacity: .9 }));
         ring.rotation.x = -Math.PI / 2; ring.position.y = .03; g.add(ring);
@@ -898,7 +1060,8 @@
     function onBlock(p){ return blocks.some(function(b){ return Math.abs(p[0] - b.x) < HB && Math.abs(p[1] - b.z) < HB; }); }
     function placeTrucks(dt){
       store.trucks.forEach(function(tr){
-        tr.g.visible = tr.state !== 'fora';
+        // na vista do galpão, caminhão entre a câmera e o pátio taparia a cena: some
+        tr.g.visible = tr.state !== 'fora' && !(visit && (tr.pos[0] - visit.x) * Math.sin(VISIT_PHI) + (tr.pos[1] - visit.z) * Math.cos(VISIT_PHI) > HB);
         if(!tr.g.visible) return;
         if(tr.target != null){ let d = tr.target - tr.head; d = Math.atan2(Math.sin(d), Math.cos(d)); tr.head += d * Math.min(1, dt * 7); }
         // dentro da quadra (doca, estacionamento) o piso é mais alto que a rua: sobe suave ao passar pela calçada rebaixada
@@ -918,7 +1081,7 @@
     function showHint(text, ms){ hint.textContent = text; hint.classList.add('is-on'); clearTimeout(hintTimer); if(ms) hintTimer = setTimeout(function(){ hint.classList.remove('is-on'); }, ms); }
     function cancelEnter(){ if(entering){ clearTimeout(entering); entering = null; hint.classList.remove('is-on'); } }
     function driveMe(dest){
-      cancelEnter();
+      cancelEnter(); closeVisit();
       if(me.dock) me.dock.by = null;
       if(me.dest && me.dest.dock && me.dest.dock.by === me) me.dest.dock.by = null;
       if(!routeTo(me, dest)){ showHint('Não há caminho até esse ponto', 1400); return; }
@@ -929,10 +1092,12 @@
     }
     function goTool(tool){
       if(tool.card.hidden) return;
+      if(me.state === 'doca' && me.dock && me.dock.tool === tool){ enterTool(tool); return; }
       const d = tool.docks.find(function(x){ return x.mine; });
       driveMe({ dock: d }); showHint('Indo para ' + tool.name + '…', 1600);
     }
     function enterTool(tool){
+      if(SUGGESTERS[tool.id]){ openVisit(tool); return; }
       showHint('Entrando em ' + tool.name + '…');
       entering = setTimeout(function(){ location.href = tool.id; }, 1100);
     }
@@ -950,7 +1115,7 @@
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -200, 200);
     const START = [ME_HOME[0] + 9, ME_HOME[1] - 7], target = new THREE.Vector3(START[0], 0, START[1]), goal = target.clone();
     const VIEW = 15.5, R = 19.8, HCAM = 14, ZMIN = .3, ZMAX = 2.6;
-    let zoom = 1.05, zoomGoal = 1.05, az = 0, azGoal = 0, flying = false;
+    let zoom = 1.05, zoomGoal = 1.05, az = 0, azGoal = 0, flying = false, hcam = HCAM;
     function resize(){
       const w = stage.clientWidth, hh = stage.clientHeight;
       if(!w || !hh) return;
@@ -993,10 +1158,104 @@
     ui.append(sim, statePanel, zoomBox, panel);
     syncSim();
 
+    // ---------- vista do galpão: ao estacionar, a câmera desce e fica de frente pro prédio (à esquerda) e as sugestões
+    // daquela tela abrem à direita. A cidade segue rodando. Só ferramentas com sugestões ganham a vista; as outras abrem direto.
+    const brandSuffix = function(){ return (window.PortalBrand && window.PortalBrand.suffix) || ''; };
+    const SUGGESTERS = { 'visual-editor.html': function(suffix){ return HomeSuggestions.loadCalendar(suffix); } };
+    const VISIT_PHI = .3, VISIT_H = 4.2, TONE = { bad: ['Urgente', 'is-bad'], warn: ['Atenção', 'is-warn'], info: ['Ideia', 'is-ok'] };
+    const visitPanel = h('aside', 'hm-panel hm-visit hm-glass'); visitPanel.hidden = true;
+    visitPanel.setAttribute('role', 'dialog'); visitPanel.setAttribute('aria-labelledby', 'hmVisitTitle');
+    ui.append(visitPanel);
+    let visit = null, visitAz = 0, visitSeq = 0;
+    function openVisit(tool){
+      select(null, true); follow = null; visit = tool; visitAz = azGoal;
+      const want = VISIT_PHI - Math.PI / 4, d = want - az; azGoal = az + Math.atan2(Math.sin(d), Math.cos(d));
+      ui.classList.add('is-visit'); visitPanel.hidden = false; frameVisit();
+      loadVisit(tool);
+      visitPanel.querySelector('.hm-btn-accent').focus({ preventScroll: true });
+    }
+    // enquadramento da vista: calculado ao abrir e quando o mapa muda de tamanho (não a cada quadro, que forçaria layout).
+    // Prédio + pátio com folga (~16 x 10) cabem à esquerda do painel; o alvo anda pra direita metade do espaço do painel
+    // (do canto esquerdo dele até a borda do mapa, mais um respiro). offsetLeft ignora a animação de entrada (transform).
+    function frameVisit(){
+      // celular (≤720): o painel cobre os 55% de baixo, então o prédio cabe nos 45% de cima e o alvo desce na tela (dy)
+      const W = stage.clientWidth, H = stage.clientHeight, mob = W <= 720, pw = mob ? 0 : ui.clientWidth - visitPanel.offsetLeft + 24;
+      zoomGoal = Math.min(2 * VIEW * Math.max(240, W - pw) / (H * 16), 2 * VIEW * (mob ? .45 : 1) / 10);
+      const off = pw / 2 * 2 * VIEW / zoomGoal / H, dy = mob ? .55 * VIEW / zoomGoal : 0, e = Math.atan2(VISIT_H, R), se = Math.sin(e) * dy;
+      goal.set(visit.x + Math.cos(VISIT_PHI) * off + Math.sin(VISIT_PHI) * se, visit.h * .4 - Math.cos(e) * dy, visit.z + .6 - Math.sin(VISIT_PHI) * off + Math.cos(VISIT_PHI) * se); flying = true;
+    }
+    new ResizeObserver(function(){ if(visit) frameVisit(); }).observe(stage);
+    let visitSuffix = null;
+    function loadVisit(tool){
+      const seq = ++visitSeq, suffix = visitSuffix = brandSuffix();
+      renderVisit(tool, null);
+      Promise.resolve(suffix).then(SUGGESTERS[tool.id]).then(function(list){ if(seq === visitSeq) renderVisit(tool, list); },
+        function(){ if(seq === visitSeq) renderVisit(tool, 'erro'); });
+    }
+    function closeVisit(){
+      if(!visit) return;
+      const t = visit; visit = null; visitSeq++;
+      ui.classList.remove('is-visit'); visitPanel.hidden = true; visitPanel.replaceChildren();
+      azGoal = visitAz; zoomGoal = 1.25; flyTo(t.x, t.z + 1);
+      if(visitPanel.contains(document.activeElement) || document.activeElement === document.body) canvas.focus({ preventScroll: true });
+    }
+    // list: null = carregando, 'erro', ou a lista de sugestões
+    function renderVisit(tool, list){
+      // topo fixo (cabeçalho + entrar) e corpo rolável (só a lista rola: DESIGN.md §9)
+      const top = h('div', 'hm-visit-top'), n = h('div', 'hm-visit-body'), hd = h('div', 'hm-panel-head hm-visit-head'), tx = h('div'), title = h('h3', null, tool.name);
+      title.id = 'hmVisitTitle';
+      tx.append(h('small', null, 'Você chegou · ' + tool.tag), title, h('p', null, tool.desc));
+      hd.append(ico('building'), tx, iconBtn('close', 'Voltar ao mapa', closeVisit));
+      const enter = h('a', 'hm-btn hm-btn-accent', 'Entrar no ' + tool.name); enter.href = tool.id;
+      top.append(hd, enter);
+      const h4 = h('h4', 'hm-visit-section', 'Sugestões para esta tela');
+      if(Array.isArray(list) && list.length) h4.append(h('span', 'hm-count', String(list.length)));
+      n.append(h4);
+      if(list === null){
+        const sk = h('div', 'hm-sugs is-loading'); sk.setAttribute('aria-busy', 'true'); sk.setAttribute('aria-label', 'Carregando sugestões');
+        for(let i = 0; i < 3; i++) sk.append(h('div', 'hm-sug-skel'));
+        n.append(sk);
+      } else if(list === 'erro'){
+        const er = h('div', 'hm-sug-empty', 'Não foi possível carregar as sugestões agora.'); er.setAttribute('role', 'alert');
+        const again = h('button', 'hm-btn', 'Tentar de novo'); again.type = 'button';
+        again.addEventListener('click', function(){ loadVisit(tool); });
+        n.append(er, again);
+      } else if(!list.length){
+        const em = h('div', 'hm-sug-empty', 'Nenhuma pendência no calendário agora.'); em.setAttribute('role', 'status'); n.append(em);
+      } else {
+        const item = function(s){
+          const li = h('li', 'hm-sug');
+          const a = h('a', 'hm-sug-act', s.action.label + ' →'); a.href = s.action.href;
+          li.append(h('span', 'hm-chip ' + TONE[s.tone][1], TONE[s.tone][0]), h('strong', 'hm-sug-title', s.text), h('p', 'hm-sug-sub', s.sub), a);
+          return li;
+        };
+        const ul = h('ul', 'hm-sugs'); list.slice(0, 5).forEach(function(s){ ul.append(item(s)); });
+        n.append(ul);
+        if(list.length > 5){
+          // sanfona (DESIGN.md §1): grade 1fr ↔ 0fr, conteúdo fechado com inert
+          const more = h('div', 'hm-more is-closed'), inner = h('div', 'hm-more-inner'), rest = h('ul', 'hm-sugs');
+          list.slice(5).forEach(function(s){ rest.append(item(s)); });
+          inner.append(rest); more.append(inner); inner.inert = true;
+          const tg = h('button', 'hm-more-btn', 'Mostrar mais ' + (list.length - 5)); tg.type = 'button'; tg.setAttribute('aria-expanded', 'false');
+          tg.addEventListener('click', function(){
+            const open = more.classList.toggle('is-closed') === false;
+            inner.inert = !open; tg.setAttribute('aria-expanded', String(open)); tg.textContent = open ? 'Mostrar menos' : 'Mostrar mais ' + (list.length - 5);
+          });
+          n.append(more, tg);
+        }
+      }
+      n.append(h('p', 'hm-sug-note', 'Sugestões automáticas por regras fixas sobre os dados do portal. Confira antes de usar.'));
+      visitPanel.replaceChildren(top, n);
+    }
+    visitPanel.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ e.stopPropagation(); closeVisit(); } });
+    canvas.addEventListener('keydown', function(e){ if(e.key === 'Escape' && visit) closeVisit(); });
+    if(!canvas.hasAttribute('tabindex')) canvas.setAttribute('tabindex', '-1');
+
     // seleção: contorno amarelo no selecionado, contorno fraco no que está sob o mouse
     const helper = new THREE.BoxHelper(undefined, C.accent); helper.visible = false; scene.add(helper);
     const hoverHelper = new THREE.BoxHelper(undefined, C.accent); hoverHelper.material.transparent = true; hoverHelper.material.opacity = .45; hoverHelper.visible = false; scene.add(hoverHelper);
     function select(obj, noFly){
+      if(obj) closeVisit();
       sel = obj; if(follow && follow !== obj && follow !== me) follow = null;
       ui.classList.toggle('has-panel', !!obj); panel.hidden = !obj; panel._last = null;
       if(obj && !noFly){ follow = null; flyTo(obj.g.position.x, obj.g.position.z, Math.max(zoomGoal, 1.25)); }
@@ -1101,7 +1360,7 @@
     function aim(e){ const r = canvas.getBoundingClientRect(); mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(mouse, camera); }
     function pick(e){
       aim(e);
-      const hit = ray.intersectObjects(picks, false).find(function(x){ const o = x.object.userData.sel; return o.kind !== 't' || o.g.visible; }), o = hit && hit.object.userData.sel;
+      const hit = ray.intersectObjects(picks, false).find(function(x){ return x.object.userData.sel.g.visible; }), o = hit && hit.object.userData.sel;
       return o && (o.kind !== 'b' || !o.card.hidden) ? o : null;
     }
     let down = null;
@@ -1109,7 +1368,7 @@
     canvas.addEventListener('pointermove', function(e){
       if(down){
         const dx = e.clientX - down.x, dy = e.clientY - down.y;
-        if(!down.moved && Math.hypot(dx, dy) < 5) return;
+        if(visit || (!down.moved && Math.hypot(dx, dy) < 5)) return; // na vista do galpão a câmera fica presa ao prédio
         down.moved = true; flying = false; follow = null; canvas.classList.add('is-drag');
         // direita da tela e "pra cima" no chão, conforme o giro da câmera; vertical anda mais no chão (câmera inclinada)
         const k = 2 * VIEW / zoom / canvas.clientHeight, phi = Math.PI / 4 + az, f = Math.hypot(R, HCAM) / HCAM;
@@ -1139,7 +1398,8 @@
     // o mapa fica no meio da página: rolagem comum continua rolando a página; Ctrl/⌘ + rolagem dá zoom
     canvas.addEventListener('wheel', function(e){
       if(!(e.ctrlKey || e.metaKey)){ if(!entering) showHint('Use Ctrl + rolagem para dar zoom no mapa', 1200); return; }
-      e.preventDefault(); zoomGoal = Math.max(ZMIN, Math.min(ZMAX, zoomGoal * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+      e.preventDefault(); if(visit) return; // a vista do galpão tem enquadramento fixo
+      zoomGoal = Math.max(ZMIN, Math.min(ZMAX, zoomGoal * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
     }, { passive: false });
 
     // busca: pauta (código ou título) seleciona o caminhão que a leva; ferramenta voa até o galpão (index.js já filtrou os cards)
@@ -1150,7 +1410,7 @@
       const p = pautas().find(function(x){ return fold(x.id + ' ' + x.titulo + ' ' + x.produto).includes(q); });
       if(p && (!m || /^pau/.test(q))){ select(carrier(p)); return; }
       const b = m && toolById(m.getAttribute('href'));
-      if(b){ follow = null; flyTo(b.x, b.z, Math.max(zoomGoal, 1.1)); }
+      if(b){ closeVisit(); follow = null; flyTo(b.x, b.z, Math.max(zoomGoal, 1.1)); } // buscar outra ferramenta sai da vista do galpão
     });
 
     // teste: ?hmsim=N avança N segundos de simulação antes de começar (conferir eventos/atrasos sem esperar)
@@ -1166,13 +1426,16 @@
       move(me, dt, store.t);                         // o seu caminhão anda em tempo real, mesmo com a simulação pausada
       if(me.state !== 'dirigindo') pin.visible = false;
       placeTrucks(dt);
+      moveCrew(still || store.paused ? 0 : dt * store.speed); // com 0 só atualiza a visibilidade
+      if(visit && visitSuffix !== brandSuffix()) loadVisit(visit); // trocou a marca na Início com o painel aberto
       if(follow && follow.g.visible && !down){ goal.set(follow.g.position.x, 0, follow.g.position.z); flying = true; }
       const ease = 1 - Math.pow(.002, dt);
       if(flying){ target.lerp(goal, ease); if(target.distanceTo(goal) < .02 && !follow) flying = false; }
       if(Math.abs(zoomGoal - zoom) > .001){ zoom += (zoomGoal - zoom) * ease; resize(); }
       az += (azGoal - az) * ease;
+      hcam += ((visit ? VISIT_H : HCAM) - hcam) * ease;
       const phi = Math.PI / 4 + az;
-      camera.position.set(target.x + Math.sin(phi) * R, HCAM, target.z + Math.cos(phi) * R); camera.lookAt(target);
+      camera.position.set(target.x + Math.sin(phi) * R, target.y + hcam, target.z + Math.cos(phi) * R); camera.lookAt(target);
       sun.position.set(target.x - 8, 20, target.z + 10); sun.target.position.copy(target); sun.target.updateMatrixWorld();
       helper.visible = !!sel && sel.g.visible; if(helper.visible) helper.setFromObject(sel.g);
       hoverHelper.visible = !!hover && hover !== sel && hover.g.visible; if(hoverHelper.visible) hoverHelper.setFromObject(hover.g);
@@ -1183,13 +1446,15 @@
         el.style.opacity = op;
       }
       buildings.forEach(function(b){
+        // câmera baixa da vista do galpão: os galpões da quadra da frente tapariam o prédio, então somem enquanto ela dura
+        b.g.visible = !(visit && b !== visit && b.z > visit.z && Math.abs(b.x - visit.x) < PITCH);
         const off = b.card.hidden ? .2 : b.card.classList.contains('is-filtered') ? .3 : 1;
         b.op += (off - b.op) * Math.min(1, dt * 8);
         b.mats.forEach(function(m){ m.opacity = b.op; });
-        label(b.el, b.x, b.h + .45, b.g.position.z, b.op < .5 ? .35 : 1);
+        label(b.el, b.x, b.h + .45, b.g.position.z, visit && visit !== b ? 0 : b.op < .5 ? .35 : 1);
         b.el.classList.toggle('is-sel', sel === b);
       });
-      label(gate.el, gate.g.position.x, 1.9, gate.g.position.z, 1); gate.el.classList.toggle('is-sel', sel === gate);
+      label(gate.el, gate.g.position.x, 1.9, gate.g.position.z, visit ? 0 : 1); gate.el.classList.toggle('is-sel', sel === gate);
       store.trucks.forEach(function(tr){ tr.el.hidden = !tr.g.visible || (!tr.me && hover !== tr && sel !== tr); if(!tr.el.hidden) label(tr.el, tr.g.position.x, 2.05, tr.g.position.z, 1); tr.el.classList.toggle('is-sel', sel === tr); });
       renderer.render(scene, camera);
     })();

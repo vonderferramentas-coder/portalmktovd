@@ -709,10 +709,11 @@
                       sem produto (institucional)</label>
                     <label>Buscar produto</label>
                     <div class="autocomplete-wrap">
-                      <input id="mProductName" type="text" placeholder="Digite para buscar no catálogo Vonder..."
+                      <input id="mProductName" type="text" placeholder="Digite para buscar no catálogo Vonder ou cole vários códigos..."
                         autocomplete="off" />
                       <div id="productSuggestions" class="autocomplete-list"></div>
                     </div>
+                    <div id="productPasteBox" class="product-paste" role="group" aria-label="Códigos colados" hidden></div>
                     <div id="selectedProductsList" class="selected-products"></div>
                     <label class="field-gap">Imagem:</label>
                     <input id="mImageLink" type="text"
@@ -886,6 +887,7 @@
   <script src="portal-shell.js"></script>
   <script src="intelligence-data.js"></script>
   <script src="catalog-provider.js"></script>
+  <script src="commemorative-dates.js"></script>
   <script src="app.js"></script>
 </body>
 

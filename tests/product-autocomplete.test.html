@@ -31,6 +31,15 @@ try {
   s = search('10.00.999.000');
   eq(list.slice().sort((a, b) => productMatchRank(a, s.q, s.qCode) - productMatchRank(b, s.q, s.qCode))[0].code, '10.00.999.000', 'código exato vem primeiro');
 
+  // colar vários códigos: extrai do texto (vírgula, dois-pontos, traço, quebra de linha, tópicos, "código - nome"), sem repetir
+  const { extractProductCodes } = new Function(['normalizeCode', 'codeDigits', 'extractProductCodes'].map(take).join('\n') + '\nreturn { extractProductCodes };')();
+  eq(extractProductCodes('61.40.061.000, 61.40.088.000\n• 61.40.105.000 - Furadeira 650 W\n99.99.999.999 : 61.40.061.000'),
+    ['61.40.061.000', '61.40.088.000', '61.40.105.000', '99.99.999.999'], 'separadores variados, nome no meio e repetido');
+  eq(extractProductCodes('70.51.061.035-70.51.061.036;1216206\t7051061037'), ['70.51.061.035', '70.51.061.036', '1216206', '7051061037'], 'traço colado, ponto e vírgula, tab e código sem pontos');
+  eq(extractProductCodes('Furadeira 650 W, 220 V, kit 2024'), [], 'números curtos (potência, tensão, ano) não são código');
+  eq(extractProductCodes('61.40.061.000 - Furadeira R$ 12.345,00 (válido até 23.10.2026)'), ['61.40.061.000'], 'preço e data não são código');
+  eq(extractProductCodes('70.51.061.035 e 7051061035'), ['70.51.061.035'], 'mesmo código com e sem pontos conta uma vez');
+
   document.body.dataset.result = 'pass'; document.body.textContent = 'ok';
 } catch (e) { document.body.dataset.result = 'fail'; document.body.textContent = e.message; }
 </script>

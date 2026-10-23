@@ -76,7 +76,7 @@ body.mouse-light-active.home-body::before{background:linear-gradient(180deg,var(
 .hm-panel[hidden]{display:none}
 .hm-panel-head{display:flex;align-items:flex-start;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
 .hm-panel-head small{display:block;color:var(--accent-ink);font-size:10px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
-.hm-panel-head strong{display:block;font-size:17px;line-height:1.25}.hm-panel-head span{display:block;margin-top:2px;color:var(--muted);font-size:12px}
+.hm-panel-head strong{display:block;font-size:17px;line-height:1.25}.hm-panel-head>div>span{display:block;margin-top:2px;color:var(--muted);font-size:12px}
 .hm-panel-head .hm-iconbtn{margin-left:auto;flex:0 0 auto}
 .hm-status{display:flex;align-items:center;gap:8px;margin:12px 0;color:var(--muted);font-size:12px}
 .hm-chip{display:inline-flex;align-items:center;padding:3px 9px;border-radius:7px;background:var(--surface-muted);color:var(--muted);font-size:11.5px;font-weight:700;white-space:nowrap}
@@ -92,10 +92,48 @@ body.mouse-light-active.home-body::before{background:linear-gradient(180deg,var(
 .hm-row b{display:block;font-size:12px}.hm-row small{color:var(--muted);font-size:10.5px}
 .hm-btn{padding:9px 14px;border:1px solid var(--border);border-radius:11px;background:var(--card);color:var(--text);font:inherit;font-size:12.5px;font-weight:700;text-decoration:none;text-align:center;box-shadow:var(--shadow-sm);cursor:pointer;transition:border-color .15s,color .15s,background .15s}.hm-btn:hover{border-color:var(--accent);color:var(--accent-ink)}.hm-btn:focus-visible{outline:3px solid var(--accent-weak);border-color:var(--accent-ink)}
 .hm-btn-accent{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}.hm-btn-accent:hover{background:var(--accent-hover);color:var(--on-accent)}
+/* vista do galpão: prédio à esquerda, sugestões à direita (home-map.js: openVisit).
+   Escala de texto: 12 (antetítulo, chips, notas) · 13 (contexto) · 14 (descrição, ações) · 15 (sugestão) · 20 (título).
+   Espaço: 24 nas bordas do painel, 16 entre blocos, 12 entre cards, 4–8 dentro do card (DESIGN.md §10). */
+.hm-ui.is-visit .hm-zoom{display:none}
+.hm-visit{display:flex;flex-direction:column;right:clamp(64px,7vw,128px);bottom:24px;width:clamp(600px,48vw,750px);max-width:calc(100% - 96px);max-height:none;padding:0;overflow:hidden;animation:hm-visit-in .25s ease}
+@keyframes hm-visit-in{from{opacity:0;transform:translateX(16px)}}
+.hm-visit-top{display:flex;flex-direction:column;gap:16px;padding:20px 24px;border-bottom:1px solid var(--border)}
+.hm-visit .hm-visit-head{align-items:flex-start;gap:12px;padding:0;border:0}
+.hm-visit-head .hm-ico{width:44px;height:44px;border-radius:12px}
+.hm-visit-head>div{flex:1;min-width:0}
+.hm-visit .hm-visit-head small{font-size:12px;font-weight:800;letter-spacing:.1em;line-height:1.4}
+.hm-visit .hm-visit-head h3{margin:2px 0 0;color:var(--text);font-family:inherit;font-size:20px;font-weight:800;line-height:1.25;letter-spacing:-.01em;text-transform:none}
+.hm-visit-head p{margin:4px 0 0;color:var(--muted);font-size:14px;line-height:1.45}
+.hm-visit .hm-visit-head .hm-iconbtn{margin:-6px -8px 0 0}
+.hm-visit-top .hm-btn-accent{display:block;width:100%;margin:0;padding:12px 16px;border-radius:12px;font-size:14px}
+.hm-visit-body{flex:1;min-height:0;overflow:auto;padding:20px 24px 24px;scrollbar-width:thin}
+.hm-visit .hm-visit-section{display:flex;align-items:center;justify-content:flex-start;gap:8px;margin:0 0 12px;color:var(--muted);font-size:12px;font-weight:800;letter-spacing:.1em;line-height:1.4;text-transform:uppercase}
+.hm-visit .hm-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--surface-muted);color:var(--text);font-size:12px;font-weight:800;letter-spacing:0}
+.hm-sugs{display:flex;flex-direction:column;gap:12px;margin:0;padding:0;list-style:none}
+.hm-sug{display:flex;flex-direction:column;align-items:flex-start;padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--card)}
+.hm-visit .hm-sug .hm-chip{padding:3px 10px;font-size:12px}
+.hm-sug-title{display:block;margin-top:10px;color:var(--text);font-size:15px;font-weight:700;line-height:1.4}
+.hm-sug-sub{margin:4px 0 0;color:var(--muted);font-size:13px;line-height:1.45}
+.hm-sug-act,.hm-more-btn{padding:4px 0;border:0;background:none;color:var(--accent-text);font:inherit;font-size:14px;font-weight:700;line-height:1.4;text-decoration:none;cursor:pointer}
+.hm-sug-act{margin-top:8px}
+.hm-sug-act:hover,.hm-more-btn:hover{text-decoration:underline}
+.hm-sug-act:focus-visible,.hm-more-btn:focus-visible{outline:2px solid var(--accent-text);outline-offset:2px;border-radius:4px}
+.hm-sug-skel{height:120px;border-radius:14px;background:linear-gradient(90deg,var(--surface-muted) 25%,var(--border) 50%,var(--surface-muted) 75%);background-size:200% 100%;animation:hm-shimmer 1.2s linear infinite}
+@keyframes hm-shimmer{to{background-position:-200% 0}}
+.hm-sug-empty{padding:44px 20px;border:1px dashed var(--border);border-radius:var(--radius-md);color:var(--muted);font-size:14px;line-height:1.45;text-align:center}
+.hm-sug-empty+.hm-btn{display:block;width:100%;margin-top:12px}
+.hm-more{display:grid;grid-template-rows:1fr;transition:grid-template-rows .25s ease}.hm-more.is-closed{grid-template-rows:0fr}
+.hm-more-inner{min-height:0;overflow:hidden}.hm-more-inner>.hm-sugs{margin-top:12px}
+.hm-more-btn{display:block;margin:12px auto 0}
+.hm-sug-note{margin:20px 0 0;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;line-height:1.5}
+@media(prefers-reduced-motion:reduce){.hm-visit,.hm-sug-skel{animation:none}.hm-more{transition:none}}
 /* modo lista: o mapa some e a grade de cards aparece no lugar */
 .home-hero:not(.is-list)~.home-tools-step{display:none}
 .home-hero.is-list{display:none}
-@media(max-width:720px){.home-hero{height:calc(100vh - 40px)}.hm-state{display:none}.hm-sim{top:24px;left:14px}.hm-zoom{right:14px;top:24px}.hm-panel{top:auto;bottom:14px;left:14px;right:14px;width:auto;max-height:55%}.hm-ui.has-panel .hm-zoom{right:14px}}
+@media(max-width:720px){.home-hero{height:calc(100vh - 40px)}.hm-state{display:none}.hm-sim{top:24px;left:14px}.hm-zoom{right:14px;top:24px}.hm-panel{top:auto;bottom:14px;left:14px;right:14px;width:auto;max-height:55%}.hm-ui.has-panel .hm-zoom{right:14px}.hm-visit{max-width:none}.hm-visit-top,.hm-visit-body{padding-left:16px;padding-right:16px}}
+/* telas médias: o painel de 600px+ cobriria quase todo o mapa e o galpão ficaria escondido atrás dele */
+@media(min-width:721px) and (max-width:1000px){.hm-visit{width:min(440px,50%)}}
 @media(prefers-reduced-motion:reduce){.hm-zoom,.hm-bar>span,.hm-hint{transition:none}}
 .hm-label.is-tool{padding:4px 10px;font-size:12.5px;font-weight:800}
 .hm-label.is-me{background:var(--text);border-color:var(--text);color:var(--card);font-size:11.5px;box-shadow:0 0 0 3px var(--accent)}
