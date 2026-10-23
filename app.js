@@ -2611,8 +2611,8 @@
     // CONFIGURAÇÕES DA APLICAÇÃO - redes, editorias, formatos,
     // status, catálogo de produtos e metas (persistidas no localStorage)
     // ============================================================
-    const BRAND_COLORS = { Instagram:'#E4405F', Facebook:'#1877F2', LinkedIn:'#0A66C2', TikTok:'#010101', Blog:'#ef4444', Email:'#374151' };
-    const BRAND_SHORT_NAMES = { Instagram:'IG', LinkedIn:'LI', TikTok:'TT', Blog:'BL', Email:'EM' };
+    const BRAND_COLORS = { Instagram:'#E4405F', Facebook:'#1877F2', LinkedIn:'#0A66C2', TikTok:'#010101', YouTube:'#FF0000', Blog:'#ef4444', Email:'#374151' };
+    const BRAND_SHORT_NAMES = { Instagram:'IG', LinkedIn:'LI', TikTok:'TT', YouTube:'YT', Blog:'BL', Email:'EM' };
     // formatos padrão por rede - cada rede tem seu próprio conjunto (ex: Reels só existe no Instagram),
     // cada formato com as dimensões (px) e extensões de arquivo aceitas
     const NETWORK_DEFAULT_FORMATS = {
@@ -2631,6 +2631,10 @@
         { name:'Artigo', width:1200, height:644, extensions:['JPG','PNG'] }
       ],
       TikTok: [{ name:'Vídeo', width:1080, height:1920, extensions:['MP4'] }],
+      YouTube: [
+        { name:'Vídeo', width:1920, height:1080, extensions:['MP4'] },
+        { name:'Shorts', width:1080, height:1920, extensions:['MP4'] }
+      ],
       Blog: [{ name:'Post', width:1200, height:630, extensions:['JPG','PNG'] }],
       Email: [{ name:'Email', width:600, height:800, extensions:['JPG','PNG'] }]
     };
@@ -2688,6 +2692,7 @@
         { name:'Facebook', shortName:'FB', color:'#1877F2', formats: NETWORK_DEFAULT_FORMATS.Facebook.map(f=>Object.assign({},f)) },
         { name:'TikTok', shortName:'TT', color:'#010101', formats: NETWORK_DEFAULT_FORMATS.TikTok.map(f=>Object.assign({},f)) },
         { name:'LinkedIn', shortName:'LI', color:'#0A66C2', formats: NETWORK_DEFAULT_FORMATS.LinkedIn.map(f=>Object.assign({},f)) },
+        { name:'YouTube', shortName:'YT', color:'#FF0000', formats: NETWORK_DEFAULT_FORMATS.YouTube.map(f=>Object.assign({},f)) },
         { name:'Blog', shortName:'BL', color:'#ef4444', formats: NETWORK_DEFAULT_FORMATS.Blog.map(f=>Object.assign({},f)) },
         { name:'Email', shortName:'EM', color:'#374151', formats: NETWORK_DEFAULT_FORMATS.Email.map(f=>Object.assign({},f)) }
       ],
