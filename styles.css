@@ -6,6 +6,7 @@
       --white:#ffffff;--accent-hover:#d9a600;--on-accent:#1a1a1a;--selection-text:#000000;
       --danger:#dc2626;--danger-bg:#fef2f2;--danger-bg-strong:#fee2e2;--danger-border:#fecaca;
       --success:#16a34a;--success-bg:#f0fdf4;--success-border:#bbf7d0;
+      --type-video:#f97316;--type-static:#22c55e;
       --backdrop:rgba(15,15,13,.5);
       --radius-sm:8px;--radius-md:12px;--radius-lg:16px;
       --shadow-sm:0 1px 2px rgba(15,15,13,.06);--shadow-md:0 6px 16px rgba(15,15,13,.08);--shadow-lg:0 20px 40px rgba(15,15,13,.16);
@@ -28,6 +29,7 @@
       --accent-hover:#d9a600;--on-accent:#1a1a1a;
       --danger:#f87171;--danger-bg:#3a1518;--danger-bg-strong:#4a1a1e;--danger-border:#5c2328;
       --success:#4ade80;--success-bg:#142a1c;--success-border:#1f4b2c;
+      --type-video:#fb923c;--type-static:#34c46a;
       --backdrop:rgba(0,0,0,.65);
       --shadow-sm:0 1px 2px rgba(0,0,0,.25);--shadow-md:0 6px 16px rgba(0,0,0,.35);--shadow-lg:0 20px 40px rgba(0,0,0,.5);
       --event-shadow:0 1px 3px rgba(0,0,0,.35),0 1px 2px rgba(0,0,0,.25);--event-shadow-hover:0 10px 24px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.35);
@@ -112,14 +114,7 @@
     .portal-account-bar:hover{background:var(--surface-muted)}
     .portal-account-bar.open{border-color:var(--accent-ink);box-shadow:0 0 0 2px var(--accent-weak)}
     .portal-account-avatar{position:relative;flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--surface-muted);color:var(--muted);display:flex;align-items:center;justify-content:center}
-    /* Indicador de notificação não lida: badge com a quantidade (até "9+"), no avatar da barra
-       "Conta" e, quando o dropdown abre, ao lado de "Notificações" - ver applyNotificationDot em
-       portal-shell.js. */
     .portal-account-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
-    .portal-account-avatar-dot{position:absolute;top:-4px;right:-4px;min-width:14px;height:14px;padding:0 3px;border-radius:999px;background:var(--accent);color:var(--on-accent);box-shadow:0 0 0 2px var(--card);display:flex;align-items:center;justify-content:center;font-size:9px;line-height:1;font-weight:800}
-    .portal-account-avatar-dot[hidden]{display:none}
-    .portal-account-menu-dot{min-width:16px;height:16px;padding:0 4px;flex-shrink:0;border-radius:999px;background:var(--accent);color:var(--on-accent);margin-left:auto;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;font-weight:800}
-    .portal-account-menu-dot[hidden]{display:none}
     .portal-account-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
     .portal-account-name{font-size:11.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .portal-account-email{font-size:10px;font-weight:300;font-style:italic;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -551,7 +546,6 @@
        pelo menos um card. Cor do alerta é fixa (não segue --accent do tema), pra continuar lendo
        como "atenção" mesmo se o usuário escolher um tema de cor amarelo/dourado */
     .day-status-icon{width:14px;height:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:help}
-    .day-status-icon.is-complete{border-radius:50%;background:var(--success);color:#1a1a1a;font-size:9.5px;font-weight:900;line-height:1}
     .day-status-icon.is-pending svg{width:100%;height:100%}
     .posts{margin-top:8px;flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column}
     .more-badge{position:absolute;right:8px;bottom:8px;background:var(--card);border-radius:var(--radius-sm);padding:3px 9px;border:1px solid var(--border);font-size:11px;font-weight:700;color:var(--accent-ink);box-shadow:var(--shadow-sm);cursor:pointer}
@@ -580,11 +574,14 @@
     .event.dragging{opacity:0.5;transform:scale(.98)}
     .event.moving{transition:transform .36s cubic-bezier(.2,.9,.2,1)}
     .event-bar{position:absolute;left:0;top:0;bottom:0;width:3px}
+    /* cor da barra = tipo da publicação (vídeo laranja, estático verde) */
+    .event-bar.is-video{background:var(--type-video)}
+    .event-bar.is-static{background:var(--type-static)}
     .event-body{flex:1;min-width:0;padding-left:3px}
-    .event-eyebrow{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;line-height:1.2;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .event-title{font-weight:700;font-size:12.5px;color:var(--text);line-height:1.3;margin-bottom:5px}
-    .event-subtitle{font-size:10.5px;color:var(--muted)}
-    .event-nets{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-bottom:8px}
+    .event-eyebrow{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;line-height:1.2;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .event-title{font-weight:600;font-size:12.5px;color:var(--text);line-height:1.3;margin-bottom:5px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+    .event-head{display:flex;align-items:center;gap:6px;margin-bottom:6px;padding-right:20px;min-width:0}
+    .event-nets{display:flex;flex:0 0 auto;align-items:center;gap:5px}
     .event-net-icon{display:inline-flex;align-items:center}
 
     /* Menu "⋮" de ações do card (duplicar/excluir), no card do calendário e na linha da lista */
@@ -658,7 +655,6 @@
     .icon-picker-upload-btn svg{flex-shrink:0}
     .icon-picker-upload-preview{width:18px;height:18px;border-radius:50%;flex-shrink:0}
 
-
     /* Títulos de seção maiores dentro do workspace da Central de Inteligência (Nova peça de
        referência, Peças já adicionadas, Orientações adicionais etc.) */
     #intelWorkspaceBody .fg-label{font-size:15px}
@@ -728,6 +724,14 @@
     .modal.modal--wide{max-width:900px}
     /* modais mais simples (ex.: Exportar briefing), sem menu lateral nem grade - não precisam da largura padrão */
     .modal.modal--narrow{max-width:440px}
+    .import-sheet{display:flex;flex-direction:column;gap:12px;font-size:13px}
+    .import-sheet p{margin:0}
+    .import-sheet-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .import-sheet-summary:empty{display:none}
+    .import-sheet-summary{display:flex;flex-direction:column;gap:6px}
+    .import-sheet-label{font-weight:700;margin-top:4px}
+    .import-sheet-list{margin:0;padding-left:18px;color:var(--muted);font-size:12.5px}
+    .import-sheet-error{color:var(--danger)}
     .modal-header{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border)}
     .modal-header h2{margin:0}
     .modal-header-actions{display:flex;align-items:center;gap:2px;flex-shrink:0}
@@ -915,7 +919,6 @@
     .form-group .fg-label{font-size:12px;padding-bottom:8px;margin-bottom:12px;border-bottom:1px solid var(--border)}
     .form-group label:not(.chip){color:var(--muted)}
 
-
     /* Caixa de sugestões de título (gerada a partir do(s) produto(s) selecionado(s)) */
     .title-suggestion{display:none;flex-direction:column;gap:6px;margin-top:6px;padding:8px 10px;border:1px dashed var(--accent);border-radius:var(--radius-sm);background:var(--accent-weak)}
     .title-suggestion .ts-header{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--accent-ink);text-transform:uppercase;letter-spacing:.03em}
@@ -1057,24 +1060,8 @@
     .intel-modal-box .intel-rule-list li{background:var(--card)}
     .intel-modal-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 
+.modal-header{position:relative}
 
-.notifications-list{display:grid;gap:8px;padding:12px}.notification-item{display:flex;gap:12px;align-items:flex-start;width:100%;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);text-align:left;font:inherit;cursor:pointer}.notification-item:hover{background:var(--surface-muted)}.notification-item.unread{border-color:var(--accent)}.notification-item strong{display:block;font-size:13px;line-height:1.45}.notification-item small{display:block;margin-top:4px;color:var(--muted)}.notification-dot{width:9px;height:9px;flex:0 0 auto;margin-top:5px;border-radius:50%;background:var(--accent)}.notifications-empty{padding:44px 20px;text-align:center;color:var(--muted)}
-
-.event-status-dot{position:absolute;right:27px;top:8px;width:8px;height:8px;border-radius:50%;box-shadow:0 0 0 2px var(--card)}.list-status-dot{width:8px;height:8px;flex:0 0 auto;border-radius:50%;margin-top:6px}
-
-.admin-notification-brands{display:flex;flex-wrap:wrap;gap:5px}.admin-badge.notification-brand{background:var(--accent-weak);color:var(--accent-ink);font-weight:700}
-
-
-.event-status-dot{position:absolute;right:27px;top:8px;width:9px;height:9px;border-radius:50%;box-shadow:0 0 0 2px var(--card)}.list-status-dot{width:9px;height:9px;flex:0 0 auto;border-radius:50%;margin-top:6px}
-
-.post-status-select{display:flex;align-items:center;gap:9px}.post-status-select select{flex:1}.post-status-dot{width:12px;height:12px;flex:0 0 auto;border-radius:50%;box-shadow:0 0 0 3px var(--accent-weak)}
-
-.modal-header{position:relative}.modal-status-control{display:flex;align-items:center;gap:8px;margin-left:auto;margin-right:12px}.modal-status-control select{width:210px;min-height:34px;border-radius:8px;font-weight:700}.post-status-dot{width:10px;height:10px;flex:0 0 auto;border-radius:50%;box-shadow:0 0 0 2px var(--card)}
-.modal-status-control{position:relative;margin-left:auto;margin-right:12px}.modal-status-trigger{display:flex;align-items:center;gap:7px;min-height:34px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted);color:var(--text);font:700 12px/1 inherit;cursor:pointer}.modal-status-trigger:hover{border-color:var(--accent)}.modal-status-choices{display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:1005;min-width:205px;padding:5px;border:1px solid var(--border);border-radius:10px;background:var(--card);box-shadow:var(--shadow-md)}.modal-status-choices.open{display:grid}.modal-status-choices button{display:flex;align-items:center;gap:8px;padding:9px;border:0;border-radius:7px;background:transparent;color:var(--text);font:600 12px/1.2 inherit;text-align:left;cursor:pointer}.modal-status-choices button:hover{background:var(--accent-weak)}.modal-status-choices button[aria-selected=true]{background:var(--accent-weak)}
-
-.event-status-dot{border:0;padding:0;cursor:pointer}.quick-status-menu{position:fixed;z-index:1005;display:grid;min-width:205px;padding:5px;border:1px solid var(--border);border-radius:10px;background:var(--card);box-shadow:var(--shadow-md)}.quick-status-menu button{display:flex;align-items:center;gap:8px;padding:9px;border:0;border-radius:7px;background:transparent;color:var(--text);font:600 12px/1.2 inherit;text-align:left;cursor:pointer}.quick-status-menu button:hover{background:var(--accent-weak)}
-
-.modal-status-chevron{display:block;margin-left:2px;flex:0 0 auto;transition:transform .15s ease}.modal-status-trigger[aria-expanded=true] .modal-status-chevron{transform:rotate(180deg)}
     .portal-notice{position:fixed;right:24px;bottom:24px;z-index:120;max-width:min(420px,calc(100vw - 32px));padding:12px 14px;border:1px solid var(--border-strong);border-radius:var(--radius-md);background:var(--card);color:var(--text);box-shadow:var(--shadow-lg);font:700 13px/1.45 var(--font-ui);opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}.portal-notice.is-visible{opacity:1;transform:translateY(0)}@media (max-width:640px){.portal-notice{right:16px;bottom:16px}}
 
 /* Checkbox animada (referência: animate-ui Radix Checkbox): a caixa se preenche com a cor da marca

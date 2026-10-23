@@ -120,10 +120,9 @@
       await Promise.all(entries.map(async ([id,item])=>{
         try{
           const desired=clone(item.post);
-          const notification=desired&&options.getReadyNotificationRecipients ? await options.getReadyNotificationRecipients(desired) : null;
           const result=desired==null
             ? await api.deletePost(options.storeKey,id,item.expectedRevision)
-            : await api.writePost(options.storeKey,desired,item.expectedRevision,notification);
+            : await api.writePost(options.storeKey,desired,item.expectedRevision);
           const currentEntry=outbox.get(id);
           if(!currentEntry) return;
           if(result.conflict){

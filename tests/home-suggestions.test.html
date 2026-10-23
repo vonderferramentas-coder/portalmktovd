@@ -23,7 +23,7 @@ try {
   eq([pintor.text, pintor.tone, pintor.action.href], ['Faltam 03 dias para Dia do Pintor', 'bad', 'visual-editor.html?date=2026-10-18&commemorative=1'], 'Dia do Pintor');
   eq(texts(s).includes('Hoje é Aniversário VONDER'), true, 'data de hoje');
   eq(texts(s).some(t => t.includes('Finados')), false, 'fora da janela de 10 dias');
-  s = run([{ id: 'a', date: '2026-10-16', title: 'Post dia do pintor', noProduct: true, status: 'Rascunho' }]);
+  s = run([{ id: 'a', date: '2026-10-16', title: 'Post dia do pintor', noProduct: true }]);
   eq(texts(s).some(t => t.includes('Dia do Pintor')), false, 'coberta por card que cita o nome');
   s = run([{ id: 'a', date: '2026-10-18', title: 'Homenagem', editoria: ['Datas comemorativas'], noProduct: true }]);
   eq(texts(s).some(t => t.includes('Dia do Pintor')), false, 'coberta por card da editoria no dia');
@@ -34,17 +34,17 @@ try {
   eq(pend.map(x => [x.text, x.action.href]), [['Pendente escolha de produtos em "Card Y"', 'visual-editor.html?post=p1&date=2026-10-20']], 'produto pendente');
 
   // 3) cards que passaram da data não viram sugestão (removido a pedido do Marketing)
-  s = run([{ id: 'l1', date: '2026-10-10', title: 'A', status: 'Em produção', noProduct: true }]);
+  s = run([{ id: 'l1', date: '2026-10-10', title: 'A', noProduct: true }]);
   eq(texts(s).some(t => t.includes('passa')), false, 'sem aviso de atrasados');
 
   // 4) vídeos: meta 2/semana em outubro (31 dias) = 9; tipo vem de channels ou do campo legado
-  s = run([{ id: 'v1', date: '2026-10-02', type: 'Video', noProduct: true, status: 'Publicado' }, { id: 'v2', date: '2026-10-30', channels: [{ types: ['Video'] }], noProduct: true }], { settings: { videoWeeklyTarget: 2 } });
+  s = run([{ id: 'v1', date: '2026-10-02', type: 'Video', noProduct: true }, { id: 'v2', date: '2026-10-30', channels: [{ types: ['Video'] }], noProduct: true }], { settings: { videoWeeklyTarget: 2 } });
   eq(texts(s).filter(t => t.includes('vídeo')), ['Só 2 vídeos no calendário de outubro (meta: 9)'], 'vídeos abaixo da meta');
   eq(texts(run([], { settings: { videoWeeklyTarget: 0 } })).some(t => t.includes('vídeo')), false, 'sem meta, sem aviso');
 
   // 5) mais curtido do ano: produto pelo card do mesmo dia; posts de outro ano não contam
   const social = [{ timestamp: '2026-03-02T12:00:00+0000', likeCount: 900, caption: 'x' }, { timestamp: '2025-01-01T12:00:00+0000', likeCount: 5000 }, { timestamp: '2026-04-01T12:00:00+0000', likeCount: 100 }];
-  s = run([{ id: 'c', date: '2026-03-02', title: 'Lixadeira', products: [{ code: '60.01', name: 'Lixadeira LX 900' }], status: 'Publicado' }], { social });
+  s = run([{ id: 'c', date: '2026-03-02', title: 'Lixadeira', products: [{ code: '60.01', name: 'Lixadeira LX 900' }] }], { social });
   const top = s.find(x => x.tone === 'info');
   eq([top.text, top.sub], ['Potencial de repetir conteúdo sobre Lixadeira LX 900', 'Mais curtido de 2026 no Instagram: 900 curtidas'], 'mais curtido com produto');
 

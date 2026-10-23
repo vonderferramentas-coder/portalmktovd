@@ -247,11 +247,12 @@ Hoje há 20 valores de `max-width` diferentes. O mais usado é **760px**, seguid
 
 - ≤1000px: grades de várias colunas caem para 2 (ex.: `.grid-week`).
 - ≤760px: a sidebar fica recolhida só com ícones (72px), sem submenus, e `.portal-main` usa `padding:18px 14px`. Não há gaveta nem menu hambúrguer.
-- Telas sem nenhum `@media` hoje (não pensadas para celular): `admin-users`, `intelligence-center`, `monitoramento`, `notifications`, `visual-editor`, `post-editor.html`, `login`.
+- Telas sem nenhum `@media` hoje (não pensadas para celular): `admin-users`, `intelligence-center`, `monitoramento`, `visual-editor`, `post-editor.html`, `login`.
 
 ## 16. Padrões menores recorrentes
 
 - **Scrollbar** fina (Gerador de Cartazes): `scrollbar-width:thin`, trilho transparente, 8px com polegar arredondado em 4px e hover em `--accent` (`cartaz-generator.css`). A sidebar esconde a barra.
+- **Barra lateral do card do calendário** (`.event-bar`, decidido em 23/10/2026): a cor diz o tipo da publicação, não a editoria. Vídeo = `--type-video` (laranja), estático = `--type-static` (verde médio); card com várias redes fica laranja se alguma for vídeo. A editoria continua colorida no texto acima do título. A visão Lista (`.list-row-bar`) ainda usa a cor da editoria.
 - **Chips de rede:** `.chip-net`. Não há `.badge` único nem cores semânticas de status; ao criar um, use `--success*`, `--danger*` e o amarelo/âmbar da marca.
 - **Tabelas:** não existe padrão; listas são grades ou `flex`.
 - **Hover de cartão do calendário:** `.event` usa `.15s` e `translateY(-2px)` (`styles.css`), exceção ao `.12s` da §9.

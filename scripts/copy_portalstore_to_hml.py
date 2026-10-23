@@ -5,7 +5,7 @@
 # não precisa de dado ao vivo, só de uma amostra pra testar a interface.
 #
 # Só copia os documentos abaixo - nunca a coleção portalStore inteira. Calendário
-# (calendar-post-*), perfis/permissões (user-profiles-v1, page-permissions-v1) e notificações
+# (calendar-post-*), perfis/permissões (user-profiles-v1, page-permissions-v1) e notificações (estas removidas em 23/10/2026)
 # são estado interativo do próprio ambiente HML; sobrescrever isso destruiria testes em
 # andamento e o isolamento que a separação HML/PRD existe pra garantir (ver
 # docs/ARQUITETURA-E-INTEGRACOES.md, seção 17).
