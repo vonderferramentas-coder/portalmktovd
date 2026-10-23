@@ -46,7 +46,7 @@
     let isEditing = false;
     let editingId = null;
     // estado dos filtros aplicados ao calendário/lista
-    const filters = { editorias: [], places: [], types: [], statuses: [], collab: 'any' };
+    const filters = { editorias: [], places: [], types: [], collab: 'any' };
     // produtos selecionados no modal de criar/editar postagem: [{code,name}, ...]
     let selectedProducts = [];
     // texto exato ("Pauta: ...") da última pauta sugerida inserida no campo de conteúdo - se
@@ -75,7 +75,7 @@
     let guidedPostStep = 1;
 
     // ============================================================
-    // HELPERS DE COR E EXIBIÇÃO - cores de tags/status, ícones de rede,
+    // HELPERS DE COR E EXIBIÇÃO - cores de tags, ícones de rede,
     // normalização de texto e montagem de URL de imagem de produto
     // ============================================================
     const TAG_PALETTE = ['#7c3aed','#0284c7','#16a34a','#b45309','#dc2626','#db2777','#0d9488','#4f46e5','#65a30d','#ea580c'];
@@ -318,18 +318,23 @@
       return [];
     }
 
-    // postagem com todos os campos essenciais preenchidos? Usado pelo ícone de completo/pendência
-    // ao lado do contador de cada dia. Título, Produto(s) - ou marcada como "sem produto", pra
-    // institucionais/anúncios - Onde salvar a arte e Conteúdo da publicação contam; Imagem de
-    // referência e Referências ficam de fora por serem materiais de apoio opcionais, não algo
-    // que toda postagem precisa ter.
-    function isPostComplete(post){
+    // campos da etapa 1 (Planejamento) do modal que faltam numa postagem. Fonte única do ícone de
+    // pendência do dia e do bloqueio do "Próximo" no modal. Data e Tipo sempre têm valor; as etapas
+    // 2 e 3 (produto, conteúdo, onde salvar) não entram.
+    function missingPlanningFields(post){
+      const missing = [];
       const title = (post.title||'').trim();
-      if(!title || title==='Untitled') return false;
-      if(!getPostProducts(post).length && !post.noProduct) return false;
-      if(!(post.artsLink||'').trim()) return false;
-      if(!(post.notes||'').trim()) return false;
-      return true;
+      if(!title || title==='Untitled') missing.push('Título');
+      const eds = Array.isArray(post.editoria) ? post.editoria : [post.editoria];
+      if(!eds.some(Boolean)) missing.push('Editoria');
+      const entries = postChannelEntries(post);
+      if(!entries.length) missing.push('Redes');
+      else {
+        // rede sem formato cadastrado nas Configurações não tem o que marcar: não bloqueia
+        const hasFormats = entries.some(c=> (((APP_SETTINGS.networks||[]).find(n=>n.name===c.channel)||{}).formats||[]).length);
+        if(hasFormats && !entries.some(c=> (c.places||[]).length)) missing.push('Formato');
+      }
+      return missing;
     }
 
     function renderSelectedProducts(){
@@ -1500,10 +1505,9 @@
       if(existing) return existing;
       const network=(APP_SETTINGS.networks||[])[0]||{name:'Instagram',formats:[{name:'Feed'}]};
       const channel=network.name||'Instagram', place=((network.formats||[])[0]||{name:'Feed'}).name||'Feed';
-      const defaultStatus=(APP_SETTINGS.statuses[0]&&APP_SETTINGS.statuses[0].name)||'Rascunho';
       const post={
         id:generateId(), title:holidayName, date:dateStr, channel, place:[place], type:'Static',
-        channels:[{channel,types:['Static'],places:[place]}], status:defaultStatus,
+        channels:[{channel,types:['Static'],places:[place]}],
         notes:'', briefingLink:'', referencesLink:'', artsLink:'', imageLink:'', imageNotes:'',
         referenceImages:[], noProduct:true, commemorativePostType:'institutional', collab:false, color:null, editoria:[editoriaName], products:[],
         order:nextOrderForDate(dateStr)
@@ -1843,8 +1847,6 @@
           const tys = postChannelEntries(p).flatMap(c=>c.types||['Static']);
           if(!tys.some(t=> filters.types.includes(t))) return false;
         }
-        // status
-        if(filters.statuses && filters.statuses.length>0){ if(!filters.statuses.includes(p.status)) return false; }
         // collab
         if(filters.collab==='only' && !p.collab) return false;
         if(filters.collab==='no' && p.collab) return false;
@@ -1907,25 +1909,6 @@
       return { btn };
     }
 
-    let quickStatusMenuEl = null;
-    function closeQuickStatusMenu(){ if(quickStatusMenuEl) quickStatusMenuEl.remove(); quickStatusMenuEl = null; }
-    function openQuickStatusMenu(anchor, post){
-      closeQuickStatusMenu();
-      const menu = quickStatusMenuEl = document.createElement('div');
-      menu.className = 'quick-status-menu';
-      menu.innerHTML = (APP_SETTINGS.statuses||[]).map(status=>`<button type="button" data-quick-status="${escapeHtml(status.name)}"><span class="post-status-dot" style="background:${status.color}" aria-hidden="true"></span>${escapeHtml(status.name)}</button>`).join('');
-      menu.querySelectorAll('[data-quick-status]').forEach(button=>button.addEventListener('click', event=>{
-        event.stopPropagation();
-        if(post.status !== button.dataset.quickStatus){ post.status = button.dataset.quickStatus; saveState(); render(); }
-        closeQuickStatusMenu();
-      }));
-      document.body.appendChild(menu);
-      const rect = anchor.getBoundingClientRect();
-      menu.style.top = `${rect.bottom + 5}px`;
-      menu.style.left = `${Math.max(5, rect.right - 205)}px`;
-    }
-    document.addEventListener('click', closeQuickStatusMenu);
-    window.addEventListener('scroll', closeQuickStatusMenu, true);
     // Ações de card passam por uma confirmação visual centralizada, coerente com os demais modais.
     let pendingCardAction = null;
     function openCardActionConfirm(action,id){
@@ -2003,11 +1986,10 @@
       const eyebrowText = eds.length ? joinPt(eds) : 'Sem editoria';
       const eyebrowColor = eds.length ? editoriaColor(eds[0]) : 'var(--text-faint)';
       const netsIconsHtml = entries.map(c=>`<span class="event-net-icon">${networkIcon(c.channel)}</span>`).join('');
-      const typeLabel = entries.some(c=>(c.types||[]).some(t=>(t||'').toLowerCase()==='video')) ? 'Vídeo' : 'Estático';
       const prods = getPostProducts(p);
       const productNames = prods.map(x=>x.name).filter(Boolean).join(', ');
-      div.title = [p.status, postChannelsDetailText(p), productNames].filter(Boolean).join(' · ');
-      div.innerHTML = `<div class="event-bar" style="background:${eyebrowColor}"></div><div class="event-body"><div class="event-nets">${netsIconsHtml}</div><div class="event-eyebrow" style="color:${eyebrowColor}">${escapeHtml(eyebrowText)}</div><div class="event-title">${escapeHtml(p.title)}</div><div class="event-subtitle">${typeLabel}</div></div>`;
+      div.title = [postChannelsDetailText(p), productNames].filter(Boolean).join(' · ');
+      div.innerHTML = `<div class="event-bar ${entries.some(c=>(c.types||[]).some(t=>(t||'').toLowerCase()==='video')) ? 'is-video' : 'is-static'}"></div><div class="event-body"><div class="event-head"><div class="event-nets">${netsIconsHtml}</div><div class="event-eyebrow" style="color:${eyebrowColor}">${escapeHtml(eyebrowText)}</div></div><div class="event-title">${escapeHtml(p.title)}</div></div>`;
       div.addEventListener('dragstart', (ev)=>{ ev.dataTransfer.setData('text/plain', p.id); div.classList.add('dragging'); ev.dataTransfer.effectAllowed='move'; });
       div.addEventListener('dragend', ()=>{ div.classList.remove('dragging'); });
       // soltar sobre um card específico reordena/insere a postagem arrastada antes ou depois dele
@@ -2030,7 +2012,7 @@
         reorderPost(draggedPost, p, before);
       });
       div.addEventListener('click', (ev)=>{ ev.stopPropagation(); openEditModal(p.id); });
-      { const dot = document.createElement('button'); dot.type='button'; dot.className='event-status-dot'; dot.style.background=((APP_SETTINGS.statuses||[]).find(status=>status.name===p.status)||{}).color || '#94a3b8'; dot.title='Alterar status: '+(p.status || 'Rascunho'); dot.setAttribute('aria-label',dot.title); dot.addEventListener('click', event=>{ event.stopPropagation(); openQuickStatusMenu(dot,p); }); div.appendChild(dot); const { btn } = buildCardMenu(p, 'event-menu-btn'); div.appendChild(btn); }
+      div.appendChild(buildCardMenu(p, 'event-menu-btn').btn);
       return div;
     }
 
@@ -2043,9 +2025,8 @@
       const eyebrowColor = eds.length ? editoriaColor(eds[0]) : 'var(--text-faint)';
       const netsIconsHtml = entries.map(c=>`<span class="event-net-icon">${networkIcon(c.channel)}</span>`).join('');
       const typeLabel = entries.some(c=>(c.types||[]).some(t=>(t||'').toLowerCase()==='video')) ? 'Vídeo' : 'Estático';
-      row.title = [p.status, postChannelsDetailText(p)].filter(Boolean).join(' · ');
+      row.title = postChannelsDetailText(p);
       row.innerHTML = `<span class="drag-handle" title="Arraste para reordenar">${UI_ICONS.grip(14)}</span><span class="list-row-bar" style="background:${eyebrowColor}"></span><div class="list-row-body"><div class="list-row-nets">${netsIconsHtml}</div><div class="list-row-eyebrow" style="color:${eyebrowColor}">${escapeHtml(eyebrowText)}</div><div class="list-row-title">${escapeHtml(p.title)}</div><div class="list-row-subtitle">${typeLabel}</div></div>`;
-      const dot = document.createElement('span'); dot.className = 'list-status-dot'; dot.style.background = ((APP_SETTINGS.statuses||[]).find(status=>status.name===p.status)||{}).color || '#94a3b8'; dot.title = p.status || 'Rascunho'; row.insertBefore(dot, row.querySelector('.list-row-body'));
       const { btn: menuBtn } = buildCardMenu(p, 'list-row-menu-btn');
       row.appendChild(menuBtn);
       row.addEventListener('click', ()=> openEditModal(p.id));
@@ -2133,14 +2114,18 @@
     function updateDayStatusIcon(cell, list){
       const icon = cell.querySelector('.day-status-icon'); if(!icon) return;
       if(!list.length){ icon.style.display = 'none'; return; }
-      const allComplete = list.every(isPostComplete);
+      // só aparece o aviso de pendência; dia com o planejamento completo fica sem ícone
+      const pending = list.map(p=>({ p, missing: missingPlanningFields(p) })).filter(x=>x.missing.length);
+      if(!pending.length){ icon.style.display = 'none'; return; }
       icon.style.display = 'flex';
-      icon.classList.toggle('is-complete', allComplete);
-      icon.classList.toggle('is-pending', !allComplete);
-      icon.title = allComplete ? 'Todos os campos preenchidos' : 'Campos pendentes de preenchimento';
-      icon.innerHTML = allComplete
-        ? '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
-        : DAY_STATUS_PENDING_SVG;
+      icon.classList.add('is-pending');
+      // uma linha por card pendente: título (ou "Sem título") e o que falta nele
+      icon.title = 'Planejamento pendente:\n' + pending.map(({ p, missing })=>{
+        const t = (p.title||'').trim();
+        return `• ${t && t!=='Untitled' ? t : 'Sem título'}: falta ${joinPt(missing)}`;
+      }).join('\n');
+      icon.setAttribute('aria-label', icon.title);
+      icon.innerHTML = DAY_STATUS_PENDING_SVG;
     }
     function render(){
       // visão semanal: reconstrói as 7 colunas da semana visível (viewDate) toda vez - é
@@ -2391,27 +2376,7 @@
       }
     }
 
-    function renderModalStatus(selected){
-      const field = $('mStatus'); if(!field) return;
-      field.innerHTML = (APP_SETTINGS.statuses||[]).map(status=>`<option value="${escapeHtml(status.name)}">${escapeHtml(status.name)}</option>`).join('');
-      field.value = selected || ((APP_SETTINGS.statuses[0]||{}).name || 'Rascunho');
-      updateModalStatusDot();
-      renderModalStatusChoices();
-    }
-    function updateModalStatusDot(){
-      const dot = $('mStatusDot'), field = $('mStatus'); if(!dot || !field) return;
-      dot.style.background = ((APP_SETTINGS.statuses||[]).find(status=>status.name===field.value)||{}).color || '#94a3b8';
-    }
-    function renderModalStatusChoices(){
-      const field = $('mStatus'), control = $('modalStatusControl'); if(!field || !control) return;
-      const statuses = APP_SETTINGS.statuses || [];
-      const current = statuses.find(status=>status.name===field.value) || statuses[0];
-      control.innerHTML = `<button type="button" id="modalStatusTrigger" class="modal-status-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="post-status-dot" style="background:${current.color}" aria-hidden="true"></span><span>${escapeHtml(current.name)}</span><svg class="modal-status-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div id="modalStatusChoices" class="modal-status-choices" role="listbox">${statuses.map(status=>`<button type="button" role="option" aria-selected="${status.name===current.name}" data-status-choice="${escapeHtml(status.name)}"><span class="post-status-dot" style="background:${status.color}" aria-hidden="true"></span>${escapeHtml(status.name)}</button>`).join('')}</div>`;
-      control.querySelector('#modalStatusTrigger').addEventListener('click', event=>{ event.stopPropagation(); const menu = $('modalStatusChoices'); const open = !menu.classList.contains('open'); menu.classList.toggle('open',open); event.currentTarget.setAttribute('aria-expanded',String(open)); });
-      control.querySelectorAll('[data-status-choice]').forEach(button=>button.addEventListener('click', ()=>{ field.value=button.dataset.statusChoice; if(isEditing && editingId){ const post=state.posts.find(item=>item.id===editingId); if(post && post.status!==field.value){ post.status=field.value; saveState(); render(); } } renderModalStatusChoices(); }));
-    }
     function openModal(dateStr){
-      closeQuickStatusMenu();
       $('modalBackdrop').style.display = 'flex';
       modalOpenedFromApplyEditoria = false;
       // só fica setada quando este open vem do fluxo de confirmação de data comemorativa (ver
@@ -2423,7 +2388,6 @@
       // da semana) ou, na ausência dela, o mês/dia atualmente visível no calendário
       const defaultDate = dateStr || viewDate.toISOString().slice(0,10);
       $('mDate').value = defaultDate;
-      renderModalStatus();
       // limpa os campos do formulário
       $('mTitle').value=''; $('mNotes').value=''; $('mProductName').value=''; hideProductPaste();
       $('mBriefingLink').value=''; $('mReferencesLink').value=''; $('mArtsLink').value='';
@@ -2470,11 +2434,8 @@
       if(!date){ alert('Escolha uma data'); return; }
       const place = [...new Set(Array.from(document.querySelectorAll('input[name="mPlace"]:checked')).map(n=>n.value))];
       const type = document.querySelector('input[name="mType"]:checked').value;
-      // o status e o collab não têm mais controle próprio neste modal (mudança de status/collab
-      // agora é feita pela edição em lote, com várias postagens selecionadas) - postagem nova
-      // recebe o primeiro status configurado e collab desligado; ao editar, ambos são preservados
-      const defaultStatus = (APP_SETTINGS.statuses[0] && APP_SETTINGS.statuses[0].name) || 'Rascunho';
-      const status = $('mStatus') ? $('mStatus').value : defaultStatus;
+      // collab não tem controle próprio neste modal: postagem nova nasce com collab desligado e,
+      // ao editar, o valor salvo é preservado
       const notes = $('mNotes').value.trim();
       const commemorativePostType=commemorativeEditoriaIsSelected() && $('mCommemorativePostType') ? $('mCommemorativePostType').value : '';
       const isInstitutionalCommemorative=commemorativePostType==='institutional';
@@ -2498,7 +2459,7 @@
         if(!post) return;
         const before = Object.assign({}, post);
         const dateChanged = post.date !== date;
-        post.title = title; post.date = date; post.notes = notes; post.status = status;
+        post.title = title; post.date = date; post.notes = notes;
         post.briefingLink = briefingLink; post.referencesLink = referencesLink; post.artsLink = artsLink;
         post.imageLink = imageLink; post.imageNotes = imageNotes; post.noProduct = noProduct;
         post.commemorativePostType = commemorativePostType || '';
@@ -2528,7 +2489,7 @@
       const p = {
         id: generateId(), title, date, channel: nets[0], place: place.slice(), type,
         channels: nets.map(net=>({ channel: net, types: [type], places: place.slice() })),
-        status, notes, briefingLink, referencesLink, artsLink, imageLink, imageNotes,
+        notes, briefingLink, referencesLink, artsLink, imageLink, imageNotes,
         referenceImages: editingReferenceImages.slice(),
         noProduct, commemorativePostType: commemorativePostType || '', collab: false, color: null, editoria: editorias, products: products.slice(), order: nextOrderForDate(date)
       };
@@ -2568,32 +2529,22 @@
       return places==='Feed Vertical' ? 'Feed' : places;
     }
 
-    function migrateLegacyPostStatus(post){
-      if(post.status==='Aprovado'){ post.status='Pronto para ser postado'; return true; }
-      if(post.status==='Agendado'){ post.status='Publicado'; return true; }
-      return false;
-    }
     function loadState(){
       const raw = localStorage.getItem(LS_POSTS_KEY);
       if(raw){ try{ state.posts = JSON.parse(raw) || []; }catch(e){ state.posts=[]; } }
-      // garante que toda postagem tenha id e status válidos
-      const defaultStatus = (APP_SETTINGS.statuses[0] && APP_SETTINGS.statuses[0].name) || 'Rascunho';
-      let statusesMigrated = false;
+      // garante que toda postagem tenha id
       state.posts.forEach(p=>{
-        if(migrateLegacyPostStatus(p)) statusesMigrated = true;
         if(!p.id) p.id = generateId();
-        if(!p.status) p.status = defaultStatus;
         if(Array.isArray(p.channels)) p.channels.forEach(c=>{ if(c.channel==='Instagram') c.places = migrateLegacyInstagramFeedPlaces(c.places); });
         if(p.channel==='Instagram') p.place = migrateLegacyInstagramFeedPlaces(p.place);
       });
-      if(statusesMigrated) localStorage.setItem(LS_POSTS_KEY,JSON.stringify(state.posts));
       // atribui `order` às postagens salvas antes desse campo existir
       migratePostOrders();
     }
 
     // ============================================================
     // CONFIGURAÇÕES DA APLICAÇÃO - redes, editorias, formatos,
-    // status, catálogo de produtos e metas (persistidas no localStorage)
+    // catálogo de produtos e metas (persistidas no localStorage)
     // ============================================================
     const BRAND_COLORS = { Instagram:'#E4405F', Facebook:'#1877F2', LinkedIn:'#0A66C2', TikTok:'#010101', YouTube:'#FF0000', Blog:'#ef4444', Email:'#374151' };
     const BRAND_SHORT_NAMES = { Instagram:'IG', LinkedIn:'LI', TikTok:'TT', YouTube:'YT', Blog:'BL', Email:'EM' };
@@ -2685,14 +2636,6 @@
       editorias: (EDITORIAS_BY_BRAND[BRAND_SUFFIX] || []).concat(UNIVERSAL_DEFAULT_EDITORIAS)
         .filter((e,i,list)=> !list.slice(0,i).some(existing=> sameDefaultEditoria(existing,e)))
         .map(e=>Object.assign({},e)),
-      statuses: [
-        { name:'Rascunho', color:'#94a3b8' },
-        { name:'Em produção', color:'#3b82f6' },
-        { name:'Em revisão', color:'#f59e0b' },
-        { name:'Em ajuste', color:'#ef4444' },
-        { name:'Pronto para ser postado', color:'#10b981' },
-        { name:'Publicado', color:'#6366f1' }
-      ],
       catalog: [],
       // datas comemorativas personalizadas (ex: aniversário da empresa, um evento específico)
       // - somam-se às datas comemorativas fixas/móveis calculadas em commemorativeDateName()
@@ -2717,11 +2660,7 @@
       // como o Editor de Posts, ou outro computador puxando do servidor, continuava vendo a
       // versão antiga e incompleta para sempre.
       let migrated = !raw;
-      if(raw){ try{ const s = JSON.parse(raw); APP_SETTINGS = Object.assign({}, DEFAULT_SETTINGS, s||{}); const savedStatuses = Array.isArray(APP_SETTINGS.statuses) ? APP_SETTINGS.statuses : [];
-        const officialStatusNames = new Set(DEFAULT_SETTINGS.statuses.map(item=>item.name));
-        const customStatuses = savedStatuses.filter(item=>item && !['Aprovado','Agendado'].includes(item.name) && !officialStatusNames.has(item.name));
-        const normalizedStatuses = DEFAULT_SETTINGS.statuses.map(item=>Object.assign({},item)).concat(customStatuses);
-        if(JSON.stringify(savedStatuses)!==JSON.stringify(normalizedStatuses)){ APP_SETTINGS.statuses=normalizedStatuses; migrated=true; }
+      if(raw){ try{ const s = JSON.parse(raw); APP_SETTINGS = Object.assign({}, DEFAULT_SETTINGS, s||{});
         // acrescenta às editorias já salvas as categorizações default que ainda não existem
         // (por nome), sem mexer nas que o usuário já tinha customizado
         if(!APP_SETTINGS.editorias) APP_SETTINGS.editorias = [];
@@ -2863,15 +2802,9 @@
         localKey: LS_POSTS_KEY,
         outboxKey: LS_POSTS_OUTBOX_KEY,
         getPosts: ()=>state.posts,
-        applyPosts: posts=>{ state.posts=posts; state.posts.forEach(migrateLegacyPostStatus); migratePostOrders(); },
+        applyPosts: posts=>{ state.posts=posts; migratePostOrders(); },
         readLegacy: ()=>syncFetch(API_POSTS_KEY),
         onRemoteChange: renderRemotePostsWhenSafe,
-        getReadyNotificationRecipients: async post => {
-          if(post.status !== 'Pronto para ser postado' || !window.PortalFirebase) return null;
-          const routes = await window.PortalFirebase.readPortalStore('social-media-notification-routes-v1');
-          const brand = (window.PortalBrand.list || []).find(item => item.id === window.PortalBrand.activeId) || {};
-          return { recipientIds: (Array.isArray(routes.v) ? routes.v : []).filter(route => (route.brandIds || []).includes(brand.id)).map(route => route.uid), brandId: brand.id, brandName: brand.name };
-        },
         onStatus: setSyncStatus,
         onConflict: ()=>{
           setSyncStatus('O mesmo card foi alterado por outra pessoa','warn');
@@ -3155,7 +3088,7 @@
     // ============================================================
     // UI DINÂMICA GERADA A PARTIR DAS CONFIGURAÇÕES - reconstrói
     // abas, listas de opções e o painel de Configurações sempre
-    // que uma rede/editoria/formato/status/produto muda
+    // que uma rede/editoria/formato/produto muda
     // ============================================================
     function renderTabs(){
       const tabs = $('tabs'); tabs.innerHTML = '';
@@ -3807,12 +3740,11 @@
       const channelsSnapshot = schedule.channels.map(c=>({ channel: c.channel, types: c.types.slice(), places: c.places.slice() }));
       const existing = state.posts.find(p=> p.date===row.dateStr && (Array.isArray(p.editoria)?p.editoria:[p.editoria]).includes(editoriaName));
       if(existing){ row.postId = existing.id; return; }
-      const defaultStatus = (APP_SETTINGS.statuses[0] && APP_SETTINGS.statuses[0].name) || 'Rascunho';
       const p = {
         id: generateId(), title: titleForEditoriaRow(row, editoriaName), date: row.dateStr,
         channel: primary.channel, place: primary.places.slice(), type: primary.types[0] || 'Static',
         channels: channelsSnapshot,
-        status: defaultStatus, notes: '', collab: false, color: null, editoria: [editoriaName], products: row.products.slice(), order: nextOrderForDate(row.dateStr)
+        notes: '', collab: false, color: null, editoria: [editoriaName], products: row.products.slice(), order: nextOrderForDate(row.dateStr)
       };
       state.posts.push(p);
       saveState(); buildCalendar(); render();
@@ -3911,7 +3843,6 @@
       if(!schedule || !(schedule.channels||[]).length){ alert(`Esta editoria não tem dias fixos configurados para ${monthLabel}.`); return; }
       const primary = schedule.channels[0];
       const channelsSnapshot = schedule.channels.map(c=>({ channel: c.channel, types: c.types.slice(), places: c.places.slice() }));
-      const defaultStatus = (APP_SETTINGS.statuses[0] && APP_SETTINGS.statuses[0].name) || 'Rascunho';
       const created = [];
       const updatedBefore = [];
       activeRows.forEach(row=>{
@@ -3933,7 +3864,7 @@
           id: generateId(), title: titleForEditoriaRow(row, editoriaName), date: row.dateStr,
           channel: primary.channel, place: primary.places.slice(), type: primary.types[0] || 'Static',
           channels: channelsSnapshot.map(c=>Object.assign({},c)),
-          status: defaultStatus, notes: '', collab: false, color: null, editoria: [editoriaName], products: row.products.slice(), order: nextOrderForDate(row.dateStr)
+          notes: '', collab: false, color: null, editoria: [editoriaName], products: row.products.slice(), order: nextOrderForDate(row.dateStr)
         };
         state.posts.push(p);
         created.push(p);
@@ -3993,10 +3924,6 @@
         });
       }
       refreshModalDynamic();
-    }
-
-    function renderStatusUI(){
-      const list = $('statusesList'); if(list){ list.innerHTML=''; APP_SETTINGS.statuses.forEach(s=>{ const chip=document.createElement('span'); chip.className='chip'; chip.style.display='inline-flex'; chip.innerHTML = `<span class="dot" style="background:${s.color}"></span>${escapeHtml(s.name)} <button class="btn ghost small" data-status="${escapeHtml(s.name)}" style="margin-left:8px" aria-label="Remover status">${UI_ICONS.x(13)}</button>`; list.appendChild(chip); }); list.querySelectorAll('button[data-status]').forEach(bt=> bt.addEventListener('click', ()=>{ const v=bt.dataset.status; APP_SETTINGS.statuses = APP_SETTINGS.statuses.filter(x=>x.name!==v); saveSettings(); renderAllDynamicUI(); })); }
     }
 
     function renderCatalogUI(){
@@ -4093,7 +4020,7 @@
     });
 
     // reconstrói toda a UI dependente das configurações, de uma vez
-    function renderAllDynamicUI(){ renderTabs(); renderNetsUI(); renderEditoriasUI(); renderPlacesUI(); renderStatusUI(); renderCatalogUI(); renderCustomDatesUI(); renderCommemorativeDatesYearList(); }
+    function renderAllDynamicUI(){ renderTabs(); renderNetsUI(); renderEditoriasUI(); renderPlacesUI(); renderCatalogUI(); renderCustomDatesUI(); renderCommemorativeDatesYearList(); }
 
     // ============================================================
     // MODAL DE CONFIGURAÇÕES - abrir, fechar e salvar a meta
@@ -4135,7 +4062,6 @@
     // com os dados do post clicado no calendário/lista
     // ============================================================
     function openEditModal(id){
-      closeQuickStatusMenu();
       const post = state.posts.find(p=>p.id===id); if(!post) return;
       modalOpenedFromApplyEditoria = false;
       if($('modalBackBtn')) $('modalBackBtn').style.display = 'none';
@@ -4143,7 +4069,6 @@
       if(postSync) postSync.beginEdit(id);
       // preenche os campos do modal com os dados da postagem
       $('mTitle').value = post.title || '';
-      renderModalStatus(post.status);
       $('mDate').value = post.date || '';
       $('mNotes').value = post.notes || '';
       $('mBriefingLink').value = post.briefingLink || '';
@@ -4350,7 +4275,7 @@
     function exportCSV(){
       if(!state.posts || state.posts.length===0){ alert('Nenhuma postagem para exportar'); return; }
       const rows = [];
-      const header = ['Date','Title','Channel','Place','Type','Status','Collab','Notes','Editorias','ProductCode','ProductName','id'];
+      const header = ['Date','Title','Channel','Place','Type','Collab','Notes','Editorias','ProductCode','ProductName','id'];
       rows.push(header.join(','));
       // ordena por data e, dentro do dia, pela ordem manual definida no calendário
       // (a mesma ordem que será usada para montar o briefing a partir do calendário)
@@ -4364,17 +4289,22 @@
         const prods = getPostProducts(p);
         const productCodesVal = prods.map(x=>x.code).join('|');
         const productNamesVal = prods.map(x=>x.name).join('|');
-        rows.push([csvEscape(p.date), csvEscape(p.title), csvEscape(channelVal), csvEscape(placeVal), csvEscape(typeVal), csvEscape(p.status||''), csvEscape(p.collab? 'true':'false'), csvEscape(p.notes), csvEscape(editoriasVal), csvEscape(productCodesVal), csvEscape(productNamesVal), csvEscape(p.id)].join(','));
+        rows.push([csvEscape(p.date), csvEscape(p.title), csvEscape(channelVal), csvEscape(placeVal), csvEscape(typeVal), csvEscape(p.collab? 'true':'false'), csvEscape(p.notes), csvEscape(editoriasVal), csvEscape(productCodesVal), csvEscape(productNamesVal), csvEscape(p.id)].join(','));
       });
       download('calendar_posts.csv', rows.join('\n'));
     }
 
     // baixa uma planilha (CSV com ";" e BOM, abre direto no Excel pt-BR) com um código de produto por linha,
-    // sem repetição, para montar a planilha de validação do catálogo
+    // sem repetição, para montar a planilha de validação do catálogo. Só entra o período e os
+    // filtros que estão na tela (mês, quinzena ou semana; Lista = mês)
     function exportProductCodes(){
+      const [s,e] = periodPresetRange(defaultExportPreset(), viewDate);
+      const startStr = ymd(s), endStr = ymd(e);
       const byKey = new Map();
-      (state.posts||[]).slice().sort((a,b)=> (a.date||'').localeCompare(b.date||'')).forEach(p=>{
-        getPostProducts(p).forEach(x=>{
+      getFilteredPosts().filter(p=> p.date && p.date>=startStr && p.date<=endStr)
+        .sort((a,b)=> a.date.localeCompare(b.date)).forEach(p=>{
+        getPostProducts(p).forEach(prod=>{
+          const x = fixCodeOnlyProduct(prod, masterCatalogByCode);
           if(!x.code && !x.name) return;
           // chave com código E nome: o mesmo código com nomes diferentes aparece em linhas separadas
           const key = (x.code||'')+'\u0001'+(x.name||'');
@@ -4383,7 +4313,7 @@
           if(!dates.includes(p.date)) dates.push(p.date);
         });
       });
-      if(byKey.size===0){ alert('Nenhum produto nas postagens para exportar'); return; }
+      if(byKey.size===0){ alert('Nenhum produto nas postagens do período visível para exportar'); return; }
       // nome começando com = + - @ viraria fórmula no Excel; código só de dígitos (ou 1E5) perderia zeros à esquerda
       const safe = v => { const s = String(v==null?'':v); return /^[=+\-@]/.test(s) ? "'"+s : s; };
       const cell = v => '"'+v.replace(/"/g,'""')+'"';
@@ -4391,6 +4321,203 @@
       const rows = [['Código','Produto','Postagens','Datas'].map(cell).join(';')];
       byKey.forEach(r=> rows.push([codeCell(r.code), cell(safe(r.name)), cell(String(r.dates.length)), cell(r.dates.join(' | '))].join(';')));
       download('codigos_produtos.csv', '﻿'+rows.join('\r\n'), 'text/csv;charset=utf-8');
+    }
+
+    // produto colado só com o código (não achado no catálogo) fica salvo como nome: devolve o
+    // código na posição de código, com o código/nome do catálogo quando ele existir lá
+    function fixCodeOnlyProduct(x, byCode){
+      if(x.code || !/^[\d.\-\s]+$/.test(x.name||'') || !/\d/.test(x.name)) return x;
+      const hit = byCode && byCode.get(normalizeCode(x.name));
+      return { code: hit ? hit.code : x.name.trim(), name: hit ? (hit.name||'') : '' };
+    }
+
+    // ============================================================
+    // IMPORTAR PLANILHA (Mais ações) - cada linha de um .xlsx/.xls/.csv vira um card. A primeira
+    // linha que tiver a coluna "Data" é o cabeçalho; as colunas são achadas pelo nome (português
+    // ou o cabeçalho do "Exportar CSV"), em qualquer ordem. Vários valores numa célula: "|".
+    // ============================================================
+    // ponytail: teto fixo pra não disparar centenas de gravações de uma vez no Firestore; se precisar de mais, gravar em lotes
+    const IMPORT_MAX_POSTS = 300;
+    const IMPORT_HEADERS = {
+      date:['data','date'], title:['titulo','title','tema','pauta'],
+      channel:['rede','redes','canal','canais','channel'], place:['formato','formatos','place'],
+      type:['tipo','type'], editoria:['editoria','editorias'],
+      code:['codigo','codigos','codigo do produto','productcode'], name:['produto','produtos','nome do produto','productname'],
+      notes:['conteudo','conteudo da publicacao','legenda','texto','notas','notes'], id:['id']
+    };
+    // data da célula -> 'aaaa-mm-dd' ('' se não for data). Número = data serial do Excel;
+    // texto aceita dd/mm/aaaa (padrão brasileiro), dd/mm/aa e aaaa-mm-dd
+    function parseSheetDate(v){
+      if(typeof v==='number'){
+        if(v<20000 || v>80000) return '';
+        const d = new Date(Math.round((v-25569)*864e5));
+        return ymd(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+      }
+      const s = String(v||'').trim();
+      let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[\sT]|$)/), y, mo, d;
+      if(m){ y=+m[1]; mo=+m[2]; d=+m[3]; }
+      else if((m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4}|\d{2})(?:\s|$)/))){ d=+m[1]; mo=+m[2]; y=+m[3]; if(y<100) y+=2000; }
+      else return '';
+      const dt = new Date(y, mo-1, d);
+      return dt.getFullYear()===y && dt.getMonth()===mo-1 && dt.getDate()===d ? ymd(dt) : '';
+    }
+    // linhas da planilha (array de arrays) -> { posts, skipped:[{line,reason}], warnings:[{line,msg}] }
+    // ou { error }. Não mexe no estado: quem chama decide se cria. ctx = configurações da marca.
+    function parseImportSheet(rows, ctx){
+      const norm = s=> normalizeStr(s).replace(/\s+/g,' ').trim();
+      const split = (v, re)=> String(v==null?'':v).split(re).map(s=>s.trim()).filter(Boolean);
+      const LIST = /[|;,\n]/, NAMES = /[|;\n]/;
+      const hi = rows.findIndex(r=> (r||[]).some(c=> IMPORT_HEADERS.date.includes(norm(c))));
+      if(hi<0) return { error:'Não achei a coluna "Data" na planilha. A primeira linha precisa ter os nomes das colunas.' };
+      const col = {};
+      rows[hi].forEach((c,i)=>{ const n = norm(c); for(const k in IMPORT_HEADERS) if(col[k]==null && IMPORT_HEADERS[k].includes(n)) col[k] = i; });
+      const networks = ctx.networks||[], editorias = (ctx.editorias||[]).map(e=>e.name);
+      const posts = [], skipped = [], warnings = [], seen = new Set();
+      for(let i=hi+1; i<rows.length; i++){
+        const r = rows[i]||[], line = i+1;
+        const get = k=> col[k]==null || r[col[k]]==null ? '' : r[col[k]];
+        if(!r.some(c=> String(c==null?'':c).trim())) continue;
+        const warn = msg=> warnings.push({ line, msg });
+        const date = parseSheetDate(get('date'));
+        if(!date){ skipped.push({ line, reason: String(get('date')).trim() ? `data "${get('date')}" inválida` : 'sem data' }); continue; }
+        const id = String(get('id')).trim();
+        if(id && ctx.existingIds.has(id)){ skipped.push({ line, reason:'esse card já existe no calendário' }); continue; }
+        // rede: precisa existir nas Configurações; sem rede, usa a primeira (igual às datas comemorativas)
+        const netNames = split(get('channel'), LIST);
+        const nets = netNames.map(n=> networks.find(x=> norm(x.name)===norm(n) || (x.shortName && norm(x.shortName)===norm(n))));
+        const badNet = netNames.find((n,k)=> !nets[k]);
+        if(badNet){ skipped.push({ line, reason:`rede "${badNet}" não existe nas Configurações` }); continue; }
+        const chosen = nets.length ? [...new Set(nets)] : networks.slice(0,1);
+        if(!chosen.length){ skipped.push({ line, reason:'nenhuma rede cadastrada nas Configurações' }); continue; }
+        const formats = [...new Set(chosen.flatMap(n=> (n.formats||[]).map(f=>f.name)))];
+        let place = [];
+        split(get('place'), LIST).forEach(f=>{ const hit = formats.find(x=> norm(x)===norm(f)); if(hit) place.push(hit); else warn(`formato "${f}" ignorado`); });
+        place = [...new Set(place)];
+        if(!place.length && formats.length) place = [formats[0]];
+        const typeRaw = norm(get('type'));
+        const type = /video|reel|short/.test(typeRaw) ? 'Video' : 'Static';
+        if(typeRaw && type==='Static' && !/estatic|static|imagem|foto|carross/.test(typeRaw)) warn(`tipo "${get('type')}" virou Estático`);
+        const eds = [];
+        split(get('editoria'), LIST).forEach(e=>{ const hit = editorias.find(x=> norm(x)===norm(e)); if(hit){ if(!eds.includes(hit)) eds.push(hit); } else warn(`editoria "${e}" não existe`); });
+        // produtos: códigos e nomes casados pela posição; código do catálogo completa o nome
+        // célula vazia entre "|" mantém a posição (o "Exportar CSV" grava "|60.01" pra produto sem código)
+        const slots = v=> String(v==null?'':v).split(NAMES).map(x=>x.trim());
+        const codes = slots(get('code')), names = slots(get('name')), products = [];
+        for(let k=0; k<Math.max(codes.length, names.length); k++){
+          if(!codes[k] && !names[k]) continue;
+          let p = fixCodeOnlyProduct({ code: codes[k]||'', name: names[k]||'' }, ctx.catalogByCode);
+          const hit = p.code && ctx.catalogByCode && ctx.catalogByCode.get(normalizeCode(p.code));
+          if(hit) p = { code: hit.code, name: p.name || hit.name || '' };
+          if(!products.some(x=> (x.code||x.name)===(p.code||p.name))) products.push(p);
+        }
+        const prodLabels = products.map(p=> shortenProductName(p.name) || p.code).filter(Boolean);
+        const title = String(get('title')).trim() || (prodLabels.length ? joinProductNames(prodLabels) : eds[0] || '');
+        if(!title){ skipped.push({ line, reason:'sem título nem produto' }); continue; }
+        const key = date+'\u0001'+norm(title);
+        if(ctx.existingKeys.has(key)){ skipped.push({ line, reason:'já existe um card com esse título nessa data' }); continue; }
+        if(seen.has(key)){ skipped.push({ line, reason:'linha repetida na planilha' }); continue; }
+        seen.add(key);
+        posts.push({
+          id: generateId(), title, date, channel: chosen[0].name, place: place.slice(), type,
+          channels: chosen.map(n=>({ channel: n.name, types:[type], places: place.slice() })),
+          notes: String(get('notes')).trim(), briefingLink:'', referencesLink:'', artsLink:'', imageLink:'', imageNotes:'',
+          referenceImages:[], noProduct:false, commemorativePostType:'', collab:false, color:null, editoria: eds, products
+        });
+      }
+      if(posts.length > IMPORT_MAX_POSTS) return { error:`A planilha geraria ${posts.length} cards. O limite por importação é ${IMPORT_MAX_POSTS}: divida em arquivos menores.` };
+      return { posts, skipped, warnings };
+    }
+
+    let importSheetResult = null, importReadSeq = 0;
+    // a biblioteca de planilhas (~1 MB) só é baixada na primeira importação
+    let xlsxLoading = null;
+    function loadXlsxLib(){
+      if(window.XLSX) return Promise.resolve();
+      return xlsxLoading = xlsxLoading || new Promise((resolve, reject)=>{
+        const s = document.createElement('script'); s.src = 'vendor/xlsx.full.min.js';
+        s.onload = resolve; s.onerror = ()=>{ xlsxLoading = null; reject(new Error('xlsx')); };
+        document.head.appendChild(s);
+      });
+    }
+    function openImportSheetModal(){
+      importSheetResult = null;
+      $('importSheetSummary').innerHTML = '';
+      $('confirmImportSheet').disabled = true;
+      $('confirmImportSheet').textContent = 'Criar postagens';
+      $('importSheetBackdrop').style.display = 'flex';
+    }
+    function closeImportSheetModal(){ $('importSheetBackdrop').style.display = 'none'; importSheetResult = null; importReadSeq++; }
+    async function readImportFile(file){
+      const seq = ++importReadSeq; // só a última leitura pedida pode preencher o resumo
+      const box = $('importSheetSummary');
+      box.textContent = 'Lendo a planilha...';
+      $('confirmImportSheet').disabled = true;
+      let result;
+      try{
+        try{ await loadXlsxLib(); }
+        catch(e){ throw new Error('Não consegui carregar o leitor de planilhas. Confira a conexão e tente de novo.'); }
+        let wb;
+        if(/\.csv$/i.test(file.name)){
+          // CSV: UTF-8 (o do "Exportar CSV"); se não for, é o padrão do Excel brasileiro (Windows-1252).
+          // raw:true mantém "07/11/2026" como texto, pra não virar data no formato americano
+          const buf = await file.arrayBuffer();
+          let text; try{ text = new TextDecoder('utf-8', { fatal:true }).decode(buf); }catch(e){ text = new TextDecoder('windows-1252').decode(buf); }
+          wb = XLSX.read(text.replace(/^﻿/,''), { type:'string', raw:true });
+        } else wb = XLSX.read(await file.arrayBuffer(), { type:'array' });
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, raw:true, defval:'' });
+        const norm = s=> normalizeStr(s).replace(/\s+/g,' ').trim();
+        // o catálogo (~12 MB) só completa produto: espera por ele só se a planilha tem coluna de produto
+        const productHeaders = IMPORT_HEADERS.code.concat(IMPORT_HEADERS.name);
+        if(rows.some(r=> (r||[]).some(c=> productHeaders.includes(norm(c))))){
+          loadMasterCatalog();
+          if(masterCatalogLoading) await masterCatalogLoading.catch(()=>{});
+        }
+        result = parseImportSheet(rows, {
+          networks: APP_SETTINGS.networks, editorias: APP_SETTINGS.editorias,
+          catalogByCode: masterCatalogByCode,
+          existingIds: new Set(state.posts.map(p=>p.id)),
+          existingKeys: new Set(state.posts.map(p=> p.date+'\u0001'+norm(p.title)))
+        });
+      }catch(e){
+        result = { error: /leitor de planilhas/.test(e.message) ? e.message : 'Não consegui ler esse arquivo. Envie um .xlsx, .xls ou .csv.' };
+      }
+      if(seq !== importReadSeq) return; // modal fechado ou outro arquivo escolhido no meio
+      importSheetResult = result;
+      renderImportSummary(file.name);
+    }
+    function renderImportSummary(fileName){
+      const box = $('importSheetSummary'), btn = $('confirmImportSheet'), r = importSheetResult;
+      if(r.error){ box.innerHTML = `<p class="import-sheet-error">${escapeHtml(r.error)}</p>`; btn.disabled = true; return; }
+      const n = r.posts.length, dates = r.posts.map(p=>p.date).sort();
+      const list = (items, fmt)=> `<ul class="import-sheet-list">${items.slice(0,50).map(x=>`<li>${fmt(x)}</li>`).join('')}${items.length>50?`<li>... e mais ${items.length-50}</li>`:''}</ul>`;
+      let html = `<p><strong>${escapeHtml(fileName)}</strong>: ${n ? `${n} card${n===1?'':'s'} pronto${n===1?'':'s'} para criar, de ${formatDatePt(dates[0])} a ${formatDatePt(dates[n-1])}.` : 'nenhum card para criar.'}</p>`;
+      if(r.skipped.length) html += `<p class="import-sheet-label">${r.skipped.length} linha${r.skipped.length===1?'':'s'} fora da importação:</p>` + list(r.skipped, x=> `Linha ${x.line}: ${escapeHtml(x.reason)}`);
+      if(r.warnings.length) html += `<p class="import-sheet-label">Ajustes:</p>` + list(r.warnings, x=> `Linha ${x.line}: ${escapeHtml(x.msg)}`);
+      box.innerHTML = html;
+      btn.disabled = !n;
+      btn.textContent = n ? `Criar ${n} card${n===1?'':'s'}` : 'Criar postagens';
+    }
+    function confirmImportSheet(){
+      const r = importSheetResult; if(!r || !r.posts || !r.posts.length) return;
+      r.posts.forEach(p=>{ p.order = nextOrderForDate(p.date); state.posts.push(p); });
+      pushUndo({ type:'create', posts: r.posts.map(p=>p.id) }); redoStack = [];
+      // leva o calendário até a primeira data importada
+      const [y,m,d] = r.posts.map(p=>p.date).sort()[0].split('-').map(Number);
+      viewDate = new Date(y, m-1, d);
+      saveState(); buildCalendar(); updateMonthLabelText(); render();
+      closeImportSheetModal();
+      notify(`${r.posts.length} card${r.posts.length===1?'':'s'} criado${r.posts.length===1?'':'s'}. Ctrl+Z desfaz.`);
+    }
+    // modelo com as colunas reconhecidas e uma linha de exemplo (abre direto no Excel pt-BR)
+    function downloadImportTemplate(){
+      const net = (APP_SETTINGS.networks||[])[0] || { name:'Instagram', formats:[{name:'Feed'}] };
+      const cell = v=> '"'+String(v).replace(/"/g,'""')+'"';
+      const rows = [
+        ['Data','Título','Redes','Formatos','Tipo','Editorias','Código','Produto','Conteúdo'],
+        [new Date().toLocaleDateString('pt-BR'), 'Exemplo de pauta', net.name, ((net.formats||[])[0]||{name:'Feed'}).name, 'Estático',
+          ((APP_SETTINGS.editorias||[])[0]||{name:''}).name, '60.01.120.000', '', 'Texto da publicação']
+      ];
+      download('modelo_importacao_calendario.csv', '﻿'+rows.map(r=> r.map(cell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
     }
 
     // escapa caracteres especiais de HTML para evitar quebra de layout/XSS ao injetar texto do usuário
@@ -4444,7 +4571,6 @@
       document.querySelectorAll('#monthSummaryToggle button').forEach(x=> x.classList.toggle('active', x===b));
       renderMonthSummary();
     }));
-    if($('addStatusBtn')) $('addStatusBtn').addEventListener('click', ()=>{ const v=$('newStatusInput').value.trim(); if(!v) return; const c = $('newStatusColor') ? $('newStatusColor').value : '#F6BE00'; APP_SETTINGS.statuses.push({name:v, color:c}); $('newStatusInput').value=''; saveSettings(); renderAllDynamicUI(); });
     if($('addCatalogBtn')) $('addCatalogBtn').addEventListener('click', ()=>{
       const code = $('newCatalogCode').value.trim();
       const name = $('newCatalogName').value.trim();
@@ -4468,14 +4594,6 @@
     });
     if($('mTitle')) $('mTitle').addEventListener('input', refreshModalDynamic);
     if($('mDate')) $('mDate').addEventListener('input', refreshModalDynamic);
-    if($('mStatus')) $('mStatus').addEventListener('change', ()=>{
-      updateModalStatusDot();
-      if(!isEditing || !editingId) return;
-      const post = state.posts.find(item=>item.id===editingId);
-      if(!post || post.status === $('mStatus').value) return;
-      post.status = $('mStatus').value;
-      saveState(); render();
-    });
     if($('mCommemorativePostType')) $('mCommemorativePostType').addEventListener('change', refreshModalDynamic);
     if($('mOpenInstitutionalCommemorativeEditorBtn')) $('mOpenInstitutionalCommemorativeEditorBtn').addEventListener('click', ()=> saveModal({openInstitutionalEditor:true}));
     if($('mArtsLink')) $('mArtsLink').addEventListener('input', refreshModalDynamic);
@@ -4942,7 +5060,7 @@
         }
       });
       $('toolbarMoreMenu').addEventListener('click', ev=> ev.stopPropagation());
-      ['exportBriefingBtn','exportCsvBtn','exportProductCodesBtn','resetMonthBtn'].forEach(id=>{
+      ['exportBriefingBtn','exportCsvBtn','exportProductCodesBtn','importSheetBtn','resetMonthBtn'].forEach(id=>{
         const action = $(id); if(action) action.addEventListener('click', closeToolbarMoreMenu);
       });
       document.addEventListener('click', closeToolbarMoreMenu);
@@ -4967,7 +5085,7 @@
       document.querySelectorAll('.fPlace').forEach(x=>x.checked=false);
       document.querySelectorAll('.fType').forEach(x=>x.checked=false);
       const any = document.querySelector('input[name="fCollab"][value="any"]'); if(any) any.checked = true;
-      filters.editorias = []; filters.places = []; filters.types = []; filters.statuses = []; filters.collab='any'; $('filtersBackdrop').style.display='none'; buildCalendar(); render();
+      filters.editorias = []; filters.places = []; filters.types = []; filters.collab='any'; $('filtersBackdrop').style.display='none'; buildCalendar(); render();
     });
     function closeFilters(){ $('filtersBackdrop').style.display = 'none'; }
 
@@ -5017,6 +5135,16 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
     // lista de volta, igual ao "X", mas com o rótulo certo pra esse contexto
     if($('modalBackBtn')) $('modalBackBtn').addEventListener('click', closeModal);
     wireModalDismiss('exportBriefingBackdrop', closeExportBriefingModal);
+    if($('importSheetBackdrop')){
+      wireModalDismiss('importSheetBackdrop', closeImportSheetModal);
+      if(window.PortalShell && PortalShell.wireModalA11y) PortalShell.wireModalA11y($('importSheetBackdrop'), closeImportSheetModal);
+      $('importSheetBtn').addEventListener('click', openImportSheetModal);
+      $('cancelImportSheet').addEventListener('click', closeImportSheetModal);
+      $('confirmImportSheet').addEventListener('click', confirmImportSheet);
+      $('importSheetTemplate').addEventListener('click', downloadImportTemplate);
+      $('importSheetPick').addEventListener('click', ()=> $('importSheetFile').click());
+      $('importSheetFile').addEventListener('change', ev=>{ const f = ev.target.files[0]; ev.target.value = ''; if(f) readImportFile(f); });
+    }
     if($('cancelExportBriefing')) $('cancelExportBriefing').addEventListener('click', closeExportBriefingModal);
     if($('exportPeriodPreset')) $('exportPeriodPreset').addEventListener('change', ()=>{
       const preset = $('exportPeriodPreset').value;
@@ -5064,7 +5192,25 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
 
       const modal = document.querySelector('#modalBackdrop .modal--guided-post');
       if(!modal) return;
-      guidedPostStep = Math.max(1, Math.min(3, Number(step)||1));
+      step = Math.max(1, Math.min(3, Number(step)||1));
+      // sair do Planejamento (pelo "Próximo" ou pelas abas 2 e 3) exige a etapa 1 completa
+      if(step>1){
+        const nets = Array.from(document.querySelectorAll('.mNet:checked')).map(n=>n.value);
+        const places = Array.from(document.querySelectorAll('input[name="mPlace"]:checked')).map(n=>n.value);
+        const missing = missingPlanningFields({
+          title: $('mTitle').value,
+          editoria: Array.from(document.querySelectorAll('.mEditoria:checked')).map(e=>e.value),
+          channels: nets.map(net=>({ channel: net, places }))
+        });
+        if(missing.length){
+          if(guidedPostStep!==1) setGuidedPostStep(1);
+          notify('Preencha o Planejamento antes de avançar: ' + joinPt(missing) + '.');
+          const focusEl = { 'Título': $('mTitle'), 'Editoria': document.querySelector('.mEditoria'), 'Redes': document.querySelector('.mNet'), 'Formato': document.querySelector('input[name="mPlace"]') }[missing[0]];
+          if(focusEl) focusEl.focus();
+          return;
+        }
+      }
+      guidedPostStep = step;
       modal.querySelectorAll('[data-guided-step]').forEach(group=>{
         group.hidden = Number(group.dataset.guidedStep) !== guidedPostStep;
       });
@@ -5090,20 +5236,6 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
       const footer = modal && modal.querySelector('.modal-footer');
       const save = $('saveModal');
       if(!modal || !body || !grid || !preview || !footer || !save) return;
-      const statusField = $('mStatus');
-      const headerActions = modal.querySelector('.modal-header-actions');
-      if(statusField && headerActions && !$('modalStatusControl')){
-        const statusControl = document.createElement('div');
-        statusControl.id = 'modalStatusControl';
-        statusControl.className = 'modal-status-control';
-        headerActions.before(statusControl);
-        const statusLabel = statusField.parentElement && statusField.parentElement.previousElementSibling;
-        const statusWrap = statusField.parentElement;
-        if(statusLabel && statusLabel.htmlFor === 'mStatus') statusLabel.remove();
-        statusControl.after(statusField);
-        statusField.hidden = true;
-        if(statusWrap) statusWrap.remove();
-      }
 
       modal.classList.add('modal--guided-post');
       footer.classList.add('guided-post-footer');
@@ -5212,9 +5344,9 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
     // exemplos de demonstração só fazem sentido pra marca padrão (a base de dados que já
     // existia antes do portal) - uma marca nova criada pelo usuário deve começar zerada
     if(!SYNC_ENABLED && state.posts.length===0 && BRAND_SUFFIX===''){
-      state.posts.push({ id: generateId(), title: 'Campanha: Lançamento Comunidade', date: '2026-08-18', channel: 'Instagram', color:'#E4405F', status:'Aprovado', editoria:['Lançamentos'], place:'Feed', type:'Static' });
-      state.posts.push({ id: generateId(), title: 'Blog: Anúncio oficial', date: '2026-08-20', channel: 'Blog', color:'#06b6d4', status:'Em produção', editoria:['Informativo'], place:'Feed', type:'Static' });
-      state.posts.push({ id: generateId(), title: 'Postagem de teste - Social', date: '2026-08-19', channel: 'LinkedIn', color:'#f97316', status:'Rascunho', editoria:['Destaques'], place:'Feed', type:'Video' });
+      state.posts.push({ id: generateId(), title: 'Campanha: Lançamento Comunidade', date: '2026-08-18', channel: 'Instagram', color:'#E4405F', editoria:['Lançamentos'], place:'Feed', type:'Static' });
+      state.posts.push({ id: generateId(), title: 'Blog: Anúncio oficial', date: '2026-08-20', channel: 'Blog', color:'#06b6d4', editoria:['Informativo'], place:'Feed', type:'Static' });
+      state.posts.push({ id: generateId(), title: 'Postagem de teste - Social', date: '2026-08-19', channel: 'LinkedIn', color:'#f97316', editoria:['Destaques'], place:'Feed', type:'Video' });
       saveState();
     }
     const tbAll = document.querySelector('#tabs button[data-tab="All"]'); if(tbAll) tbAll.classList.remove('ghost');

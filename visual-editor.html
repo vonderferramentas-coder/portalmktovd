@@ -182,6 +182,14 @@
                     <path d="M3 15h18" />
                     <path d="M9 4v16" />
                   </svg><span>Exportar códigos de produtos</span></button>
+                <button type="button" id="importSheetBtn" class="toolbar-more-item"
+                  title="Cria cards a partir de uma planilha (.xlsx, .xls ou .csv), um card por linha"><svg
+                    width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <path d="M17 8l-5-5-5 5" />
+                    <path d="M12 3v12" />
+                  </svg><span>Importar planilha</span></button>
                 <div class="toolbar-more-separator"></div>
                 <button type="button" id="resetMonthBtn" class="toolbar-more-item danger"
                   title="Apaga todas as postagens do mês visível"><svg width="14" height="14" viewBox="0 0 24 24"
@@ -216,7 +224,7 @@
           <!-- Visão em lista: alternativa ao calendário, agrupada por dia (oculta por padrão) -->
           <div id="listView" class="list-view" style="display:none"></div>
 
-          <!-- Modal de Filtros: refina os posts exibidos por editoria, formato, tipo, status e collab -->
+          <!-- Modal de Filtros: refina os posts exibidos por editoria, formato, tipo e collab -->
           <div id="filtersBackdrop" class="modal-backdrop">
             <div class="modal" role="dialog" aria-modal="true">
               <div class="modal-header">
@@ -312,6 +320,39 @@
               </div>
             </div>
           </div>
+          <!-- Modal "Importar planilha" (Mais ações): lê a planilha, mostra o que vai ser criado e só cria ao confirmar -->
+          <div id="importSheetBackdrop" class="modal-backdrop">
+            <div class="modal modal--narrow" role="dialog" aria-modal="true">
+              <div class="modal-header">
+                <h2>Importar planilha</h2>
+                <div class="modal-header-actions">
+                  <button type="button" class="modal-close" aria-label="Fechar"><svg width="15" height="15"
+                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path d="M18 6 6 18" />
+                      <path d="M6 6l12 12" />
+                    </svg></button>
+                </div>
+              </div>
+              <div class="modal-body">
+                <div class="import-sheet">
+                  <p>Cada linha vira um card. A coluna <strong>Data</strong> é obrigatória; as outras são opcionais:
+                    Título, Redes, Formatos, Tipo, Editorias, Código, Produto e Conteúdo. Para mais de um valor
+                    na mesma célula, separe com <strong>|</strong>.</p>
+                  <div class="import-sheet-actions">
+                    <button type="button" id="importSheetPick" class="btn">Selecionar planilha</button>
+                    <button type="button" id="importSheetTemplate" class="btn ghost">Baixar modelo</button>
+                    <input id="importSheetFile" type="file" accept=".xlsx,.xls,.csv" hidden />
+                  </div>
+                  <div id="importSheetSummary" class="import-sheet-summary" aria-live="polite"></div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" id="cancelImportSheet" class="btn ghost">Cancelar</button>
+                <button type="button" id="confirmImportSheet" class="btn" disabled>Criar postagens</button>
+              </div>
+            </div>
+          </div>
           <!-- Modal "Postagens do dia": abre ao clicar no badge "+N" quando um dia tem mais cards do que cabe na célula -->
           <div id="dayPostsBackdrop" class="modal-backdrop">
             <div class="modal" role="dialog" aria-modal="true">
@@ -340,7 +381,7 @@
               </div>
             </div>
           </div>
-          <!-- Modal de Configurações: metas, redes, editorias, formatos, status e catálogo de produtos (tudo persistido no localStorage) -->
+          <!-- Modal de Configurações: metas, redes, editorias, formatos e catálogo de produtos (tudo persistido no localStorage) -->
           <div id="settingsBackdrop" class="modal-backdrop">
             <div class="modal modal--wide" role="dialog" aria-modal="true">
               <div class="modal-header">
@@ -363,7 +404,6 @@
                     <button type="button" class="settings-nav-btn active" data-panel="secMetas">Metas</button>
                     <button type="button" class="settings-nav-btn" data-panel="secRedes">Redes</button>
                     <button type="button" class="settings-nav-btn" data-panel="secEditorias">Editorias</button>
-                    <button type="button" class="settings-nav-btn" data-panel="secStatus">Status</button>
                     <button type="button" class="settings-nav-btn" data-panel="secComemorativas">Datas
                       comemorativas</button>
                     <button type="button" class="settings-nav-btn" data-panel="secCatalogo">Catálogo de
@@ -449,17 +489,6 @@
                           </svg></button>
                       </div>
                       <div id="editoriasList" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
-                    </div>
-
-                    <div class="settings-panel" id="secStatus">
-                      <div style="font-size:11.5px;color:var(--muted);margin:-2px 0 2px">Cor de cada etapa - aparece na
-                        barra lateral dos cards.</div>
-                      <div style="display:flex;gap:8px;align-items:center">
-                        <input id="newStatusInput" type="text" placeholder="Novo status" />
-                        <input id="newStatusColor" type="color" value="#F6BE00" />
-                        <button id="addStatusBtn" class="btn ghost">Adicionar</button>
-                      </div>
-                      <div id="statusesList" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"></div>
                     </div>
 
                     <div class="settings-panel" id="secComemorativas">
@@ -664,8 +693,6 @@
                     <div id="titleSuggestion" class="title-suggestion"></div>
                     <label class="field-gap">Data</label>
                     <input id="mDate" type="date" />
-                    <label class="field-gap" for="mStatus">Status <button type="button" class="field-help" title="Use Rascunho enquanto o conteúdo está em preparação; avance o status à medida que o trabalho evolui." aria-label="Ajuda sobre status">?</button></label>
-                    <div class="post-status-select"><span id="mStatusDot" class="post-status-dot" aria-hidden="true"></span><select id="mStatus" aria-label="Status da postagem"></select></div>
                   </div>
 
                   <div class="form-group" data-guided-step="3">

@@ -15,7 +15,7 @@ total_tokens: não recalculado nesta atualização
 ```mermaid
 graph TB
     subgraph Cliente["Navegador (estático, sem build step)"]
-        Shell[portal-shell.js<br/>sidebar, marca ativa, tema, notificações]
+        Shell[portal-shell.js<br/>sidebar, marca ativa, tema]
         Home[index.html + home-map.js<br/>Início e mapa 3D admin]
         Cal[visual-editor.html + app.js<br/>Calendário]
         Editor[post-editor.html + post-editor.js<br/>Editor de Artes]
@@ -28,7 +28,6 @@ graph TB
         Intel[intelligence-center.html<br/>Google Trends]
         Usage[usage-dashboard.html<br/>Métricas de uso]
         Admin[admin-users.html<br/>Usuários e perfis]
-        Notif[notifications.html]
     end
 
     subgraph Auth["Autenticação"]
@@ -66,8 +65,8 @@ graph TB
     Guard --> FBClient
     Cfg --> FBClient
     Shell --> Guard
-    Cal & Editor & Ger & Conecta & Tpl & Marcas & Followers & Mon & Intel & Usage & Admin & Notif & Home --> Shell
-    Cal & Editor & Ger & Tpl & Marcas & Followers & Mon & Intel & Usage & Admin & Notif --> FBClient --> FireStore
+    Cal & Editor & Ger & Conecta & Tpl & Marcas & Followers & Mon & Intel & Usage & Admin & Home --> Shell
+    Cal & Editor & Ger & Tpl & Marcas & Followers & Mon & Intel & Usage & Admin --> FBClient --> FireStore
 
     Editor & Ger & Conecta --> Worker
     Worker --> OvdFotos
@@ -101,7 +100,7 @@ graph TB
 ├── marcas.html / .js / .css, brand-library*.js, brand-export.js   Biblioteca de marcas (logos)
 ├── followers-dashboard.*, monitoramento.*                 Redes sociais e menções do YouTube
 ├── intelligence-center.*, intelligence-data.js            Google Trends (tela) e DNA de editoria (motor usado pelo calendário)
-├── admin-users.*, notifications.*, usage-analytics.js, usage-dashboard.*   Administração, notificações, métricas
+├── admin-users.*, usage-analytics.js, usage-dashboard.*   Administração, métricas
 ├── migrate-followers.*, import-legacy-calendar.html       Ferramentas pontuais
 ├── photoshop-actions.html, photoshop-action-prepare-spanish.html   Ações do Photoshop
 ├── politica-de-privacidade.html, termos-de-uso.html       Páginas legais
@@ -125,7 +124,7 @@ graph TB
 
 | Arquivo | Papel | ~linhas |
 |---|---|---|
-| `portal-shell.js` | Sidebar, `PortalBrand`, `PortalNavItems`, tema, menu Conta (Perfil com recorte de foto, Notificações, Configurações, Redefinir senha, Sair), badge de notificações (só perfil `social-media`), modal compartilhado de conflito | 1504 |
+| `portal-shell.js` | Sidebar, `PortalBrand`, `PortalNavItems`, tema, menu Conta (Perfil com recorte de foto, Configurações, Redefinir senha, Sair), modal compartilhado de conflito | 1504 |
 | `auth-guard.js` | Gate de login, permissão por perfil e restrição por marca; módulo adiado | 113 |
 | `firebase-client.js` | Única porta para Auth e Firestore (ver exports abaixo) | 502 |
 | `firebase-config.js` | `PROD_CONFIG` (projeto `mkt-ovd`) e `HML_CONFIG` (`mkt-ovd-hml`), escolhidos por hostname; `PORTAL_AUTH_POLICY` | 36 |
@@ -133,8 +132,7 @@ graph TB
 | `sync-backend.js` | `window.SyncBackend = {get, put, remove}` sobre `PortalFirebase`; sem fallback para `api.php` | 14 |
 | `calendar-post-sync.js` | Sincronizador do calendário por card (ver abaixo) | 234 |
 | `login.html` / `login.js` | E-mail/senha, Google, reset; `?next=` só aceita `.html` local; `?reason=pending\|access` | 48 / 24 |
-| `admin-users.html` / `.js` | Usuários, perfis (CRUD), permissões por perfil, marcas de notificação | 116 / 732 |
-| `notifications.html` / `.js` | Lista de "post pronto para postar" do usuário | 1 (minificado) / 29 |
+| `admin-users.html` / `.js` | Usuários, perfis (CRUD), permissões por perfil | 116 / 732 |
 | `usage-analytics.js` | `PortalUsage.track(tool, action, {quantity, dedupeKey, brandId})`: só entregas concluídas | 17 |
 | `usage-dashboard.html` / `.js` | Métricas de uso: lê `usageDaily` | min. / 80 |
 | `_headers` | CSP só com `script-src` (gstatic, jsdelivr), `object-src 'none'`, `frame-ancestors 'self'`; sem `connect-src`/`img-src` de propósito (primeiro CSP Report-Only em HML) | 10 |
@@ -142,30 +140,29 @@ graph TB
 
 **Ambiente**: só `vonderferramentas-coder.github.io` e `portalmktovd.pages.dev` usam produção. Qualquer outro host (localhost, preview, `file://`) cai em HML, de propósito.
 
-**`firebase-client.js`**: exports de módulo ES incluem `signInWithEmail`, `signInWithGoogle`, `requestPasswordReset`, `logout`, `currentContext`, `waitForAuthState`, `hasRole`, `readPortalStore`, `writePortalStore`, `deletePortalStore`, cards do calendário (`ensurePostsStore`, `writePost`, `deletePost`, `subscribeToPosts`), artes salvas (`readArtDraft`, `writeArtDraft`, `lockArtDraft`, `releaseArtDraftLock`, `setArtDraftDeleted`, `renameArtDraft`, `listArtDrafts`, `writeArtPhoto`, `readArtPhoto`, `readArtStats`), logos (`readBrandLogo`, `writeBrandLogo`, `deleteBrandLogo`), notificações (`subscribeNotifications`, `markNotificationRead`), `updateOwnProfile`, `recordUsageEvent`, QR (`listQrCodes`, `writeQrCode`, `deleteQrCode`, `countQrHits`, `readQrHits`), `audit`. `window.PortalFirebase` (script clássico) expõe só um subconjunto, **sem** `signIn*`, `waitForAuthState` nem as funções de QR; dispara o evento `portal-firebase-ready`, que `sync-backend.js` e `calendar-post-sync.js` aguardam. SDK Firebase 12.18.0 via gstatic.
+**`firebase-client.js`**: exports de módulo ES incluem `signInWithEmail`, `signInWithGoogle`, `requestPasswordReset`, `logout`, `currentContext`, `waitForAuthState`, `hasRole`, `readPortalStore`, `writePortalStore`, `deletePortalStore`, cards do calendário (`ensurePostsStore`, `writePost`, `deletePost`, `subscribeToPosts`), artes salvas (`readArtDraft`, `writeArtDraft`, `lockArtDraft`, `releaseArtDraftLock`, `setArtDraftDeleted`, `renameArtDraft`, `listArtDrafts`, `writeArtPhoto`, `readArtPhoto`, `readArtStats`), logos (`readBrandLogo`, `writeBrandLogo`, `deleteBrandLogo`), `updateOwnProfile`, `recordUsageEvent`, QR (`listQrCodes`, `writeQrCode`, `deleteQrCode`, `countQrHits`, `readQrHits`), `audit`. `window.PortalFirebase` (script clássico) expõe só um subconjunto, **sem** `signIn*`, `waitForAuthState` nem as funções de QR; dispara o evento `portal-firebase-ready`, que `sync-backend.js` e `calendar-post-sync.js` aguardam. SDK Firebase 12.18.0 via gstatic.
 
 **Coleções e documentos**:
 
 | Onde | Conteúdo |
 |---|---|
-| `users/{uid}` | `name`, `email`, `role`, `status`, `notificationBrands[]`, `photo`, `createdAt`, `lastAccessAt` |
+| `users/{uid}` | `name`, `email`, `role`, `status`, `photo`, `createdAt`, `lastAccessAt` |
 | `portalStore/{key}` | `{v, updated_at, updatedAt}`; escrita por transação comparando `updated_at` |
 | `portalStore/calendar-post-{storeKey}-{postId}` | um documento por card do calendário (`revision`) |
 | `portalStore/calendar-meta-{storeKey}` | lease de migração do array legado |
-| `portalStore/post-ready-notification-{key}-{postId}-{rev}-{uid}` | notificação por destinatário |
 | `portalStore/art-draft-{marca}-{id}` | arte salva (`revision`, `lock{uid,name,until}`, bloqueio de 10 min) |
 | `portalStore/art-stats-v1` | gravado só pelo Admin SDK |
 | `artPhotos/{hash}`, `brandLogos/{id}`, `usageEvents`, `usageDaily`, `qrCodes`, `qrHits`, `securityAudit` | ver regras abaixo |
 
 **`firestore.rules`**: funções `activeUser()`, `admin()`, `brandEditor()` (admin ou `criacao`), `isControlDoc` (`user-profiles-v1`, `page-permissions-v1`, `social-media-notification-routes-v1`, `brand-library-v1`) e `isCollectedDataDoc` (regex `followers|posts|youtube-videos|youtube-mentions|facebook-posts|trends|art-stats` seguido de `-`). `portalStore`: leitura por qualquer ativo; escrita por admin, por `brandEditor` em `brand-library-v1`, ou por qualquer ativo se o documento não for de controle nem coletado. `users/{id}`: o dono só altera `lastAccessAt`, `name` e `photo`. `usageEvents`: create com schema fixo (quantidade 1..10000), leitura só admin. `usageDaily`: leitura admin ou `gestao`, sem escrita pelo navegador. `qrCodes`: leitura por ativo, escrita pelo dono ou admin. `qrHits`: create **público** com campos mínimos validados. `artPhotos`: id de 32 hex, até 700 KB, imutável. `brandLogos`: até 400 KB, escrita por `brandEditor`.
 
-**`auth-guard.js`**: aguarda o estado de login, lê `currentContext`, confere `data-auth-role` (se houver) e aplica `page-permissions-v1` (`{perfil: [hrefs]}`). Admin recebe todas as páginas de `PortalNavItems`. Perfil sem entrada no mapa cai no padrão: tudo menos as `defaultHidden` (`admin-users.html`, `marcas.html`, `usage-dashboard.html`). `index.html` é sempre liberada. Itens com `brands:[...]` somem nas outras marcas, mesmo para admin (hoje: `cartaz-generator.html` e `consolidado-generator.html` só em `grupo-ovd`; `conecta-fg.html` só em `ferramentas-gerais`; `monitoramento.html` só em `default`). Sem permissão: `alert` e volta à Início, mantendo a sessão; só falha de sessão faz logout. Expõe `window.PortalAccess.refresh()`. `notifications.html` não está em `NAV_ITEMS`: qualquer perfil logado acessa.
+**`auth-guard.js`**: aguarda o estado de login, lê `currentContext`, confere `data-auth-role` (se houver) e aplica `page-permissions-v1` (`{perfil: [hrefs]}`). Admin recebe todas as páginas de `PortalNavItems`. Perfil sem entrada no mapa cai no padrão: tudo menos as `defaultHidden` (`admin-users.html`, `marcas.html`, `usage-dashboard.html`). `index.html` é sempre liberada. Itens com `brands:[...]` somem nas outras marcas, mesmo para admin (hoje: `cartaz-generator.html` e `consolidado-generator.html` só em `grupo-ovd`; `conecta-fg.html` só em `ferramentas-gerais`; `monitoramento.html` só em `default`). Sem permissão: `alert` e volta à Início, mantendo a sessão; só falha de sessão faz logout. Expõe `window.PortalAccess.refresh()`.
 
-**`portal-shell.js`**: `window.PortalShell = {readBrandPhoto, svgIcon, setActiveBrand}` e `window.PortalSyncConflict = {show, hide}` (contextos `posts`, `settings`, `intelligence`). Menu em grupos; o hub **Gerador** (`gerador.html`) tem filhos Cartazes, Consolidado, Código de Barras e QR Codes; o estado aberto fica em `portal-nav-group-open:<href>`. `DEFAULT_BRANDS` tem 9 marcas com ids fixos (`default`, `ferramentas-gerais`, `osten-ferragens`, `dismatal`, `toolmix`, `dwt`, `nove54`, `grupo-ovd`, `pilar-tecnologia`), cores em `themeColor`/`themeColorInk`/`onAccent` (ver DESIGN.md §7). A lista é sincronizada com `SyncBackend` na chave `brands` (poll de 20 s, push com debounce de 700 ms). `?brand=<id>` na URL define a marca ativa (é como o link da notificação funciona). Chaves de `localStorage`: `portal_brands_v1`, `portal_active_brand_v1`, `portal_sidebar_collapsed_v1`, `calendar_theme_v1`, `calendar_color_theme_v1`, `calendar_color_theme_custom_v1`, `calendar_theme_source_v1`, `portal-nav-group-open:<href>`. A Início troca de marca sem recarregar; as demais páginas fazem `location.reload()`.
+**`portal-shell.js`**: `window.PortalShell = {readBrandPhoto, svgIcon, wireModalA11y, setActiveBrand}` e `window.PortalSyncConflict = {show, hide}` (contextos `posts`, `settings`, `intelligence`). Menu em grupos; o hub **Gerador** (`gerador.html`) tem filhos Cartazes, Consolidado, Código de Barras e QR Codes; o estado aberto fica em `portal-nav-group-open:<href>`. `DEFAULT_BRANDS` tem 9 marcas com ids fixos (`default`, `ferramentas-gerais`, `osten-ferragens`, `dismatal`, `toolmix`, `dwt`, `nove54`, `grupo-ovd`, `pilar-tecnologia`), cores em `themeColor`/`themeColorInk`/`onAccent` (ver DESIGN.md §7). A lista é sincronizada com `SyncBackend` na chave `brands` (poll de 20 s, push com debounce de 700 ms). `?brand=<id>` na URL define a marca ativa (usado pelos links da Início, junto com `?post=` e `?date=`). Chaves de `localStorage`: `portal_brands_v1`, `portal_active_brand_v1`, `portal_sidebar_collapsed_v1`, `calendar_theme_v1`, `calendar_color_theme_v1`, `calendar_color_theme_custom_v1`, `calendar_theme_source_v1`, `portal-nav-group-open:<href>`. A Início troca de marca sem recarregar; as demais páginas fazem `location.reload()`.
 
-**`calendar-post-sync.js`** (calendário por card): `CalendarPostSync.create({storeKey, localKey, outboxKey, getPosts, applyPosts, readLegacy, onRemoteChange, onStatus, onConflict, getReadyNotificationRecipients})` devolve `{start, save, flush, beginEdit, endEdit, destroy}`. `start()` chama `ensurePostsStore` (migra o array legado em lotes de 400 com lease de 60 s) e `subscribeToPosts` (`onSnapshot` filtrado por `calendarStoreKey`). `save()` calcula o diff contra o último estado do servidor, grava no outbox (`localStorage`) e chama `writePost`/`deletePost` com `expectedRevision`; falha repete a cada 5 s e reconcilia ao voltar `online` e em `pagehide`. Em conflito **o servidor vence** e o modal de conflito aparece. `beginEdit`/`endEdit` fixam a revisão do card aberto e adiam alterações remotas dele. `flush()` só resolve depois de gravar (o atalho "Abrir editor direto" depende disso). Notificação: gerada em `writePost` só quando o status passa a "Pronto para ser postado" (não se já era "Aprovado" ou "Pronto…", nem em card criado direto nesse status); destinatários vêm de `social-media-notification-routes-v1` filtrados pela marca. As **configurações** continuam no caminho antigo (`SyncBackend.get/put` com versão da chave inteira). A busca e a exportação carregam todos os cards da marca, sem paginação (`ponytail` no código: partições se passar de dezenas de milhares).
+**`calendar-post-sync.js`** (calendário por card): `CalendarPostSync.create({storeKey, localKey, outboxKey, getPosts, applyPosts, readLegacy, onRemoteChange, onStatus, onConflict})` devolve `{start, save, flush, beginEdit, endEdit, destroy}`. `start()` chama `ensurePostsStore` (migra o array legado em lotes de 400 com lease de 60 s) e `subscribeToPosts` (`onSnapshot` filtrado por `calendarStoreKey`). `save()` calcula o diff contra o último estado do servidor, grava no outbox (`localStorage`) e chama `writePost`/`deletePost` com `expectedRevision`; falha repete a cada 5 s e reconcilia ao voltar `online` e em `pagehide`. Em conflito **o servidor vence** e o modal de conflito aparece. `beginEdit`/`endEdit` fixam a revisão do card aberto e adiam alterações remotas dele. `flush()` só resolve depois de gravar (o atalho "Abrir editor direto" depende disso). As **configurações** continuam no caminho antigo (`SyncBackend.get/put` com versão da chave inteira). A busca e a exportação carregam todos os cards da marca, sem paginação (`ponytail` no código: partições se passar de dezenas de milhares).
 
-**Notificações**: o admin define `notificationBrands` por usuário `social-media` e `admin-users.js` (`syncNotificationRoutes`) grava a lista inteira em `social-media-notification-routes-v1`: única fonte de verdade. `notifications.js` só lista as notificações do usuário e marca como lidas.
+**Status e notificações**: removidos em 23/10/2026. Os cards não têm mais status de publicação e não existe mais aviso de "pronto para postar"; dados antigos (`status` nos cards, `notificationBrands`, `social-media-notification-routes-v1`, `post-ready-notification-*`) ficaram no Firestore sem uso.
 
 **`admin-users.js`**: perfis padrão `admin` (travado), `user`, `gestao`, `criacao`, `social-media` em `user-profiles-v1`; permissões em `page-permissions-v1`. Criar usuário usa um app Firebase secundário (`provision-<ts>`), senha aleatória, grava `users/{uid}` com `status:'active'` e envia e-mail de redefinição. Excluir perfil **não migra** usuários (caem no padrão). Auditoria em `securityAudit` (`login`, `logout`, `user_created`, `user_updated`, `user_status_changed`, `password_reset_requested`, `followers_migrated`); o card do log está oculto. `admin-users.html` ainda linka `migrate-followers.html`.
 
@@ -176,10 +173,8 @@ graph TB
 **Gotchas críticos**:
 - `firebase-config.js`: `allowedEmailDomains` está **vazio** e `sessionHours` não é lido por `firebase-client.js`. Todo acesso novo depende de aprovação do admin (`users/{uid}.status == 'active'`). A sessão usa `browserSessionPersistence`.
 - As regras **não distinguem qual página cada perfil vê**: isso é só interface (`auth-guard.js`). O perfil `gestao` só ganha poder real nas regras em `usageDaily`.
-- **Notificações lidas por query**: qualquer usuário ativo consegue ler as de outros pelas regras; a restrição por `recipientUid` é só no cliente.
-- **Rotas de notificação só são gravadas por admin** (`social-media-notification-routes-v1` é documento de controle). `admin-users.js` grava a rota **antes** de alterar o perfil (se o admin troca o próprio perfil, depois do `updateDoc` ele deixa de ser admin e as regras barrariam a escrita). `notifications.js` só lê; o autorreparo que existia nele foi removido em 21/10/2026 porque nunca podia funcionar para não-admin.
 - `apiKey` do Firebase Web é pública por natureza; segredos de conta de serviço ficam só em GitHub Actions Secrets.
-- Ids de documentos `calendar-meta-*`, `calendar-post-*`, `post-ready-notification-*` e `art-draft-*` usam `encodeURIComponent` no id da marca/post; backup e limpeza (`scripts/`) precisam respeitar isso.
+- Ids de documentos `calendar-meta-*`, `calendar-post-*` e `art-draft-*` usam `encodeURIComponent` no id da marca/post; backup e limpeza (`scripts/`) precisam respeitar isso.
 - `.gitignore` exclui `.env*`, `*.key`, `*.pem`, `*.sqlite*`.
 - Comentários antigos em `portal-shell.js`, `app.js` e `intelligence-data.js` ainda falam de `api.php`/SQLite/409; o backend ativo é só o Firestore. `api.php` ficou como resquício.
 - Qualquer script novo de outro host (CDN) quebra no Cloudflare Pages por causa do CSP de `_headers`.
@@ -423,7 +418,6 @@ sequenceDiagram
         FS-->>Sync: revisão diferente
         Sync-->>App: servidor vence + PortalSyncConflict.show
     end
-    Note over Sync,FS: status "Pronto para ser postado" cria post-ready-notification por destinatário
 ```
 
 ### Isolamento de marca
@@ -475,7 +469,6 @@ sequenceDiagram
 ## Gotchas
 
 - **Segurança real está nas `firestore.rules`**, não no `auth-guard.js` (que só esconde páginas). Documentos de controle e de dados coletados exigem `admin()` para escrever.
-- **Notificações e rotas**: ver "Gotchas críticos" do módulo de shell (só admin grava as rotas; a leitura de notificações de outros usuários só é restrita no cliente).
 - **HML por padrão** em qualquer host fora dos dois de produção: dados de teste não aparecem em produção e o contrário também.
 - **`business-card-generator.js`** guarda os cartões só em `localStorage`: trocar de máquina ou navegador perde o que está em edição; não há backup.
 - **Heurísticas, não IA**: DNA de editoria, cruzamento Trends × catálogo, validador de cartaz e prioridade das menções do YouTube usam regras locais.
