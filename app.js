@@ -4335,9 +4335,9 @@
     // EXPORTAÇÃO CSV E UTILITÁRIOS GERAIS
     // ============================================================
     // baixa um arquivo de texto no navegador (usado pela exportação CSV)
-    function download(name, text){
+    function download(name, text, type){
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([text],{type:'text/plain'}));
+      a.href = URL.createObjectURL(new Blob([text],{type: type||'text/plain'}));
       a.download = name;
       document.body.appendChild(a);
       a.click();
@@ -4366,6 +4366,30 @@
         rows.push([csvEscape(p.date), csvEscape(p.title), csvEscape(channelVal), csvEscape(placeVal), csvEscape(typeVal), csvEscape(p.status||''), csvEscape(p.collab? 'true':'false'), csvEscape(p.notes), csvEscape(editoriasVal), csvEscape(productCodesVal), csvEscape(productNamesVal), csvEscape(p.id)].join(','));
       });
       download('calendar_posts.csv', rows.join('\n'));
+    }
+
+    // baixa uma planilha (CSV com ";" e BOM, abre direto no Excel pt-BR) com um código de produto por linha,
+    // sem repetição, para montar a planilha de validação do catálogo
+    function exportProductCodes(){
+      const byKey = new Map();
+      (state.posts||[]).slice().sort((a,b)=> (a.date||'').localeCompare(b.date||'')).forEach(p=>{
+        getPostProducts(p).forEach(x=>{
+          if(!x.code && !x.name) return;
+          // chave com código E nome: o mesmo código com nomes diferentes aparece em linhas separadas
+          const key = (x.code||'')+'\u0001'+(x.name||'');
+          if(!byKey.has(key)) byKey.set(key, { code: x.code||'', name: x.name||'', dates: [] });
+          const dates = byKey.get(key).dates;
+          if(!dates.includes(p.date)) dates.push(p.date);
+        });
+      });
+      if(byKey.size===0){ alert('Nenhum produto nas postagens para exportar'); return; }
+      // nome começando com = + - @ viraria fórmula no Excel; código só de dígitos (ou 1E5) perderia zeros à esquerda
+      const safe = v => { const s = String(v==null?'':v); return /^[=+\-@]/.test(s) ? "'"+s : s; };
+      const cell = v => '"'+v.replace(/"/g,'""')+'"';
+      const codeCell = v => /^\d+$|^\d+e\d+$/i.test(v) ? '="'+v+'"' : cell(safe(v));
+      const rows = [['Código','Produto','Postagens','Datas'].map(cell).join(';')];
+      byKey.forEach(r=> rows.push([codeCell(r.code), cell(safe(r.name)), cell(String(r.dates.length)), cell(r.dates.join(' | '))].join(';')));
+      download('codigos_produtos.csv', '﻿'+rows.join('\r\n'), 'text/csv;charset=utf-8');
     }
 
     // escapa caracteres especiais de HTML para evitar quebra de layout/XSS ao injetar texto do usuário
@@ -4899,13 +4923,14 @@
         }
       });
       $('toolbarMoreMenu').addEventListener('click', ev=> ev.stopPropagation());
-      ['exportBriefingBtn','exportCsvBtn','resetMonthBtn'].forEach(id=>{
+      ['exportBriefingBtn','exportCsvBtn','exportProductCodesBtn','resetMonthBtn'].forEach(id=>{
         const action = $(id); if(action) action.addEventListener('click', closeToolbarMoreMenu);
       });
       document.addEventListener('click', closeToolbarMoreMenu);
       document.addEventListener('keydown', ev=>{ if(ev.key==='Escape') closeToolbarMoreMenu(); });
     }
     const _exportCsvBtn = $('exportCsvBtn'); if(_exportCsvBtn) _exportCsvBtn.addEventListener('click', exportCSV);
+    const _exportCodesBtn = $('exportProductCodesBtn'); if(_exportCodesBtn) _exportCodesBtn.addEventListener('click', exportProductCodes);
     if($('exportBriefingBtn')) $('exportBriefingBtn').addEventListener('click', openExportBriefingModal);
     const _resetMonthBtn = $('resetMonthBtn'); if(_resetMonthBtn) _resetMonthBtn.addEventListener('click', resetMonth);
     // botão que abre o modal de filtros
