@@ -311,6 +311,21 @@
       const box = $('productSuggestions'); if(box){ box.style.display = 'none'; box.innerHTML = ''; }
     }
 
+    // código FG de um produto (a postagem guarda só o OVD): catálogo mestre ou de Configurações
+    function productCodeFG(code){
+      // Configurações vence o mestre quando o código se repete (mesma regra de productCandidates)
+      const manual = (APP_SETTINGS.catalog||[]).find(c=> c.code && c.code===code && c.codeFG);
+      if(manual) return manual.codeFG;
+      const d = productDetailsByCode(code);
+      return (d && d.codeFG) || '';
+    }
+    // "Códigos - OVD: x | FG: y" (só as partes que existem); '' se o produto não tem nenhum código
+    function productCodesLabel(p){
+      const fg = productCodeFG(p.code);
+      const parts = [p.code && `OVD: ${p.code}`, fg && `FG: ${fg}`].filter(Boolean);
+      return parts.length ? `Códigos - ${parts.join(' | ')}` : '';
+    }
+
     // lê os produtos de uma postagem, migrando o formato antigo (productCode/productName únicos)
     function getPostProducts(post){
       if(Array.isArray(post.products) && post.products.length) return post.products;
@@ -343,7 +358,8 @@
       selectedProducts.forEach((p, idx)=>{
         const chip = document.createElement('span'); chip.className = 'product-chip';
         const img = p.code ? `<img ${productImgAttrs(p.code)} alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'" />` : '';
-        chip.innerHTML = `${img}<div class="pc-body"><span class="pc-name">${escapeHtml(p.name)}</span>${p.code?`<span class="pc-code">${escapeHtml(p.code)}</span>`:''}</div><button type="button" class="pc-remove" data-idx="${idx}" aria-label="Remover produto">${UI_ICONS.x(12)}</button>`;
+        const codes = productCodesLabel(p);
+        chip.innerHTML = `${img}<div class="pc-body"><span class="pc-name">${escapeHtml(p.name)}</span>${codes?`<span class="pc-code">${escapeHtml(codes)}</span>`:''}</div><button type="button" class="pc-remove" data-idx="${idx}" aria-label="Remover produto">${UI_ICONS.x(12)}</button>`;
         wrap.appendChild(chip);
       });
       loadProductThumbs(selectedProducts);
@@ -767,8 +783,13 @@
         : joinPt(checkedPlaces);
       const products = getPostProducts(post);
       const productItems = products.map(p=> [p.code, p.name].filter(Boolean).join(' – '));
+      // a postagem guarda só código OVD e nome; o código FG vem do catálogo (Configurações ou mestre)
+      const productRows = products.map(p=>{
+        return { ovd: p.code||'', fg: productCodeFG(p.code), name: p.name||'' };
+      });
+      const eds = Array.isArray(post.editoria) ? post.editoria : [post.editoria];
       return {
-        title, dateLabel, formatsText, hasFormats: checkedPlaces.length>0,
+        title, editoria: eds.filter(Boolean).join(', '), productRows, dateLabel, formatsText, hasFormats: checkedPlaces.length>0,
         artsLink: (post.artsLink||'').trim(), referencesLink: (post.referencesLink||'').trim(),
         productItems, imageLink: (post.imageLink||'').trim(), imageNotes: (post.imageNotes||'').trim(),
         referenceImages: Array.isArray(post.referenceImages) ? post.referenceImages : [],
@@ -3789,7 +3810,8 @@
           row.products.forEach((p, idx)=>{
             const chip = document.createElement('span'); chip.className = 'product-chip';
             const img = p.code ? `<img ${productImgAttrs(p.code)} alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'" />` : '';
-            chip.innerHTML = `${img}<div class="pc-body"><span class="pc-name">${escapeHtml(p.name)}</span>${p.code?`<span class="pc-code">${escapeHtml(p.code)}</span>`:''}</div><button type="button" class="pc-remove" aria-label="Remover produto">${UI_ICONS.x(12)}</button>`;
+            const codes = productCodesLabel(p);
+            chip.innerHTML = `${img}<div class="pc-body"><span class="pc-name">${escapeHtml(p.name)}</span>${codes?`<span class="pc-code">${escapeHtml(codes)}</span>`:''}</div><button type="button" class="pc-remove" aria-label="Remover produto">${UI_ICONS.x(12)}</button>`;
             chip.querySelector('.pc-remove').addEventListener('click', ()=>{ row.products.splice(idx,1); renderRowProducts(); });
             chipsWrap.appendChild(chip);
           });
@@ -4849,7 +4871,7 @@
         // linha divisória embutida no próprio parágrafo do título (borda inferior), em vez de
         // um parágrafo vazio separado - evita pular uma linha em branco entre título e metadados
         const titleBorder = hasMeta ? '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="4" w:color="C9C9C9"/></w:pBdr>' : '';
-        xml += docxParagraph(docxRun(f.title.toUpperCase(), { bold:true, underline:true, highlight:'yellow' }), titleBorder + '<w:spacing w:after="120"/>');
+        xml += docxParagraph(docxRun((f.editoria ? `${f.editoria} - ` : '').toUpperCase() + f.title.toUpperCase(), { bold:true, underline:true, highlight:'yellow' }), titleBorder + '<w:spacing w:after="120"/>');
       }
       if(f.dateLabel) xml += docxParagraph(docxRun('Publicação prevista para ', { bold:true }) + docxRun(f.dateLabel), '<w:spacing w:after="80"/>');
       if(f.hasFormats) xml += docxParagraph(docxRun('Formatos: ', { bold:true }) + docxRun(f.formatsText), '<w:spacing w:after="80"/>');
@@ -4857,7 +4879,15 @@
       if(f.referencesLink) xml += docxParagraph(docxRun('Referências salvas em: ', { bold:true }) + docxHyperlinkRun(f.referencesLink, f.referencesLink, assets), '<w:spacing w:after="80"/>');
       if(f.productItems.length){
         xml += docxParagraph(docxRun('Produto(s):', { bold:true }), '<w:spacing w:after="40"/>');
-        f.productItems.forEach(item=>{ xml += docxParagraph(docxRun('•  '+item), '<w:ind w:left="260"/><w:spacing w:after="40"/>'); });
+        // um bloco por produto: "• Códigos - OVD: x | FG: y" e, na linha de baixo, "Produto: nome";
+        // linha em branco (espaço depois do parágrafo) entre um produto e o próximo
+        f.productRows.forEach(r=>{
+          const codes = [r.ovd && docxRun('OVD:', { bold:true }) + docxRun(' '+r.ovd), r.fg && docxRun('FG:', { bold:true }) + docxRun(' '+r.fg)].filter(Boolean);
+          let runs = docxRun('•  ');
+          if(codes.length) runs += docxRun('Códigos - ') + codes.join(docxRun(' | ')) + '<w:r><w:br/></w:r>';
+          if(r.name) runs += docxRun('Produto: '+r.name);
+          xml += docxParagraph(runs, '<w:ind w:left="260"/><w:spacing w:after="200"/>');
+        });
       }
       if(f.imageLink) xml += docxParagraph(docxRun('Imagem: ', { bold:true }) + docxHyperlinkRun(f.imageLink, f.imageLink, assets), '<w:spacing w:after="80"/>');
       if(f.imageNotes) xml += docxParagraph(docxRun('Observações: ', { bold:true }) + docxRun(f.imageNotes), '<w:spacing w:after="80"/>');
