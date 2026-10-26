@@ -11,7 +11,20 @@ const site = [
   { productReference: '7055430000', productName: 'Óculos Maltês verde', brand: 'VONDER', description: '', items: [
     { name: 'Óculos', referenceId: [{ Key: 'RefId', Value: '7055430000' }, { Key: 'EAN', Value: '7899999999999' }], images: img(3) } ] }
 ];
-const fakeFetch = url => Promise.resolve(new Response(JSON.stringify(/RefId:6829774122/.test(url) ? [site[0]] : site), { status: 200 }));
+const bosch = { productId: 15366, productReference: '0 601 447 0E0', productName: 'Furadeira Bosch', brand: 'BOSCH', description: '', items: [
+  { itemId: '1061781', name: '127 V~', referenceId: [{ Key: 'RefId', Value: '0 601 447 090' }], images: img(4) },
+  { itemId: '1059801', name: '220 V~', referenceId: [{ Key: 'RefId', Value: '0 601 447 0E0' }], images: img(5) } ] };
+// Site falso: BOSCH vem até na busca com filtro de marca (fq=B:), para provar a 2ª barreira (isVonderBrand). skuId acha pelo
+// código FG; RefId é comparado exato (com espaços); um número que o site recusa (400) não pode virar erro 502.
+const fakeFetch = url => {
+  const u = decodeURIComponent(url), ok = body => Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+  if (/skuId:1061781$/.test(u)) return ok([bosch]);
+  if (/RefId:0 601 447 090$/.test(u)) return ok([bosch]);
+  if (/RefId:6829774122$/.test(u)) return ok([site[0]]);
+  if (/skuId:9999999999$/.test(u)) return Promise.resolve(new Response('{}', { status: 400 }));
+  if (/fq=(skuId|alternateIds_RefId):/.test(u)) return ok([]);
+  return ok(site.concat([bosch]));
+};
 (async () => {
   try {
     const xhr = new XMLHttpRequest(); xhr.open('GET', '../cloudflare-worker.js', false); xhr.send();
@@ -24,6 +37,15 @@ const fakeFetch = url => Promise.resolve(new Response(JSON.stringify(/RefId:6829
     eq(byText.items.map(i => i.code), ['68.29.774.122', '68.29.774.133', '70.55.430.000'], 'busca por texto lista cada variação e mantém produto simples');
     eq(byText.items[1].name, 'Compressor VDCSI - 220 V', 'variação com rótulo curto ganha o nome do produto');
     eq(byText.items[2].name, 'Óculos Maltês verde', 'produto sem variação mantém o nome do produto (referência extra, como EAN, não vira variação)');
+    // perfil FG (scope=all): todas as marcas, referência do fabricante inteira, código FG (itemId do SKU) e foto grande do SKU
+    const all = q => worker.fetch({ url: 'https://portalmktovd.pages.dev/api/product-search?scope=all&q=' + encodeURIComponent(q), method: 'GET', headers: new Headers({ Origin: 'https://portalmktovd.pages.dev' }) }).then(r => r.json());
+    eq(byText.items.some(i => i.brand === 'BOSCH'), false, 'sem scope=all nada que não seja VONDER passa, mesmo se o site devolver');
+    const text = (await all('furadeira bosch')).items;
+    eq(text.filter(i => i.brand === 'BOSCH').map(i => [i.code, i.codeFG, i.name, i.image]), [['0 601 447 090', '1061781', 'Furadeira Bosch - 127 V~', 'https://ferramentasgerais.vteximg.com.br/arquivos/ids/4/foto.jpg'], ['0 601 447 0E0', '1059801', 'Furadeira Bosch - 220 V~', 'https://ferramentasgerais.vteximg.com.br/arquivos/ids/5/foto.jpg']], 'scope=all traz BOSCH com referência inteira, código FG de cada variação e foto');
+    eq(text[0].code, '68.29.774.122', 'scope=all mantém o código VONDER formatado como no catálogo');
+    eq((await all('1061781')).items.map(i => [i.code, i.codeFG]), [['0 601 447 090', '1061781']], 'scope=all acha pelo código FG (skuId) e devolve só a variação pedida');
+    eq((await all('0 601 447 090')).items.map(i => i.codeFG), ['1061781'], 'scope=all acha pela referência do fabricante com espaços');
+    eq((await all('9999999999')).items, [], 'número que o site recusa numa das consultas vira "nada encontrado", não erro');
     document.body.dataset.result = 'pass'; document.body.textContent = 'ok';
   } catch (e) { document.body.dataset.result = 'fail'; document.body.textContent = e.message; }
 })();

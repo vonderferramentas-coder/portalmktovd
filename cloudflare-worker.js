@@ -107,28 +107,41 @@ async function productCatalog(request){
 // Miniatura da lista: a CDN pública da VTEX redimensiona pela URL (/arquivos/ids/ID-120-120/arquivo, ~3 KB). A foto oficial
 // do app.ovd tem vários MB e só é carregada depois que o usuário escolhe o produto.
 const thumbUrl=(product,item=(product.items||[])[0])=>{const image=((item||{}).images||[])[0],match=image&&/^(https:\/\/[\w.-]+\.vteximg\.com\.br)\/arquivos\/ids\/(\d+)\/([^?]+)/.exec(image.imageUrl||'');return match?match[1]+'/arquivos/ids/'+match[2]+'-120-120/'+match[3]:'';};
-// Busca por nome (ou código) de produto VONDER no site FG, para a lista "Encontrados no site" do editor de posts. Devolve só
-// nome e código (a foto e os demais dados vêm depois, em /product-catalog e /product-image, quando o usuário escolhe um item).
+// Foto grande do SKU (CDN pública da VTEX, com CORS liberado): usada no editor de posts para produtos de outras marcas, que não têm foto no app.ovd.
+const photoUrl=item=>{const image=((item||{}).images||[])[0],match=image&&/^(https:\/\/[\w.-]+\.vteximg\.com\.br\/arquivos\/ids\/\d+\/[^?]+)/.exec(image.imageUrl||'');return match?match[1]:'';};
+// Busca por nome (ou código) de produto no site FG, para a lista "Encontrados no site" do editor de posts e o calendário. Por padrão
+// só marcas VONDER; com scope=all (perfil Ferramentas Gerais do editor de posts) todas as marcas do site (BOSCH etc.). Devolve nome,
+// marca, código, código FG (codeFG = itemId do SKU, o mesmo de data/catalog-fg.json), miniatura e foto grande do SKU (image).
 // ponytail: sem gêmeo em PHP/PowerShell; no máximo 12 itens, sem paginação.
 // Nome da variação: no site FG o SKU costuma trazer o nome completo ("Compressor ... 127 V~ - VONDER"), mas pode vir só
 // o rótulo ("127 V"). ponytail: heurística pelo tamanho; rótulo curto vira "nome do produto - rótulo".
 const skuName=(label,name)=>!label?name:label.length>=25?label:name+' - '+label;
 async function productSearch(request){
- const q=(new URL(request.url).searchParams.get('q')||'').trim().slice(0,60),digits=q.replace(/\D/g,''),byCode=digits.length>=5&&/^[\d.\s-]+$/.test(q);
+ const params=new URL(request.url).searchParams;
+ const all=params.get('scope')==='all',q=(params.get('q')||'').trim().slice(0,60),digits=q.replace(/\D/g,''),byCode=digits.length>=5&&/^[\d.\s-]+$/.test(q);
  if(!byCode&&q.length<3)return json(request,{error:'Digite ao menos 3 letras ou um código.'},400);
- const query=byCode?'?fq=alternateIds_RefId:'+digits:'?ft='+encodeURIComponent(q)+'&'+VONDER_BRAND_FQ+'&_from=0&_to=14';
  if(!originAllowed(request))return json(request,{error:'Origem não permitida.'},403);
- const upstream=await vtexFetch('https://www.fg.com.br/api/catalog_system/pub/products/search'+query);
- if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
+ // Com scope=all um número pode ser o código FG (skuId), a referência OVD só com dígitos ou a referência do fabricante como foi
+ // digitada (o RefId da VTEX é comparado exatamente, com espaços: "0 601 390 909"). As consultas vão juntas e vale a 1ª com resultado,
+ // nessa ordem; uma que o site recusa (400) conta como vazia.
+ const queries=!byCode?['?ft='+encodeURIComponent(q)+(all?'':'&'+VONDER_BRAND_FQ)+'&_from=0&_to=14']
+  :all?[...new Set(['?fq=skuId:'+digits,'?fq=alternateIds_RefId:'+digits,'?fq=alternateIds_RefId:'+encodeURIComponent(q)])]:['?fq=alternateIds_RefId:'+digits];
+ const answers=await Promise.all(queries.map(query=>vtexFetch('https://www.fg.com.br/api/catalog_system/pub/products/search'+query).then(r=>r.ok?r.json():null,()=>null)));
+ if(answers.every(answer=>!answer))return json(request,{error:'O site FG não respondeu.'},502);
+ const products=answers.find(answer=>answer&&answer.length)||[];
  // Produto com variações (127 V / 220 V...): uma linha por variação, cada uma com a sua referência, nome e foto; na busca
  // por código, só a variação pedida (antes voltava sempre a referência do produto, ex.: 68.29.774.122 virava .133).
- const items=(await upstream.json()).filter(isVonderBrand).slice(0,12).flatMap(product=>{
+ // Referência: VONDER só com dígitos (vira 00.00.000.000, como no catálogo); outras marcas, o código do fabricante inteiro.
+ const items=products.filter(product=>all||isVonderBrand(product)).slice(0,12).flatMap(product=>{
+  const vonder=isVonderBrand(product),refOf=ref=>vonder?String(ref||'').replace(/\D/g,''):String(ref||'').trim();
   const name=specTake(specRows(product))(/^descri[cç][aã]o completa/i)||product.productName;
-  const skus=(product.items||[]).map(item=>{const ref=(item.referenceId||[]).find(r=>r.Key==='RefId');return{item,code:String((ref&&ref.Value)||'').replace(/\D/g,'')};}).filter(sku=>sku.code);
-  if(skus.length<2)return[{name,brand:product.brand,code:formatCode(skus.length?skus[0].code:String(product.productReference||'').replace(/\D/g,'')),thumb:thumbUrl(product)}];
-  const asked=skus.filter(sku=>sku.code===digits);
-  return(byCode&&asked.length?asked:skus).map(sku=>({name:skuName(sku.item.name,name),brand:product.brand,code:formatCode(sku.code),thumb:thumbUrl(product,sku.item)}));
- }).filter(item=>item.code).slice(0,24); // 12 produtos; um com muitas variações não esconde os outros
+  const skus=(product.items||[]).map(item=>{const ref=(item.referenceId||[]).find(r=>r.Key==='RefId');return{item,code:refOf(ref&&ref.Value)};});
+  const row=(sku,label)=>({name:label,brand:product.brand,code:vonder?formatCode(sku.code):sku.code,codeFG:String((sku.item&&sku.item.itemId)||product.productId||''),thumb:thumbUrl(product,sku.item),image:photoUrl(sku.item)});
+  const coded=skus.filter(sku=>sku.code);
+  if(coded.length<2){const only=coded[0]||{item:(product.items||[])[0],code:refOf(product.productReference)};return[row(only,name)];}
+  const asked=coded.filter(sku=>sku.code.replace(/\D/g,'')===digits||String(sku.item.itemId)===digits);
+  return(byCode&&asked.length?asked:coded).map(sku=>row(sku,skuName(sku.item.name,name)));
+ }).filter(item=>item.code||(all&&item.codeFG)).slice(0,24); // 12 produtos; um com muitas variações não esconde os outros
  return json(request,{items});
 }
 // Miniaturas (3 KB) de vários produtos do catálogo de uma vez, para a lista do editor de posts: a foto do app.ovd tem de 2 a 15 MB e
