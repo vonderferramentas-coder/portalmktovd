@@ -441,7 +441,7 @@
                 : eanSvg ? '<div class="ean' + (eanInfo?.ok ? '' : ' ean-invalid') + '" onclick="addBarcode(this)" title="Clique para editar o código de barras">' + eanSvg + '</div>' : '<div class="ean ean-missing" onclick="addBarcode(this)" title="Adicionar código de barras manualmente - não aparece na impressão até ser preenchido">+ Código de barras</div>',
             button = link && S.config.button && item.showButton !== false ? '<div class="lb-btn" data-link="' + e(link) + '" onclick="editLink(this)" style="background:' + e(S.config.buttonColor) + ';color:' + inkFor(S.config.buttonColor) + '" title="Clique para editar o link">' + balancedBreak(S.config.buttonText) + '</div>' : '',
             on = key => S.config[key] !== false, asList = S.config.tableStyle === 'list', /* campos do card que o usuário pode ocultar (config do template) */
-            tableHtml = list => !(on('showDesc') || on('showCode')) ? '' : '<table class="lb-table' + (asList ? ' lb-list' : '') + (item.consult ? ' lb-fit' : '') + '">' + ('<thead><tr>' + (on('showDesc') ? '<th>Descrição' + (asList ? ':' : '') + '</th>' : '') + (on('showCode') ? '<th>' + (asList ? (lines.length > 1 ? 'Códigos:' : 'Código:') : 'Código') + '</th>' : '') + '</tr></thead>') + '<tbody>' + list.map(r => '<tr>' + (on('showDesc') ? '<td>' + e(r.desc) + '</td>' : '') + (on('showCode') ? '<td>' + e(code(r.code)) + '</td>' : '') + '</tr>').join('') + '</tbody></table>',
+            tableHtml = list => !(on('showDesc') || on('showCode')) ? '' : '<table class="lb-table' + (asList ? ' lb-list' : '') + (item.consult ? ' lb-fit' : '') + '">' + ('<thead><tr>' + (on('showDesc') ? '<th>Descrição' + (asList ? ':' : '') + '</th>' : '') + (on('showCode') ? '<th>' + (asList ? (lines.length > 1 ? 'Códigos:' : 'Código:') : 'Código') + '</th>' : '') + '</tr></thead>') + '<tbody>' + list.map(r => '<tr>' + (on('showDesc') ? '<td>' + e(r.desc) + '</td>' : '') + (on('showCode') ? '<td class="lb-code">' + e(code(r.code)) + '</td>' : '') + '</tr>').join('') + '</tbody></table>',
             lines = item.rows || group.rows, half = Math.ceil(lines.length / 2), table = !(on('showDesc') || on('showCode')) ? '' : item.span > 1 && lines.length > 1 ? '<div class="lb-tables">' + tableHtml(lines.slice(0, half)) + tableHtml(lines.slice(half)) + '</div>' : tableHtml(lines), /* destaque (2 colunas): os códigos se dividem em duas tabelas lado a lado */
             style = 'grid-column:' + (item.col + 1) + (item.span > 1 ? ' / span ' + item.span : '') + ';grid-row:' + (item.gridRow + 1);
         let corner = on('showCodeBox') && S.config.codePos === 'corner', left = (on('showCodeBox') && !corner ? marker : '') + button + (on('showQty') && (item.minQty ?? group.minQty) ? '<p class="lb-qty">Quantidade mínima:<br>' + e(qtyText(item.minQty ?? group.minQty)) + '</p>' : '');
@@ -473,16 +473,18 @@
     function syncQr() { let cards = [...document.querySelectorAll('#preview .card.lb')], min = Math.min(1, ...cards.map(card => +card.dataset.qk || 1)); cards.forEach(card => card.style.setProperty('--qk', min));
         let tk = Math.min(1, ...cards.map(card => +card.dataset.tk || 1)); /* idem para o título: todos adotam o menor encolhimento (o ajuste manual A+/A- de cada card é mantido por cima) */
         cards.forEach(card => { let h3 = card.querySelector('h3'), item = S.pages[+card.dataset.page].items[+card.dataset.idx]; if (h3) h3.style.fontSize = 'calc(' + (11.5 * (item.titleScale || 1) * tk).toFixed(2) + 'px * var(--u))'; }); }
-    /* Nenhuma informação da tabela pode ser cortada: o tamanho padrão da fonte vale enquanto o texto cabe na coluna; se não cabe, a fonte da célula encolhe até caber (mínimo 70%) e,
-       só se ainda assim não couber, o texto quebra em 2 linhas (a altura extra entra na conta do corte de linhas do trimLive, que avisa "fora do cartão"). */
+    /* Nenhuma informação da tabela pode ser cortada: o tamanho padrão da fonte vale enquanto o texto cabe na coluna; se não cabe, a fonte da célula encolhe até caber (mínimo 70%; o código, mínimo 50%) e,
+       só se ainda assim não couber, o texto quebra em 2 linhas (o código nunca quebra) (a altura extra entra na conta do corte de linhas do trimLive, que avisa "fora do cartão"). */
     function fitCells(card) {
         /* folga de 1 px: o html2canvas desenha o texto um pouco mais largo que o navegador e, na exportação, a célula não corta mais (ver fitClonedCells) */
         let cells = [...card.querySelectorAll('.lb-table td')].filter(cell => cell.firstChild), range = document.createRange(), need = cell => { range.selectNodeContents(cell); return range.getBoundingClientRect().width; };
         cells.forEach(cell => { cell.style.fontSize = ''; cell.style.whiteSpace = ''; });
         /* mede tudo primeiro e só depois aplica, para não forçar um reflow por célula */
         let over = cells.map(cell => { let style = getComputedStyle(cell), room = cell.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 1, width = need(cell); return room > 0 && width > room ? { cell, room, width, size: parseFloat(style.fontSize) } : null; }).filter(Boolean);
-        over.forEach(o => o.cell.style.fontSize = Math.max(o.size * o.room / o.width, o.size * .7).toFixed(2) + 'px');
-        over.forEach(o => { if (need(o.cell) > o.room) o.cell.style.whiteSpace = 'normal'; });
+        /* coluna do código (2ª): nunca quebra de linha, a fonte encolhe até caber (sem o piso de 70% da descrição); no destaque (2 tabelas) o código "00 00 000 000" estourava a coluna e quebrava */
+        const isCode = o => o.cell.classList.contains('lb-code');
+        over.forEach(o => o.cell.style.fontSize = Math.max(o.size * o.room / o.width, o.size * (isCode(o) ? .5 : .7)).toFixed(2) + 'px');
+        over.forEach(o => { if (!isCode(o) && need(o.cell) > o.room) o.cell.style.whiteSpace = 'normal'; });
     }
     function trimLive(card) {
         card.style.setProperty('--u', cardScale(card, S.pages[+card.dataset.page].items[+card.dataset.idx].span));
