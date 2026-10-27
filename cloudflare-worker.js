@@ -126,9 +126,10 @@ async function productSearch(request){
  // nessa ordem; uma que o site recusa (400) conta como vazia.
  const queries=!byCode?['?ft='+encodeURIComponent(q)+(all?'':'&'+VONDER_BRAND_FQ)+'&_from=0&_to=14']
   :all?[...new Set(['?fq=skuId:'+digits,'?fq=alternateIds_RefId:'+digits,'?fq=alternateIds_RefId:'+encodeURIComponent(q)])]:['?fq=alternateIds_RefId:'+digits];
- const answers=await Promise.all(queries.map(query=>vtexFetch('https://www.fg.com.br/api/catalog_system/pub/products/search'+query).then(r=>r.ok?r.json():null,()=>null)));
- if(answers.every(answer=>!answer))return json(request,{error:'O site FG não respondeu.'},502);
+ const answers=await Promise.all(queries.map(query=>vtexFetch('https://www.fg.com.br/api/catalog_system/pub/products/search'+query).then(r=>r.ok?r.json():r.status===400||r.status===404?[]:null).catch(()=>null)));
  const products=answers.find(answer=>answer&&answer.length)||[];
+ // Consulta que falhou sem nenhuma outra achar produto: erro (o editor oferece "tentar de novo"), não "nenhum produto".
+ if(!products.length&&answers.some(answer=>!answer))return json(request,{error:'O site FG não respondeu.'},502);
  // Produto com variações (127 V / 220 V...): uma linha por variação, cada uma com a sua referência, nome e foto; na busca
  // por código, só a variação pedida (antes voltava sempre a referência do produto, ex.: 68.29.774.122 virava .133).
  // Referência: VONDER só com dígitos (vira 00.00.000.000, como no catálogo); outras marcas, o código do fabricante inteiro.
@@ -136,7 +137,7 @@ async function productSearch(request){
   const vonder=isVonderBrand(product),refOf=ref=>vonder?String(ref||'').replace(/\D/g,''):String(ref||'').trim();
   const name=specTake(specRows(product))(/^descri[cç][aã]o completa/i)||product.productName;
   const skus=(product.items||[]).map(item=>{const ref=(item.referenceId||[]).find(r=>r.Key==='RefId');return{item,code:refOf(ref&&ref.Value)};});
-  const row=(sku,label)=>({name:label,brand:product.brand,code:vonder?formatCode(sku.code):sku.code,codeFG:String((sku.item&&sku.item.itemId)||product.productId||''),thumb:thumbUrl(product,sku.item),image:photoUrl(sku.item)});
+  const row=(sku,label)=>({name:label,brand:product.brand,code:vonder?formatCode(sku.code):sku.code,codeFG:String((sku.item&&sku.item.itemId)||''),thumb:thumbUrl(product,sku.item),image:photoUrl(sku.item)});
   const coded=skus.filter(sku=>sku.code);
   if(coded.length<2){const only=coded[0]||{item:(product.items||[])[0],code:refOf(product.productReference)};return[row(only,name)];}
   const asked=coded.filter(sku=>sku.code.replace(/\D/g,'')===digits||String(sku.item.itemId)===digits);

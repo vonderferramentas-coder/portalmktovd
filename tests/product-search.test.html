@@ -22,6 +22,7 @@ const fakeFetch = url => {
   if (/RefId:0 601 447 090$/.test(u)) return ok([bosch]);
   if (/RefId:6829774122$/.test(u)) return ok([site[0]]);
   if (/skuId:9999999999$/.test(u)) return Promise.resolve(new Response('{}', { status: 400 }));
+  if (/skuId:5555555555$/.test(u)) return Promise.resolve(new Response('{}', { status: 500 }));
   if (/fq=(skuId|alternateIds_RefId):/.test(u)) return ok([]);
   return ok(site.concat([bosch]));
 };
@@ -46,6 +47,9 @@ const fakeFetch = url => {
     eq((await all('1061781')).items.map(i => [i.code, i.codeFG]), [['0 601 447 090', '1061781']], 'scope=all acha pelo código FG (skuId) e devolve só a variação pedida');
     eq((await all('0 601 447 090')).items.map(i => i.codeFG), ['1061781'], 'scope=all acha pela referência do fabricante com espaços');
     eq((await all('9999999999')).items, [], 'número que o site recusa numa das consultas vira "nada encontrado", não erro');
+    // falha real do site (5xx) sem outra consulta achar produto: erro 502, não "nada encontrado"
+    const down = await worker.fetch({ url: 'https://portalmktovd.pages.dev/api/product-search?scope=all&q=5555555555', method: 'GET', headers: new Headers({ Origin: 'https://portalmktovd.pages.dev' }) });
+    eq(down.status, 502, 'site com erro 5xx numa consulta e vazio nas outras vira 502');
     document.body.dataset.result = 'pass'; document.body.textContent = 'ok';
   } catch (e) { document.body.dataset.result = 'fail'; document.body.textContent = e.message; }
 })();

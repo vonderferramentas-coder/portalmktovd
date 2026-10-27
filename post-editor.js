@@ -367,13 +367,13 @@ function openSiteProduct(found,button){
  // Perfil FG: o item da busca já traz nome, marca, código FG e foto do site (outras marcas não têm foto no app.ovd nem ficha no catálogo).
  if(CATALOG_SLUG==='fg'){
   var vonder=/^vonder\b/i.test(found.brand||''),item={name:found.name,code:found.code,codeFG:found.codeFG,brand:found.brand,imageUrl:found.image,thumbnail:found.thumb,fromSite:true,noOvdPhoto:!vonder,brandVariant:SITE_BRAND_LOGO[String(found.brand||'').toUpperCase()]||brandLogoForOffer(found.brand,'')||''};
-  usageTrack('post-editor-produto-do-site','escolhido','site:'+found.codeFG);chooseCatalogProduct(item);status('Produto vindo do site, fora do catálogo: revise os dados antes de usar.',false);return
+  usageTrack('post-editor-produto-do-site','escolhido','site:'+found.codeFG);chooseCatalogProduct(item);status(siteItemNotice(item),false);return
  }
  var note=button.querySelector('small'),label=note.textContent;button.disabled=true;note.textContent='Consultando o site…';
  fetch(SITE_API+'/product-catalog?code='+encodeURIComponent(normalizeCode(code))).then(function(res){return res.json().then(function(data){return{ok:res.ok,data:data}})}).then(function(r){
   if(!r.ok){button.disabled=false;note.textContent=label+' · não foi possível carregar este produto';return}
   var item=r.data;item.imageUrl='https://app.ovd.com.br/fotos/produto?codigo='+normalizeCode(item.code);item.fromSite=true;item.brandVariant=SITE_BRAND_LOGO[String(item.brand||'').toUpperCase()]||item.brandVariant;
-  usageTrack('post-editor-produto-do-site','escolhido','site:'+normalizeCode(item.code));chooseCatalogProduct(item);status('Produto vindo do site, fora do catálogo: revise os dados antes de usar.',false)
+  usageTrack('post-editor-produto-do-site','escolhido','site:'+normalizeCode(item.code));chooseCatalogProduct(item);status(siteItemNotice(item),false)
  }).catch(function(){button.disabled=false;note.textContent=label+' · não foi possível consultar o site agora'})
 }
 function skeletonHtml(){return'<div class="pe-catalog-group">Buscando no site…</div>'+'<div class="pe-catalog-item pe-skeleton" aria-hidden="true"><span class="pe-selected-thumb"></span><span><strong>&nbsp;</strong><small>&nbsp;</small></span></div>'.repeat(4)}
@@ -439,6 +439,7 @@ function loadCatalog(){
  }).catch(function(){})
 }
 function status(message,busy){var el=$('#editorStatus');el.classList.toggle('is-busy',!!busy);el.querySelector('span:last-child').textContent=message}
+function siteItemNotice(item){return item.brand&&!/^vonder\b/i.test(item.brand)&&!item.brandVariant?'Atenção: a marca '+item.brand+' não tem logo na biblioteca. Escolha a marca no cabeçalho antes de baixar.':'Produto vindo do site, fora do catálogo: revise os dados antes de usar.'}
 // carrega uma imagem e marca em im.exportSafe se ela pode ser desenhada no canvas sem
 // "contaminar" a exportação (toBlob/toDataURL). Mesma origem e data: URI são sempre seguras;
 // uma origem externa só é segura se o servidor permitir CORS (daí o XHR como blob funcionar -
