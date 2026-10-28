@@ -1,0 +1,76 @@
+name: Diagnóstico LinkedIn
+
+# Teste manual, só leitura: não altera arquivos nem o Firestore. Confere se os segredos LINKEDIN_*
+# renovam o token e se a API devolve os seguidores da página Grupo OVD. Mostra no resumo da execução
+# só status HTTP e números agregados; nunca imprime token, Client Secret nem refresh token.
+
+on:
+  workflow_dispatch:
+  # Temporário: o botão "Run workflow" só aparece para workflows na main; enquanto o teste vive só
+  # na hml, ele roda sozinho quando este arquivo é enviado para lá. Remover depois do diagnóstico.
+  push:
+    branches: [hml]
+    paths: ['.github/workflows/diagnostico-linkedin.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostico-linkedin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Consultar a API do LinkedIn
+        env:
+          LINKEDIN_CLIENT_ID: ${{ secrets.LINKEDIN_CLIENT_ID }}
+          LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
+          LINKEDIN_REFRESH_TOKEN: ${{ secrets.LINKEDIN_REFRESH_TOKEN }}
+          LINKEDIN_ORGANIZATION_ID: ${{ secrets.LINKEDIN_ORGANIZATION_ID }}
+          # A API versionada exige o mês de versão (AAAAMM); se o LinkedIn recusar (erro 426), trocar aqui.
+          LINKEDIN_VERSION: '202604'
+        run: |
+          set -uo pipefail
+          set +e # falha de rede no curl vira "HTTP 000" no resumo, em vez de encerrar o passo calado
+          cd "$RUNNER_TEMP"
+          for nome in LINKEDIN_CLIENT_ID LINKEDIN_CLIENT_SECRET LINKEDIN_REFRESH_TOKEN LINKEDIN_ORGANIZATION_ID; do
+            if [ -z "${!nome}" ]; then echo "::error::Segredo $nome não configurado."; exit 1; fi
+          done
+          resumo() { printf '%s\n' "$*" >> "$GITHUB_STEP_SUMMARY"; }
+          resumo '## Diagnóstico LinkedIn (Grupo OVD)'
+
+          # 1) Renovar o token de acesso com o refresh token
+          code=$(curl -sS -o refresh.json -w '%{http_code}' -X POST 'https://www.linkedin.com/oauth/v2/accessToken' \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            --data-urlencode 'grant_type=refresh_token' \
+            --data-urlencode "refresh_token=$LINKEDIN_REFRESH_TOKEN" \
+            --data-urlencode "client_id=$LINKEDIN_CLIENT_ID" \
+            --data-urlencode "client_secret=$LINKEDIN_CLIENT_SECRET")
+          [ -s refresh.json ] || echo '{}' > refresh.json
+          if [ "$code" != '200' ]; then
+            resumo "- Renovar token: **falhou** (HTTP $code)"
+            resumo "$(jq -c '{error, error_description}' refresh.json)"
+            exit 1
+          fi
+          token=$(jq -er '.access_token' refresh.json)
+          echo "::add-mask::$token"
+          resumo "- Renovar token: **ok** (token de acesso válido por $(jq -r '.expires_in' refresh.json) s; refresh token por mais $(jq -r '.refresh_token_expires_in // "?"' refresh.json) s)"
+
+          # 2) Seguidores da página
+          urn="urn%3Ali%3Aorganization%3A$LINKEDIN_ORGANIZATION_ID" # URN codificado, como a API Rest.li espera
+          chamar() { # $1 = rótulo, $2 = URL, $3 = filtro jq do que mostrar quando der certo
+            local http
+            http=$(curl -sS -o resposta.json -w '%{http_code}' "$2" \
+              -H "Authorization: Bearer $token" \
+              -H "LinkedIn-Version: $LINKEDIN_VERSION" \
+              -H 'X-Restli-Protocol-Version: 2.0.0')
+            [ -s resposta.json ] || echo '{}' > resposta.json
+            resumo "- $1: HTTP $http"
+            # só totais no sucesso e só o código/mensagem de erro na falha: o resumo é visível a quem lê o repositório
+            if [ "$http" = '200' ]; then resumo "  $(jq -c "$3" resposta.json 2>/dev/null)"
+            else resumo "  $(jq -c '{status, code, message}' resposta.json 2>/dev/null | cut -c1-300)"; fi
+            [ "$http" = '200' ]
+          }
+          falhou=0
+          chamar 'Total de seguidores (networkSizes)' "https://api.linkedin.com/rest/networkSizes/$urn?edgeType=COMPANY_FOLLOWED_BY_MEMBER" '{seguidores: .firstDegreeSize}' || falhou=1
+          chamar 'Estatísticas de seguidores (organizationalEntityFollowerStatistics)' "https://api.linkedin.com/rest/organizationalEntityFollowerStatistics?q=organizationalEntity&organizationalEntity=$urn" '{recortes: (.elements | length)}' || falhou=1
+          exit $falhou
