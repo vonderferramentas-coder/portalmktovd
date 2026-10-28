@@ -1029,12 +1029,12 @@
     function searchSiteProducts(query, strict){
       const q = query.trim();
       if(!siteProductCache[q]){
-        const p = siteProductCache[q] = fetch(`${PORTAL_API_BASE}/product-search?q=${encodeURIComponent(q)}`)
+        const p = siteProductCache[q] = fetch(`${PORTAL_API_BASE}/product-search?q=${encodeURIComponent(q)}${BRAND_SUFFIX==='__ferramentas-gerais' ? '&scope=all' : ''}`) // FG: todas as marcas do site, como no Editor de Posts
           .then(res=> res.ok ? res.json() : Promise.reject(res.status))
           .then(data=> (data.items||[]).filter(it=> it.name).map(it=>{
-            const digits = codeDigits(it.code);
+            const code = it.code||it.codeFG||'', digits = codeDigits(code); // marca não-VONDER chega só com o código FG
             if(digits && it.thumb) productThumbCache[digits] = it.thumb;
-            return { code: it.code||'', name: it.name };
+            return { code, codeFG: it.codeFG||'', name: it.name };
           }));
         p.catch(()=>{ if(siteProductCache[q]===p) delete siteProductCache[q]; });
       }
@@ -1167,8 +1167,8 @@
       paint(local, true);
       box._siteTimer = setTimeout(()=> searchSiteProducts(query).then(site=>{
         if(input.value.trim() !== query || box.style.display === 'none'){ if(box.style.display === 'none') box._enterPending = false; return; } // continuou digitando (o Enter pendente é da busca nova) ou fechou
-        const known = new Set(found.map(item=> normalizeCode(item.code)).filter(Boolean));
-        const fresh = site.filter(item=> !known.has(normalizeCode(item.code)));
+        const known = new Set(found.flatMap(item=> [item.code, item.codeFG]).map(normalizeCode).filter(Boolean));
+        const fresh = site.filter(item=> !known.has(normalizeCode(item.code)) && !known.has(normalizeCode(item.codeFG)));
         // refaz a divisão com o que foi escolhido enquanto o site respondia
         const rest = split(found).slice(0, LOCAL_LIMIT);
         alreadyChosen = alreadyChosen.concat(fresh.filter(isChosen));
@@ -1207,7 +1207,7 @@
       if(local) return { code: local.code || code, name: local.name, found: true };
       let list;
       try{ list = await searchSiteProducts(code, true); }catch(e){ return { code, name: code, found: false, error: true }; }
-      const site = list.find(item=> normalizeCode(item.code)===k);
+      const site = list.find(item=> normalizeCode(item.code)===k || normalizeCode(item.codeFG)===k);
       return site ? { code: site.code, name: site.name, found: true } : { code, name: code, found: false };
     }
     function hideProductPaste(){ const box = $('productPasteBox'); if(box){ box.hidden = true; box.innerHTML = ''; box._token = null; } }
