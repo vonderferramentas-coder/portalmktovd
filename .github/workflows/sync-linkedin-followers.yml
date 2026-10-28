@@ -1,0 +1,129 @@
+name: Sincronizar seguidores LinkedIn
+
+# Total de seguidores da página Grupo OVD no LinkedIn (Community Management API), para o painel de
+# Redes sociais da marca Grupo OVD. Mesmo padrão de sync-youtube-followers.yml, com uma diferença:
+# só este workflow grava o documento portalStore/followers-grupo-ovd-v1 (sem JSON versionado no Git;
+# o backup-portalstore.yml já guarda o Firestore), então não há push nem conflito com outras coletas.
+# O token de acesso não é guardado: cada execução troca o refresh token (LINKEDIN_REFRESH_TOKEN, vale
+# 1 ano a partir de 28/10/2026) por um token novo. Ver docs/ARQUITETURA-E-INTEGRACOES.md, seção 27.
+
+on:
+  # Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js, horário em UTC).
+  workflow_dispatch:
+    inputs:
+      rotina:
+        description: 'Coleta de rotina (disparo automático do Worker): não fecha o dia'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linkedin-followers
+  cancel-in-progress: false
+
+jobs:
+  sync-linkedin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Consultar seguidores da página
+        id: linkedin
+        env:
+          LINKEDIN_CLIENT_ID: ${{ secrets.LINKEDIN_CLIENT_ID }}
+          LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
+          LINKEDIN_REFRESH_TOKEN: ${{ secrets.LINKEDIN_REFRESH_TOKEN }}
+          LINKEDIN_ORGANIZATION_ID: ${{ secrets.LINKEDIN_ORGANIZATION_ID }}
+          # A API versionada exige o mês de versão (AAAAMM); o LinkedIn mantém cada versão por cerca de 1 ano
+          # (a 202604 foi aceita em 28/10/2026): se um dia recusar com erro 426, trocar por uma mais nova.
+          LINKEDIN_VERSION: '202604'
+        run: |
+          set -euo pipefail
+          # Espaço ou quebra de linha colados junto do ID no segredo quebram a URL: fica só com os dígitos.
+          ORG_ID="${LINKEDIN_ORGANIZATION_ID//[!0-9]/}"
+          test -n "$ORG_ID"
+          test -n "$LINKEDIN_CLIENT_ID" && test -n "$LINKEDIN_CLIENT_SECRET" && test -n "$LINKEDIN_REFRESH_TOKEN"
+          cd "$RUNNER_TEMP"
+          code=$(curl -sS -o refresh.json -w '%{http_code}' -X POST 'https://www.linkedin.com/oauth/v2/accessToken' \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            --data-urlencode 'grant_type=refresh_token' \
+            --data-urlencode "refresh_token=$LINKEDIN_REFRESH_TOKEN" \
+            --data-urlencode "client_id=$LINKEDIN_CLIENT_ID" \
+            --data-urlencode "client_secret=$LINKEDIN_CLIENT_SECRET")
+          if [ "$code" != '200' ]; then
+            echo "::error::O LinkedIn recusou a renovação do token (HTTP $code): $(jq -c '{error, error_description}' refresh.json 2>/dev/null). Se o refresh token venceu ou o usuário que o gerou saiu da administração da página, gerar outro em Docs and tools > OAuth token generator e atualizar o segredo LINKEDIN_REFRESH_TOKEN."
+            exit 1
+          fi
+          token=$(jq -er '.access_token' refresh.json)
+          echo "::add-mask::$token"
+          code=$(curl -sS -o rede.json -w '%{http_code}' \
+            "https://api.linkedin.com/rest/networkSizes/urn%3Ali%3Aorganization%3A$ORG_ID?edgeType=COMPANY_FOLLOWED_BY_MEMBER" \
+            -H "Authorization: Bearer $token" \
+            -H "LinkedIn-Version: $LINKEDIN_VERSION" \
+            -H 'X-Restli-Protocol-Version: 2.0.0')
+          if [ "$code" != '200' ]; then
+            echo "::error::A consulta de seguidores do LinkedIn falhou (HTTP $code): $(jq -c '{status, code, message}' rede.json 2>/dev/null)"
+            exit 1
+          fi
+          echo "followers=$(jq -er '.firstDegreeSize | numbers' rede.json)" >> "$GITHUB_OUTPUT"
+          echo "org_id=$ORG_ID" >> "$GITHUB_OUTPUT"
+
+      # Grava o snapshot ao vivo e, no fechamento diário (ou na primeira coleta, para o painel já ter
+      # um ponto de partida), o dia no histórico, direto em portalStore/followers-grupo-ovd-v1 via Admin SDK.
+      - name: Publicar no Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+          FOLLOWERS: ${{ steps.linkedin.outputs.followers }}
+          ORG_ID: ${{ steps.linkedin.outputs.org_id }}
+          ROTINA: ${{ inputs.rotina }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::error::FIREBASE_SERVICE_ACCOUNT_KEY não configurado - sem ele o painel não recebe o número.'
+            exit 1
+          fi
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os, time
+          from datetime import datetime, timedelta, timezone
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+
+          firebase_admin.initialize_app(credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY'])))
+          reference = firestore.client().collection('portalStore').document('followers-grupo-ovd-v1')
+          snapshot = reference.get()
+          current = ((snapshot.to_dict() or {}).get('v') or {}) if snapshot.exists else {}
+          published = current.get('published') or {'version': 2, 'history': []}
+          live = current.get('live') or {'version': 2, 'platforms': {}}
+
+          now = datetime.now(timezone.utc).replace(microsecond=0)
+          stamp = now.isoformat().replace('+00:00', 'Z')
+          followers = int(os.environ['FOLLOWERS'])
+          platforms = dict(live.get('platforms') or {})
+          platforms['LinkedIn'] = {
+              'accountId': os.environ['ORG_ID'],
+              'username': 'Grupo OVD',
+              'followers': followers,
+              'source': 'linkedin_api'
+          }
+          live.update({'version': 2, 'updatedAt': stamp, 'platforms': platforms})
+
+          history = {item['date']: item for item in published.get('history', []) if item.get('date')}
+          # Fechamento às 02:45 UTC = 23:45 em São Paulo: o dia fechado é o de São Paulo. Desconta 4 h (e não 3)
+          # para um disparo atrasado em até 1 h na fila do GitHub ainda cair no dia certo. Efeito colateral: uma
+          # execução manual entre 00:00 e 01:00 de São Paulo grava no dia anterior (ponytail: rodar fora dessa janela).
+          closing_date = (now - timedelta(hours=4)).date().isoformat()
+          if os.environ.get('ROTINA') != 'true' or not history:
+              day = dict(history.get(closing_date) or {'date': closing_date})
+              day['followers'] = dict(day.get('followers') or {})
+              day['followers']['LinkedIn'] = followers
+              history[closing_date] = day
+          published.update({'version': 2, 'updatedAt': stamp, 'history': [history[date] for date in sorted(history)]})
+
+          reference.set({
+              'v': dict(current, published=published, live=live), # preserva outras chaves dentro de 'v'; o documento só tem v e os carimbos de data, regravados abaixo
+              'updated_at': int(time.time() * 1000),
+              'updatedAt': firestore.SERVER_TIMESTAMP,
+          })
+          print('Firestore atualizado:', followers, 'seguidores do LinkedIn em', stamp)
+          PY

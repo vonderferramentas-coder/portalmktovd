@@ -18,6 +18,8 @@
   const BRAND_INTEGRATIONS = {
     'default': { storeSuffix: 'vonder', instagram: true, facebook: true, youtube: true },
     'ferramentas-gerais': { storeSuffix: 'ferramentas-gerais', instagram: true, facebook: true, youtube: false },
+    // Grupo OVD: só a página do LinkedIn tem coleta (sync-linkedin-followers.yml); não tem YouTube nem TikTok.
+    'grupo-ovd': { storeSuffix: 'grupo-ovd', linkedin: true, networks: ['Instagram', 'Facebook', 'LinkedIn'] },
   };
   const integration = BRAND_INTEGRATIONS[brandKey] || null;
   const isVonder = brandKey === 'default';
@@ -62,7 +64,7 @@
   const goalsStoreKey = 'social-goals-v1-' + brandKey;
   const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (error) { return fallback; } };
 
-  const NETWORKS = [
+  const ALL_NETWORKS = [
     { name:'Instagram', color:'#E94683', icon:'icons/instagram.svg', connected: !!(integration && integration.instagram) },
     { name:'Facebook',  color:'#287BE0', icon:'icons/facebook.svg',  connected: !!(integration && integration.facebook) },
     { name:'YouTube',   color:'#FF0000', icon:'icons/youtube.svg',   connected: !!(integration && integration.youtube) },
@@ -70,8 +72,11 @@
     // legível) - mas essa mesma cor em linha/ponto/legenda do gráfico fica preto sobre preto no
     // tema escuro (fundo do card também é bem escuro). colorChart é só para esses três usos
     // (ver chartColor abaixo) e cai no ciano do próprio logo do TikTok no tema escuro.
-    { name:'TikTok',    color:'#111827', colorChartDark:'#69C9D0', icon:'icons/tiktok.svg', connected:false }
+    { name:'TikTok',    color:'#111827', colorChartDark:'#69C9D0', icon:'icons/tiktok.svg', connected:false },
+    { name:'LinkedIn',  color:'#0A66C2', icon:'icons/linkedin.svg',  connected: !!(integration && integration.linkedin) }
   ];
+  // Cada marca mostra só as redes que existem para ela; sem lista própria valem as quatro de sempre (o LinkedIn só aparece onde foi listado).
+  const NETWORKS = ALL_NETWORKS.filter(network => ((integration && integration.networks) || ['Instagram', 'Facebook', 'YouTube', 'TikTok']).includes(network.name));
   const isDarkTheme = () => document.documentElement.getAttribute('data-theme') === 'dark';
   const chartColor = network => (isDarkTheme() && network.colorChartDark) || network.color;
   const POST_SORT_OPTIONS = [
@@ -200,7 +205,7 @@
   // Legenda vem direto da Meta - trata como conteúdo não confiável antes de injetar no DOM.
   const escapeHtml = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
 
-  let selectedNetwork = '0';
+  let selectedNetwork = String(Math.max(0, NETWORKS.findIndex(network => network.connected))); // abre na 1ª rede com coleta (Instagram nas demais marcas)
   let series = [];   // pontos diários fechados, com valor arrastado para a frente
   let goals = Object.assign({}, isVonder ? DEFAULT_GOALS : {}, read(goalsLegacyKey, {}));
   let goalsVersion = 0;
