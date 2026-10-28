@@ -21,6 +21,8 @@ from firebase_admin import credentials, firestore
 SINGLE_DOCS = [
     'followers-vonder-v1',
     'followers-ferramentas-gerais-v1',
+    'followers-grupo-ovd-v1',
+    'posts-linkedin-grupo-ovd-v1',
     'youtube-videos-vonder-v1',
     'youtube-mentions-vonder-v1',
     'facebook-posts-vonder-v1',
@@ -63,6 +65,19 @@ def _copy_usage_daily(source_db, target_db):
     print(f'Métricas de efetividade: {copied} resumo(s) diário(s) copiado(s) desde {cutoff}.')
 
 
+def _copy_avaliacoes_google(source_db, target_db):
+    # Resumo e blocos mensais das avaliações do Google (dados públicos do Google, tela só para Admin, Gestão e
+    # Social Media). Fica de fora o documento "vendedores": são nomes de colaboradores, e o cadastro no HML
+    # é feito colando a planilha na própria tela (o que também testa esse fluxo).
+    copied = 0
+    for snapshot in source_db.collection('avaliacoesGoogle').stream():
+        if snapshot.id == 'vendedores':
+            continue
+        target_db.collection('avaliacoesGoogle').document(snapshot.id).set(snapshot.to_dict())
+        copied += 1
+    print(f'Avaliações do Google: {copied} documento(s) copiado(s) (sem o cadastro de vendedores).')
+
+
 def copy_all(prod_key_json, hml_key_json):
     prod_db = _client(prod_key_json, 'prod-source')
     hml_db = _client(hml_key_json, 'hml-target')
@@ -81,6 +96,7 @@ def copy_all(prod_key_json, hml_key_json):
             _copy_doc(prod_db, hml_db, f'{base_id}__{index}')
 
     _copy_usage_daily(prod_db, hml_db)
+    _copy_avaliacoes_google(prod_db, hml_db)
 
 
 if __name__ == '__main__':

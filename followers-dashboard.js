@@ -29,6 +29,8 @@
   const POSTS_STORE_KEY = `posts-${storeSuffix}-v1`;
   const YOUTUBE_VIDEOS_STORE_KEY = `youtube-videos-${storeSuffix}-v1`;
   const FACEBOOK_POSTS_STORE_KEY = `facebook-posts-${storeSuffix}-v1`;
+  // Começa com "posts-" de propósito: o firestore.rules já bloqueia a escrita de usuários nesse prefixo (dado coletado).
+  const LINKEDIN_POSTS_STORE_KEY = `posts-linkedin-${storeSuffix}-v1`;
   const POSTS_DISPLAY_LIMIT = 10;
   const AUTO_REFRESH_MS = 60000;
   const MAX_BUCKETS = 60;
@@ -102,6 +104,8 @@
     Instagram: ['timestamp', 'likeCount', 'commentsCount', 'totalInteractions', 'views', 'saved'],
     YouTube: ['timestamp', 'likeCount', 'commentsCount', 'views'],
     Facebook: ['timestamp', 'likeCount', 'commentsCount', 'totalInteractions'],
+    // sync-linkedin-posts.yml: impressões entram como 'views'; sem salvamentos (a API de página não expõe)
+    LinkedIn: ['timestamp', 'likeCount', 'commentsCount', 'totalInteractions', 'views'],
   };
   const sortOptionsForNetwork = network => {
     const keys = network && POST_SORT_KEYS_BY_NETWORK[network.name];
@@ -276,7 +280,7 @@
   };
   // Painel de posts: ao contrário dos insights acima (exclusivos do Instagram), aceita as
   // redes que já têm coleta de conteúdo (Instagram, YouTube e Facebook) - TikTok ainda não.
-  const POSTS_NETWORKS = ['Instagram', 'YouTube', 'Facebook'];
+  const POSTS_NETWORKS = ['Instagram', 'YouTube', 'Facebook', 'LinkedIn'];
   const activeNetworkOrNull = () => selectedNetwork === 'all' ? null : NETWORKS[Number(selectedNetwork)];
   const isPostsNetworkSelected = () => {
     const active = activeNetworkOrNull();
@@ -1103,14 +1107,16 @@
     return Promise.all([
       protectedStoreChunked(POSTS_STORE_KEY).catch(() => null),
       protectedStore(YOUTUBE_VIDEOS_STORE_KEY).catch(() => null),
-      protectedStore(FACEBOOK_POSTS_STORE_KEY).catch(() => null)
-    ]).then(([instagram, youtube, facebook]) => {
+      protectedStore(FACEBOOK_POSTS_STORE_KEY).catch(() => null),
+      (integration && integration.linkedin ? protectedStore(LINKEDIN_POSTS_STORE_KEY) : Promise.resolve(null)).catch(() => null)
+    ]).then(([instagram, youtube, facebook, linkedin]) => {
       const instagramPosts = (instagram && Array.isArray(instagram.posts)) ? instagram.posts : [];
       const youtubePosts = (youtube && Array.isArray(youtube.posts)) ? youtube.posts : [];
       const facebookPosts = (facebook && Array.isArray(facebook.posts)) ? facebook.posts : [];
       postsData = instagramPosts.map(post => Object.assign({ network: 'Instagram' }, post))
         .concat(youtubePosts.map(post => Object.assign({ network: 'YouTube' }, post)))
-        .concat(facebookPosts.map(post => Object.assign({ network: 'Facebook' }, post)));
+        .concat(facebookPosts.map(post => Object.assign({ network: 'Facebook' }, post)))
+        .concat(((linkedin && Array.isArray(linkedin.posts)) ? linkedin.posts : []).map(post => Object.assign({ network: 'LinkedIn' }, post)));
       renderPosts();
     }).catch(() => { postsData = []; renderPosts(); });
   }

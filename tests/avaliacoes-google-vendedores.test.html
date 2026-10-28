@@ -1,0 +1,37 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Teste do cadastro de vendedores</title></head>
+<body data-result="running">RUNNING
+<script type="module">
+// Exige --allow-file-access-from-files no Chrome (import de módulo via file://).
+import { lerColado, adicionar, nomesAmbiguos, apelidosDoTexto, ordenar, idDe } from '../avaliacoes-google-vendedores.js';
+
+const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${msg}: esperado ${JSON.stringify(b)}, veio ${JSON.stringify(a)}`); };
+
+try {
+  // colar do Excel: tab, cabeçalho e linhas vazias
+  const lidos = lerColado('Loja\tVendedores\r\nCuritiba\tSamuel Lisboa Da Silva\r\n\r\nPorto Alegre\tAnderson Claiton Pereira De Souza\nsó uma coluna\n');
+  eq(lidos, [{ loja: 'Curitiba', nome: 'Samuel Lisboa Da Silva' }, { loja: 'Porto Alegre', nome: 'Anderson Claiton Pereira De Souza' }], 'leitura do que foi colado');
+  eq(lerColado('Curitiba;Ana').length, 1, 'ponto e vírgula também separa');
+
+  // sem duplicar, ignorando acento, caixa e espaços
+  const a = adicionar([], lidos);
+  eq([a.adicionados, a.repetidos], [2, 0], 'primeira carga');
+  const b = adicionar(a.lista, [{ loja: ' curitiba ', nome: 'SAMUEL  LISBOA da silva' }, { loja: 'Joinville', nome: 'Samuel Lisboa Da Silva' }]);
+  eq([b.adicionados, b.repetidos], [1, 1], 'mesmo nome na mesma loja repete; em outra loja não');
+  eq(b.lista[0].id, idDe('Curitiba', 'Samuel Lisboa Da Silva'), 'id estável');
+
+  eq(apelidosDoTexto(' Lisboa, Samuel Lisboa ,, lisboa'), ['Lisboa', 'Samuel Lisboa', 'lisboa'], 'apelidos separados por vírgula');
+
+  // dois "Joao" ativos na mesma loja: ambíguos; inativo e outra loja não contam
+  const l = [
+    { id: '1', loja: 'Curitiba', nome: 'Joao Pedro Lopes', ativo: true }, { id: '2', loja: 'Curitiba', nome: 'João Lory', ativo: true },
+    { id: '3', loja: 'Joinville', nome: 'Joao Silva', ativo: true }, { id: '4', loja: 'Curitiba', nome: 'Ana', ativo: true },
+  ];
+  eq([...nomesAmbiguos(l)], ['1', '2'], 'primeiro nome repetido na mesma loja');
+  l[1].ativo = false;
+  eq([...nomesAmbiguos(l)], [], 'demitido deixa de gerar ambiguidade');
+  eq(ordenar(l).map(v => v.id), ['4', '1', '2', '3'], 'ordem: loja, ativos primeiro, nome');
+  document.body.dataset.result = 'pass'; document.body.textContent = 'PASS';
+} catch (e) { document.body.dataset.result = 'fail'; document.body.textContent = 'FAIL ' + e.message; }
+</script>
+</body></html>
