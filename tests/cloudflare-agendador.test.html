@@ -23,8 +23,11 @@ try {
   eq(em('2026-10-06T07:30:00Z'), ['limpar-artes-salvas.yml:undefined'], 'limpeza das artes salvas às 04:30 SP, depois do backup');
   eq(em('2026-10-06T06:15:00Z'), ['sync-google-trends.yml:undefined'], 'tendências antes da coleta das :35');
   eq(em('2026-10-06T06:30:00Z'), [], 'nada às 06:30');
+  eq(em('2026-10-06T02:45:00Z'), ['sync-linkedin-followers.yml:false'], 'fechamento LinkedIn 23:45 SP');
+  eq(em('2026-10-06T06:45:00Z'), ['sync-linkedin-followers.yml:true'], 'rotina LinkedIn de 6 em 6 horas');
+  eq(em('2026-10-06T07:45:00Z'), [], 'LinkedIn não roda em hora fora do ciclo');
 
-  // Dia inteiro (cron de 5 em 5 min): 24 Meta + 24 YouTube de rotina, 12 menções, 2 fechamentos.
+  // Dia inteiro (cron de 5 em 5 min): 24 Meta + 24 YouTube de rotina, 12 menções, 4 LinkedIn de rotina, 3 fechamentos.
   let total = {}, fechamentos = 0;
   for (let t = Date.UTC(2026, 9, 6); t < Date.UTC(2026, 9, 7); t += 5 * 60000) {
     for (const item of agendaDoMomento(new Date(t))) {
@@ -34,12 +37,12 @@ try {
   }
   const ordenado = objeto => Object.fromEntries(Object.entries(objeto).sort());
   eq(ordenado(total), ordenado({
-    'sync-meta-followers.yml': 25, 'sync-youtube-followers.yml': 25, 'sync-youtube-mencoes.yml': 12,
+    'sync-meta-followers.yml': 25, 'sync-youtube-followers.yml': 25, 'sync-youtube-mencoes.yml': 12, 'sync-linkedin-followers.yml': 5,
     'sync-meta-posts.yml': 2, 'sync-meta-facebook-posts.yml': 2, 'sync-youtube-videos.yml': 2,
     'aggregate-usage-metrics.yml': 1, 'sync-youtube-analytics-diario.yml': 1, 'sync-google-trends.yml': 1,
     'backup-portalstore.yml': 1, 'limpar-artes-salvas.yml': 1, 'reconstruir-historico.yml': 1, 'reconstruir-historico-facebook.yml': 1
   }), 'disparos por dia');
-  eq(fechamentos, 2, 'fechamentos por dia');
+  eq(fechamentos, 3, 'fechamentos por dia');
 
   // Repetição do disparo: fetch simulado, sem esperar de verdade.
   const item = { workflow: 'sync-meta-followers.yml', rotina: false };
