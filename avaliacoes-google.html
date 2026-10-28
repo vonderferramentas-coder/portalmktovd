@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Avaliações do Google</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
+  <script>document.documentElement.classList.add('auth-pending')</script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="auth-guard.js"></script>
+</head>
+<body>
+  <div class="portal-shell">
+    <aside class="portal-sidebar" id="portalSidebar"></aside>
+    <main class="portal-main">
+      <header class="page-header">
+        <div>
+          <span class="page-kicker">Mídias Sociais</span>
+          <h1>Avaliações do Google</h1>
+          <p class="page-subtitle">Notas e comentários que os clientes deixam nas fichas da Ferramentas Gerais no Google Meu Negócio. Visível só para Social Media, Gestão e Administração.</p>
+        </div>
+      </header>
+
+      <p class="list-empty" role="status">Aguardando coleta. As avaliações das fichas aparecem aqui assim que a primeira coleta for feita.</p>
+    </main>
+  </div>
+
+  <script src="portal-shell.js"></script>
+</body>
+</html>
