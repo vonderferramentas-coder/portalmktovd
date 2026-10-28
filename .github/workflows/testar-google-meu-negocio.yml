@@ -1,0 +1,105 @@
+name: Testar Google Meu Negócio
+
+# Teste manual e só de leitura da Business Profile API (avaliações do Google Meu Negócio): renova o token, lista as contas e
+# as fichas e conta as avaliações de cada uma. Não grava nada no Firestore e não imprime nome de avaliador nem texto de
+# avaliação, só o nome da ficha, a nota média e o total (o repositório é público e o log das execuções também: nada de
+# ID de conta nem de ficha). Serve para confirmar que a aprovação do Google, as APIs ativadas
+# e os três segredos GBP_* estão certos antes de construir o coletor.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  testar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Ler contas, fichas e avaliações
+        env:
+          GBP_CLIENT_ID: ${{ secrets.GBP_CLIENT_ID }}
+          GBP_CLIENT_SECRET: ${{ secrets.GBP_CLIENT_SECRET }}
+          GBP_REFRESH_TOKEN: ${{ secrets.GBP_REFRESH_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
+
+          env = lambda name: os.environ.get(name, '').strip()
+          secrets = [env('GBP_CLIENT_SECRET'), env('GBP_REFRESH_TOKEN')]
+
+          def scrub(text):
+              for value in secrets:
+                  if len(value) >= 8:
+                      text = text.replace(value, '***')
+              return text
+
+          def http(url, data=None, headers=None, retry=True):
+              request = urllib.request.Request(url, data=data, headers=headers or {})
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      status, body = response.status, response.read()
+              except urllib.error.HTTPError as error:
+                  status, body = error.code, error.read()
+              except (urllib.error.URLError, OSError) as error:
+                  return 0, {'error': {'message': f'falha de rede: {error}'}}
+              if status == 429 and retry:  # a cota por minuto da API é baixa: espera e tenta uma vez de novo
+                  time.sleep(30)
+                  return http(url, data, headers, retry=False)
+              try:
+                  body = json.loads(body.decode('utf-8'))
+              except ValueError:
+                  body = {}
+              return status, body if isinstance(body, dict) else {}
+
+          def erro(body):
+              info = body.get('error') or {}
+              text = scrub(f'{info.get("message", info) if isinstance(info, dict) else info} {body.get("error_description", "")}'.strip())
+              return re.sub(r'(accounts|locations)/\d+', r'\1/***', text.replace('\n', ' '))[:400]  # o repositório é público: sem ID de conta/ficha no log
+
+          if not all(env(n) for n in ('GBP_CLIENT_ID', 'GBP_CLIENT_SECRET', 'GBP_REFRESH_TOKEN')):
+              sys.exit('::error::Segredo GBP_* não configurado.')
+
+          # 1. Renova o token de acesso a partir do refresh token.
+          status, body = http('https://oauth2.googleapis.com/token', urllib.parse.urlencode({
+              'grant_type': 'refresh_token', 'refresh_token': env('GBP_REFRESH_TOKEN'),
+              'client_id': env('GBP_CLIENT_ID'), 'client_secret': env('GBP_CLIENT_SECRET')}).encode(),
+              {'Content-Type': 'application/x-www-form-urlencoded'})
+          if status != 200 or not body.get('access_token'):
+              sys.exit(f'::error::Google recusou a renovação do token (HTTP {status}): {erro(body)}')
+          secrets.append(body['access_token'])
+          auth = {'Authorization': f'Bearer {body["access_token"]}'}
+          print('1. Token renovado: OK')
+
+          # 2. Contas a que o proprietário tem acesso.
+          status, body = http('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', headers=auth)
+          if status != 200:
+              sys.exit(f'::error::Listar contas falhou (HTTP {status}): {erro(body)}')
+          accounts = body.get('accounts', [])
+          print(f'2. Contas: {len(accounts)}' + (' (há mais páginas, não lidas)' if body.get('nextPageToken') else ''))
+
+          # 3. Fichas de cada conta e 4. avaliações de cada ficha (API v4, a única que expõe avaliações).
+          total, failures = 0, 0
+          for account in accounts:
+              query = urllib.parse.urlencode({'readMask': 'name,title', 'pageSize': 100})
+              status, body = http(f'https://mybusinessbusinessinformation.googleapis.com/v1/{account["name"]}/locations?{query}', headers=auth)
+              if status != 200:
+                  print(f'::error::Listar fichas da conta falhou (HTTP {status}): {erro(body)}')
+                  failures += 1
+                  continue
+              locations = body.get('locations', [])
+              print(f'3. Fichas na conta: {len(locations)}' + (' (há mais páginas, não lidas)' if body.get('nextPageToken') else ''))
+              for location in locations:
+                  time.sleep(1)
+                  status, body = http(f'https://mybusiness.googleapis.com/v4/{account["name"]}/{location["name"]}/reviews?pageSize=1', headers=auth)
+                  if status == 200:
+                      total += int(body.get('totalReviewCount') or 0)
+                      print(f'   - {location.get("title", "(sem título)")}: {body.get("totalReviewCount", 0)} avaliações, nota média {body.get("averageRating", "-")}')
+                  else:
+                      failures += 1
+                      print(f'   - {location.get("title", "(sem título)")}: FALHOU (HTTP {status}): {erro(body)}')
+          print(f'4. Total de avaliações (contagem informada pelo Google): {total}; fichas com falha: {failures}')
+          if failures:
+              sys.exit(1)
+          PY
