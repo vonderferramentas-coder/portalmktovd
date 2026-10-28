@@ -22,6 +22,7 @@ SINGLE_DOCS = [
     'followers-vonder-v1',
     'followers-ferramentas-gerais-v1',
     'followers-grupo-ovd-v1',
+    'posts-linkedin-grupo-ovd-v1',
     'youtube-videos-vonder-v1',
     'youtube-mentions-vonder-v1',
     'facebook-posts-vonder-v1',

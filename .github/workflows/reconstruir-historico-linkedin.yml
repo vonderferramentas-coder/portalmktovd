@@ -11,6 +11,11 @@ name: Reconstruir histórico LinkedIn
 # Os dias reais coletados por sync-linkedin-followers.yml sempre prevalecem. Seguro rodar de novo.
 
 on:
+  # Roda sozinho (e grava) quando este arquivo entra na main, para a carga acontecer sem ninguém clicar. É seguro
+  # repetir: nunca mexe em dia que já tem LinkedIn. Para um ensaio sem gravar, rodar à mão deixando "gravar" desmarcado.
+  push:
+    branches: [main]
+    paths: ['.github/workflows/reconstruir-historico-linkedin.yml']
   workflow_dispatch:
     inputs:
       gravar:
@@ -78,7 +83,7 @@ jobs:
 
       - name: Reconstruir o histórico
         env:
-          GRAVAR: ${{ inputs.gravar }}
+          GRAVAR: ${{ github.event_name == 'push' || inputs.gravar }}
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
         run: |
           if [ "$GRAVAR" = 'true' ]; then
