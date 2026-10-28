@@ -37,6 +37,11 @@ jobs:
           done
           resumo() { printf '%s\n' "$*" >> "$GITHUB_STEP_SUMMARY"; }
           resumo '## Diagnóstico LinkedIn (Grupo OVD)'
+          # Espaço ou quebra de linha colados junto do ID quebram a URL (404/400): fica só com os dígitos.
+          # O ID da página é público (aparece na URL dela), então pode ir ao resumo para conferência.
+          LINKEDIN_ORGANIZATION_ID="${LINKEDIN_ORGANIZATION_ID//[!0-9]/}"
+          if [ -z "$LINKEDIN_ORGANIZATION_ID" ]; then resumo '- **LINKEDIN_ORGANIZATION_ID não tem nenhum dígito**: conferir o segredo (o número da página, sem texto).'; exit 1; fi
+          resumo "- Página consultada: \`urn:li:organization:$LINKEDIN_ORGANIZATION_ID\`"
 
           # 1) Renovar o token de acesso com o refresh token
           code=$(curl -sS -o refresh.json -w '%{http_code}' -X POST 'https://www.linkedin.com/oauth/v2/accessToken' \
@@ -58,10 +63,11 @@ jobs:
           # 2) Seguidores da página
           urn="urn%3Ali%3Aorganization%3A$LINKEDIN_ORGANIZATION_ID" # URN codificado, como a API Rest.li espera
           chamar() { # $1 = rótulo, $2 = URL, $3 = filtro jq do que mostrar quando der certo
-            local http
+            local http versao=(-H "LinkedIn-Version: $LINKEDIN_VERSION")
+            case "$2" in */v2/*) versao=();; esac # a API antiga (v2) não usa o cabeçalho de versão
             http=$(curl -sS -o resposta.json -w '%{http_code}' "$2" \
               -H "Authorization: Bearer $token" \
-              -H "LinkedIn-Version: $LINKEDIN_VERSION" \
+              "${versao[@]}" \
               -H 'X-Restli-Protocol-Version: 2.0.0')
             [ -s resposta.json ] || echo '{}' > resposta.json
             resumo "- $1: HTTP $http"
@@ -72,5 +78,6 @@ jobs:
           }
           falhou=0
           chamar 'Total de seguidores (networkSizes)' "https://api.linkedin.com/rest/networkSizes/$urn?edgeType=COMPANY_FOLLOWED_BY_MEMBER" '{seguidores: .firstDegreeSize}' || falhou=1
+          chamar 'Total de seguidores, API antiga (v2)' "https://api.linkedin.com/v2/networkSizes/urn:li:organization:$LINKEDIN_ORGANIZATION_ID?edgeType=CompanyFollowedByMember" '{seguidores: .firstDegreeSize}' || falhou=1
           chamar 'Estatísticas de seguidores (organizationalEntityFollowerStatistics)' "https://api.linkedin.com/rest/organizationalEntityFollowerStatistics?q=organizationalEntity&organizationalEntity=$urn" '{recortes: (.elements | length)}' || falhou=1
           exit $falhou
