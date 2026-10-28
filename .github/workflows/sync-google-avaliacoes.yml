@@ -1,0 +1,54 @@
+name: Sincronizar avaliações do Google
+
+# Avaliações do Google Meu Negócio (Business Profile API) das fichas da Ferramentas Gerais, gravadas em
+# avaliacoesGoogle/* (um bloco por mês + resumo; coleção própria, só admin/gestao/social-media leem) via Admin SDK. Lógica em
+# scripts/sync_google_avaliacoes.py (teste: scripts/test_sync_google_avaliacoes.py). Ver docs/ARQUITETURA-E-INTEGRACOES.md.
+# Modos (entradas do disparo manual):
+#   ensaio=true    lê tudo do Google e só imprime totais; não grava nada e não usa o Firebase (primeira coisa a rodar);
+#   completo=true  carga inicial / reconciliação: relê tudo e reconstrói os blocos (também detecta avaliação apagada);
+#   nenhum         incremental: só as avaliações novas ou alteradas desde a última coleta.
+# O repositório é público e o log também: o script só imprime totais, nunca nome de avaliador, texto nem ID.
+# Sem cron próprio: o disparo agendado é do Worker do Cloudflare (cloudflare-agendador.js), ainda não ligado a este workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ensaio:
+        description: 'Só contar (não grava nada)'
+        type: boolean
+        default: false
+      completo:
+        description: 'Carga inicial: relê tudo e reconstrói'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: google-avaliacoes
+  cancel-in-progress: false
+
+jobs:
+  sync-avaliacoes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Coletar avaliações
+        env:
+          GBP_CLIENT_ID: ${{ secrets.GBP_CLIENT_ID }}
+          GBP_CLIENT_SECRET: ${{ secrets.GBP_CLIENT_SECRET }}
+          GBP_REFRESH_TOKEN: ${{ secrets.GBP_REFRESH_TOKEN }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+          ENSAIO: ${{ inputs.ensaio }}
+          COMPLETO: ${{ inputs.completo }}
+        run: |
+          set -euo pipefail
+          python3 scripts/test_sync_google_avaliacoes.py
+          args=()
+          [ "$ENSAIO" = 'true' ] && args+=(--ensaio)
+          [ "$COMPLETO" = 'true' ] && args+=(--completo)
+          if [ "$ENSAIO" != 'true' ]; then pip install --quiet firebase-admin; fi
+          python3 scripts/sync_google_avaliacoes.py "${args[@]}"

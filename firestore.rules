@@ -81,6 +81,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Avaliações do Google Meu Negócio (só Ferramentas Gerais; trazem o nome público de quem avaliou). Coleção própria,
+    // e não portalStore, porque lá qualquer usuário ativo lê e uma regra por documento quebraria as consultas do
+    // calendário. Só estes perfis leem; só o GitHub Actions (Admin SDK) grava.
+    match /avaliacoesGoogle/{docId} {
+      allow read: if activeUser() && currentUser().role in ['admin', 'gestao', 'social-media'];
+      allow write: if false;
+    }
+
     // Páginas públicas /redir/<marca>/<pasta>/index.html (QR rastreável) criam um registro por
     // escaneamento, sem login. Só esses campos mínimos (sem IP, sem cookie); só quem está logado lê.
     match /qrHits/{hitId} {
