@@ -100,6 +100,20 @@ jobs:
           cat /tmp/home-suggestions-dump.html
           grep -q 'data-result="pass"' /tmp/home-suggestions-dump.html
 
+      - name: Avaliações do Google — regras de prioridade (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --allow-file-access-from-files --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 --dump-dom "file://$(pwd)/tests/avaliacoes-google-regras.test.html" > /tmp/avaliacoes-regras-dump.html
+          cat /tmp/avaliacoes-regras-dump.html
+          grep -q 'data-result="pass"' /tmp/avaliacoes-regras-dump.html
+
+      - name: Avaliações do Google — cadastro de vendedores (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --allow-file-access-from-files --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 --dump-dom "file://$(pwd)/tests/avaliacoes-google-vendedores.test.html" > /tmp/avaliacoes-vendedores-dump.html
+          cat /tmp/avaliacoes-vendedores-dump.html
+          grep -q 'data-result="pass"' /tmp/avaliacoes-vendedores-dump.html
+
       - name: Calendário — importar planilha e regra do Planejamento (Chrome headless)
         run: |
           CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"

@@ -6,6 +6,7 @@
   <title>Avaliações do Google</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="auth.css">
+  <link rel="stylesheet" href="avaliacoes-google.css">
   <script>document.documentElement.classList.add('auth-pending')</script>
   <script src="firebase-config.js"></script>
   <script type="module" src="auth-guard.js"></script>
@@ -20,12 +21,47 @@
           <h1>Avaliações do Google</h1>
           <p class="page-subtitle">Notas e comentários que os clientes deixam nas fichas da Ferramentas Gerais no Google Meu Negócio. Visível só para Social Media, Gestão e Administração.</p>
         </div>
+        <div class="view-toggle" role="tablist" aria-label="Seções" id="agTabs">
+          <button type="button" role="tab" class="active" aria-selected="true" data-aba="geral">Visão geral</button>
+          <button type="button" role="tab" aria-selected="false" data-aba="fila">Fila de atenção</button>
+          <button type="button" role="tab" aria-selected="false" data-aba="vendedores">Vendedores</button>
+        </div>
       </header>
 
-      <p class="list-empty" role="status">Aguardando coleta. As avaliações das fichas aparecem aqui assim que a primeira coleta for feita.</p>
+      <p class="list-empty" id="agStatus" role="status">Carregando as avaliações…</p>
+
+      <div id="agConteudo" hidden>
+        <div class="ag-filters" id="agFiltros">
+          <label>Período
+            <select id="fPeriodo"><option value="30">Últimos 30 dias</option><option value="90" selected>Últimos 90 dias</option><option value="365">Últimos 12 meses</option><option value="all">Tudo</option></select>
+          </label>
+          <label>Região
+            <select id="fUf"><option value="">Todas</option></select>
+          </label>
+          <label>Ficha
+            <select id="fFicha"><option value="">Todas</option></select>
+          </label>
+          <label>Nota
+            <select id="fNota"><option value="">Todas</option><option value="neg">1 e 2 estrelas</option><option value="5">5 estrelas</option><option value="4">4 estrelas</option><option value="3">3 estrelas</option><option value="2">2 estrelas</option><option value="1">1 estrela</option></select>
+          </label>
+          <label>Prioridade
+            <select id="fPrioridade"><option value="">Todas</option><option value="critica">Críticas</option><option value="atencao">Atenção</option><option value="elogio">Elogios</option></select>
+          </label>
+          <label>Resposta
+            <select id="fResposta"><option value="">Todas</option><option value="sem">Sem resposta</option><option value="com">Respondidas</option></select>
+          </label>
+        </div>
+
+        <section id="abaGeral" aria-label="Visão geral"></section>
+        <section id="abaFila" aria-label="Fila de atenção" hidden></section>
+        <section id="abaVendedores" aria-label="Cadastro de vendedores" hidden></section>
+
+        <p class="ag-note" id="agNota"></p>
+      </div>
     </main>
   </div>
 
   <script src="portal-shell.js"></script>
+  <script type="module" src="avaliacoes-google.js"></script>
 </body>
 </html>

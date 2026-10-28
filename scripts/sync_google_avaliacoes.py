@@ -105,8 +105,10 @@ def listar_fichas(auth):
     Lista incompleta seria perigosa (o --completo apagaria os blocos das fichas que faltam), por isso segue todas as páginas."""
     fichas = []
     for conta in paginas('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', 'accounts', auth, pageSize=20):
-        for ficha in paginas(f'https://mybusinessbusinessinformation.googleapis.com/v1/{conta["name"]}/locations', 'locations', auth, readMask='name,title', pageSize=100):
-            fichas.append({'conta': conta['name'], 'id': ficha['name'].split('/')[-1], 'title': ficha.get('title', '(sem título)')})
+        for ficha in paginas(f'https://mybusinessbusinessinformation.googleapis.com/v1/{conta["name"]}/locations', 'locations', auth, readMask='name,title,storefrontAddress', pageSize=100):
+            endereco = ficha.get('storefrontAddress') or {}
+            fichas.append({'conta': conta['name'], 'id': ficha['name'].split('/')[-1], 'title': ficha.get('title', '(sem título)'),
+                           'uf': (endereco.get('administrativeArea') or '').strip().upper()[:2], 'cidade': (endereco.get('locality') or '').strip()})
     return fichas
 
 
@@ -157,7 +159,7 @@ def mesclar(meses, novos):
 
 
 def resumir(fichas, meses, metas):
-    por = {f['id']: {'id': f['id'], 'title': f['title'], 'coletadas': 0, 'estrelas': [0] * 5, 'semResposta': 0, 'ultima': '',
+    por = {f['id']: {'id': f['id'], 'title': f['title'], 'uf': f.get('uf', ''), 'cidade': f.get('cidade', ''), 'coletadas': 0, 'estrelas': [0] * 5, 'semResposta': 0, 'ultima': '',
                      'googleTotal': (metas.get(f['id']) or {}).get('total'), 'googleMedia': (metas.get(f['id']) or {}).get('media')} for f in fichas}
     for bloco in meses.values():
         for rec in bloco.values():
