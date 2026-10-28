@@ -1,0 +1,41 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Teste das regras de avaliações</title></head>
+<body data-result="running">RUNNING
+<script type="module">
+// Exige --allow-file-access-from-files no Chrome (import de módulo via file://).
+import { classificar, porPrioridade } from '../avaliacoes-google-regras.js';
+
+const agora = Date.parse('2026-10-28T12:00:00Z');
+const rec = (s, t, c, r = '') => ({ s, t, c, r });
+const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${msg}: esperado ${JSON.stringify(b)}, veio ${JSON.stringify(a)}`); };
+
+try {
+  eq(classificar(rec(1, '', '2026-10-28T10:00:00Z'), agora).nivel, 'critica', '1 estrela é crítica');
+  eq(classificar(rec(5, 'Vou no PROCON, é um golpe', '2026-10-28T10:00:00Z'), agora).nivel, 'critica', 'palavra de alerta vence a nota 5');
+  eq(classificar(rec(5, 'Péssimo? Não, ótimo!', '2026-10-28T10:00:00Z'), agora).nivel, 'critica', 'acento e caixa são ignorados (heurística: não entende negação)');
+  const mista = classificar(rec(4, 'Gostei, mas a demora foi grande', '2026-10-28T10:00:00Z'), agora);
+  eq([mista.nivel, mista.motivos], ['atencao', ['nota alta, mas contém "demora"']], 'nota alta com texto negativo pede atenção');
+  eq(classificar(rec(3, '', '2026-10-28T10:00:00Z'), agora).nivel, 'atencao', '3 estrelas pede atenção');
+  eq(classificar(rec(5, 'Atendimento excelente', '2026-10-28T10:00:00Z'), agora).nivel, 'elogio', 'elogio simples');
+  eq(classificar(rec(5, 'Estou decepcionado? nunca! Amei', '2026-10-28T10:00:00Z'), agora).nivel, 'atencao', 'prefixo "decepcion" pega "decepcionado"');
+  eq(classificar(rec(5, 'Comprei um carrinho', '2026-10-28T10:00:00Z'), agora).nivel, 'elogio', 'palavra curta só casa no início ("caro" não pega "carrinho")');
+  eq(classificar(rec(5, 'A Carolina atendeu muito bem', '2026-10-28T10:00:00Z'), agora).nivel, 'elogio', '"caro" é palavra inteira: não pega "Carolina"');
+  eq(classificar(rec(5, 'Achei caro', '2026-10-28T10:00:00Z'), agora).nivel, 'atencao', 'palavra inteira "caro" pega');
+  eq(classificar(rec(5, 'Empresa gerida com péssima índole', '2026-10-28T10:00:00Z'), agora).nivel, 'critica', '"péssima" também é alerta');
+  eq(classificar(rec(5, 'Sem nenhum defeito, nunca tive problema, não é golpe', '2026-10-28T10:00:00Z'), agora).nivel, 'elogio', 'negação antes da palavra anula o alerta');
+  eq(classificar(rec(5, 'Tive um defeito e não resolveram', '2026-10-28T10:00:00Z'), agora).nivel, 'atencao', 'sem negação antes, continua marcando');
+  eq(classificar(rec(5, 'Não gostei. Produto quebrou na primeira semana', '2026-10-28T10:00:00Z'), agora).nivel, 'atencao', 'negação de outra frase não anula o alerta');
+  eq(classificar(rec(5, 'Não, o atendimento foi horrível', '2026-10-28T10:00:00Z'), agora).nivel, 'critica', 'vírgula separa a negação do alerta');
+  eq(classificar(rec(0, '', '2026-10-28T10:00:00Z'), agora).nivel, 'elogio', 'sem nota e sem texto não alarma');
+
+  eq(classificar(rec(1, '', '2026-10-20T12:00:00Z'), agora).atrasada, true, 'negativa sem resposta há 8 dias está atrasada');
+  eq(classificar(rec(1, '', '2026-10-28T00:00:00Z'), agora).atrasada, false, 'dentro das 48 h não está atrasada');
+  eq(classificar(rec(1, '', '2026-10-20T12:00:00Z', 'Sentimos muito'), agora).atrasada, false, 'respondida nunca está atrasada');
+  eq(classificar(rec(5, '', '2026-10-01T12:00:00Z'), agora).atrasada, false, 'elogio sem resposta não é atraso');
+
+  const itens = [rec(1, '', '2026-10-27T10:00:00Z'), rec(3, '', '2026-10-20T10:00:00Z'), rec(1, '', '2026-10-20T10:00:00Z')].map(r => ({ rec: r, cls: classificar(r, agora) }));
+  eq(itens.sort(porPrioridade).map(i => i.rec.c.slice(0, 10) + i.rec.s), ['2026-10-201', '2026-10-271', '2026-10-203'], 'ordem: atrasadas críticas, críticas, atenção');
+  document.body.dataset.result = 'pass'; document.body.textContent = 'PASS';
+} catch (e) { document.body.dataset.result = 'fail'; document.body.textContent = 'FAIL ' + e.message; }
+</script>
+</body></html>

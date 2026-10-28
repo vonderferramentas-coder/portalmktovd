@@ -36,6 +36,7 @@ export function agendaDoMomento(agora) {
   if (hora % 12 === 0 && minuto === 10) fila.push({ workflow: 'sync-meta-posts.yml' });
   if (hora % 12 === 0 && minuto === 20) fila.push({ workflow: 'sync-meta-facebook-posts.yml' });
   if (hora % 12 === 0 && minuto === 25) fila.push({ workflow: 'sync-youtube-videos.yml' });
+  if (hora % 12 === 0 && minuto === 30) fila.push({ workflow: 'sync-linkedin-posts.yml' });
   // Rotinas diárias (UTC), no mesmo horário do cron de cada workflow, no múltiplo de 5 min mais
   // próximo. As tendências (4 a 15 min) saem às 06:15 para terminar antes das coletas de :35/:40; os
 // fechamentos (02:50/02:55) saem antes das reconstruções e do resto.
@@ -45,6 +46,7 @@ export function agendaDoMomento(agora) {
     '6:15': 'sync-google-trends.yml',
     '7:0': 'backup-portalstore.yml',
     '7:30': 'limpar-artes-salvas.yml',
+    '8:0': 'verificar-credenciais.yml',
     '11:40': 'reconstruir-historico.yml',
     '12:40': 'reconstruir-historico-facebook.yml'
   };
