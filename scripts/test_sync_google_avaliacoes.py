@@ -102,6 +102,41 @@ assert coletor.quando('2026-10-28T14:45:57.123456789Z') == coletor.quando('2026-
 sem_nota = {'2026-10': {'x': coletor.registro({'reviewId': 'x', 'starRating': 'STAR_RATING_UNSPECIFIED', 'createTime': '2026-10-01T00:00:00Z'}, '9')}}
 assert coletor.resumir([{'id': '9', 'title': 'Loja'}], sem_nota, {})[0]['coletadas'] == 1
 
+# repetição: 503 duas vezes e depois sucesso; falha de rede; e desistência quando o erro persiste (1 tentativa + 3 repetições)
+esperas = []
+coletor.time.sleep = esperas.append
+sequencia = [503, 503, 200]
+
+
+def instavel(pedido, timeout=0):
+    status = sequencia.pop(0)
+    if status == 200:
+        return Resposta({'ok': True})
+    raise urllib.error.HTTPError(pedido.full_url, status, 'x', {}, io.BytesIO(b'{"error":{"message":"indisponivel"}}'))
+
+
+urllib.request.urlopen = instavel
+assert coletor.http('https://exemplo/x') == (200, {'ok': True}) and esperas == [10, 30]
+esperas.clear()
+
+
+def sem_rede(pedido, timeout=0):
+    raise urllib.error.URLError('sem rede')
+
+
+urllib.request.urlopen = sem_rede
+status, corpo = coletor.http('https://exemplo/x')
+assert status == 0 and 'falha de rede' in corpo['error']['message'] and esperas == [10, 30, 60]
+esperas.clear()
+sequencia[:] = [404]
+urllib.request.urlopen = instavel
+assert coletor.http('https://exemplo/x')[0] == 404 and esperas == []  # erro do cliente não é repetido
+sequencia[:] = [501]
+assert coletor.http('https://exemplo/x')[0] == 501 and esperas == []  # 5xx permanente (não é instabilidade) também não
+sequencia[:] = [429, 503, 503, 503]
+status, corpo = coletor.http('https://exemplo/x')
+assert status == 503 and corpo['error']['message'] == 'indisponivel' and esperas == [10, 30, 60]  # persistindo, desiste e devolve o último erro
+
 # mensagens de erro nunca levam segredo nem ID de conta/ficha
 assert coletor.mascarar('falhou accounts/123/locations/456 com SEGREDO-DE-TESTE') == 'falhou accounts/***/locations/*** com ***'
 
