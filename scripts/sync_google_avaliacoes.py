@@ -43,18 +43,22 @@ def mascarar(texto):
     return re.sub(r'(accounts|locations)/\d+', r'\1/***', texto.replace('\n', ' '))
 
 
-def http(url, dados=None, cabecalhos=None, repetir=True):
-    pedido = urllib.request.Request(url, data=dados, headers=cabecalhos or {})
-    try:
-        with urllib.request.urlopen(pedido, timeout=30) as resposta:
-            status, corpo = resposta.status, resposta.read()
-    except urllib.error.HTTPError as erro:
-        status, corpo = erro.code, erro.read()
-    except (urllib.error.URLError, OSError) as erro:
-        return 0, {'error': {'message': f'falha de rede: {erro}'}}
-    if status == 429 and repetir:  # cota por minuto: espera e tenta uma vez de novo
-        time.sleep(30)
-        return http(url, dados, cabecalhos, repetir=False)
+def http(url, dados=None, cabecalhos=None):
+    """(status, corpo JSON como dict). Em falha de rede, 429 (cota por minuto) e 5xx (instabilidade do Google, como o 503
+    que derrubou a primeira carga) espera 10, 30 e 60 s e tenta de novo, até 3 vezes."""
+    for espera in (10, 30, 60, 0):
+        pedido = urllib.request.Request(url, data=dados, headers=cabecalhos or {})
+        try:
+            with urllib.request.urlopen(pedido, timeout=30) as resposta:
+                status, corpo = resposta.status, resposta.read()
+        except urllib.error.HTTPError as erro:
+            status, corpo = erro.code, erro.read()
+        except (urllib.error.URLError, OSError) as erro:
+            status, corpo = 0, json.dumps({'error': {'message': f'falha de rede: {erro}'}}).encode()
+        if espera and status in (0, 429, 500, 502, 503, 504):
+            time.sleep(espera)
+            continue
+        break
     try:
         corpo = json.loads(corpo.decode('utf-8'))
     except ValueError:
@@ -101,8 +105,10 @@ def listar_fichas(auth):
     Lista incompleta seria perigosa (o --completo apagaria os blocos das fichas que faltam), por isso segue todas as páginas."""
     fichas = []
     for conta in paginas('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', 'accounts', auth, pageSize=20):
-        for ficha in paginas(f'https://mybusinessbusinessinformation.googleapis.com/v1/{conta["name"]}/locations', 'locations', auth, readMask='name,title', pageSize=100):
-            fichas.append({'conta': conta['name'], 'id': ficha['name'].split('/')[-1], 'title': ficha.get('title', '(sem título)')})
+        for ficha in paginas(f'https://mybusinessbusinessinformation.googleapis.com/v1/{conta["name"]}/locations', 'locations', auth, readMask='name,title,storefrontAddress', pageSize=100):
+            endereco = ficha.get('storefrontAddress') or {}
+            fichas.append({'conta': conta['name'], 'id': ficha['name'].split('/')[-1], 'title': ficha.get('title', '(sem título)'),
+                           'uf': (endereco.get('administrativeArea') or '').strip().upper()[:2], 'cidade': (endereco.get('locality') or '').strip()})
     return fichas
 
 
@@ -153,7 +159,7 @@ def mesclar(meses, novos):
 
 
 def resumir(fichas, meses, metas):
-    por = {f['id']: {'id': f['id'], 'title': f['title'], 'coletadas': 0, 'estrelas': [0] * 5, 'semResposta': 0, 'ultima': '',
+    por = {f['id']: {'id': f['id'], 'title': f['title'], 'uf': f.get('uf', ''), 'cidade': f.get('cidade', ''), 'coletadas': 0, 'estrelas': [0] * 5, 'semResposta': 0, 'ultima': '',
                      'googleTotal': (metas.get(f['id']) or {}).get('total'), 'googleMedia': (metas.get(f['id']) or {}).get('media')} for f in fichas}
     for bloco in meses.values():
         for rec in bloco.values():

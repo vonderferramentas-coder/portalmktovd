@@ -112,6 +112,27 @@ export async function readPortalStore(key) {
   return { v: data.v === undefined ? null : data.v, updated_at: Number(data.updated_at || 0), context };
 }
 
+// Avaliações do Google: coleção própria, só Admin, Gestão e Social Media leem (firestore.rules). Devolve o conteúdo (v) ou null.
+export async function readAvaliacoesGoogle(id) {
+  await currentContext();
+  const snapshot = await getDoc(doc(db, 'avaliacoesGoogle', String(id)));
+  return snapshot.exists() ? snapshot.data().v || null : null;
+}
+
+// Cadastro de vendedores da campanha: só o Admin grava (firestore.rules). Grava a lista inteira numa transação que confere
+// a revisão lida (v.rev): se outra pessoa (ou outra aba) gravou antes, devolve { conflict: true } e nada é sobrescrito.
+export async function writeAvaliacoesGoogleVendedores(itens, revEsperada) {
+  await currentContext();
+  const reference = doc(db, 'avaliacoesGoogle', 'vendedores');
+  return runTransaction(db, async transaction => {
+    const atual = await transaction.get(reference);
+    const rev = atual.exists() ? Number((atual.data().v || {}).rev || 0) : 0;
+    if (rev !== Number(revEsperada || 0)) return { conflict: true };
+    transaction.set(reference, { v: { version: 1, rev: rev + 1, itens }, updated_at: Date.now(), updatedAt: serverTimestamp() });
+    return { conflict: false, rev: rev + 1 };
+  });
+}
+
 export async function deletePortalStore(key) {
   await currentContext();
   await deleteDoc(doc(db, 'portalStore', String(key)));
@@ -463,7 +484,7 @@ export async function deleteQrCode(id) {
 export { app, auth, db, profileFor, audit };
 
 window.PortalFirebase = {
-  readPortalStore, writePortalStore, deletePortalStore, ensurePostsStore, writePost, deletePost, subscribeToPosts,
+  readAvaliacoesGoogle, writeAvaliacoesGoogleVendedores, readPortalStore, writePortalStore, deletePortalStore, ensurePostsStore, writePost, deletePost, subscribeToPosts,
   readArtDraft, writeArtDraft, listArtDrafts, lockArtDraft, releaseArtDraftLock, setArtDraftDeleted, renameArtDraft, writeArtPhoto, readArtPhoto, readArtStats, readBrandLogo, writeBrandLogo, deleteBrandLogo,
   currentContext, logout, requestPasswordReset,
   updateOwnProfile, recordUsageEvent, audit

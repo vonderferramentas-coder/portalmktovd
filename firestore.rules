@@ -86,7 +86,11 @@ service cloud.firestore {
     // calendário. Só estes perfis leem; só o GitHub Actions (Admin SDK) grava.
     match /avaliacoesGoogle/{docId} {
       allow read: if activeUser() && currentUser().role in ['admin', 'gestao', 'social-media'];
-      allow write: if false;
+      // Cadastro de vendedores: só admin; cada gravação sobe a revisão (v.rev) em 1, então ninguém sobrescreve uma versão mais nova.
+      // O resto da coleção só o coletor (Admin SDK) grava.
+      allow create: if docId == 'vendedores' && admin() && request.resource.data.v.itens is list && request.resource.data.v.rev == 1;
+      allow update: if docId == 'vendedores' && admin() && request.resource.data.v.itens is list && request.resource.data.v.rev == resource.data.v.rev + 1;
+      allow delete: if false;
     }
 
     // Páginas públicas /redir/<marca>/<pasta>/index.html (QR rastreável) criam um registro por

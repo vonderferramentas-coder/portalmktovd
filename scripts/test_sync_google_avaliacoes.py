@@ -73,7 +73,7 @@ def google_falso(pedido, timeout=0):
     if 'businessinformation' in url:
         if 'accounts/2' in url:
             return Resposta({'locations': [{'name': 'locations/7', 'title': 'Loja da conta 2'}]})
-        return Resposta({'locations': [{'name': 'locations/9', 'title': 'Loja'}], 'nextPageToken': 'f2'} if 'pageToken' not in consulta else {'locations': [{'name': 'locations/8', 'title': 'Loja B'}]})
+        return Resposta({'locations': [{'name': 'locations/9', 'title': 'Loja', 'storefrontAddress': {'administrativeArea': 'sp ', 'locality': 'Campinas'}}], 'nextPageToken': 'f2'} if 'pageToken' not in consulta else {'locations': [{'name': 'locations/8', 'title': 'Loja B'}]})
     if '/locations/9/' not in url:  # só a ficha 9 tem avaliações no teste
         return Resposta({'totalReviewCount': 0})
     return Resposta(paginas[consulta.get('pageToken', [''])[0]])
@@ -89,6 +89,8 @@ assert 'Avaliações coletadas: 4 (Google informa 4)' in texto and 'Sem resposta
 assert 'Cliente Teste' not in texto and 'accounts/1' not in texto and 'texto n1' not in texto  # o log é público
 
 auth = {'Authorization': 'x'}
+por_id = {f['id']: f for f in coletor.listar_fichas(auth)}
+assert por_id['9']['uf'] == 'SP' and por_id['9']['cidade'] == 'Campinas' and por_id['8']['uf'] == ''  # UF vem do endereço; ficha sem endereço fica sem UF
 ficha = {'conta': 'accounts/1', 'id': '9', 'title': 'Loja'}
 pedidos.clear()
 lidos, _ = coletor.ler_ficha(auth, ficha, coletor.quando('2026-10-01T00:00:00Z'))  # a 1ª página ainda termina depois do corte: pede a 2ª
@@ -101,6 +103,41 @@ assert set(lidos) == {'n1', 'n2'} and len(pedidos) == 1
 assert coletor.quando('2026-10-28T14:45:57.123456789Z') == coletor.quando('2026-10-28T14:45:57.123456Z')
 sem_nota = {'2026-10': {'x': coletor.registro({'reviewId': 'x', 'starRating': 'STAR_RATING_UNSPECIFIED', 'createTime': '2026-10-01T00:00:00Z'}, '9')}}
 assert coletor.resumir([{'id': '9', 'title': 'Loja'}], sem_nota, {})[0]['coletadas'] == 1
+
+# repetição: 503 duas vezes e depois sucesso; falha de rede; e desistência quando o erro persiste (1 tentativa + 3 repetições)
+esperas = []
+coletor.time.sleep = esperas.append
+sequencia = [503, 503, 200]
+
+
+def instavel(pedido, timeout=0):
+    status = sequencia.pop(0)
+    if status == 200:
+        return Resposta({'ok': True})
+    raise urllib.error.HTTPError(pedido.full_url, status, 'x', {}, io.BytesIO(b'{"error":{"message":"indisponivel"}}'))
+
+
+urllib.request.urlopen = instavel
+assert coletor.http('https://exemplo/x') == (200, {'ok': True}) and esperas == [10, 30]
+esperas.clear()
+
+
+def sem_rede(pedido, timeout=0):
+    raise urllib.error.URLError('sem rede')
+
+
+urllib.request.urlopen = sem_rede
+status, corpo = coletor.http('https://exemplo/x')
+assert status == 0 and 'falha de rede' in corpo['error']['message'] and esperas == [10, 30, 60]
+esperas.clear()
+sequencia[:] = [404]
+urllib.request.urlopen = instavel
+assert coletor.http('https://exemplo/x')[0] == 404 and esperas == []  # erro do cliente não é repetido
+sequencia[:] = [501]
+assert coletor.http('https://exemplo/x')[0] == 501 and esperas == []  # 5xx permanente (não é instabilidade) também não
+sequencia[:] = [429, 503, 503, 503]
+status, corpo = coletor.http('https://exemplo/x')
+assert status == 503 and corpo['error']['message'] == 'indisponivel' and esperas == [10, 30, 60]  # persistindo, desiste e devolve o último erro
 
 # mensagens de erro nunca levam segredo nem ID de conta/ficha
 assert coletor.mascarar('falhou accounts/123/locations/456 com SEGREDO-DE-TESTE') == 'falhou accounts/***/locations/*** com ***'
