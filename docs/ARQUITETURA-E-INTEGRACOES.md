@@ -824,7 +824,7 @@ A biblioteca compartilhada usa o `SyncBackend`: índice em `portalStore/consolid
 
 ## 26. Tutorial em tour guiado por tela (27/10/2026)
 
-Pedido da gestão: ensinar cada funcionalidade dentro da própria tela, para quem é novo e para tirar dúvidas. Piloto no Calendário de Postagens (HML); as demais telas entram uma por vez.
+Pedido da gestão: ensinar cada funcionalidade dentro da própria tela, para quem é novo e para tirar dúvidas. Piloto no Calendário de Postagens (HML); depois o Editor de Posts (`portal-tour-editor-posts.js`) e Redes sociais (`portal-tour-redes-sociais.js`, 29/10/2026); as demais telas entram uma por vez.
 
 **Como funciona.** Botão "Como usar" no cabeçalho abre a lista de passeios da tela. O passeio escurece a página, destaca o botão real e explica num balão; nos passos de ação espera o clique da pessoa (ensina fazendo). Ações que apagam ou gravam dados (Excluir, Resetar mês, Salvar) ficam só na explicação, com aviso, e o clique é barrado enquanto o passeio roda. Botão que a pessoa não vê (perfil, marca) faz o passo ser pulado. Na primeira visita a cada tela, a lista abre sozinha uma vez.
 

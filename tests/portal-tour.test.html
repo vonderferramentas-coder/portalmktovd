@@ -14,7 +14,11 @@ const popTitle = () => pop() && pop().querySelector('.tour-pop-title').textConte
 const press = sel => document.querySelector(sel).click();
 
 // Cada tela com passeio: arquivo de textos + arquivos onde os alvos precisam existir.
-const SCREENS = [{ data: '../portal-tour-calendario.js', sources: ['../visual-editor.html', '../app.js', '../portal-tour.js'] }];
+const SCREENS = [
+  { data: '../portal-tour-calendario.js', sources: ['../visual-editor.html', '../app.js', '../portal-tour.js'] },
+  { data: '../portal-tour-editor-posts.js', sources: ['../post-editor.html', '../post-editor.js', '../post-editor-saved-arts.js', '../post-editor-fg-ecommerce.js', '../portal-tour.js'] },
+  { data: '../portal-tour-redes-sociais.js', sources: ['../followers-dashboard.html', '../followers-dashboard.js', '../portal-tour.js'] }
+];
 
 // Um alvo "existe" quando cada id/classe do seletor aparece no HTML (id="x", class="... x ...") ou como texto entre aspas
 // no JS (ex.: $('tabs'), className='event'), e cada [atributo="valor"] aparece literalmente. Pega botão renomeado ou removido.
@@ -47,7 +51,7 @@ function missingTokens(selector, source){
           const where = tour.id + ' passo ' + (i + 1);
           if (!step.title || !step.text) throw new Error(where + ': sem título ou texto');
           if (step.danger && (step.click || step.interact || step.allow)) throw new Error(where + ': ação perigosa não pode ser liberada ao clique');
-          if (step.done && !step.click) throw new Error(where + ': done só vale com click');
+          if (step.done && !step.click && !step.interact) throw new Error(where + ': done só vale com click ou interact');
           if (step.target) eq(missingTokens(step.target, source), [], where + ' (' + step.target + ') existe na tela');
           if (step.allow) eq(missingTokens(step.allow, source), [], where + ' (' + step.allow + ') existe na tela');
         });
@@ -66,6 +70,10 @@ function missingTokens(selector, source){
         { target: '#a', click: true, title: 'Clique A', text: 't' },
         { target: '#b', danger: true, title: 'Perigo', text: 't' },
         { target: '#c', title: 'Fim', text: 't' }
+      ] },
+      { id: 'espera', title: 'Espera', summary: 's', steps: [
+        { target: '#area', interact: true, done: () => doneOk, title: 'Livre com espera', text: 't' },
+        { title: 'Seguiu', text: 't' }
       ] },
       { id: 'travas', title: 'Travas', summary: 's', steps: [
         { target: '#a', click: true, done: () => doneOk, allow: '#area', title: 'Espera', text: 't' },
@@ -99,6 +107,14 @@ function missingTokens(selector, source){
     press('#b'); await wait(50);
     eq(clicks.b, 1, 'sem passeio, a página volta a funcionar');
 
+    doneOk = false; PortalTour.start('espera'); await wait(50);
+    press('.tour-pop [data-act="next"]'); await wait(50);
+    eq(popTitle(), 'Livre com espera', 'interact com done falso: Próximo não avança');
+    eq(pop().querySelector('.tour-pop-hint').hidden, false, 'e explica o motivo');
+    doneOk = true; press('.tour-pop [data-act="next"]'); await wait(100);
+    eq(popTitle(), 'Seguiu', 'com done verdadeiro, avança');
+    PortalTour.stop(); doneOk = false;
+
     PortalTour.start('travas');
     await wait(50);
     press('#a'); await wait(50);
@@ -120,7 +136,7 @@ function missingTokens(selector, source){
     document.body.dataset.authenticated = 'true';
     await wait(1500);
     eq(!!document.querySelector('.tour-menu .tour-menu-intro'), true, 'primeira visita abre a lista com a apresentação');
-    eq(document.querySelectorAll('.tour-menu .tour-menu-item').length, 2, 'lista mostra os passeios da tela');
+    eq(document.querySelectorAll('.tour-menu .tour-menu-item').length, 3, 'lista mostra os passeios da tela');
     eq(writes.map(w => w[0]), ['tour-seen-u1', 'tour-seen-u1'], 'grava no documento do usuário e tenta de novo após conflito');
     eq(writes[1][1], { outra: 1, fake: 2 }, 'mantém o que já existia e grava a versão da tela');
     eq(JSON.parse(localStorage.getItem('portal_tour_seen_v1__u1')), { fake: 2 }, 'cópia no navegador');

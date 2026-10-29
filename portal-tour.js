@@ -7,7 +7,7 @@
  * Cada passo de um passeio: {target, title, text, click, done, interact, allow, danger, when}
  *   target   seletor CSS do elemento real; sem target, o balão aparece no centro da tela
  *   click    o passeio espera a pessoa clicar no elemento (ensina fazendo) e segue sozinho
- *   done     com click: função que confirma que a tela reagiu ao clique; false = fica no passo
+ *   done     função que confirma que a tela reagiu; false = fica no passo (com click, depois do clique; com interact, o "Próximo" só vale quando ela devolve true)
  *   interact a pessoa pode usar o elemento (digitar, marcar) e segue com "Próximo"
  *   allow    seletor de uma área a mais que a pessoa pode usar no passo (ex.: completar o formulário)
  *   danger   ação que apaga ou grava dados: só explica, com aviso, e o clique fica barrado
@@ -155,7 +155,14 @@
     layer.addEventListener('click', ev => {
       const act = ev.target.closest('[data-act]');
       if(!act || !run) return;
-      if(act.dataset.act === 'next') go(run.index + 1, 1);
+      if(act.dataset.act === 'next'){
+        const cur = run.tour.steps[run.index];
+        if(cur.done && !cur.click && !cur.done()){
+          const hint = layer.querySelector('.tour-pop-hint');
+          hint.textContent = 'Ainda falta concluir este passo: faça o que o balão pede para seguir.'; hint.hidden = false;
+          nudge();
+        } else go(run.index + 1, 1);
+      }
       else if(act.dataset.act === 'back') back();
       else stop();
     });
