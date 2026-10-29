@@ -12,6 +12,10 @@ Para arquitetura detalhada (módulos, fluxos, gotchas), veja [docs/CODEBASE_MAP.
 
 Antes de criar ou alterar qualquer tela, leia [DESIGN.md](DESIGN.md) e siga os padrões dele (animação de dropdown e sanfona, tema claro e escuro, cursores, reordenar por arrastar, guias de margem de segurança nas artes). Se um padrão novo for decidido, registre-o lá.
 
+## Tutoriais por tela (tour guiado)
+
+Toda tela com `portal-tour-<tela>.js` tem passeio guiado ("Como usar"). Mudou um botão, texto ou fluxo dessa tela: atualize o passeio na mesma mudança e rode `tests/portal-tour.test.html`, que acusa alvo sumido. Tela nova com passeio entra em `SCREENS` desse teste. Formato dos passos e regras de interface: [DESIGN.md](DESIGN.md) §18.
+
 ## Documentação de arquitetura
 
 Sempre que uma alteração criar, remover ou modificar uma integração externa, serviço hospedado, fluxo automático, fonte de dados, credencial, dependência remota, regra de acesso ou diferencial relevante para a TI, atualize `docs/ARQUITETURA-E-INTEGRACOES.md` na mesma mudança.

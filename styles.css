@@ -343,7 +343,7 @@
     .btn:active:not(:disabled){transform:translateY(1px)}
     .btn:disabled{opacity:.55;cursor:not-allowed}
     /* foco de teclado visível nos controles clicáveis que removem o outline padrão (DESIGN.md §14) */
-    :is(.btn,.btn-icon,.portal-nav-item,.portal-account-menu-item,.toolbar-more-item,.portal-brand-trigger,.view-toggle button):focus-visible{outline:2px solid var(--accent-text);outline-offset:2px}
+    :is(.btn,.btn-icon,.portal-nav-item,.portal-account-menu-item,.toolbar-more-item,.portal-brand-trigger,.view-toggle button,.tour-menu-item,.tour-pop-close):focus-visible{outline:2px solid var(--accent-text);outline-offset:2px}
     .btn.ghost{background:var(--card);color:var(--text);border:1px solid var(--border);font-weight:700}
     .btn.ghost:hover:not(:disabled){background:var(--surface-muted);border-color:var(--border-strong)}
     /* variante "small", usada tanto para botões compactos com texto (Cancelar, Aplicar) quanto para
@@ -1130,3 +1130,45 @@
     /* a sidebar continua rolando (roda do mouse/teclado) quando o dropdown a deixa mais alta que a tela, mas sem a barra, que comia largura e cortava os rótulos */
     .portal-sidebar{scrollbar-width:none}
     .portal-sidebar::-webkit-scrollbar{display:none}
+
+    /* ===== Tour guiado ("Como usar", portal-tour.js) =====
+       Lista de passeios = menu flutuante (camada 1500); passeio = camada 2000, acima de modais e menus.
+       O "buraco" é uma caixa com sombra gigante (escurece o resto) que desliza de um alvo para o outro. */
+    .tour-help-btn svg{flex-shrink:0}
+    .tour-menu{position:fixed;z-index:1500;width:min(340px,calc(100vw - 24px));max-height:min(70vh,520px);overflow:auto;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);animation:tourIn .12s ease both}
+    .tour-menu-kicker{margin:4px 12px 8px;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-text)}
+    .tour-menu-intro{margin:4px 12px 8px;font-size:13px;line-height:1.5;color:var(--text)}
+    .tour-menu-item{display:flex;flex-direction:column;gap:2px;width:100%;padding:10px 12px;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--text);text-align:left;cursor:pointer;transition:background-color .12s}
+    .tour-menu-item:hover{background:var(--surface-muted)}
+    .tour-menu-title{font:700 13px var(--font-ui)}
+    .tour-menu-desc{font-size:12px;line-height:1.4;color:var(--muted)}
+    .tour-menu-foot{display:flex;justify-content:flex-end;margin-top:4px;padding:8px 4px 4px;border-top:1px solid var(--border)}
+    .tour-layer{position:fixed;inset:0;z-index:2000;pointer-events:none}
+    .tour-hole{position:fixed;border-radius:10px;box-shadow:0 0 0 200vmax var(--backdrop);outline:2px solid var(--accent);transition:left .25s ease,top .25s ease,width .25s ease,height .25s ease}
+    .tour-hole.is-empty{outline-color:transparent}
+    .tour-hole.is-click::after{content:"";position:absolute;inset:-2px;border:2px solid var(--accent);border-radius:inherit;animation:tourPulse 1.4s ease-out infinite}
+    .tour-pop{position:fixed;width:min(340px,calc(100vw - 24px));padding:16px 18px;background:var(--card);color:var(--text);border:1px solid var(--border-strong);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);pointer-events:auto;transition:left .25s ease,top .25s ease,opacity .12s ease}
+    .tour-pop:focus{outline:none}
+    .tour-pop.is-in{animation:tourIn .12s ease both}
+    .tour-pop.is-nudge{animation:tourNudge .3s ease}
+    .tour-pop.is-waiting{opacity:0;pointer-events:none}
+    .tour-pop [hidden]{display:none}
+    .tour-pop-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+    .tour-pop-kicker{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-text)}
+    .tour-pop-close{display:grid;place-items:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;transition:background-color .12s,color .12s}
+    .tour-pop-close:hover{background:var(--surface-muted);color:var(--text)}
+    .tour-pop-title{margin:0 0 6px;font:700 16px/1.3 var(--font-display);text-transform:none;letter-spacing:normal;color:var(--text)} /* o h3 global do portal é rótulo em caixa alta */
+    .tour-pop-text{margin:0;font-size:14px;line-height:1.55}
+    .tour-pop-warn{margin:12px 0 0;padding:8px 10px;border:1px solid var(--danger-border);border-radius:var(--radius-sm);background:var(--danger-bg);color:var(--danger);font-size:13px;line-height:1.45}
+    .tour-pop-hint{margin:12px 0 0;font-size:13px;font-weight:700;color:var(--accent-text)}
+    .tour-pop-progress{height:4px;margin:16px 0 12px;border-radius:2px;background:var(--surface-muted);overflow:hidden}
+    .tour-pop-progress span{display:block;height:100%;background:var(--accent);transition:width .25s ease}
+    .tour-pop-foot{display:flex;gap:8px}
+    .tour-pop-foot [data-act="next"]{margin-left:auto}
+    @keyframes tourIn{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
+    @keyframes tourPulse{from{opacity:.9;transform:scale(1)}to{opacity:0;transform:scale(1.15)}}
+    @keyframes tourNudge{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+    @media (prefers-reduced-motion: reduce){
+      .tour-menu,.tour-pop.is-in,.tour-pop.is-nudge,.tour-hole.is-click::after{animation:none}
+      .tour-hole,.tour-pop,.tour-pop-progress span{transition:none}
+    }

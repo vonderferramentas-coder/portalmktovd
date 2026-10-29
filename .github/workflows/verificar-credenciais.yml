@@ -1,0 +1,221 @@
+name: Verificar credenciais
+
+# Confere todo dia as credenciais usadas pelas coletas (LinkedIn, Meta, YouTube, backup, Firebase HML) e grava no
+# Firestore só o estado e a data de vencimento de cada uma (nunca o valor do token), para o card "Credenciais e
+# vencimentos" de Métricas de performance (usage-dashboard.js, só para administradores). O texto de cada credencial
+# (para que serve, como renovar) fica em usage-dashboard.js; aqui só entram os fatos lidos na fonte:
+#  - LinkedIn: o próprio LinkedIn informa a validade do refresh token ao renová-lo;
+#  - Meta: debug_token informa a validade (se a Meta recusar a consulta, só confirma que o token funciona);
+#  - BACKUP_REPO_TOKEN: o GitHub devolve a validade do token no cabeçalho da resposta;
+#  - YouTube (chave e OAuth) e Firebase HML: não têm data legível, só se ainda funcionam;
+#  - token do Cloudflare (GITHUB_DISPATCH_TOKEN): fica só no Worker e não dá para ler; a data vem da variável de
+#    repositório CLOUDFLARE_DISPATCH_TOKEN_EXPIRA (AAAA-MM-DD), preenchida à mão quando o token é criado.
+# O documento usa o prefixo "posts-" só porque o firestore.rules já bloqueia a escrita de usuários nesse prefixo.
+
+on:
+  # Disparado pelo Worker do Cloudflare (cloudflare-agendador.js), uma vez por dia. O gatilho push faz a primeira
+  # verificação sozinha quando este arquivo entra na main (e a cada edição dele).
+  push:
+    branches: [main]
+    paths: ['.github/workflows/verificar-credenciais.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: credenciais
+  cancel-in-progress: false
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verificar e gravar no Firestore
+        env:
+          LINKEDIN_CLIENT_ID: ${{ secrets.LINKEDIN_CLIENT_ID }}
+          LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
+          LINKEDIN_REFRESH_TOKEN: ${{ secrets.LINKEDIN_REFRESH_TOKEN }}
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS: ${{ secrets.META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
+          YOUTUBE_OAUTH_CLIENT_SECRET: ${{ secrets.YOUTUBE_OAUTH_CLIENT_SECRET }}
+          YOUTUBE_OAUTH_REFRESH_TOKEN: ${{ secrets.YOUTUBE_OAUTH_REFRESH_TOKEN }}
+          BACKUP_REPO_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+          FIREBASE_SERVICE_ACCOUNT_KEY_HML: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY_HML }}
+          CLOUDFLARE_DISPATCH_TOKEN_EXPIRA: ${{ vars.CLOUDFLARE_DISPATCH_TOKEN_EXPIRA }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::error::FIREBASE_SERVICE_ACCOUNT_KEY não configurado - sem ele não dá para gravar o resultado.'
+            exit 1
+          fi
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os, time, urllib.error, urllib.parse, urllib.request
+          from datetime import datetime, timedelta, timezone
+
+          now = datetime.now(timezone.utc).replace(microsecond=0)
+          iso = lambda moment: moment.isoformat().replace('+00:00', 'Z')
+          env = lambda name: os.environ.get(name, '').strip()
+          results = {}
+
+          # Nenhum trecho de segredo pode ir para o log nem para o Firestore (o detalhe pode vir de mensagem de erro de API).
+          secret_values = [env(name) for name in ('LINKEDIN_CLIENT_SECRET', 'LINKEDIN_REFRESH_TOKEN', 'META_PAGE_ACCESS_TOKEN', 'META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS',
+                                                  'YOUTUBE_API_KEY', 'YOUTUBE_OAUTH_CLIENT_SECRET', 'YOUTUBE_OAUTH_REFRESH_TOKEN', 'BACKUP_REPO_TOKEN')]
+          def scrub(text):
+              for value in secret_values:
+                  if len(value) >= 8:
+                      text = text.replace(value, '***')
+              return text
+
+          def num(value):  # número vindo de API de terceiros: valor estranho vira 0 em vez de derrubar o job
+              try:
+                  return int(value)
+              except (TypeError, ValueError):
+                  return 0
+
+          # ok: True funciona; False falhou de verdade (recusado pelo serviço); None sem leitura hoje (manual=True: data a informar à mão).
+          def record(key, ok, expires=None, detail='', manual=False):
+              detail = scrub(detail)[:300]
+              results[key] = {'ok': ok, 'expiresAt': iso(expires) if expires else None, 'detail': detail, 'manual': manual}
+              print(f'{key}: {"ok" if ok else "FALHOU" if ok is False else "sem dado"}'
+                    f'{" - vence em " + iso(expires) if expires else ""}{" - " + detail[:120] if detail and ok is not True else ""}')
+
+          def broken(key, status, detail):  # falha de rede ou 5xx do serviço é passageira: não mostra "precisa atualizar"
+              record(key, None if status == 0 or status >= 500 else False, detail=detail)
+
+          def http(url, data=None, headers=None):
+              """(status, cabeçalhos, JSON ou {}) sem levantar erro: o resultado vira registro, não falha do job."""
+              request = urllib.request.Request(url, data=data, headers=headers or {})
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      status, head, body = response.status, response.headers, response.read()
+              except urllib.error.HTTPError as error:
+                  status, head, body = error.code, error.headers, error.read()
+              except (urllib.error.URLError, OSError) as error:
+                  return 0, {}, {'error': f'falha de rede: {error}'}
+              try:
+                  return status, head, json.loads(body.decode('utf-8'))
+              except ValueError:
+                  return status, head, {}
+
+          def form(**fields):
+              return urllib.parse.urlencode(fields).encode()
+
+          try:  # qualquer resposta inesperada de um serviço não pode impedir a gravação do que já foi lido
+              # LinkedIn: ao renovar, o LinkedIn informa quanto falta para o refresh token vencer.
+              if not all(env(n) for n in ('LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET', 'LINKEDIN_REFRESH_TOKEN')):
+                  record('linkedin', False, detail='Segredo do LinkedIn não configurado.')
+              else:
+                  status, _, body = http('https://www.linkedin.com/oauth/v2/accessToken', form(
+                      grant_type='refresh_token', refresh_token=env('LINKEDIN_REFRESH_TOKEN'),
+                      client_id=env('LINKEDIN_CLIENT_ID'), client_secret=env('LINKEDIN_CLIENT_SECRET')),
+                      {'Content-Type': 'application/x-www-form-urlencoded'})
+                  if status == 200 and body.get('access_token'):
+                      left = num(body.get('refresh_token_expires_in'))
+                      record('linkedin', True, now + timedelta(seconds=left) if left > 0 else None,
+                             'Renovação do token funcionando.' if left > 0 else 'Renovação funcionando; o LinkedIn não informou a validade.')
+                  else:
+                      broken('linkedin', status, f'O LinkedIn recusou a renovação (HTTP {status}): {body.get("error", "")} {body.get("error_description", "")}'.strip())
+
+              # Meta: debug_token informa a validade; se recusar, ao menos confirma que o token ainda funciona.
+              for key, name in (('meta-vonder', 'META_PAGE_ACCESS_TOKEN'), ('meta-fg', 'META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS')):
+                  token = env(name)
+                  if not token:
+                      record(key, False, detail=f'Segredo {name} não configurado.')
+                      continue
+                  query = urllib.parse.urlencode({'input_token': token, 'access_token': token})
+                  status, _, body = http(f'https://graph.facebook.com/v26.0/debug_token?{query}')
+                  data = body.get('data') or {}
+                  if status == 200 and data:
+                      if data.get('is_valid') is False:
+                          record(key, False, detail='A Meta informa que o token é inválido (expirado ou revogado).')
+                          continue
+                      # só expires_at é o vencimento do token (0 = não vence); data_access_expires_at é a janela de acesso a dados da Meta, outra coisa, e só entra no texto
+                      expires, access = num(data.get('expires_at')), num(data.get('data_access_expires_at'))
+                      note = f' Janela de acesso a dados da Meta até {datetime.fromtimestamp(access, timezone.utc).date().isoformat()} (não é o vencimento do token).' if access > 0 else ''
+                      record(key, True, datetime.fromtimestamp(expires, timezone.utc) if expires > 0 else None,
+                             'Token válido.' + note if expires > 0 else 'Token válido, sem data de vencimento (a Meta informa 0).' + note)
+                  else:
+                      status, _, body = http(f'https://graph.facebook.com/v26.0/me?{urllib.parse.urlencode({"fields": "id", "access_token": token})}')
+                      if status == 200:
+                          record(key, True, detail='Token funciona, mas a Meta não informou a validade.')
+                      else:
+                          broken(key, status, f'A Meta recusou o token (HTTP {status}): {(body.get("error") or {}).get("message", "")}'.strip())
+
+              # YouTube: chave de API e OAuth não têm data legível; só dá para saber se ainda funcionam.
+              if not env('YOUTUBE_API_KEY'):
+                  record('youtube-key', False, detail='Segredo YOUTUBE_API_KEY não configurado.')
+              else:
+                  status, _, body = http('https://www.googleapis.com/youtube/v3/channels?' + urllib.parse.urlencode({'part': 'id', 'id': 'UCflcAVLpPmH-03R-njMSayw', 'key': env('YOUTUBE_API_KEY')}))
+                  if status == 200:
+                      record('youtube-key', True)
+                  else:
+                      broken('youtube-key', status, f'A API do YouTube recusou a chave (HTTP {status}): {(body.get("error") or {}).get("message", "")}'.strip())
+              if not all(env(n) for n in ('YOUTUBE_OAUTH_CLIENT_ID', 'YOUTUBE_OAUTH_CLIENT_SECRET', 'YOUTUBE_OAUTH_REFRESH_TOKEN')):
+                  record('youtube-oauth', False, detail='Segredo do YouTube OAuth não configurado.')
+              else:
+                  status, _, body = http('https://oauth2.googleapis.com/token', form(
+                      grant_type='refresh_token', refresh_token=env('YOUTUBE_OAUTH_REFRESH_TOKEN'),
+                      client_id=env('YOUTUBE_OAUTH_CLIENT_ID'), client_secret=env('YOUTUBE_OAUTH_CLIENT_SECRET')),
+                      {'Content-Type': 'application/x-www-form-urlencoded'})
+                  if status == 200 and body.get('access_token'):
+                      record('youtube-oauth', True)
+                  else:
+                      broken('youtube-oauth', status, f'O Google recusou a renovação (HTTP {status}): {body.get("error", "")}'.strip())
+
+              # Backup: o GitHub devolve a validade de um token fine-grained no cabeçalho da resposta.
+              if not env('BACKUP_REPO_TOKEN'):
+                  record('github-backup', False, detail='Segredo BACKUP_REPO_TOKEN não configurado.')
+              else:
+                  status, head, body = http('https://api.github.com/repos/vonderferramentas-coder/portalmktovd-backups',
+                                            headers={'Authorization': f'Bearer {env("BACKUP_REPO_TOKEN")}', 'Accept': 'application/vnd.github+json', 'User-Agent': 'portal-mkt-credenciais'})
+                  raw = head.get('github-authentication-token-expiration') if status == 200 else None
+                  try:
+                      expires = datetime.strptime(raw.replace(' UTC', ''), '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc) if raw else None
+                  except ValueError:
+                      expires = None
+                  if status == 200:
+                      record('github-backup', True, expires, 'Token funcionando.' if expires else 'Token funcionando; o GitHub não informou vencimento.')
+                  else:
+                      broken('github-backup', status, f'O GitHub recusou o token (HTTP {status}): {body.get("message", "")}'.strip())
+
+              # Token do Cloudflare: só existe no Worker; a data vem da variável de repositório, preenchida à mão.
+              manual = env('CLOUDFLARE_DISPATCH_TOKEN_EXPIRA')
+              if manual:
+                  try:
+                      record('cloudflare-dispatch', True, datetime.strptime(manual, '%Y-%m-%d').replace(hour=23, minute=59, tzinfo=timezone.utc), 'Data informada à mão na variável CLOUDFLARE_DISPATCH_TOKEN_EXPIRA.')
+                  except ValueError:
+                      record('cloudflare-dispatch', None, detail='A variável CLOUDFLARE_DISPATCH_TOKEN_EXPIRA não está no formato AAAA-MM-DD.', manual=True)
+              else:
+                  record('cloudflare-dispatch', None, detail='Vencimento não informado: preencher a variável de repositório CLOUDFLARE_DISPATCH_TOKEN_EXPIRA (AAAA-MM-DD).', manual=True)
+
+          except Exception as error:
+              print(f'Erro inesperado nas verificações: {type(error).__name__}')
+              record('verificador', None, detail=f'Erro inesperado ao verificar ({type(error).__name__}); as credenciais não lidas aparecem como não verificadas.')
+
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+          firebase_admin.initialize_app(credentials.Certificate(json.loads(env('FIREBASE_SERVICE_ACCOUNT_KEY'))))
+
+          # Firebase HML: confirma que a chave do ambiente de testes ainda abre o banco (a de produção já foi usada para gravar este resultado).
+          if not env('FIREBASE_SERVICE_ACCOUNT_KEY_HML'):
+              record('firebase-hml', False, detail='Segredo FIREBASE_SERVICE_ACCOUNT_KEY_HML não configurado.')
+          else:
+              try:
+                  hml = firebase_admin.initialize_app(credentials.Certificate(json.loads(env('FIREBASE_SERVICE_ACCOUNT_KEY_HML'))), name='hml')
+                  firestore.client(hml).collection('portalStore').document('verificacao-credenciais').get()
+                  record('firebase-hml', True, detail='Chave de serviço do HML abre o banco.')
+              except Exception as error:
+                  record('firebase-hml', False, detail=f'A chave do HML não abriu o banco: {type(error).__name__}.')
+
+          firestore.client().collection('portalStore').document('posts-credenciais-status-v1').set({
+              'v': {'version': 1, 'updatedAt': iso(now), 'items': results},
+              'updated_at': int(time.time() * 1000),
+              'updatedAt': firestore.SERVER_TIMESTAMP,
+          })
+          print(f'Firestore atualizado: {len(results)} credenciais verificadas em {iso(now)}.')
+          PY

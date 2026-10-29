@@ -43,7 +43,7 @@ jobs:
           # Espaço ou quebra de linha colados junto do ID no segredo quebram a URL: fica só com os dígitos.
           ORG_ID="${LINKEDIN_ORGANIZATION_ID//[!0-9]/}"
           test -n "$ORG_ID"
-          test -n "$LINKEDIN_CLIENT_ID" && test -n "$LINKEDIN_CLIENT_SECRET" && test -n "$LINKEDIN_REFRESH_TOKEN"
+          if [ -z "$LINKEDIN_CLIENT_ID" ] || [ -z "$LINKEDIN_CLIENT_SECRET" ] || [ -z "$LINKEDIN_REFRESH_TOKEN" ]; then echo '::error::Segredo LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET ou LINKEDIN_REFRESH_TOKEN não configurado.'; exit 1; fi
           cd "$RUNNER_TEMP"
           code=$(curl -sS -o refresh.json -w '%{http_code}' -X POST 'https://www.linkedin.com/oauth/v2/accessToken' \
             -H 'Content-Type: application/x-www-form-urlencoded' \

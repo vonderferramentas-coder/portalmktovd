@@ -229,7 +229,7 @@ Regra para código novo:
 
 Valores em uso hoje, do menor para o maior: conteúdo interno 1–6; dropdowns de página 20–50; `.modal-backdrop` 60; autocomplete 80; popovers de marca/ícone 200; lightbox 500; modais de status e menus de evento 1000–1005; gavetas 1100–1200; menus ⋮ 1500; fantasma de arrastar 2000; toasts do Consolidado/Marcas 3000.
 
-Problema conhecido: o `.portal-notice` global está em 120, **abaixo** de menus e modais de status. Para código novo, use estas camadas: dropdown **50**, modal **1000**, menu flutuante **1500**, fantasma de arrastar **2000**, toast **3000**. Não invente valor novo entre elas.
+Problema conhecido: o `.portal-notice` global está em 120, **abaixo** de menus e modais de status. Para código novo, use estas camadas: dropdown **50**, modal **1000**, menu flutuante **1500**, fantasma de arrastar **2000**, toast **3000**. Não invente valor novo entre elas. O tour guiado (§18) usa **2000**, a camada do fantasma: precisa ficar acima de modais e menus, e os dois nunca aparecem juntos (o tour barra o arrasto).
 
 ## 14. Acessibilidade
 
@@ -271,3 +271,15 @@ Corrigidas em 21/10/2026, para referência: `.btn:disabled` sem `pointer-events:
 
 - Submenu do **Gerador** no menu lateral (`.portal-nav-sub` em `styles.css`): abre com `display: none` ↔ `flex`, sem animação.
 - Demais `<details>`, menus e sanfonas das outras telas: auditar um a um.
+
+## 18. Tour guiado ("Como usar")
+
+Decidido em 27/10/2026 com a gestão; piloto no Calendário. Motor em `portal-tour.js`, textos em `portal-tour-<tela>.js`, estilo na seção "Tour guiado" de `styles.css`.
+
+- **Entrada:** botão `.btn.ghost` "Como usar" (ícone de interrogação) no começo de `.page-header-actions`; tela sem esse bloco marca o lugar com `data-tour-slot`. Abre a lista de passeios da tela (menu flutuante do §1, camada 1500). Na primeira visita a cada tela a lista abre sozinha uma vez, com uma frase de apresentação e "Agora não".
+- **Passeio:** a página escurece (`--backdrop`) e um "buraco" com contorno `--accent` destaca o elemento real; ele desliza de um alvo para o outro (`.25s ease`). Balão (`--card`, `--radius-lg`, 340px) com antetítulo = nome do passeio, título, texto, barra de progresso e Voltar / Próximo (Concluir no último). Esc ou × sai a qualquer momento.
+- **Tipos de passo:** explicação (Próximo); **clique** (o passeio espera a pessoa clicar no botão destacado, que pulsa, e segue sozinho; com `done`, só segue se a tela reagiu); **uso livre** (`interact`: a pessoa pode digitar/marcar no alvo); **perigo** (`danger`: Excluir, Resetar, Salvar ficam só na explicação, com aviso vermelho `--danger*`).
+- **Proteção:** enquanto o passeio roda, cliques e arrastos fora do balão e do alvo liberado são barrados (o balão balança para avisar). Voltar não atravessa um passo de clique (o que o clique abriu continua aberto).
+- **Robustez:** alvo que não aparece (perfil, marca, lista vazia) faz o passo ser pulado; prefira `id` estável como alvo. `tests/portal-tour.test.html` falha quando um alvo some.
+- **Texto:** português direto, para quem nunca viu a tela; uma ação por passo; diga o que o botão faz e quando usar. Passos de 1 a 3 frases. Passeio por tarefa (curto), não um passeio único longo.
+- **Movimento reduzido:** sem deslize, pulso nem balanço.

@@ -1,0 +1,133 @@
+<!doctype html><meta charset="utf-8"><title>Teste do tour guiado (portal-tour.js)</title>
+<link rel="stylesheet" href="../styles.css">
+<style>*,*::before,*::after{transition:none!important;animation:none!important}</style><!-- o teste confere posições, não animação -->
+<body data-result="running">
+<div class="page-header-actions" style="margin:40px"><button id="a" type="button">A</button><button id="b" type="button">B</button><button id="c" type="button">C</button><div id="area"><input id="field"></div></div>
+<p id="status">Executando…</p>
+<script src="../portal-tour.js"></script>
+<script>
+const eq = (actual, expected, label) => { if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(label + ': esperado ' + JSON.stringify(expected) + ', veio ' + JSON.stringify(actual)); };
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+const read = path => { const xhr = new XMLHttpRequest(); xhr.open('GET', path, false); xhr.send(); return xhr.responseText; };
+const pop = () => document.querySelector('.tour-pop');
+const popTitle = () => pop() && pop().querySelector('.tour-pop-title').textContent;
+const press = sel => document.querySelector(sel).click();
+
+// Cada tela com passeio: arquivo de textos + arquivos onde os alvos precisam existir.
+const SCREENS = [{ data: '../portal-tour-calendario.js', sources: ['../visual-editor.html', '../app.js', '../portal-tour.js'] }];
+
+// Um alvo "existe" quando cada id/classe do seletor aparece no HTML (id="x", class="... x ...") ou como texto entre aspas
+// no JS (ex.: $('tabs'), className='event'), e cada [atributo="valor"] aparece literalmente. Pega botão renomeado ou removido.
+function missingTokens(selector, source){
+  const missing = [];
+  (selector.match(/[#.][\w-]+/g) || []).forEach(token => {
+    const name = token.slice(1), w = name.replace(/[-]/g, '\\-');
+    const inHtml = token[0] === '#' ? new RegExp('id="' + w + '"').test(source) : new RegExp('class="[^"]*\\b' + w + '\\b[^"]*"').test(source);
+    const inJs = new RegExp('[\'"`][^\'"`\\n]*\\b' + w + '\\b[^\'"`\\n]*[\'"`]').test(source);
+    if (!inHtml && !inJs) missing.push(token);
+  });
+  (selector.match(/\[[^\]]+\]/g) || []).forEach(attr => { if (!source.includes(attr.slice(1, -1))) missing.push(attr); });
+  return missing;
+}
+
+(async () => {
+  try {
+    // 1) Alvos e regras dos textos de cada tela
+    SCREENS.forEach(screen => {
+      const registered = [];
+      new Function('PortalTour', read(screen.data))({ register: (id, def) => registered.push(Object.assign({ id }, def)) });
+      eq(registered.length, 1, screen.data + ' registra uma tela');
+      const source = screen.sources.map(read).join('\n');
+      const ids = new Set();
+      registered[0].tours.forEach(tour => {
+        if (!tour.id || !tour.title || !tour.summary || !tour.steps.length) throw new Error('passeio incompleto: ' + tour.id);
+        if (ids.has(tour.id)) throw new Error('id de passeio repetido: ' + tour.id);
+        ids.add(tour.id);
+        tour.steps.forEach((step, i) => {
+          const where = tour.id + ' passo ' + (i + 1);
+          if (!step.title || !step.text) throw new Error(where + ': sem título ou texto');
+          if (step.danger && (step.click || step.interact || step.allow)) throw new Error(where + ': ação perigosa não pode ser liberada ao clique');
+          if (step.done && !step.click) throw new Error(where + ': done só vale com click');
+          if (step.target) eq(missingTokens(step.target, source), [], where + ' (' + step.target + ') existe na tela');
+          if (step.allow) eq(missingTokens(step.allow, source), [], where + ' (' + step.allow + ') existe na tela');
+        });
+      });
+    });
+
+    // 2) Motor numa página falsa (sem login: a oferta automática fica esperando até o fim do teste)
+    localStorage.removeItem('portal_tour_seen_v1__u1');
+    const clicks = { a: 0, b: 0 }; let doneOk = false;
+    document.getElementById('a').addEventListener('click', () => clicks.a++);
+    document.getElementById('b').addEventListener('click', () => clicks.b++);
+    PortalTour.register('fake', { version: 2, title: 'Tela falsa', tours: [
+      { id: 'basico', title: 'Básico', summary: 's', steps: [
+        { title: 'Centro', text: 't' },
+        { target: '#nao-existe', title: 'Some', text: 't' },
+        { target: '#a', click: true, title: 'Clique A', text: 't' },
+        { target: '#b', danger: true, title: 'Perigo', text: 't' },
+        { target: '#c', title: 'Fim', text: 't' }
+      ] },
+      { id: 'travas', title: 'Travas', summary: 's', steps: [
+        { target: '#a', click: true, done: () => doneOk, allow: '#area', title: 'Espera', text: 't' },
+        { title: 'Depois', text: 't' }
+      ] }
+    ] });
+    eq(document.querySelector('.page-header-actions').firstElementChild.id, 'tourHelpBtn', 'botão "Como usar" entra no começo do cabeçalho');
+
+    PortalTour.start('basico');
+    eq(popTitle(), 'Centro', 'passo sem alvo aparece no centro');
+    eq(pop().querySelector('[data-act="back"]').hidden, true, 'primeiro passo não tem Voltar');
+    press('.tour-pop [data-act="next"]'); await wait(600);
+    eq(popTitle(), 'Clique A', 'passo com alvo que não existe é pulado');
+    eq(pop().querySelector('[data-act="next"]').hidden, true, 'passo de clique não tem Próximo');
+    press('#b'); await wait(50);
+    eq(clicks.b, 0, 'clique fora do alvo é barrado');
+    press('#a'); await wait(100);
+    eq([clicks.a, popTitle()], [1, 'Perigo'], 'clique no alvo chega à tela e avança');
+    eq(pop().querySelector('.tour-pop-warn').hidden, false, 'passo perigoso mostra o aviso');
+    eq(pop().querySelector('[data-act="back"]').hidden, true, 'não volta para trás de um passo de clique');
+    press('#b'); await wait(50);
+    eq(clicks.b, 0, 'ação perigosa fica barrada');
+    press('.tour-pop [data-act="next"]'); await wait(50);
+    eq([popTitle(), pop().querySelector('[data-act="next"]').textContent], ['Fim', 'Concluir'], 'último passo conclui');
+    const hole = document.querySelector('.tour-hole').getBoundingClientRect(), c = document.getElementById('c').getBoundingClientRect();
+    eq([hole.left, hole.top, hole.width, hole.height].map(Math.round), [c.left - 6, c.top - 6, c.width + 12, c.height + 12].map(Math.round), 'destaque envolve o alvo com folga de 6px');
+    press('.tour-pop [data-act="back"]'); await wait(50);
+    eq(popTitle(), 'Perigo', 'Voltar retorna ao passo anterior');
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    eq(document.querySelector('.tour-layer'), null, 'Esc encerra o passeio');
+    press('#b'); await wait(50);
+    eq(clicks.b, 1, 'sem passeio, a página volta a funcionar');
+
+    PortalTour.start('travas');
+    await wait(50);
+    press('#a'); await wait(50);
+    eq(popTitle(), 'Espera', 'clique sem a tela reagir (done falso) fica no passo');
+    let fieldClicks = 0; document.getElementById('field').addEventListener('click', () => fieldClicks++);
+    press('#field'); press('#c'); await wait(20);
+    eq(fieldClicks, 1, 'área liberada (allow) pode ser usada; o resto continua barrado');
+    doneOk = true; press('#a'); await wait(100);
+    eq(popTitle(), 'Depois', 'com a tela reagindo, avança');
+    PortalTour.stop();
+
+    // 3) Oferta na primeira visita e "já viu" gravado no portalStore (Firebase falso, com um conflito de versão)
+    const writes = [];
+    window.PortalFirebase = {
+      currentContext: async () => ({ user: { uid: 'u1' } }),
+      readPortalStore: async () => ({ v: { outra: 1 }, updated_at: writes.length }),
+      writePortalStore: async (key, value, version) => { writes.push([key, value, version]); return { conflict: writes.length === 1 }; }
+    };
+    document.body.dataset.authenticated = 'true';
+    await wait(1500);
+    eq(!!document.querySelector('.tour-menu .tour-menu-intro'), true, 'primeira visita abre a lista com a apresentação');
+    eq(document.querySelectorAll('.tour-menu .tour-menu-item').length, 2, 'lista mostra os passeios da tela');
+    eq(writes.map(w => w[0]), ['tour-seen-u1', 'tour-seen-u1'], 'grava no documento do usuário e tenta de novo após conflito');
+    eq(writes[1][1], { outra: 1, fake: 2 }, 'mantém o que já existia e grava a versão da tela');
+    eq(JSON.parse(localStorage.getItem('portal_tour_seen_v1__u1')), { fake: 2 }, 'cópia no navegador');
+    press('[data-later]');
+    eq(document.querySelector('.tour-menu'), null, '"Agora não" fecha a lista');
+
+    document.body.dataset.result = 'pass'; document.getElementById('status').textContent = 'ok';
+  } catch (e) { document.body.dataset.result = 'fail'; document.getElementById('status').textContent = e.message; }
+})();
+</script>

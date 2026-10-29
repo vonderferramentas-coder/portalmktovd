@@ -1,0 +1,168 @@
+name: Reconstruir histórico LinkedIn
+
+# Carga única, como reconstruir-historico-youtube.yml. A API do LinkedIn não devolve "quantos seguidores a
+# página tinha em tal dia", só os seguidores NOVOS por dia (organicFollowerGain + paidFollowerGain) e só dos
+# últimos ~12 meses. Aqui o passado é reconstruído a partir do total de hoje, voltando dia a dia e subtraindo os
+# ganhos. A API não informa quem deixou de seguir, então os números antigos ficam um pouco abaixo do real e o erro
+# cresce quanto mais longe: por isso cada dia criado leva "source": "reconstruido".
+#
+# Por padrão é um ensaio: só lê e mostra o resultado no resumo da execução, sem gravar nada. Marcando "gravar",
+# acrescenta os dias que faltam em portalStore/followers-grupo-ovd-v1 (nunca mexe em dia que já tem LinkedIn).
+# Os dias reais coletados por sync-linkedin-followers.yml sempre prevalecem. Seguro rodar de novo.
+
+on:
+  # Roda sozinho (e grava) quando este arquivo entra na main, para a carga acontecer sem ninguém clicar. É seguro
+  # repetir: nunca mexe em dia que já tem LinkedIn. Para um ensaio sem gravar, rodar à mão deixando "gravar" desmarcado.
+  push:
+    branches: [main]
+    paths: ['.github/workflows/reconstruir-historico-linkedin.yml']
+  workflow_dispatch:
+    inputs:
+      gravar:
+        description: 'Gravar no painel (desmarcado = só ensaio: mostra o resultado no resumo, sem gravar)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Mesmo grupo da coleta: as duas leem e regravam o mesmo documento do Firestore, então esperam uma a outra.
+concurrency:
+  group: linkedin-followers
+  cancel-in-progress: false
+
+jobs:
+  reconstruir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Consultar o LinkedIn
+        env:
+          LINKEDIN_CLIENT_ID: ${{ secrets.LINKEDIN_CLIENT_ID }}
+          LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
+          LINKEDIN_REFRESH_TOKEN: ${{ secrets.LINKEDIN_REFRESH_TOKEN }}
+          LINKEDIN_ORGANIZATION_ID: ${{ secrets.LINKEDIN_ORGANIZATION_ID }}
+          LINKEDIN_VERSION: '202604'
+        run: |
+          set -euo pipefail
+          ORG_ID="${LINKEDIN_ORGANIZATION_ID//[!0-9]/}"
+          test -n "$ORG_ID"
+          if [ -z "$LINKEDIN_CLIENT_ID" ] || [ -z "$LINKEDIN_CLIENT_SECRET" ] || [ -z "$LINKEDIN_REFRESH_TOKEN" ]; then echo '::error::Segredo LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET ou LINKEDIN_REFRESH_TOKEN não configurado.'; exit 1; fi
+          cd "$RUNNER_TEMP"
+          code=$(curl -sS -o refresh.json -w '%{http_code}' -X POST 'https://www.linkedin.com/oauth/v2/accessToken' \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            --data-urlencode 'grant_type=refresh_token' \
+            --data-urlencode "refresh_token=$LINKEDIN_REFRESH_TOKEN" \
+            --data-urlencode "client_id=$LINKEDIN_CLIENT_ID" \
+            --data-urlencode "client_secret=$LINKEDIN_CLIENT_SECRET")
+          if [ "$code" != '200' ]; then
+            echo "::error::O LinkedIn recusou a renovação do token (HTTP $code): $(jq -c '{error, error_description}' refresh.json 2>/dev/null)"
+            exit 1
+          fi
+          token=$(jq -er '.access_token' refresh.json)
+          echo "::add-mask::$token"
+          chamar() { # $1 = arquivo de saída, $2 = URL
+            local http
+            http=$(curl -g -sS -o "$1" -w '%{http_code}' "$2" \
+              -H "Authorization: Bearer $token" \
+              -H "LinkedIn-Version: $LINKEDIN_VERSION" \
+              -H 'X-Restli-Protocol-Version: 2.0.0')
+            if [ "$http" != '200' ]; then
+              echo "::error::Consulta ao LinkedIn falhou (HTTP $http): $(jq -c '{status, code, message}' "$1" 2>/dev/null)"
+              exit 1
+            fi
+          }
+          urn="urn%3Ali%3Aorganization%3A$ORG_ID"
+          chamar total.json "https://api.linkedin.com/rest/networkSizes/$urn?edgeType=COMPANY_FOLLOWED_BY_MEMBER"
+          echo "FOLLOWERS=$(jq -er '.firstDegreeSize | numbers' total.json)" >> "$GITHUB_ENV"
+          # Ganhos por dia (UTC) dos últimos 364 dias, até hoje 00:00 UTC (hoje, incompleto, fica de fora).
+          hoje=$(date -u -d "$(date -u +%F)" +%s)
+          fim=$(( hoje * 1000 ))
+          inicio=$(( (hoje - 364 * 86400) * 1000 ))
+          chamar ganhos.json "https://api.linkedin.com/rest/organizationalEntityFollowerStatistics?q=organizationalEntity&organizationalEntity=$urn&timeIntervals=(timeRange:(start:$inicio,end:$fim),timeGranularityType:DAY)"
+
+      - name: Reconstruir o histórico
+        env:
+          GRAVAR: ${{ github.event_name == 'push' || inputs.gravar }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          if [ "$GRAVAR" = 'true' ]; then
+            if [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then echo '::error::FIREBASE_SERVICE_ACCOUNT_KEY não configurado - sem ele não dá para gravar.'; exit 1; fi
+            pip install --quiet firebase-admin
+          fi
+          python3 - <<'PY'
+          import json, os, sys, time
+          from datetime import datetime, timedelta, timezone
+
+          tmp = os.environ['RUNNER_TEMP']
+          total_now = int(os.environ['FOLLOWERS'])
+          resumo = open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8')
+          def say(text):
+              print(text)
+              resumo.write(text + '\n')
+
+          gains = {}
+          for element in json.load(open(f'{tmp}/ganhos.json', encoding='utf-8')).get('elements', []):
+              day = datetime.fromtimestamp(element['timeRange']['start'] / 1000, timezone.utc).date()
+              g = element.get('followerGains') or {}
+              gains[day] = gains.get(day, 0) + int(g.get('organicFollowerGain') or 0) + int(g.get('paidFollowerGain') or 0)
+
+          say('## Reconstruir histórico LinkedIn (Grupo OVD)')
+          if not gains:
+              say('- **A API não devolveu nenhum dia.** Nada a reconstruir (a camada Development pode não liberar o histórico).')
+              sys.exit(1)
+
+          # De ontem (UTC) para trás: o total de hoje vale para o fim de ontem (ignora os poucos seguidores novos de
+          # hoje, que a API ainda não fechou, então tudo fica levemente acima do real); cada dia anterior é o total
+          # menos o ganho do dia seguinte. Dia sem registro na resposta conta como ganho zero.
+          # Os dias são UTC; o painel usa dias de São Paulo (diferença de 3 h, desprezível diante da aproximação).
+          first, last = min(gains), datetime.now(timezone.utc).date() - timedelta(days=1)
+          values, value, day = {}, total_now, last
+          while day >= first:
+              values[day.isoformat()] = value
+              value -= gains.get(day, 0)  # dia sem registro = nenhum ganho
+              day -= timedelta(days=1)
+
+          oldest = min(values)
+          say(f'- Dias devolvidos pela API: {len(gains)} (de {first.isoformat()} a {max(gains).isoformat()}; pedidos 364), soma dos ganhos: {sum(gains.values())}')
+          if len(gains) < 350:
+              say(f'- **Atenção:** a API devolveu só {len(gains)} dos 364 dias pedidos; o histórico gravado seria mais curto (ou com buracos tratados como ganho zero).')
+          say(f'- Total de hoje: {total_now}; estimativa em {oldest}: {values[oldest]}')
+          say(f'- Ganhos dos últimos 30 dias devolvidos: {sum(gains.get(last - timedelta(days=i), 0) for i in range(30))} (conferir com a análise de seguidores da página no LinkedIn)')
+          if values[oldest] <= 0 or min(values.values()) <= 0:
+              say('- **Total reconstruído chegou a zero ou negativo: dado incoerente, nada será gravado.**')
+              sys.exit(1)
+
+          if os.environ.get('GRAVAR') != 'true':
+              say('- Ensaio: **nada foi gravado.** Para gravar, rodar de novo marcando "gravar".')
+              sys.exit(0)
+
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+          firebase_admin.initialize_app(credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY'])))
+          reference = firestore.client().collection('portalStore').document('followers-grupo-ovd-v1')
+          snapshot = reference.get()
+          if not snapshot.exists:
+              say('- **O documento do painel ainda não existe**: rodar antes "Sincronizar seguidores LinkedIn".')
+              sys.exit(1)
+          current = (snapshot.to_dict() or {}).get('v') or {}
+          published = current.get('published') or {'version': 2, 'history': []}
+          history = {item['date']: item for item in published.get('history', []) if item.get('date')}
+          added = filled = 0
+          for date, number in values.items():
+              entry = history.get(date)
+              if entry is None:
+                  history[date] = {'date': date, 'followers': {'LinkedIn': number}, 'source': 'reconstruido'}
+                  added += 1
+              elif 'LinkedIn' not in (entry.get('followers') or {}):
+                  entry['followers'] = dict(entry.get('followers') or {}, LinkedIn=number)
+                  filled += 1
+          published.update({'version': 2, 'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'),
+                            'history': [history[date] for date in sorted(history)]})
+          reference.set({
+              'v': dict(current, published=published),
+              'updated_at': int(time.time() * 1000),
+              'updatedAt': firestore.SERVER_TIMESTAMP,
+          })
+          say(f'- **Gravado:** {added} dias novos e {filled} dias completados com o LinkedIn; dias que já tinham LinkedIn ficaram como estavam.')
+          PY
