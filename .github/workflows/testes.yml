@@ -114,6 +114,13 @@ jobs:
           cat /tmp/avaliacoes-vendedores-dump.html
           grep -q 'data-result="pass"' /tmp/avaliacoes-vendedores-dump.html
 
+      - name: Avaliações do Google — mapa de lojas (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --allow-file-access-from-files --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 --dump-dom "file://$(pwd)/tests/avaliacoes-google-mapa.test.html" > /tmp/avaliacoes-mapa-dump.html
+          cat /tmp/avaliacoes-mapa-dump.html
+          grep -q 'data-result="pass"' /tmp/avaliacoes-mapa-dump.html
+
       - name: Calendário — importar planilha e regra do Planejamento (Chrome headless)
         run: |
           CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"

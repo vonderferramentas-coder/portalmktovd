@@ -46,24 +46,68 @@ button.ag-tile:hover{border-color:var(--accent-ink)}
 
 @media (max-width:760px){.ag-filters label,.ag-filters select{width:100%}.ag-grid{grid-template-columns:1fr}}
 
-.ag-form{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
-.ag-form label,.ag-colar{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
-.ag-form label{display:flex;flex-direction:column;gap:4px;flex:1 1 180px}
-.ag-form input,.ag-vend input:not([type]),.ag-colar textarea{height:var(--control-h);padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:600 14px var(--font-ui);text-transform:none;letter-spacing:0}
-.ag-colar textarea{display:block;width:100%;height:auto;padding:10px 12px;margin:8px 0}
-.ag-colar{margin-top:12px}
-.ag-colar summary{cursor:pointer}
-.ag-form input:focus-visible,.ag-vend input:focus-visible,.ag-colar textarea:focus-visible{border-color:var(--accent-ink);outline:none;box-shadow:0 0 0 3px var(--accent-weak)}
-.ag-vendlist{margin:0;padding:0;list-style:none}
-.ag-vend{display:grid;grid-template-columns:minmax(200px,1.2fr) minmax(220px,1.5fr) auto auto;align-items:center;gap:8px 12px;padding:8px 0;border-top:1px solid var(--border);font-size:13px}
-.ag-vend:first-child{border-top:0}
+/* Aba Vendedores: lojas em cartões, vendedores numa grade de 3 colunas; edição em modal do portal */
+.ag-vtopo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.ag-vtopo .ag-note{margin:0}
+.ag-mais{flex:0 0 auto;gap:6px}
+.ag-mais[aria-expanded="true"] .ag-ico{transform:rotate(180deg)}
+.ag-ico{display:inline-flex;transition:transform .25s ease}
+.ag-mapa-layout.is-sozinho{grid-template-columns:1fr}.ag-mapa-layout{display:grid;grid-template-columns:minmax(300px,6fr) 6fr;gap:12px;align-items:start;margin-bottom:16px}
+.ag-vendlist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.ag-vend{display:flex;align-items:center;gap:6px;padding:8px 8px 8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px}
 .ag-vend.is-off .ag-vend-nome strong{color:var(--muted);text-decoration:line-through}
-.ag-vend-nome{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
-.ag-check{display:flex;align-items:center;gap:6px;font-weight:700;cursor:pointer}
+.ag-vend-nome{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;overflow-wrap:anywhere}
+.ag-iconbtn{flex:0 0 auto;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
+.ag-iconbtn:hover{background:var(--surface-muted);color:var(--text)}
+.ag-iconbtn.is-danger:hover{background:var(--danger-bg);color:var(--danger)}
+.ag-iconbtn:focus-visible,.ag-menu-item:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+@media (max-width:900px){.ag-mapa-layout{grid-template-columns:1fr}}
+@media (max-width:700px){.ag-vtopo{flex-direction:column;align-items:stretch}}
+
+/* Menu flutuante "Mais ações" (DESIGN §1) */
+.ag-menu{position:fixed;z-index:1500;min-width:200px;padding:6px;border:1px solid var(--border-strong);border-radius:var(--radius-md);background:var(--card);box-shadow:var(--shadow-lg);opacity:0;transform:translateY(-4px) scale(.98);transform-origin:top right;transition:opacity .12s,transform .12s}
+.ag-menu.is-open{opacity:1;transform:none}
+.ag-menu-item{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--text);font:700 13px var(--font-ui);text-align:left;cursor:pointer;transition:background .12s}
+.ag-menu-item:hover{background:var(--surface-muted)}
+@media (prefers-reduced-motion:reduce){.ag-ico,.ag-menu{transition:none}}
+
+/* Campos dos modais */
+.modal-form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.ag-campo{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.ag-campo input,.modal-body textarea{width:100%;box-sizing:border-box;height:var(--control-h);padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:600 14px var(--font-ui);text-transform:none;letter-spacing:0}
+.modal-body textarea{display:block;height:auto;padding:10px 12px}
+.ag-campo input:focus-visible,.modal-body textarea:focus-visible{border-color:var(--accent-ink);outline:none;box-shadow:0 0 0 3px var(--accent-weak)}
+.ag-ajuda{margin:0 0 12px;font-size:13px;line-height:1.5;color:var(--muted)}
+.ag-check{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;font-weight:700;cursor:pointer}
 .ag-check input{width:16px;height:16px;cursor:pointer;accent-color:var(--accent)}
-@media (max-width:760px){.ag-vend{grid-template-columns:1fr auto}.ag-vend>input{grid-column:1/-1}}
+.ag-erro{margin:0;font-size:13px;font-weight:700;color:var(--danger)}
 
 #agTabs{flex-shrink:0}
 #agTabs button{white-space:nowrap}
-#abaVendedores .ag-note{margin:0 0 12px}
-#abaVendedores .ag-panel{margin-bottom:12px}
+#abaVendedores .ag-panel h2{display:flex;align-items:baseline;gap:8px;font-size:16px;font-weight:800;color:var(--text);text-transform:none;letter-spacing:0}
+
+/* Mapa das lojas (SVG): contorno dos estados e pings coloridos pela faixa de nota */
+.ag-loja-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.ag-loja-topo h2{margin:0}
+.ag-loja+.ag-loja{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+.ag-mapa-card.card{background:none;border:0;box-shadow:none;padding:0}
+.ag-mapa{display:block;width:100%;height:auto;max-height:640px}
+.ag-uf{fill:var(--card);stroke:var(--muted);stroke-width:2;stroke-linejoin:round}
+.ag-ping{cursor:pointer;outline:none}
+.ag-pin{fill:var(--accent);stroke:var(--card);stroke-width:3;stroke-linejoin:round;filter:drop-shadow(0 3px 3px rgba(0,0,0,.3));transition:stroke .12s}
+:root[data-theme="dark"] .ag-pin{stroke:#f1f2f4;stroke-width:2.5}
+.ag-ping:hover .ag-pin,.ag-ping:focus-visible .ag-pin{stroke:var(--text)}
+.ag-ping.is-sel .ag-pin{stroke:var(--text);stroke-width:5}
+.ag-ping.is-vazio .ag-pin{fill:var(--muted)}
+.ag-status{stroke:var(--card);stroke-width:3}
+.ag-status.is-ok,.ag-dot.is-ok{fill:var(--success);background:var(--success)}
+.ag-status.is-atencao,.ag-dot.is-atencao{fill:#F6BE00;background:#F6BE00}
+.ag-status.is-ruim,.ag-dot.is-ruim{fill:var(--danger);background:var(--danger)}
+.ag-ping-num{font:800 23px var(--font-ui);fill:var(--on-accent);pointer-events:none}
+.ag-ping.is-vazio .ag-ping-num{fill:#fff}
+.ag-ping-nome{font:700 28px var(--font-ui);fill:var(--text);paint-order:stroke;stroke:var(--bg);stroke-width:6px;stroke-linejoin:round;pointer-events:none}
+.ag-ping-fio{stroke:var(--muted);stroke-width:2}
+.ag-ping-ponto{fill:var(--muted)}
+.ag-legenda{display:flex;flex-wrap:wrap;gap:4px 14px;margin:8px 0 0;font-size:12px;color:var(--muted)}
+.ag-legenda span{display:inline-flex;align-items:center;gap:5px}
+.ag-dot{width:10px;height:10px;border-radius:50%;display:inline-block}

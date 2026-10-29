@@ -3,7 +3,7 @@
 <body data-result="running">RUNNING
 <script type="module">
 // Exige --allow-file-access-from-files no Chrome (import de módulo via file://).
-import { lerColado, adicionar, nomesAmbiguos, apelidosDoTexto, ordenar, idDe } from '../avaliacoes-google-vendedores.js';
+import { lerColado, adicionar, nomesAmbiguos, apelidosDoTexto, ordenar, idDe, paraCsv } from '../avaliacoes-google-vendedores.js';
 
 const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${msg}: esperado ${JSON.stringify(b)}, veio ${JSON.stringify(a)}`); };
 
@@ -31,6 +31,9 @@ try {
   l[1].ativo = false;
   eq([...nomesAmbiguos(l)], [], 'demitido deixa de gerar ambiguidade');
   eq(ordenar(l).map(v => v.id), ['4', '1', '2', '3'], 'ordem: loja, ativos primeiro, nome');
+  const csv = paraCsv([{ loja: 'Curitiba', nome: '=Ana; Silva', apelidos: ['Lisboa', 'Ana'], ativo: false }]);
+  eq(csv, '\uFEFFLoja;Vendedor;Apelidos;Ativo\r\nCuritiba;\'=Ana Silva;Lisboa, Ana;Não\r\n', 'CSV com BOM, sem ; dentro do campo e sem fórmula');
+  eq(lerColado(csv).map(x => x.loja + '|' + x.nome), ["Curitiba|'=Ana Silva"], 'exportado pode ser reimportado (cabeçalho pulado)');
   document.body.dataset.result = 'pass'; document.body.textContent = 'PASS';
 } catch (e) { document.body.dataset.result = 'fail'; document.body.textContent = 'FAIL ' + e.message; }
 </script>

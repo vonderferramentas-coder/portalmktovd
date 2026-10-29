@@ -1,10 +1,11 @@
 import { classificar, porPrioridade, HORAS_ATRASO } from './avaliacoes-google-regras.js';
-import { lerColado, adicionar, apelidosDoTexto, nomesAmbiguos, ordenar } from './avaliacoes-google-vendedores.js';
+import { lerColado, adicionar, apelidosDoTexto, nomesAmbiguos, ordenar, idDe, paraCsv, chave } from './avaliacoes-google-vendedores.js';
+import { desenharMapa, lojaDaFicha, LOJAS } from './avaliacoes-google-mapa.js';
 
 const $ = id => document.getElementById(id);
 const PAGINA = 20;
 const NIVEIS = { critica: 'Crítica', atencao: 'Atenção', elogio: 'Elogio' };
-const state = { resumo: null, fichas: new Map(), blocos: {}, visiveis: PAGINA, vendedores: [], rev: 0, fila: Promise.resolve(), geracao: 0, formulario: null, podeEditar: false, mensagem: '', lendo: {}, seq: 0 };
+const state = { resumo: null, fichas: new Map(), blocos: {}, visiveis: PAGINA, vendedores: [], rev: 0, fila: Promise.resolve(), geracao: 0, menu: null, lojaSel: '', lojaMapa: '', podeEditar: false, mensagem: '', lendo: {}, seq: 0 };
 
 // Monta nós com textContent: o texto das avaliações vem de terceiros e nunca entra como HTML.
 function h(tag, props = {}, ...filhos) {
@@ -63,9 +64,29 @@ function barra(rotulo, parte, valor) {
   return h('div', { class: 'ag-bar' }, h('span', {}, rotulo), h('i', {}, h('b', { style: `width:${parte * 100}%` })), h('em', {}, valor));
 }
 
-function renderGeral(itens) {
-  const recs = itens.map(i => i.rec);
-  if (!recs.length) { $('abaGeral').replaceChildren(h('p', { class: 'list-empty' }, 'Nenhuma avaliação neste filtro.')); return; }
+const FAIXAS = [['ok', 4.6, '4,6 ou mais'], ['atencao', 4.2, '4,2 a 4,5'], ['ruim', 0.1, 'abaixo de 4,2']];
+function escolherLojaMapa(k) { state.lojaMapa = state.lojaMapa === k ? '' : k; atualizar(); }
+
+// Mapa com a nota média de cada loja no período e filtros atuais ("base" = sem o filtro do próprio mapa, para os outros pings não sumirem ao clicar em um).
+function painelMapa(base) {
+  const lojas = new Set([...state.fichas.values()].map(lojaDaFicha).filter(Boolean));
+  if (!lojas.size) return null;
+  const porLoja = {};
+  base.forEach(i => { const k = lojaDaFicha(i.ficha); if (k) (porLoja[k] ||= []).push(i.rec); });
+  const pings = [...lojas].map(k => {
+    const notas = (porLoja[k] || []).filter(r => r.s >= 1), m = notas.length ? notas.reduce((t, r) => t + r.s, 0) / notas.length : 0;
+    return { chave: k, nome: LOJAS[k].nome, texto: media(notas), status: m ? FAIXAS.find(f => Math.round(m * 10) / 10 >= f[1])[0] : '', vazio: !m,
+      dica: notas.length ? `${LOJAS[k].nome}: nota média ${media(notas)} em ${notas.length} avaliações` : `${LOJAS[k].nome}: sem avaliações neste filtro` };
+  });
+  return h('div', { class: 'card ag-panel ag-mapa-card' },
+    h('div', { class: 'ag-loja-topo' }, h('h2', {}, 'Nota média por loja'), state.lojaMapa && h('button', { type: 'button', class: 'btn ghost small', onclick: () => escolherLojaMapa('') }, 'Ver todas as lojas')),
+    desenharMapa({ pings, selecionada: state.lojaMapa, aoEscolher: escolherLojaMapa }),
+    h('p', { class: 'ag-legenda' }, h('span', {}, 'Bolinha no pin:'), ...FAIXAS.map(([cor, , texto]) => h('span', {}, h('i', { class: `ag-dot is-${cor}` }), texto)), h('span', {}, 'Clique numa loja para filtrar esta visão.')));
+}
+
+function renderGeral(itens, base) {
+  const recs = itens.map(i => i.rec), mapa = painelMapa(base);
+  if (!recs.length) { $('abaGeral').replaceChildren(...[mapa, h('p', { class: 'list-empty' }, 'Nenhuma avaliação neste filtro.')].filter(Boolean)); return; }
   const criticas = itens.filter(i => i.cls.nivel === 'critica' && !i.rec.r).length;
   const atrasadas = itens.filter(i => i.cls.atrasada).length;
   const tiles = h('div', { class: 'ag-tiles' },
@@ -89,8 +110,8 @@ function renderGeral(itens) {
     h('small', {}, [ficha.cidade, ficha.uf].filter(Boolean).join(' / ') || 'Sem endereço'),
     h('small', { class: 'ag-num' }, `${rs.length} avaliações · ${rs.filter(r => !r.r).length} sem resposta`)));
 
-  $('abaGeral').replaceChildren(tiles, h('div', { class: 'ag-grid' },
-    painel('Notas', estrelas), painel('Por mês (quantidade · nota média)', mensal), painel('Por ficha', h('ul', { class: 'ag-rows' }, fichas))));
+  $('abaGeral').replaceChildren(tiles, h('div', { class: 'ag-mapa-layout' + (mapa ? '' : ' is-sozinho') }, ...[mapa, painel('Por ficha', h('ul', { class: 'ag-rows' }, fichas))].filter(Boolean)),
+    h('div', { class: 'ag-grid' }, painel('Notas', estrelas), painel('Por mês (quantidade · nota média)', mensal)));
 }
 
 function cartao({ rec, cls, ficha }) {
@@ -122,12 +143,11 @@ async function carregarVendedores() {
 }
 
 // As gravações entram numa fila (uma por vez, sempre da lista mais recente) e conferem a revisão; falha ou conflito recarrega o cadastro.
-// "redesenhar: false" (apelidos) só troca a mensagem: redesenhar no blur engoliria o clique seguinte do usuário.
 const resumoVendedores = mensagem => `${state.vendedores.filter(v => v.ativo).length} ativos de ${state.vendedores.length} vendedores. ` + (mensagem || 'O primeiro nome já conta nas citações; use apelidos para o que o cliente costuma escrever (ex.: Lisboa).');
 
-function salvarVendedores(lista, mensagem, redesenhar = true) {
+function salvarVendedores(lista, mensagem) {
   state.vendedores = lista; state.mensagem = mensagem;
-  if (redesenhar) renderVendedores(); else $('agVendMsg').textContent = resumoVendedores(mensagem);
+  renderVendedores();
   const geracao = state.geracao;
   state.fila = state.fila.then(async () => {
     if (geracao !== state.geracao) return; // uma gravação anterior falhou e o cadastro foi recarregado: esta edição se perdeu
@@ -142,61 +162,162 @@ function salvarVendedores(lista, mensagem, redesenhar = true) {
   });
 }
 
-const alterar = (id, mudanca, mensagem, redesenhar) => salvarVendedores(state.vendedores.map(v => v.id === id ? { ...v, ...mudanca } : v), mensagem, redesenhar);
+const icone = (paths, tamanho = 15) => { const s = h('span', { class: 'ag-ico', 'aria-hidden': 'true' }); s.innerHTML = window.PortalShell.svgIcon(paths, tamanho); return s; }; // SVG fixo do próprio código, nunca texto de terceiros
+const ICONES = {
+  lapis: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  lixeira: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/>',
+  mais: '<path d="M12 5v14M5 12h14"/>',
+  subir: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
+  baixar: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+  seta: '<path d="m6 9 6 6 6-6"/>',
+  fechar: '<path d="M18 6 6 18"/><path d="M6 6l12 12"/>'
+};
 
-function formularioVendedor() {
-  const campo = (rotulo, no) => h('label', {}, rotulo, no);
-  const loja = h('input', { list: 'agLojas', required: '', placeholder: 'Ex.: Curitiba' });
-  const nome = h('input', { required: '', placeholder: 'Nome completo' });
+// Modal do portal (.modal-backdrop + .modal): o corpo rola, cabeçalho e rodapé ficam fixos. "aoSalvar" devolve um texto de erro (o modal continua aberto) ou nada (fecha).
+function abrirModal({ titulo, corpo, salvar = 'Salvar', perigo = false, aoSalvar }) {
+  const erro = h('p', { class: 'ag-erro', role: 'alert', hidden: '' });
+  const fechar = () => { backdrop.style.display = 'none'; backdrop.remove(); };
+  const enviar = e => { e.preventDefault(); const msg = aoSalvar(); if (msg) { erro.textContent = msg; erro.hidden = false; } else fechar(); };
+  const x = h('button', { type: 'button', class: 'modal-close', 'aria-label': 'Fechar', onclick: fechar });
+  x.append(icone(ICONES.fechar));
+  const backdrop = h('div', { class: 'modal-backdrop' }, h('div', { class: 'modal modal--narrow', role: 'dialog', 'aria-modal': 'true' },
+    h('div', { class: 'modal-header' }, h('h2', {}, titulo), h('div', { class: 'modal-header-actions' }, x)),
+    h('form', { class: 'modal-form', novalidate: '', onsubmit: enviar },
+      h('div', { class: 'modal-body' }, ...corpo, erro),
+      h('div', { class: 'modal-footer' },
+        h('button', { type: 'button', class: 'btn ghost', onclick: fechar }, 'Cancelar'),
+        h('button', { type: 'submit', class: perigo ? 'btn ghost danger' : 'btn' }, salvar)))));
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) fechar(); });
+  document.body.append(backdrop);
+  window.PortalShell.wireModalA11y(backdrop, fechar);
+  backdrop.style.display = 'flex';
+}
+
+const campo = (rotulo, no) => h('label', { class: 'ag-campo' }, rotulo, no);
+
+function modalAdicionar() {
+  const lojas = h('datalist', { id: 'agLojas' }, ...[...new Set(state.vendedores.map(v => v.loja))].sort().map(l => h('option', { value: l })));
+  const loja = h('input', { list: 'agLojas', placeholder: 'Ex.: Curitiba', autocomplete: 'off' });
+  const nome = h('input', { placeholder: 'Nome completo' });
   const apelidos = h('input', { placeholder: 'Ex.: Lisboa, Samuel' });
-  const colado = h('textarea', { rows: '5', placeholder: 'Cole aqui as duas colunas da planilha (Loja e Vendedor), uma pessoa por linha.' });
-  const adicionarUm = e => {
+  abrirModal({ titulo: 'Adicionar vendedor', salvar: 'Adicionar', corpo: [campo('Loja', loja), lojas, campo('Nome', nome), campo('Apelidos', apelidos)],
+    aoSalvar: () => {
+      if (!loja.value.trim() || !nome.value.trim()) return 'Informe a loja e o nome.';
+      const r = adicionar(state.vendedores, [{ loja: loja.value, nome: nome.value, apelidos: apelidosDoTexto(apelidos.value) }]);
+      if (!r.adicionados) return 'Esse vendedor já está no cadastro dessa loja.';
+      salvarVendedores(r.lista, 'Vendedor adicionado.');
+    } });
+}
+
+function modalImportar() {
+  const colado = h('textarea', { rows: '8', placeholder: 'Cole aqui as duas colunas da planilha (Loja e Vendedor), uma pessoa por linha.' });
+  abrirModal({ titulo: 'Importar planilha', salvar: 'Importar', corpo: [h('p', { class: 'ag-ajuda' }, 'Copie as colunas Loja e Vendedor do Excel e cole abaixo. Quem já está no cadastro é ignorado.'), colado],
+    aoSalvar: () => {
+      const novos = lerColado(colado.value);
+      if (!novos.length) return 'Não encontrei linhas com loja e vendedor. Cole as duas colunas, uma pessoa por linha.';
+      const r = adicionar(state.vendedores, novos);
+      salvarVendedores(r.lista, `${r.adicionados} adicionado(s); ${r.repetidos} já estavam no cadastro.`);
+    } });
+}
+
+function modalEditar(v) {
+  const nome = h('input', { value: v.nome });
+  const apelidos = h('input', { placeholder: 'Ex.: Lisboa, Samuel', value: v.apelidos.join(', ') });
+  const ativo = h('input', { type: 'checkbox', ...(v.ativo ? { checked: '' } : {}) });
+  abrirModal({ titulo: 'Editar vendedor',
+    corpo: [h('p', { class: 'ag-ajuda' }, `Loja: ${v.loja}`), campo('Nome', nome), campo('Apelidos (separados por vírgula)', apelidos),
+      h('label', { class: 'ag-check' }, ativo, 'Vendedor ativo'),
+      h('p', { class: 'ag-ajuda' }, 'Desativar tira o vendedor das contagens novas, mas mantém o cadastro (use para quem saiu da empresa).')],
+    aoSalvar: () => {
+      const novoNome = nome.value.trim();
+      if (!novoNome) return 'Informe o nome.';
+      const id = idDe(v.loja, novoNome);
+      if (id !== v.id && state.vendedores.some(x => x.id === id)) return 'Já existe um vendedor com esse nome nessa loja.';
+      salvarVendedores(state.vendedores.map(x => x.id === v.id ? { ...x, id, nome: novoNome, apelidos: apelidosDoTexto(apelidos.value), ativo: ativo.checked } : x), 'Vendedor atualizado.');
+    } });
+}
+
+function modalRemover(v) {
+  abrirModal({ titulo: 'Remover vendedor', salvar: 'Remover', perigo: true,
+    corpo: [h('p', { class: 'ag-ajuda' }, `Remover ${v.nome} (${v.loja}) do cadastro? Se ele só saiu da empresa, prefira desativar em Editar: assim o histórico fica.`)],
+    aoSalvar: () => salvarVendedores(state.vendedores.filter(x => x.id !== v.id), 'Vendedor removido.') });
+}
+
+function exportarLista() {
+  const link = h('a', { href: URL.createObjectURL(new Blob([paraCsv(ordenar(state.vendedores))], { type: 'text/csv;charset=utf-8' })), download: `vendedores-fg-${new Date().toISOString().slice(0, 10)}.csv` });
+  document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+
+// Menu flutuante (DESIGN §1): position fixed, fecha com Esc, clique fora, rolagem e redimensionamento.
+function menuMaisAcoes(botao) {
+  if (state.menu) { state.menu(); return; }
+  const itens = [state.podeEditar && ['Adicionar vendedor', ICONES.mais, modalAdicionar], state.podeEditar && ['Importar planilha', ICONES.subir, modalImportar], ['Exportar lista', ICONES.baixar, exportarLista]].filter(Boolean);
+  const menu = h('div', { class: 'ag-menu', role: 'menu' }, ...itens.map(([texto, ic, fn]) => {
+    const b = h('button', { type: 'button', role: 'menuitem', class: 'ag-menu-item', onclick: () => { fechar(); fn(); } });
+    b.append(icone(ic), texto);
+    return b;
+  }));
+  const fechar = () => {
+    state.menu = null; menu.remove(); botao.setAttribute('aria-expanded', 'false'); botao.focus();
+    document.removeEventListener('pointerdown', fora); document.removeEventListener('keydown', tecla);
+    window.removeEventListener('scroll', fechar, true); window.removeEventListener('resize', fechar);
+  };
+  const fora = e => { if (!menu.contains(e.target) && !botao.contains(e.target)) fechar(); };
+  const tecla = e => {
+    if (e.key === 'Escape') { e.preventDefault(); fechar(); return; }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     e.preventDefault();
-    const r = adicionar(state.vendedores, [{ loja: loja.value, nome: nome.value, apelidos: apelidosDoTexto(apelidos.value) }]);
-    if (r.adicionados) e.target.reset();
-    salvarVendedores(r.lista, r.adicionados ? 'Vendedor adicionado.' : 'Esse vendedor já está no cadastro dessa loja.');
+    const bs = [...menu.querySelectorAll('button')], i = bs.indexOf(document.activeElement);
+    bs[(i + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length].focus();
   };
-  const importar = () => {
-    const r = adicionar(state.vendedores, lerColado(colado.value));
-    colado.value = '';
-    salvarVendedores(r.lista, `${r.adicionados} adicionado(s); ${r.repetidos} já estavam no cadastro.`);
-  };
-  return h('div', { class: 'card ag-panel' }, h('h2', {}, 'Adicionar vendedor'),
-    h('form', { class: 'ag-form', onsubmit: adicionarUm }, campo('Loja', loja), campo('Nome', nome), campo('Apelidos', apelidos), h('button', { type: 'submit', class: 'btn' }, 'Adicionar')),
-    h('datalist', { id: 'agLojas' }),
-    h('details', { class: 'ag-colar' }, h('summary', {}, 'Colar vários de uma planilha'), colado, h('button', { type: 'button', class: 'btn ghost', onclick: importar }, 'Importar')));
+  state.menu = fechar;
+  document.body.append(menu);
+  const r = botao.getBoundingClientRect();
+  menu.style.top = `${r.bottom + 6}px`; menu.style.right = `${document.documentElement.clientWidth - r.right}px`;
+  botao.setAttribute('aria-expanded', 'true');
+  requestAnimationFrame(() => menu.classList.add('is-open'));
+  menu.querySelector('button').focus();
+  document.addEventListener('pointerdown', fora); document.addEventListener('keydown', tecla);
+  window.addEventListener('scroll', fechar, true); window.addEventListener('resize', fechar);
+}
+
+function botaoIcone(ic, rotulo, aoClicar, extra = '') {
+  const b = h('button', { type: 'button', class: 'ag-iconbtn' + extra, 'aria-label': rotulo, title: rotulo, onclick: aoClicar });
+  b.append(icone(ic, 15));
+  return b;
 }
 
 function linhaVendedor(v, ambiguos) {
-  const apelidos = h('input', { 'aria-label': `Apelidos de ${v.nome}`, placeholder: 'Apelidos, separados por vírgula (ex.: Lisboa)', value: v.apelidos.join(', ') });
-  apelidos.addEventListener('change', () => alterar(v.id, { apelidos: apelidosDoTexto(apelidos.value) }, 'Apelidos salvos.', false));
-  const ativo = h('input', { type: 'checkbox', ...(v.ativo ? { checked: '' } : {}) });
-  ativo.addEventListener('change', () => alterar(v.id, { ativo: ativo.checked }, ativo.checked ? 'Vendedor reativado.' : 'Vendedor desativado: sai das contagens novas, mas continua no cadastro.'));
-  let armado = false;
-  const remover = e => {
-    const botao = e.currentTarget;
-    if (armado) { salvarVendedores(state.vendedores.filter(x => x.id !== v.id), 'Vendedor removido.'); return; }
-    armado = true; botao.textContent = 'Confirmar remoção'; botao.classList.add('danger');
-    setTimeout(() => { armado = false; botao.textContent = 'Remover'; botao.classList.remove('danger'); }, 4000);
-  };
+  const detalhe = [!v.ativo && 'Inativo', v.apelidos.length && `Apelidos: ${v.apelidos.join(', ')}`].filter(Boolean).join(' · ');
   return h('li', { class: 'ag-vend' + (v.ativo ? '' : ' is-off') },
-    h('div', { class: 'ag-vend-nome' }, h('strong', {}, v.nome), !v.ativo && h('span', { class: 'ag-meta' }, 'Inativo'),
-      ambiguos.has(v.id) && h('span', { class: 'ag-chip is-atencao' }, 'Primeiro nome repetido na loja: use apelidos')),
-    state.podeEditar ? apelidos : h('span', { class: 'ag-meta' }, v.apelidos.join(', ') || 'Sem apelidos'),
-    state.podeEditar && h('label', { class: 'ag-check' }, ativo, 'Ativo'),
-    state.podeEditar && h('button', { type: 'button', class: 'btn ghost small', onclick: remover }, 'Remover'));
+    h('div', { class: 'ag-vend-nome' }, h('strong', {}, v.nome), detalhe && h('span', { class: 'ag-meta' }, detalhe),
+      ambiguos.has(v.id) && h('span', { class: 'ag-chip is-atencao' }, 'Primeiro nome repetido: use apelidos')),
+    ...(state.podeEditar ? [botaoIcone(ICONES.lapis, `Editar ${v.nome}`, () => modalEditar(v)), botaoIcone(ICONES.lixeira, `Remover ${v.nome}`, () => modalRemover(v), ' is-danger')] : []));
 }
 
 function renderVendedores() {
   const ambiguos = nomesAmbiguos(state.vendedores), porLoja = {};
   ordenar(state.vendedores).forEach(v => (porLoja[v.loja] ||= []).push(v));
-  const formulario = state.podeEditar && (state.formulario ||= formularioVendedor());
-  formulario && formulario.querySelector('datalist').replaceChildren(...[...new Set(state.vendedores.map(v => v.loja))].sort().map(l => h('option', { value: l })));
+  const lojas = Object.entries(porLoja);
+  if (state.lojaSel && !lojas.some(([l]) => chave(l) === state.lojaSel)) state.lojaSel = '';
+  const escolher = k => { state.lojaSel = state.lojaSel === k ? '' : k; renderVendedores(); };
+  const mais = h('button', { type: 'button', class: 'btn ghost ag-mais', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: e => menuMaisAcoes(e.currentTarget) }, 'Mais ações');
+  mais.append(icone(ICONES.seta, 14));
+  const pings = lojas.map(([loja, lista]) => { const n = lista.filter(v => v.ativo).length; return { chave: chave(loja), nome: loja, texto: String(n), vazio: !n, dica: `${loja}: ${n} vendedor(es) ativo(s)` }; });
+  const semPosicao = lojas.map(([l]) => l).filter(l => !LOJAS[chave(l)]);
+  const mapa = h('div', { class: 'card ag-panel ag-mapa-card' }, h('h2', {}, 'Lojas no mapa'),
+    desenharMapa({ pings, selecionada: state.lojaSel, aoEscolher: escolher }),
+    h('p', { class: 'ag-legenda' }, h('span', {}, 'O número é a quantidade de vendedores ativos. Clique numa loja para ver só ela.')),
+    semPosicao.length > 0 && h('p', { class: 'ag-ajuda' }, `Sem posição no mapa (cidade ainda não cadastrada): ${semPosicao.join(', ')}.`));
+  const mostrar = state.lojaSel ? lojas.filter(([l]) => chave(l) === state.lojaSel) : lojas;
+  const lista = h('div', { class: 'card ag-panel ag-lista-lojas' }, ...mostrar.map(([loja, vs]) => h('section', { class: 'ag-loja' },
+    h('div', { class: 'ag-loja-topo' }, h('h2', {}, loja, h('span', { class: 'ag-meta' }, `${vs.filter(v => v.ativo).length} ativos`)),
+      state.lojaSel && h('button', { type: 'button', class: 'btn ghost small', onclick: () => escolher(state.lojaSel) }, 'Ver todas as lojas')),
+    h('ul', { class: 'ag-vendlist' }, vs.map(v => linhaVendedor(v, ambiguos))))));
   $('abaVendedores').replaceChildren(...[
-    h('p', { class: 'ag-note', role: 'status', id: 'agVendMsg' }, resumoVendedores(state.mensagem)),
-    formulario,
-    !state.vendedores.length && h('p', { class: 'list-empty' }, 'Nenhum vendedor cadastrado ainda.'),
-    ...Object.entries(porLoja).map(([loja, lista]) => h('div', { class: 'card ag-panel' }, h('h2', {}, `${loja} (${lista.filter(v => v.ativo).length} ativos)`), h('ul', { class: 'ag-vendlist' }, lista.map(v => linhaVendedor(v, ambiguos)))))].filter(Boolean));
+    h('div', { class: 'ag-vtopo' }, h('p', { class: 'ag-note', role: 'status', id: 'agVendMsg' }, resumoVendedores(state.mensagem)), mais),
+    state.vendedores.length ? h('div', { class: 'ag-mapa-layout' }, mapa, lista) : h('p', { class: 'list-empty' }, 'Nenhum vendedor cadastrado ainda.')].filter(Boolean));
 }
 
 async function atualizar() {
@@ -211,8 +332,8 @@ async function atualizar() {
   if (minha !== state.seq) return;
   $('agStatus').hidden = true; $('agConteudo').hidden = false;
   state.visiveis = PAGINA;
-  const itens = filtradas();
-  renderGeral(itens); renderFila(itens);
+  const base = filtradas(), itens = state.lojaMapa ? base.filter(i => lojaDaFicha(i.ficha) === state.lojaMapa) : base;
+  renderGeral(itens, base); renderFila(base); // o clique no mapa filtra só a Visão geral
 }
 
 function trocarAba(aba) {

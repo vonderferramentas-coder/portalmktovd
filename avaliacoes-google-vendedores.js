@@ -33,3 +33,7 @@ export function nomesAmbiguos(lista) {
 }
 
 export const ordenar = lista => [...lista].sort((a, b) => a.loja.localeCompare(b.loja, 'pt-BR') || b.ativo - a.ativo || a.nome.localeCompare(b.nome, 'pt-BR'));
+
+// Planilha para exportar (CSV com ";" e BOM, que o Excel abre direto). Reimportável: lerColado lê as duas primeiras colunas e pula o cabeçalho.
+const celula = t => { const x = String(t).replace(/[;"\s]+/g, ' ').trim(); return /^[=+\-@]/.test(x) ? "'" + x : x; }; // "'" na frente: o Excel não executa texto como fórmula
+export const paraCsv = lista => '\uFEFF' + ['Loja;Vendedor;Apelidos;Ativo', ...lista.map(v => [v.loja, v.nome, v.apelidos.join(', '), v.ativo ? 'Sim' : 'Não'].map(celula).join(';'))].join('\r\n') + '\r\n';

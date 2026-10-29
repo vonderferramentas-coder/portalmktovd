@@ -1,0 +1,43 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Teste do mapa de lojas</title></head>
+<body data-result="running">RUNNING
+<script type="module">
+// Exige --allow-file-access-from-files no Chrome (import de módulo via file://).
+import { LOJAS, projetar, lojaDaFicha, desenharMapa } from '../avaliacoes-google-mapa.js';
+import { PROJECAO, ESTADOS } from '../avaliacoes-google-mapa-dados.js';
+
+const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${msg}: esperado ${JSON.stringify(b)}, veio ${JSON.stringify(a)}`); };
+
+try {
+  eq(Object.keys(ESTADOS), ['PR', 'SC', 'RS'], 'três estados no contorno');
+
+  // geografia: Porto Alegre fica ao sul e a oeste de Joinville; Curitiba entre os dois no eixo norte-sul
+  const p = k => projetar(LOJAS[k].lat, LOJAS[k].lon);
+  if (!(p('porto alegre')[1] > p('curitiba')[1] && p('curitiba')[1] > 0)) throw new Error('Porto Alegre deve ficar abaixo de Curitiba');
+  if (!(p('joinville')[0] > p('curitiba')[0] && p('joinville')[1] > p('curitiba')[1])) throw new Error('Joinville fica a leste e ao sul de Curitiba');
+  Object.keys(LOJAS).forEach(k => {
+    const [x, y] = p(k);
+    if (x < 0 || y < 0 || x > PROJECAO.largura || y > PROJECAO.altura) throw new Error(`${k} fora do desenho`);
+  });
+
+  // ficha do Google -> loja, pelo título ou pela cidade, com apelido ("POA") e sem confundir
+  eq(lojaDaFicha({ title: 'FG Curitiba' }), 'curitiba', 'título com a cidade');
+  eq(lojaDaFicha({ title: 'Ferramentas Gerais POA' }), 'porto alegre', 'apelido POA');
+  eq(lojaDaFicha({ title: 'Loja 3', cidade: 'Caxias do Sul' }), 'caxias do sul', 'cidade da ficha');
+  eq(lojaDaFicha({ title: 'FG São Paulo', cidade: 'São Paulo' }), '', 'cidade fora da tabela');
+  eq(lojaDaFicha({ title: 'Joinvillense Pioneiro' }), '', 'palavra inteira, não pedaço');
+
+  // desenho: um ping por loja conhecida (a desconhecida fica de fora) e clique chama o callback
+  const clicados = [];
+  const svg = desenharMapa({ pings: [{ chave: 'curitiba', nome: 'Curitiba', texto: '3', cor: 'ok', dica: 'x' }, { chave: 'sao paulo', nome: 'SP', texto: '1', cor: 'ok', dica: 'y' }], selecionada: 'curitiba', aoEscolher: k => clicados.push(k) });
+  eq(svg.querySelectorAll('.ag-ping').length, 1, 'só a loja conhecida vira ping');
+  eq(svg.querySelectorAll('.ag-uf').length, 3, 'três estados desenhados');
+  eq(svg.querySelector('.ag-ping').getAttribute('aria-pressed'), 'true', 'selecionado marcado');
+  svg.querySelector('.ag-ping').dispatchEvent(new MouseEvent('click'));
+  svg.querySelector('.ag-ping').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+  eq(clicados, ['curitiba', 'curitiba'], 'clique e Enter escolhem a loja');
+
+  document.body.dataset.result = 'pass'; document.body.textContent = 'PASS';
+} catch (e) { document.body.dataset.result = 'fail'; document.body.textContent = 'FAIL ' + e.message; }
+</script>
+</body></html>
