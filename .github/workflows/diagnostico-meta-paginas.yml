@@ -1,0 +1,66 @@
+name: Diagnóstico das Páginas e Instagram da Meta (token de usuário)
+
+# Lista todas as Páginas do Facebook (e o Instagram profissional ligado a cada uma) que o
+# usuário dono do META_USER_ACCESS_TOKEN administra, para cadastrar várias marcas de uma vez
+# sem caçar IDs à mão. Não grava nada e não faz commit; só escreve no resumo da execução.
+# O token vai no cabeçalho Authorization; a única exceção é o debug_token, que a Meta exige
+# em input_token na URL (o GitHub mascara o segredo nos logs e a resposta não o repete). Os
+# tokens de cada Página nunca são pedidos (o campo access_token fica fora de "fields"), então
+# nada sigiloso aparece no resumo. Sem curl -f de propósito: a Meta explica o erro no corpo.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Listar Páginas e Instagram alcançados pelo token
+        env:
+          META_USER_ACCESS_TOKEN: ${{ secrets.META_USER_ACCESS_TOKEN }}
+        run: |
+          set -uo pipefail
+          API="https://graph.facebook.com/v26.0"
+          test -n "$META_USER_ACCESS_TOKEN" || { echo 'Segredo META_USER_ACCESS_TOKEN não cadastrado.' >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+
+          consultar () {
+            titulo="$1"
+            url="$2"
+            {
+              echo "### $titulo"
+              echo ''
+              echo '```json'
+            } >> "$GITHUB_STEP_SUMMARY"
+            if resposta="$(curl -sS --max-time 30 -H "Authorization: Bearer $META_USER_ACCESS_TOKEN" "$url")"; then
+              printf '%s\n' "$resposta" | jq '.' 2>/dev/null | head -c 12000 >> "$GITHUB_STEP_SUMMARY" \
+                || printf '%s\n' "$resposta" | head -c 4000 >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo 'A chamada falhou antes de receber resposta.' >> "$GITHUB_STEP_SUMMARY"
+            fi
+            {
+              echo ''
+              echo '```'
+              echo ''
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          echo "## Páginas e Instagram que este token alcança" >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+
+          consultar "Quem é o dono do token" \
+            "$API/me?fields=id,name"
+
+          consultar "Páginas administradas (id, nome, seguidores, Instagram ligado e a que Portfólio Empresarial pertencem)" \
+            "$API/me/accounts?limit=100&fields=id,name,followers_count,tasks,business,instagram_business_account%7Bid,username,followers_count%7D"
+
+          consultar "Escopos (permissões) e validade do token" \
+            "$API/debug_token?input_token=$META_USER_ACCESS_TOKEN"
+
+          {
+            echo "Cada item de \`data\` na segunda consulta é uma marca possível: \`id\` é o ID da"
+            echo "Página do Facebook e \`instagram_business_account.id\` é o ID do Instagram. Página"
+            echo "sem \`instagram_business_account\` não tem Instagram profissional ligado a ela."
+            echo "Na terceira, confira que \`scopes\` inclui \`pages_show_list\`, \`pages_read_engagement\`,"
+            echo "\`read_insights\`, \`instagram_basic\` e \`instagram_manage_insights\`, e olhe"
+            echo "\`data_access_expires_at\`/\`expires_at\` para saber quando renovar."
+          } >> "$GITHUB_STEP_SUMMARY"
