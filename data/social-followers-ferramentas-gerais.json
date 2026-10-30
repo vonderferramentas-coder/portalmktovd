@@ -13856,8 +13856,7 @@
     {
       "date": "2026-10-04",
       "followers": {
-        "Instagram": 176244,
-        "Facebook": 49516
+        "Instagram": 176222
       },
       "source": "reconstruido",
       "insights": {
@@ -13872,8 +13871,7 @@
     {
       "date": "2026-10-05",
       "followers": {
-        "Instagram": 176620,
-        "Facebook": 49519
+        "Instagram": 176598
       },
       "source": "reconstruido",
       "insights": {
@@ -14220,6 +14218,14 @@
       "followers": {
         "Instagram": 185861,
         "Facebook": 49541
+      },
+      "insights": {
+        "Instagram": {
+          "follows": 656,
+          "unfollows": 50,
+          "net": 606,
+          "reach": 36466
+        }
       }
     },
     {
@@ -14237,5 +14243,5 @@
       }
     }
   ],
-  "updatedAt": "2026-10-30T03:06:35Z"
+  "updatedAt": "2026-10-30T11:41:14Z"
 }
