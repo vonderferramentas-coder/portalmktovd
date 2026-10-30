@@ -334,6 +334,8 @@
     const news = dailyNew(network.name);
     let total = end;
     for (let index = points.length - 1; index >= 0; index--) {
+      // antes da primeira medição desta rede não há dado: sem isto o total ficava esticado reto até o início do período
+      if (!Number.isFinite(points[index].values[network.name])) break;
       out.set(points[index].date, total);
       total -= news.get(points[index].date) || 0;
     }
