@@ -18,8 +18,13 @@
   const BRAND_INTEGRATIONS = {
     'default': { storeSuffix: 'vonder', instagram: true, facebook: true, youtube: true },
     'ferramentas-gerais': { storeSuffix: 'ferramentas-gerais', instagram: true, facebook: true, youtube: false },
-    // Grupo OVD: só a página do LinkedIn tem coleta (sync-linkedin-followers.yml); não tem YouTube nem TikTok.
-    'grupo-ovd': { storeSuffix: 'grupo-ovd', linkedin: true, networks: ['Instagram', 'Facebook', 'LinkedIn'] },
+    // Grupo OVD: Instagram/Facebook (sync_meta_marcas.py) e LinkedIn (sync-linkedin-followers.yml); não tem YouTube nem TikTok.
+    'grupo-ovd': { storeSuffix: 'grupo-ovd', instagram: true, facebook: true, linkedin: true, networks: ['Instagram', 'Facebook', 'LinkedIn'] },
+    // Marcas coletadas por scripts/sync_meta_marcas.py (lista em data/meta-marcas.json): só seguidores, sem YouTube.
+    'toolmix': { storeSuffix: 'toolmix', instagram: true, facebook: true, youtube: false },
+    'dwt': { storeSuffix: 'dwt', instagram: true, facebook: true, youtube: false },
+    'dismatal': { storeSuffix: 'dismatal', instagram: true, facebook: true, youtube: false },
+    'osten-ferragens': { storeSuffix: 'osten-ferragens', instagram: true, facebook: true, youtube: false },
   };
   const integration = BRAND_INTEGRATIONS[brandKey] || null;
   const isVonder = brandKey === 'default';
