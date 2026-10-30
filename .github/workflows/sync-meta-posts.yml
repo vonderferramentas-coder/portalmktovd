@@ -14,6 +14,12 @@ on:
   # Sem cron próprio: disparado só pelo Worker do Cloudflare (cloudflare-agendador.js, horário em
   # UTC). O cron do GitHub atrasa horas e, ao chegar tarde, cancelava runs na fila (ARQUITETURA, seção 23).
   workflow_dispatch:
+    inputs:
+      meses:
+        description: 'Só para as marcas novas (data/meta-marcas.json): quantos meses de publicações buscar (0 = só as mais recentes, o que o agendador faz)'
+        type: choice
+        options: ['0', '3', '6', '12']
+        default: '0'
 
 permissions:
   contents: write
@@ -321,3 +327,51 @@ jobs:
           published = json.loads(Path('data/social-posts-ferramentas-gerais.json').read_text(encoding='utf-8'))
           publish('posts-ferramentas-gerais-v1', published, os.environ['FIREBASE_SERVICE_ACCOUNT_KEY'])
           PY
+
+  # Marcas novas (data/meta-marcas.json): Instagram e Facebook num único passo, repetido por marca
+  # (scripts/sync_meta_marcas_posts.py). Fica depois dos outros jobs porque também faz git push
+  # (backup dos posts e miniaturas); falha de uma marca não derruba as outras.
+  sync-posts-marcas:
+    needs: sync-posts-ferramentas-gerais
+    if: ${{ !cancelled() }}
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Coletar publicações das marcas e publicar no Firestore
+        env:
+          META_PAGE_TOKENS: ${{ secrets.META_PAGE_TOKENS }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+          MESES: ${{ inputs.meses || '0' }}
+        run: |
+          if [ -z "$META_PAGE_TOKENS" ] || [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::error::META_PAGE_TOKENS ou FIREBASE_SERVICE_ACCOUNT_KEY não configurado - a coleta das publicações não rodou.'
+            exit 1
+          fi
+          pip install --quiet Pillow firebase-admin
+          python3 scripts/sync_meta_marcas_posts.py
+
+      # Roda mesmo se uma marca falhou: o que foi coletado das outras não pode ficar sem backup.
+      - name: Publicar dados atualizados
+        if: always()
+        run: |
+          [ -d data/social-posts-thumbnails ] && git add data/social-posts-thumbnails
+          for arquivo in $(jq -r '.[].storeSuffix | "data/social-posts-\(.).json data/social-facebook-posts-\(.).json"' data/meta-marcas.json); do
+            [ -f "$arquivo" ] && git add "$arquivo"
+          done
+          if git diff --cached --quiet; then
+            echo 'Nenhuma alteração para publicar.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: atualizar publicações das marcas (Instagram e Facebook)'
+          for tentativa in 1 2 3; do
+            if git push; then break; fi
+            echo "Push rejeitado (tentativa $tentativa/3), atualizando e tentando de novo..."
+            git fetch origin "$GITHUB_REF_NAME"
+            git rebase "origin/$GITHUB_REF_NAME"
+            [ "$tentativa" -eq 3 ] && exit 1
+          done

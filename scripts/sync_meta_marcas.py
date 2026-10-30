@@ -31,6 +31,8 @@ def consultar(caminho, campos, token):
 
 def descrever(erro):
     """Resumo seguro de um erro HTTP da Meta: só código e mensagem (o log do Actions é público)."""
+    if not isinstance(erro, urllib.error.HTTPError):
+        return str(erro)[:200]
     try:
         detalhe = json.loads(erro.read()).get('error') or {}
         return f"HTTP {erro.code} (código {detalhe.get('code')}): {str(detalhe.get('message'))[:200]}"
