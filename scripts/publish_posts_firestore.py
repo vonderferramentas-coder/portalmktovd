@@ -39,8 +39,8 @@ def _chunk(posts):
 
 
 def publish(store_key, published, service_account_key_json):
-    cred = credentials.Certificate(json.loads(service_account_key_json))
-    firebase_admin.initialize_app(cred)
+    if not firebase_admin._apps:  # idempotente: o coletor das marcas publica várias vezes no mesmo processo
+        firebase_admin.initialize_app(credentials.Certificate(json.loads(service_account_key_json)))
     db = firestore.client()
 
     posts = published['posts']
