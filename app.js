@@ -311,18 +311,42 @@
       const box = $('productSuggestions'); if(box){ box.style.display = 'none'; box.innerHTML = ''; }
     }
 
-    // código FG de um produto (a postagem guarda só o OVD): catálogo mestre ou de Configurações
-    function productCodeFG(code){
+    // Código OVD (00.00.000.000) só existe nas marcas próprias (VONDER, NOVE54, TOOLMIX...). Em produto de outra marca
+    // (BOSCH, DEWALT...) o "code" guardado é a referência do fabricante (o modelo), não um código OVD nem FG.
+    function isOvdCode(code){
+      return /^\d{2}\.\d{2}\.\d{3}\.\d{3}$/.test(String(code||'').trim()) || (!!code && masterCatalogByCode.has(normalizeCode(code)));
+    }
+    // código FG de um produto: o guardado na postagem (produto de outra marca escolhido na busca do site), o do catálogo
+    // mestre ou de Configurações, ou o achado no site pela referência (ver resolveFgCodes)
+    const fgByRef = {}; // normalizeCode(referência do fabricante) -> código FG ('' = o site não achou)
+    function productCodeFG(code, p){
+      if(p && p.codeFG) return p.codeFG;
       // Configurações vence o mestre quando o código se repete (mesma regra de productCandidates)
       const manual = (APP_SETTINGS.catalog||[]).find(c=> c.code && c.code===code && c.codeFG);
       if(manual) return manual.codeFG;
       const d = productDetailsByCode(code);
-      return (d && d.codeFG) || '';
+      return (d && d.codeFG) || fgByRef[normalizeCode(code)] || '';
     }
-    // "Códigos - OVD: x | FG: y" (só as partes que existem); '' se o produto não tem nenhum código
+    // Produtos de outras marcas salvos antes de a postagem guardar o código FG: busca no site FG (scope=all) pela
+    // referência e guarda o resultado na sessão. Falha de rede não grava nada (tenta de novo na próxima vez).
+    // ponytail: 6 consultas por vez; referência que o site só acha com a formatação própria (ex.: "2 608 601 501") fica sem FG.
+    async function resolveFgCodes(products){
+      const todo = [...new Set(products.filter(p=> p && p.code && !p.codeFG && !isOvdCode(p.code)).map(p=> p.code))]
+        .filter(code=> !(normalizeCode(code) in fgByRef));
+      for(let i=0; i<todo.length; i+=6){
+        await Promise.all(todo.slice(i, i+6).map(code=> fetch(`${PORTAL_API_BASE}/product-search?q=${encodeURIComponent(code)}&scope=all`, { signal: AbortSignal.timeout(8000) }) // sem resposta em 8 s: segue sem o FG
+          .then(res=> res.ok ? res.json() : Promise.reject(res.status))
+          .then(data=>{
+            const hit = (data.items||[]).find(it=> normalizeCode(it.code)===normalizeCode(code));
+            fgByRef[normalizeCode(code)] = (hit && hit.codeFG) || '';
+          }).catch(()=>{})));
+      }
+    }
+    // "Códigos - OVD: x | FG: y" (só as partes que existem); '' se o produto não tem nenhum código.
+    // Produto de outra marca mostra só o FG; sem FG conhecido, a referência do fabricante entra como "Ref.".
     function productCodesLabel(p){
-      const fg = productCodeFG(p.code);
-      const parts = [p.code && `OVD: ${p.code}`, fg && `FG: ${fg}`].filter(Boolean);
+      const fg = productCodeFG(p.code, p);
+      const parts = [p.code && (isOvdCode(p.code) ? `OVD: ${p.code}` : !fg && `Ref.: ${p.code}`), fg && `FG: ${fg}`].filter(Boolean);
       return parts.length ? `Códigos - ${parts.join(' | ')}` : '';
     }
 
@@ -783,9 +807,12 @@
         : joinPt(checkedPlaces);
       const products = getPostProducts(post);
       const productItems = products.map(p=> [p.code, p.name].filter(Boolean).join(' – '));
-      // a postagem guarda só código OVD e nome; o código FG vem do catálogo (Configurações ou mestre)
+      // a postagem guarda o código (OVD, ou a referência do fabricante em produto de outra marca) e o nome; o código
+      // FG vem da própria postagem, do catálogo (Configurações ou mestre) ou do site. Produto de outra marca não tem
+      // código OVD: mostra o FG e, sem ele, a referência como "ref"
       const productRows = products.map(p=>{
-        return { ovd: p.code||'', fg: productCodeFG(p.code), name: p.name||'' };
+        const fg = productCodeFG(p.code, p), own = isOvdCode(p.code);
+        return { ovd: own ? (p.code||'') : '', ref: !own && !fg ? (p.code||'') : '', fg, name: p.name||'' };
       });
       const eds = Array.isArray(post.editoria) ? post.editoria : [post.editoria];
       return {
@@ -1177,10 +1204,18 @@
       }), 250);
     }
 
+    // produto como a postagem o guarda: código e nome; em produto de outra marca também o código FG, que o site
+    // devolve junto e que se perderia (o "code" dele é só a referência do fabricante)
+    function chosenProduct(item){
+      const p = { code: item.code||'', name: item.name };
+      if(item.codeFG && !isOvdCode(p.code)) p.codeFG = item.codeFG;
+      return p;
+    }
+
     function showProductSuggestions(){
       const box = $('productSuggestions'); if(!box) return;
       renderProductAutocomplete(box, $('mProductName'), selectedProducts, item=>{
-        selectedProducts.push({ code: item.code||'', name: item.name });
+        selectedProducts.push(chosenProduct(item));
         renderSelectedProducts();
       });
     }
@@ -1222,7 +1257,7 @@
       const TAG = { missing: 'Fora do catálogo', dupe: 'Já adicionado', error: 'Busca falhou' }, total = rows.length;
       const ready = r=> r.state==='found' || r.state==='missing';
       // fora do catálogo entra como produto manual (mesmo formato do "+ Adicionar (sem catálogo)"); nunca duplica o que já está no card
-      const push = r=>{ const p = r.state==='found' ? { code: r.item.code, name: r.item.name } : { code:'', name: r.code }; if(!inCard(p.code || p.name)) selectedProducts.push(p); };
+      const push = r=>{ const p = r.state==='found' ? chosenProduct(r.item) : { code:'', name: r.code }; if(!inCard(p.code || p.name)) selectedProducts.push(p); };
       const paint = ()=>{
         // a lista se redesenha a cada código resolvido: devolve o foco ao mesmo botão (teclado)
         const f = box.contains(document.activeElement) && document.activeElement.dataset ? document.activeElement.dataset : null, fKey = f && f.pp ? f.pp + (f.i || '') : null;
@@ -4319,18 +4354,22 @@
     // baixa uma planilha (CSV com ";" e BOM, abre direto no Excel pt-BR) com um código de produto por linha,
     // sem repetição, para montar a planilha de validação do catálogo. Só entra o período e os
     // filtros que estão na tela (mês, quinzena ou semana; Lista = mês)
-    function exportProductCodes(){
+    async function exportProductCodes(){
       const [s,e] = periodPresetRange(defaultExportPreset(), viewDate);
       const startStr = ymd(s), endStr = ymd(e);
       const byKey = new Map();
-      getFilteredPosts().filter(p=> p.date && p.date>=startStr && p.date<=endStr)
-        .sort((a,b)=> a.date.localeCompare(b.date)).forEach(p=>{
+      const posts = getFilteredPosts().filter(p=> p.date && p.date>=startStr && p.date<=endStr).sort((a,b)=> a.date.localeCompare(b.date));
+      await resolveFgCodes(posts.flatMap(getPostProducts)); // produto de outra marca: acha o código FG pela referência
+      posts.forEach(p=>{
         getPostProducts(p).forEach(prod=>{
           const x = fixCodeOnlyProduct(prod, masterCatalogByCode);
           if(!x.code && !x.name) return;
+          // produto de outra marca (BOSCH, DEWALT...) guarda só a referência do fabricante: a coluna mostra o código FG
+          // dele (sem FG conhecido, a referência) e só marca própria mostra o código OVD
+          const fg = productCodeFG(x.code, x), code = !x.code || isOvdCode(x.code) || !fg ? (x.code||'') : fg;
           // chave com código E nome: o mesmo código com nomes diferentes aparece em linhas separadas
-          const key = (x.code||'')+'\u0001'+(x.name||'');
-          if(!byKey.has(key)) byKey.set(key, { code: x.code||'', name: x.name||'', dates: [] });
+          const key = code+'\u0001'+(x.name||'');
+          if(!byKey.has(key)) byKey.set(key, { code, name: x.name||'', dates: [] });
           const dates = byKey.get(key).dates;
           if(!dates.includes(p.date)) dates.push(p.date);
         });
@@ -4882,7 +4921,7 @@
         // um bloco por produto: "• Códigos - OVD: x | FG: y" e, na linha de baixo, "Produto: nome";
         // linha em branco (espaço depois do parágrafo) entre um produto e o próximo
         f.productRows.forEach(r=>{
-          const codes = [r.ovd && docxRun('OVD:', { bold:true }) + docxRun(' '+r.ovd), r.fg && docxRun('FG:', { bold:true }) + docxRun(' '+r.fg)].filter(Boolean);
+          const codes = [r.ovd && docxRun('OVD:', { bold:true }) + docxRun(' '+r.ovd), r.ref && docxRun('Ref.:', { bold:true }) + docxRun(' '+r.ref), r.fg && docxRun('FG:', { bold:true }) + docxRun(' '+r.fg)].filter(Boolean);
           let runs = docxRun('•  ');
           if(codes.length) runs += docxRun('Códigos - ') + codes.join(docxRun(' | ')) + '<w:r><w:br/></w:r>';
           if(r.name) runs += docxRun('Produto: '+r.name);
@@ -4977,9 +5016,10 @@
     }
     // gera e baixa o .docx só com as postagens cuja data (YYYY-MM-DD) cai entre startStr e endStr,
     // inclusive nos dois extremos - chamado pelo botão "Exportar .docx" do modal de período
-    function exportBriefingForRange(startStr, endStr){
+    async function exportBriefingForRange(startStr, endStr){
       const posts = state.posts.filter(p=> p.date && p.date>=startStr && p.date<=endStr);
       if(!posts.length){ alert('Nenhuma postagem no período selecionado.'); return; }
+      await resolveFgCodes(posts.flatMap(getPostProducts)); // produto de outra marca: acha o código FG pela referência
       const byDate = {};
       posts.forEach(p=>{ (byDate[p.date] = byDate[p.date] || []).push(p); });
       const dateKeys = Object.keys(byDate).sort();
