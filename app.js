@@ -349,6 +349,13 @@
       const parts = [p.code && (isOvdCode(p.code) ? `OVD: ${p.code}` : !fg && `Ref.: ${p.code}`), fg && `FG: ${fg}`].filter(Boolean);
       return parts.length ? `Códigos - ${parts.join(' | ')}` : '';
     }
+    // colunas da planilha de códigos, sem misturar: OVD só de marca própria; FG da postagem, do catálogo ou do site.
+    // Produto de outra marca cujo FG o site não achou fica com FG vazio (a referência do fabricante segue no nome);
+    // código colado sem nome (pode ser OVD ou FG) vai no FG quando não tem formato de OVD.
+    function productCodeColumns(p){
+      const ovd = isOvdCode(p.code) ? p.code : '';
+      return { ovd, fg: productCodeFG(p.code, p) || (!ovd && !p.name ? (p.code||'') : '') };
+    }
 
     // lê os produtos de uma postagem, migrando o formato antigo (productCode/productName únicos)
     function getPostProducts(post){
@@ -4364,12 +4371,12 @@
         getPostProducts(p).forEach(prod=>{
           const x = fixCodeOnlyProduct(prod, masterCatalogByCode);
           if(!x.code && !x.name) return;
-          // produto de outra marca (BOSCH, DEWALT...) guarda só a referência do fabricante: a coluna mostra o código FG
-          // dele (sem FG conhecido, a referência) e só marca própria mostra o código OVD
-          const fg = productCodeFG(x.code, x), code = !x.code || isOvdCode(x.code) || !fg ? (x.code||'') : fg;
-          // chave com código E nome: o mesmo código com nomes diferentes aparece em linhas separadas
-          const key = code+'\u0001'+(x.name||'');
-          if(!byKey.has(key)) byKey.set(key, { code, name: x.name||'', dates: [] });
+          // duas colunas: Código OVD (marca própria) e Código FG; produto de outra marca guarda só a referência do
+          // fabricante, que não entra em nenhuma das duas
+          const { ovd, fg } = productCodeColumns(x);
+          // chave com códigos E nome: o mesmo código com nomes diferentes aparece em linhas separadas
+          const key = [ovd, fg, x.code||'', x.name||''].join('\u0001');
+          if(!byKey.has(key)) byKey.set(key, { ovd, fg, name: x.name||'', dates: [] });
           const dates = byKey.get(key).dates;
           if(!dates.includes(p.date)) dates.push(p.date);
         });
@@ -4379,8 +4386,8 @@
       const safe = v => { const s = String(v==null?'':v); return /^[=+\-@]/.test(s) ? "'"+s : s; };
       const cell = v => '"'+v.replace(/"/g,'""')+'"';
       const codeCell = v => /^\d+$|^\d+e\d+$/i.test(v) ? '="'+v+'"' : cell(safe(v));
-      const rows = [['Código','Produto','Postagens','Datas'].map(cell).join(';')];
-      byKey.forEach(r=> rows.push([codeCell(r.code), cell(safe(r.name)), cell(String(r.dates.length)), cell(r.dates.join(' | '))].join(';')));
+      const rows = [['Código OVD','Código FG','Produto','Postagens','Datas'].map(cell).join(';')];
+      byKey.forEach(r=> rows.push([codeCell(r.ovd), codeCell(r.fg), cell(safe(r.name)), cell(String(r.dates.length)), cell(r.dates.join(' | '))].join(';')));
       download('codigos_produtos.csv', '﻿'+rows.join('\r\n'), 'text/csv;charset=utf-8');
     }
 

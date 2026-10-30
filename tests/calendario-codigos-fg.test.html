@@ -20,7 +20,7 @@
       const PORTAL_API_BASE = 'https://x/api';
       const fetch = fetchStub;
       ${block}
-      return { isOvdCode, resolveFgCodes, productCodesLabel, chosenProduct };
+      return { isOvdCode, resolveFgCodes, productCodesLabel, chosenProduct, productCodeColumns };
     `);
     const site = { DW44540: { code: 'DW44540', codeFG: '1086715' }, K140: { code: 'K140', codeFG: '' } };
     const m = build(async url => { calls.push(url); const q = decodeURIComponent(/q=([^&]+)/.exec(url)[1]); const item = site[q]; return { ok: true, json: async () => ({ items: item ? [item] : [] }) }; });
@@ -40,6 +40,13 @@
     assert(calls.length === 2, 'a segunda consulta da mesma referência usa o cache da sessão');
     const falha = await (async () => { const o = build(async () => { throw new Error('rede'); }); await o.resolveFgCodes([{ code: 'ZZ999' }]); return o.productCodesLabel({ code: 'ZZ999', name: 'a' }); })();
     assert(falha === 'Códigos - Ref.: ZZ999', 'falha de rede não derruba a exportação: segue com a referência');
+    const cols = p => JSON.stringify(m.productCodeColumns(p));
+    assert(cols({ code: '70.60.000.300', name: 'Abafador' }) === JSON.stringify({ ovd: '70.60.000.300', fg: '' }), 'marca própria sem FG: só a coluna OVD');
+    assert(cols({ code: 'DW44540', name: 'Disco', codeFG: '1086715' }) === JSON.stringify({ ovd: '', fg: '1086715' }), 'outra marca: o modelo não entra no OVD, só o FG');
+    assert(cols({ code: 'DW44540', name: 'Disco' }) === JSON.stringify({ ovd: '', fg: '1086715' }), 'outra marca antiga: FG achado no site');
+    assert(cols({ code: 'K140', name: 'Arco de serra' }) === JSON.stringify({ ovd: '', fg: '' }), 'outra marca sem FG achado: as duas colunas vazias, o modelo fica no nome');
+    assert(cols({ code: '1042951', name: '' }) === JSON.stringify({ ovd: '', fg: '1042951' }), 'código colado sem nome e sem formato OVD vai para a coluna FG');
+    assert(cols({ code: '11.71.226', name: '' }) === JSON.stringify({ ovd: '', fg: '11.71.226' }), 'idem para código curto com pontos');
     document.body.dataset.result = 'pass'; document.getElementById('result').textContent = 'OK - código FG de produto de outra marca validado.';
   } catch (error) { document.body.dataset.result = 'fail'; document.getElementById('result').textContent = 'FAIL: ' + error.message; }
 })();
