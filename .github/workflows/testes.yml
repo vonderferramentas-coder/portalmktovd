@@ -171,6 +171,9 @@ jobs:
       - name: Limpeza das artes salvas - prazos e lixeira
         run: python3 tests/purge_art_drafts.test.py
 
+      - name: Coleta de seguidores das marcas Meta - mescla no Firestore
+        run: python3 tests/sync_meta_marcas.test.py
+
       - name: Editor de Posts - Datas comemorativas VONDER (Chrome headless)
         run: |
           CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
