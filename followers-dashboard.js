@@ -1819,22 +1819,17 @@
   function goalProjectionText(r) {
     const progress = goalProgressFor(r.nets, r.last);
     if (!progress) return '';
-    const { entries, target, reached, deadline } = progress, remaining = target - reached;
+    const { entries, target, reached } = progress, remaining = target - reached;
     const names = entries.map(network => network.name).join(', ');
     if (remaining <= 0) return `<b>Meta (${names}):</b> atingida, com <b>${format(reached)}</b> de <b>${format(target)}</b> seguidores.`;
     const goalDeltas = deltas(r.points.filter(point => !isOpenDay(point.date)), entries); // sem o dia em andamento (parcial)
     const days = goalDeltas.reduce((sum, item) => sum + item.days, 0);
     const pace = goalDeltas.length ? goalDeltas.reduce((sum, item) => sum + item.delta, 0) / Math.max(1, days) : null;
     const head = `<b>Projeção para a meta (${names}):</b> faltam <b>${format(remaining)}</b> para <b>${format(target)}</b> seguidores`;
-    const daysToDeadline = deadline ? dayDiff(r.last.date, deadline) : null;
-    const need = daysToDeadline > 0 ? ` Para cumprir o prazo de <b>${deadline.split('-').reverse().join('/')}</b>, o ritmo precisa ser de <b>${signed(remaining / daysToDeadline)}</b> por dia.` : '';
-    if (pace === null || pace <= 0) return `${head}. No ritmo do período a meta não se aproxima.${need}`;
+    if (pace === null || pace <= 0) return `${head}. Nesse ritmo, nossa meta não se aproxima.`;
     const eta = addDays(parse(r.last.date), Math.ceil(remaining / pace));
     const months = remaining / pace / 30.44;
-    const when = `por volta de <b>${monthLower(eta.getUTCMonth())} de ${eta.getUTCFullYear()}</b> (em cerca de ${months < 1 ? 'menos de 1 mês' : months < 1.5 ? '1 mês' : `${Math.round(months)} meses`})`;
-    const vsDeadline = deadline ? (iso(eta) <= deadline ? ', dentro do prazo' : ', depois do prazo') : '';
-    const few = days < 14 ? ' <i>O período tem poucos dias, então a projeção ainda é instável.</i>' : '';
-    return `${head}. No ritmo do período (<b>${signed(pace)}</b> por dia), a meta deve ser atingida ${when}${vsDeadline}.${need}${few}`;
+    return `${head}. Nesse ritmo, nossa meta deve ser atingida por volta de <b>${monthLower(eta.getUTCMonth())} de ${eta.getUTCFullYear()}</b> (em cerca de ${months < 1 ? 'menos de 1 mês' : months < 1.5 ? '1 mês' : `${Math.round(months)} meses`}).`;
   }
   // Curiosidades do ano, todas calculadas com os dados do painel; cada uma só entra se houver dado para sustentá-la.
   function yearInsights(r) {
@@ -1906,7 +1901,7 @@
     else followers.push('<b>Dia com mais unfollows:</b> esse dado só existe para o Instagram e não há registro no período.');
     const projection = goalProjectionText(r);
     if (projection) followers.push(projection);
-    const insights = r.hasNet ? yearInsights(r) : [];
+    const suggestions = (r.hasNet ? yearInsights(r) : []).concat(yearBestPosts(r));
     const posts = postsInPeriod(true);
     let publications;
     if (!posts.length) publications = `<p ${P}>Nenhuma publicação registrada no período.</p>`;
@@ -1918,7 +1913,7 @@
         topPostItem(posts, 'commentsCount', 'Post com mais comentários', 'comentários'),
         topPostItem(posts, 'totalInteractions', 'Post com mais interações', 'interações'),
         topPostItem(posts, 'saved', 'Post com mais salvamentos', 'salvamentos')
-      ].concat(yearBestPosts(r))) + `<p ${P}><b>Total de publicações no período:</b> <b>${format(posts.length)}</b>, sendo ${plural(posts.length - reels, 'post', 'posts')} e ${plural(reels, 'reel', 'reels')}.</p>`;
+      ]) + `<p ${P}><b>Total de publicações no período:</b> <b>${format(posts.length)}</b>, sendo ${plural(posts.length - reels, 'post', 'posts')} e ${plural(reels, 'reel', 'reels')}.</p>`;
     }
     const body = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#222">`
       + `<p ${P}>Oi pessoal, bom dia!</p>`
@@ -1926,12 +1921,12 @@
       + `<p ${P}>Segue o resumo do desempenho das redes sociais da <b>${escapeHtml(brandName)}</b>${r.networkName ? ` (<b>${r.networkName}</b>)` : ''} no período de ${period}.</p>`
       + `<h3 ${H}>Seguidores</h3>${list(followers)}`
       + `<h3 ${H}>Publicações</h3>${publications}`
-      + (insights.length ? `<h3 ${H}>Curiosidades do ano</h3>${list(insights)}` : '')
-      + `<p ${P}>Fico à disposição para qualquer dúvida.</p><p style="margin:0">Atenciosamente,<br>Equipe de Marketing</p></div>`;
-    return { subject: `Relatório de redes sociais – ${brand.name || 'marca'} – ${postDateLabel(r.from)} a ${postDateLabel(r.to)}`, body };
+      + `<p ${P} data-email-closing>Fico à disposição para qualquer dúvida.</p><p style="margin:0">Atenciosamente,<br>Equipe de Marketing</p></div>`;
+    return { subject: `Relatório de redes sociais – ${brand.name || 'marca'} – ${postDateLabel(r.from)} a ${postDateLabel(r.to)}`, body, suggestions, styles: { h: H, ul: UL, li: LI } };
   }
   const emailReportModal = el('emailReportBackdrop'), emailReportText = el('emailReportText');
-  let emailReportSubject = '', emailReportLastFocus = null;
+  let emailReportSubject = '', emailReportLastFocus = null, emailReportCurrent = null;
+  const emailSuggestions = el('emailSuggestions'), emailSuggestionsList = el('emailSuggestionsList');
   const closeEmailReport = () => {
     emailReportModal.style.display = 'none';
     emailReportModal.setAttribute('aria-hidden', 'true');
@@ -1941,13 +1936,39 @@
     const email = buildEmailReport();
     if (!email) { alert('Ainda não há dados no período selecionado para montar o relatório.'); return; }
     emailReportSubject = email.subject;
+    emailReportCurrent = email;
     emailReportText.innerHTML = email.body;
+    // Curiosidades do ano e melhor publicação do ano não entram sozinhas: ficam aqui, e só vão para o texto quando a pessoa clica em Adicionar
+    const plain = html => { const holder = document.createElement('div'); holder.innerHTML = html; return escapeHtml(holder.textContent); };
+    emailSuggestions.hidden = !email.suggestions.length;
+    emailSuggestionsList.innerHTML = email.suggestions.map((html, index) =>
+      `<li class="email-suggestion"><span>${plain(html)}</span><button type="button" class="btn ghost small" data-suggestion="${index}">Adicionar</button></li>`).join('');
     emailReportText.scrollTop = 0;
     emailReportLastFocus = document.activeElement;
     emailReportModal.style.display = 'flex';
     emailReportModal.setAttribute('aria-hidden', 'false');
     emailReportText.focus();
   }
+  // Insere a sugestão escolhida na seção "Curiosidades do ano" do texto (criada na primeira vez, antes do fechamento).
+  emailSuggestionsList.addEventListener('click', event => {
+    const button = event.target.closest('[data-suggestion]');
+    if (!button || button.disabled || !emailReportCurrent) return;
+    const { suggestions, styles } = emailReportCurrent;
+    let list = emailReportText.querySelector('[data-email-extras]');
+    if (!list) {
+      const closing = emailReportText.querySelector('[data-email-closing]');
+      const holder = document.createElement('div');
+      holder.innerHTML = `<h3 ${styles.h}>Curiosidades do ano</h3><ul data-email-extras ${styles.ul}></ul>`;
+      const parent = closing ? closing.parentNode : emailReportText;
+      while (holder.firstChild) parent.insertBefore(holder.firstChild, closing);
+      list = emailReportText.querySelector('[data-email-extras]');
+    }
+    list.insertAdjacentHTML('beforeend', `<li ${styles.li}>${suggestions[Number(button.dataset.suggestion)]}</li>`);
+    button.disabled = true;
+    button.textContent = 'Adicionado';
+  });
+  // HTML que sai da janela (copiar e .eml) sem os marcadores internos usados para inserir as sugestões
+  const emailReportHtml = () => emailReportText.innerHTML.replace(/ data-email-(?:closing|extras)(?:="")?/g, '');
   // Texto puro do conteúdo (já editado): cada link ganha a URL entre parênteses. O clone precisa
   // estar no DOM, fora da tela, para o innerText respeitar parágrafos e itens de lista.
   function emailReportPlainText() {
@@ -1971,7 +1992,7 @@
     };
     if (!(navigator.clipboard && window.ClipboardItem)) return fallback();
     navigator.clipboard.write([new ClipboardItem({
-      'text/html': new Blob([emailReportText.innerHTML], { type: 'text/html' }),
+      'text/html': new Blob([emailReportHtml()], { type: 'text/html' }),
       'text/plain': new Blob([emailReportPlainText()], { type: 'text/plain' })
     })]).then(() => resolve(true)).catch(fallback);
   });
@@ -1985,7 +2006,7 @@
   // o rascunho passa a abrir sozinho a cada clique.
   el('emailReportOpen').addEventListener('click', () => {
     const b64 = text => btoa(unescape(encodeURIComponent(text))).replace(/.{1,76}/g, '$&\r\n');
-    const html = `<html><body>${emailReportText.innerHTML}</body></html>`;
+    const html = `<html><body>${emailReportHtml()}</body></html>`;
     const eml = ['X-Unsent: 1', `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(emailReportSubject)))}?=`, 'MIME-Version: 1.0',
       'Content-Type: text/html; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', b64(html)].join('\r\n');
     const link = document.createElement('a');

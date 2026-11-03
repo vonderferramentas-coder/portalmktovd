@@ -52,7 +52,7 @@ PortalTour.register('redes-sociais', {
       steps: [
         { target: '#reportTrigger', click: true, done: () => !menuClosed('reportMenu')(), title: 'Abrir "Gerar relatório"', text: 'Clique em "Gerar relatório" para ver as opções.' },
         { target: '#printReport', title: 'Imprimir / PDF', text: 'Abre a impressão com o resumo do período. Para guardar em arquivo, escolha "Salvar como PDF" como impressora.' },
-        { target: '#emailReport', title: 'E-mail', text: 'Monta um texto pronto, que você pode ajustar na própria janela, copiar ou abrir no Outlook. Os relatórios usam só dias já fechados.' },
+        { target: '#emailReport', title: 'E-mail', text: 'Monta um texto pronto, que você pode ajustar na própria janela, copiar ou abrir no Outlook. Abaixo do texto há sugestões de curiosidades do ano para adicionar só se quiser. Os relatórios usam só dias já fechados.' },
         { target: '#reportTrigger', click: true, done: menuClosed('reportMenu'), title: 'Fechar o menu', text: 'Clique de novo em "Gerar relatório" para fechar.' },
         { target: '#actionsTrigger', click: true, done: () => !menuClosed('actionsMenu')(), title: 'Abrir "Mais ações"', text: 'Clique em "Mais ações".' },
         { target: '#goalsControlTrigger', click: true, title: 'Controle de metas', text: 'Clique em "Controle de metas" para abrir a janela. Nada vai ser salvo neste tutorial.' },
