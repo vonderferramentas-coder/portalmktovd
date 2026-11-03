@@ -39,6 +39,7 @@ jobs:
           LINKEDIN_REFRESH_TOKEN: ${{ secrets.LINKEDIN_REFRESH_TOKEN }}
           META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
           META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS: ${{ secrets.META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS }}
+          META_PAGE_TOKENS: ${{ secrets.META_PAGE_TOKENS }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
           YOUTUBE_OAUTH_CLIENT_SECRET: ${{ secrets.YOUTUBE_OAUTH_CLIENT_SECRET }}
@@ -63,7 +64,7 @@ jobs:
           results = {}
 
           # Nenhum trecho de segredo pode ir para o log nem para o Firestore (o detalhe pode vir de mensagem de erro de API).
-          secret_values = [env(name) for name in ('LINKEDIN_CLIENT_SECRET', 'LINKEDIN_REFRESH_TOKEN', 'META_PAGE_ACCESS_TOKEN', 'META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS',
+          secret_values = [env(name) for name in ('LINKEDIN_CLIENT_SECRET', 'LINKEDIN_REFRESH_TOKEN', 'META_PAGE_ACCESS_TOKEN', 'META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS', 'META_PAGE_TOKENS',
                                                   'YOUTUBE_API_KEY', 'YOUTUBE_OAUTH_CLIENT_SECRET', 'YOUTUBE_OAUTH_REFRESH_TOKEN', 'BACKUP_REPO_TOKEN')]
           def scrub(text):
               for value in secret_values:
@@ -145,6 +146,40 @@ jobs:
                           record(key, True, detail='Token funciona, mas a Meta não informou a validade.')
                       else:
                           broken(key, status, f'A Meta recusou o token (HTTP {status}): {(body.get("error") or {}).get("message", "")}'.strip())
+
+              # Meta - marcas novas: o segredo é a resposta inteira de me/accounts, com um token por Página. Venceu em
+              # 30/10/2026 sem ninguém perceber; aqui basta uma Página recusada para a credencial aparecer como vencida.
+              try:
+                  paginas = [item for item in (json.loads(env('META_PAGE_TOKENS') or '{}').get('data') or []) if isinstance(item, dict) and item.get('access_token')]
+              except (ValueError, AttributeError):
+                  paginas = []
+              if not paginas:
+                  record('meta-marcas', False, detail='Segredo META_PAGE_TOKENS não configurado ou inválido (cole a resposta inteira de me/accounts).')
+              else:
+                  secret_values.extend(item['access_token'] for item in paginas)
+                  recusadas, vencimentos, sem_resposta = [], [], 0
+                  for pagina in paginas:
+                      token = pagina['access_token']
+                      status, _, body = http('https://graph.facebook.com/v26.0/debug_token?' + urllib.parse.urlencode({'input_token': token, 'access_token': token}))
+                      data = body.get('data') or {}
+                      if status == 200 and data:
+                          if data.get('is_valid') is False:
+                              recusadas.append(str(pagina.get('name') or pagina.get('id'))[:40])
+                          elif num(data.get('expires_at')) > 0:
+                              vencimentos.append(datetime.fromtimestamp(num(data.get('expires_at')), timezone.utc))
+                          continue
+                      status, _, body = http('https://graph.facebook.com/v26.0/me?' + urllib.parse.urlencode({'fields': 'id', 'access_token': token}))
+                      if status in (400, 401):  # token expirado ou revogado (erro 190)
+                          recusadas.append(str(pagina.get('name') or pagina.get('id'))[:40])
+                      elif status != 200:
+                          sem_resposta += 1
+                  if recusadas:
+                      record('meta-marcas', False, detail=f'A Meta recusou o token de {len(recusadas)} de {len(paginas)} Páginas (expirado ou revogado): {", ".join(recusadas)}.')
+                  elif sem_resposta == len(paginas):
+                      record('meta-marcas', None, detail='A Meta não respondeu à verificação dos tokens das marcas.')
+                  else:
+                      record('meta-marcas', True, min(vencimentos) if vencimentos else None,
+                             f'{len(paginas)} tokens de Página válidos.' if vencimentos else f'{len(paginas)} tokens de Página válidos, sem data de vencimento (a Meta informa 0 ou não informa).')
 
               # YouTube: chave de API e OAuth não têm data legível; só dá para saber se ainda funcionam.
               if not env('YOUTUBE_API_KEY'):

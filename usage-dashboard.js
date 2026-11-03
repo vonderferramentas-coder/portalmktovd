@@ -91,6 +91,8 @@ const CREDENTIALS = [
     steps: ['Gere um novo token de Página de longa duração no Graph API Explorer, seguindo o passo a passo da seção 8 de ' + DOCS + '.', 'Atualize o segredo META_PAGE_ACCESS_TOKEN (' + SECRETS_PLACE + ').', 'Em Actions, rode "Sincronizar seguidores Meta" para confirmar.'] },
   { id: 'meta-fg', name: 'Meta - Ferramentas Gerais (Instagram e Facebook)', use: 'Seguidores e posts do Instagram e do Facebook da Ferramentas Gerais.', where: 'META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS',
     steps: ['Gere um novo token de Página de longa duração da Ferramentas Gerais no Graph API Explorer, como na seção 8 de ' + DOCS + '.', 'Atualize o segredo META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS (' + SECRETS_PLACE + ').', 'Em Actions, rode "Sincronizar seguidores Meta" para confirmar.'] },
+  { id: 'meta-marcas', name: 'Meta - marcas novas (Toolmix, DWT, Grupo OVD, Dismatal, Osten)', use: 'Seguidores e posts do Instagram e do Facebook das cinco marcas novas.', where: 'META_PAGE_TOKENS (resposta inteira de me/accounts)',
+    steps: ['No Graph API Explorer, com o App "Portal MKT - Marcas", troque o token de usuário por um de longa duração (fb_exchange_token).', 'Com esse token, chame me/accounts?fields=id,name,access_token&limit=100 e copie a resposta inteira.', 'Atualize o segredo META_PAGE_TOKENS (' + SECRETS_PLACE + ').', 'Em Actions, rode "Sincronizar seguidores Meta" para confirmar.'] },
   { id: 'youtube-key', name: 'YouTube - chave de API', use: 'Inscritos, vídeos e menções do YouTube.', where: 'YOUTUBE_API_KEY',
     steps: ['A chave não vence. Se falhar ou precisar trocar, abra o Google Cloud Console (projeto mkt-ovd), APIs e serviços, Credenciais, e crie ou rotacione a chave (restrita à YouTube Data API v3).', 'Atualize o segredo YOUTUBE_API_KEY (' + SECRETS_PLACE + ').', 'Em Actions, rode "Sincronizar seguidores YouTube" para confirmar.'] },
   { id: 'youtube-oauth', name: 'YouTube - autorização do canal (OAuth)', use: 'Histórico e análises diárias do canal Vonder.', where: 'YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET e YOUTUBE_OAUTH_REFRESH_TOKEN',
@@ -106,7 +108,7 @@ const CHEVRON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" str
 const glyph = path => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
 // Cards por serviço: ícone da rede (ou um desenho simples para infraestrutura) e uma linha por credencial ([id de CREDENTIALS, rótulo]).
 const GROUPS = [
-  { name: 'Meta', sub: 'Instagram e Facebook', icons: ['icons/instagram.svg', 'icons/facebook.svg'], items: [['meta-vonder', 'VONDER'], ['meta-fg', 'Ferramentas Gerais']] },
+  { name: 'Meta', sub: 'Instagram e Facebook', icons: ['icons/instagram.svg', 'icons/facebook.svg'], items: [['meta-vonder', 'VONDER'], ['meta-fg', 'Ferramentas Gerais'], ['meta-marcas', 'Marcas novas']] },
   { name: 'YouTube', sub: 'Canal Vonder', icons: ['icons/youtube.svg'], items: [['youtube-key', 'Chave de API'], ['youtube-oauth', 'Autorização do canal']] },
   { name: 'LinkedIn', sub: 'Página Grupo OVD', icons: ['icons/linkedin.svg'], items: [['linkedin', 'Token da página']] },
   { name: 'GitHub', sub: 'Backup diário do banco de dados', glyph: glyph('<line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>'), items: [['github-backup', 'Token do backup']] },
