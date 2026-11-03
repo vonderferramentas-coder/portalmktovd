@@ -488,3 +488,37 @@ jobs:
           })
           print('Firestore atualizado (Ferramentas Gerais):', live.get('platforms', {}).get('Instagram', {}).get('followers'), 'seguidores em', live.get('updatedAt'))
           PY
+  # Marcas novas (Toolmix, DWT, Grupo OVD, Dismatal, Osten Ferragens), lidas de data/meta-marcas.json.
+  # Um único passo repete a coleta por marca (scripts/sync_meta_marcas.py) e grava só no Firestore,
+  # sem JSON no Git. Os tokens vêm do segredo META_PAGE_TOKENS (token de cada Página, App "Portal MKT - Marcas").
+  # Marca nova = uma linha em data/meta-marcas.json, sem copiar job.
+  sync-marcas:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Verificar se é hora do fechamento diário (marcas)
+        id: closeWindowMarcas
+        run: |
+          minutos=$(( 10#$(date -u +%H) * 60 + 10#$(date -u +%M) ))
+          # Mesma janela dos outros jobs deste arquivo (02:20 a 03:35 UTC).
+          if [ "$minutos" -ge 140 ] && [ "$minutos" -le 215 ]; then
+            echo "fechar=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fechar=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Coletar seguidores das marcas e publicar no Firestore
+        env:
+          META_PAGE_TOKENS: ${{ secrets.META_PAGE_TOKENS }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+          FECHAR_DIA: ${{ steps.closeWindowMarcas.outputs.fechar == 'true' || (github.event_name == 'workflow_dispatch' && !inputs.rotina) }}
+        run: |
+          if [ -z "$META_PAGE_TOKENS" ] || [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::error::META_PAGE_TOKENS ou FIREBASE_SERVICE_ACCOUNT_KEY não configurado - a coleta das marcas não rodou.'
+            exit 1
+          fi
+          pip install --quiet firebase-admin
+          python3 scripts/sync_meta_marcas.py

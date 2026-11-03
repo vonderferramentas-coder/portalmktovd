@@ -60,8 +60,9 @@ function tile(rotulo, valor, { ruim, ir } = {}) {
 
 const painel = (titulo, corpo) => h('div', { class: 'card ag-panel' }, h('h2', {}, titulo), corpo);
 
-function barra(rotulo, parte, valor) {
-  return h('div', { class: 'ag-bar' }, h('span', {}, rotulo), h('i', {}, h('b', { style: `width:${parte * 100}%` })), h('em', {}, valor));
+// "lead" = a barra que o gráfico quer destacar; as outras ficam neutras.
+function barra(rotulo, parte, valor, lead) {
+  return h('div', { class: 'ag-bar' + (lead ? ' is-lead' : '') }, h('span', {}, rotulo), h('i', {}, h('b', { style: `width:${parte * 100}%` })), h('em', {}, valor));
 }
 
 const FAIXAS = [['ok', 4.6, '4,6 ou mais'], ['atencao', 4.2, '4,2 a 4,5'], ['ruim', 0.1, 'abaixo de 4,2']];
@@ -95,13 +96,13 @@ function renderGeral(itens, base) {
 
   const contagem = n => recs.filter(r => r.s === n).length;
   const maior = Math.max(1, ...[1, 2, 3, 4, 5].map(contagem));
-  const estrelas = [5, 4, 3, 2, 1].map(n => barra(`${n} ★`, contagem(n) / maior, String(contagem(n))));
+  const estrelas = [5, 4, 3, 2, 1].map(n => barra(`${n} ★`, contagem(n) / maior, String(contagem(n)), contagem(n) === maior));
 
   const porMes = {};
   recs.forEach(r => (porMes[r.c.slice(0, 7)] ||= []).push(r));
   const meses = Object.keys(porMes).sort().reverse().slice(0, 12);
   const maiorMes = Math.max(1, ...meses.map(m => porMes[m].length));
-  const mensal = meses.map(m => barra(`${m.slice(5)}/${m.slice(2, 4)}`, porMes[m].length / maiorMes, `${porMes[m].length} · ${media(porMes[m])}`));
+  const mensal = meses.map((m, i) => barra(`${m.slice(5)}/${m.slice(2, 4)}`, porMes[m].length / maiorMes, `${porMes[m].length} · ${media(porMes[m])}`, i === 0));
 
   const porFicha = {};
   itens.forEach(i => (porFicha[i.rec.l] ||= { ficha: i.ficha, recs: [] }).recs.push(i.rec));

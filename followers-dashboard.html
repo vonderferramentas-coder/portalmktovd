@@ -430,6 +430,17 @@
       margin-bottom: 7px
     }
 
+    .metric span:has(> .metric-icon) {
+      display: flex;
+      align-items: center;
+      gap: 7px
+    }
+
+    .metric-icon {
+      flex: none;
+      color: var(--accent-text)
+    }
+
     .metric small {
       display: block;
       font-size: 10px;
@@ -792,9 +803,44 @@
 
     .tile-spark {
       position: relative;
-      margin-top: 8px;
-      height: 36px;
+      margin-top: 10px;
+      height: 64px;
       cursor: crosshair
+    }
+
+    .tile-spark-guide {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--border-strong);
+      pointer-events: none
+    }
+
+    .tile-spark-dot {
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      margin: -4.5px 0 0 -4.5px;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      background: var(--card);
+      pointer-events: none
+    }
+
+    .tile-spark-guide[hidden], .tile-spark-dot[hidden] {
+      display: none
+    }
+
+    .tile-spark .tile-spark-tooltip {
+      min-width: 190px;
+      padding: 12px 14px;
+      gap: 6px;
+      font-size: 14px
+    }
+
+    .tile-spark .tile-spark-tooltip strong {
+      font-size: 13px
     }
 
     .tile-spark-svg {
@@ -1278,55 +1324,6 @@
       color: var(--text-faint);
       font-size: 16px;
       margin-left: 3px
-    }
-
-    .history-card {
-      margin-top: 16px
-    }
-
-    .history-toggle {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      width: 100%;
-      border: 0;
-      background: transparent;
-      padding: 0;
-      margin: 0;
-      font: inherit;
-      color: inherit;
-      text-align: left;
-      cursor: pointer
-    }
-
-    .history-toggle:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 3px;
-      border-radius: 6px
-    }
-
-    .history-chevron {
-      flex: none;
-      color: var(--muted);
-      margin-top: 4px;
-      transition: transform .15s
-    }
-
-    .history-toggle[aria-expanded="true"] .history-chevron {
-      transform: rotate(180deg)
-    }
-
-    .history-body {
-      margin-top: 4px
-    }
-
-    .history-pager {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 14px
     }
 
     .table-wrap {
@@ -2767,6 +2764,7 @@
               <div class="metric"><span>Novos seguidores (bruto)</span><strong id="grossFollowsPeriod"></strong></div>
               <div class="metric"><span>Deixaram de seguir</span><strong id="unfollowsPeriod"></strong></div>
             </div>
+            <p class="muted" id="growthPartialNote" hidden></p>
           </article>
           <article class="card score-card">
             <div class="head">
@@ -2903,42 +2901,6 @@
             </div>
           </div>
         </section>
-        <section class="card history-card">
-          <button type="button" class="history-toggle" id="historyToggle" aria-expanded="false"
-            aria-controls="historyBody">
-            <div>
-              <h2>Histórico de acompanhamento</h2>
-              <p class="muted">Instagram coletado automaticamente pela API; demais canais, quando lançados manualmente.
-              </p>
-            </div>
-            <svg class="history-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2.4">
-              <path d="m7 10 5 5 5-5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </button>
-          <div class="history-body" id="historyBody" hidden>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr id="historyHead">
-                    <th>Período</th>
-                    <th>Instagram</th>
-                    <th>Facebook</th>
-                    <th>YouTube</th>
-                    <th>TikTok</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody id="table"></tbody>
-              </table>
-            </div>
-            <div class="history-pager" id="historyPager" hidden>
-              <button type="button" class="chevron-btn" id="historyPrev" aria-label="Página anterior">‹</button>
-              <span class="period-pill" id="historyPageLabel">Página 1 de 1</span>
-              <button type="button" class="chevron-btn" id="historyNext" aria-label="Próxima página">›</button>
-            </div>
-          </div>
-        </section>
         </div>
         </div>
         <button type="button" class="section-divider" id="postsDivider" aria-expanded="true"
@@ -3020,14 +2982,14 @@
             </div><span class="period-pill" id="postsStatsNetworkPill">Instagram</span>
           </div>
           <div class="metrics" style="margin-top:16px">
-            <div class="metric"><span>Publicações coletadas</span><strong id="postsStatTotal">-</strong></div>
-            <div class="metric"><span>Reels/Shorts</span><strong id="postsStatReels">-</strong></div>
-            <div class="metric"><span>Posts/Vídeos</span><strong id="postsStatStatic">-</strong></div>
-            <div class="metric"><span>Curtidas totais</span><strong id="postsStatLikes">-</strong></div>
-            <div class="metric"><span>Comentários totais</span><strong id="postsStatComments">-</strong></div>
-            <div class="metric"><span>Engajamento total</span><strong id="postsStatInteractions">-</strong></div>
-            <div class="metric"><span>Visualizações totais</span><strong id="postsStatViews">-</strong></div>
-            <div class="metric"><span>Salvamentos totais</span><strong id="postsStatSaved">-</strong></div>
+            <div class="metric"><span><svg class="metric-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>Publicações coletadas</span><strong id="postsStatTotal">-</strong></div>
+            <div class="metric"><span><svg class="metric-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4z"/></svg>Reels/Shorts</span><strong id="postsStatReels">-</strong></div>
+            <div class="metric"><span><svg class="metric-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></svg>Posts/Vídeos</span><strong id="postsStatStatic">-</strong></div>
+            <div class="metric"><span><svg class="metric-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Curtidas totais</span><strong id="postsStatLikes">-</strong></div>
+            <div class="metric"><span><svg class="metric-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>Comentários totais</span><strong id="postsStatComments">-</strong></div>
+            <div class="metric"><span><svg class="metric-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>Engajamento total</span><strong id="postsStatInteractions">-</strong></div>
+            <div class="metric"><span><svg class="metric-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></svg>Visualizações totais</span><strong id="postsStatViews">-</strong></div>
+            <div class="metric"><span><svg class="metric-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>Salvamentos totais</span><strong id="postsStatSaved">-</strong></div>
           </div>
         </section>
         </div>

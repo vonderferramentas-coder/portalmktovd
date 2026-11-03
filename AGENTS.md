@@ -12,6 +12,10 @@ Para arquitetura detalhada (módulos, fluxos, gotchas), veja [docs/CODEBASE_MAP.
 
 Antes de criar ou alterar qualquer tela, leia [DESIGN.md](DESIGN.md) e siga os padrões dele (animação de dropdown e sanfona, tema claro e escuro, cursores, reordenar por arrastar, guias de margem de segurança nas artes). Se um padrão novo for decidido, registre-o lá.
 
+### Skill `unslop` (acabamento de interface)
+
+Skill instalada em `.claude/skills/unslop` (autor Damir Sokolovsky, licença CC BY 4.0: manter o crédito no `SKILL.md`). O `unslop` vale **antes** de escrever, não só depois. Toda criação ou alteração visível de tela, componente, modal, card ou arte em HTML/CSS começa por: (1) invocar o skill `unslop`; (2) ler `references/signs.md` e `references/tokens.md` dele; (3) escrever o código já nos valores certos (grade de 4px, uma rampa neutra, um acento, ícones de linha em vez de emoji, copy sem exclamação nem ponto final em rótulos, transições nomeadas, sem brilhos nem gradientes de matiz). Ao terminar, confira o checklist final do skill antes de entregar; não deixe para o usuário pedir a correção. Para ajuste pequeno e pontual (uma cor, um texto), basta seguir os mesmos valores sem rodar o fluxo completo de nove passes. Se uma regra do `unslop` conflitar com o [DESIGN.md](DESIGN.md) ou com a identidade de uma marca, o DESIGN.md e a marca prevalecem. O `unslop` não chama nenhuma API de IA; a geração de imagens que ele sugere só vale com ferramenta corporativa homologada.
+
 ## Tutoriais por tela (tour guiado)
 
 Toda tela com `portal-tour-<tela>.js` tem passeio guiado ("Como usar"). Mudou um botão, texto ou fluxo dessa tela: atualize o passeio na mesma mudança e rode `tests/portal-tour.test.html`, que acusa alvo sumido. Tela nova com passeio entra em `SCREENS` desse teste. Formato dos passos e regras de interface: [DESIGN.md](DESIGN.md) §18.

@@ -139,16 +139,15 @@ jobs:
               for item in json.loads(Path('fronteiras.json').read_text())['data'][0]['values']
           }
 
-          # Descarta reconstruções anteriores só dentro da janela que esta execução vai
-          # refazer de verdade (os dias em "referencia") — nunca fora dela. A Meta só permite
-          # consultar os últimos ~29 dias de follows_and_unfollows, então um dia que já saiu
-          # dessa janela nunca mais será recalculado; descartá-lo aqui apagaria histórico para
-          # sempre, sem nenhuma chance de reposição (foi o que aconteceu antes desta correção).
-          janela_desta_execucao = set(referencia)
-          historico = {
-              item['date']: item for item in doc.get('history', [])
-              if not (item.get('source') in ('reconstruido', 'estimado') and item['date'] in janela_desta_execucao)
-          }
+          # Nada é descartado antes de recalcular: os dias que esta execução refaz já são
+          # sobrescritos mais abaixo (um dia 'reconstruido'/'estimado' nunca conta como medido).
+          # Descartar de antemão todo dia de "referencia" apagava, a cada execução, o dia mais
+          # antigo da janela (o follower_count traz um dia a mais que o follows_and_unfollows: o
+          # primeiro não tem "anterior" para delimitar a consulta) e qualquer dia cuja consulta
+          # falhasse. Como a Meta só devolve ~29 dias, o que sai da janela não volta mais — foi
+          # assim que 01, 02 e 04/10/2026 perderam o Instagram e o crescimento líquido do mês
+          # deixou de fechar com novos − saídas.
+          historico = {item['date']: item for item in doc.get('history', [])}
           # Um dia faltando desloca o total de todos os dias anteriores a ele, porque a
           # caminhada para trás é encadeada. Melhor recusar do que publicar série torta.
           # A Meta pode devolver o último período ainda aberto com valor 0; ele não é
@@ -200,7 +199,7 @@ jobs:
                   ]
                   for dia, obtido, esperado, desvio in divergentes[:15]:
                       linhas.append(f'| {dia} | {obtido} | {esperado} | {desvio:.0%} |')
-              linhas += ['', 'Nada foi gravado; o arquivo ficou apenas com as medições reais do coletor.']
+              linhas += ['', 'Nada foi gravado; o arquivo ficou como estava.']
               doc['history'] = [historico[dia] for dia in sorted(historico)]
               caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
               Path('resumo.md').write_text('\n'.join(linhas) + '\n', encoding='utf-8')
@@ -416,11 +415,9 @@ jobs:
               for item in json.loads(Path('fronteiras.json').read_text())['data'][0]['values']
           }
 
-          janela_desta_execucao = set(referencia)
-          historico = {
-              item['date']: item for item in doc.get('history', [])
-              if not (item.get('source') in ('reconstruido', 'estimado') and item['date'] in janela_desta_execucao)
-          }
+          # Sem descarte prévio: ver a explicação no job da VONDER (o dia mais antigo da janela
+          # era apagado a cada execução e nunca mais recalculado).
+          historico = {item['date']: item for item in doc.get('history', [])}
           esperados = sorted(dia for dia, valor in referencia.items() if valor > 0)[1:]
           faltando = [dia for dia in esperados if dia not in {item['date'] for item in saldos}]
 
@@ -453,7 +450,7 @@ jobs:
                   linhas += [f'**{len(faltando)} dia(s) sem saldo apurado:** {", ".join(faltando[:10])}.', '']
               if divergentes:
                   linhas += ['Entradas não batem com o `follower_count` do mesmo dia.', '']
-              linhas += ['Nada foi gravado; o arquivo ficou apenas com as medições reais do coletor.']
+              linhas += ['Nada foi gravado; o arquivo ficou como estava.']
               doc['history'] = [historico[dia] for dia in sorted(historico)]
               caminho.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
               Path('resumo-fg.md').write_text('\n'.join(linhas) + '\n', encoding='utf-8')

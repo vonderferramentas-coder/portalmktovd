@@ -18,8 +18,13 @@
   const BRAND_INTEGRATIONS = {
     'default': { storeSuffix: 'vonder', instagram: true, facebook: true, youtube: true },
     'ferramentas-gerais': { storeSuffix: 'ferramentas-gerais', instagram: true, facebook: true, youtube: false },
-    // Grupo OVD: só a página do LinkedIn tem coleta (sync-linkedin-followers.yml); não tem YouTube nem TikTok.
-    'grupo-ovd': { storeSuffix: 'grupo-ovd', linkedin: true, networks: ['Instagram', 'Facebook', 'LinkedIn'] },
+    // Grupo OVD: Instagram/Facebook (sync_meta_marcas.py) e LinkedIn (sync-linkedin-followers.yml); não tem YouTube nem TikTok.
+    'grupo-ovd': { storeSuffix: 'grupo-ovd', instagram: true, facebook: true, linkedin: true, networks: ['Instagram', 'Facebook', 'LinkedIn'] },
+    // Marcas coletadas por scripts/sync_meta_marcas.py (lista em data/meta-marcas.json): só seguidores, sem YouTube.
+    'toolmix': { storeSuffix: 'toolmix', instagram: true, facebook: true, youtube: false },
+    'dwt': { storeSuffix: 'dwt', instagram: true, facebook: true, youtube: false },
+    'dismatal': { storeSuffix: 'dismatal', instagram: true, facebook: true, youtube: false },
+    'osten-ferragens': { storeSuffix: 'osten-ferragens', instagram: true, facebook: true, youtube: false },
   };
   const integration = BRAND_INTEGRATIONS[brandKey] || null;
   const isVonder = brandKey === 'default';
@@ -329,6 +334,8 @@
     const news = dailyNew(network.name);
     let total = end;
     for (let index = points.length - 1; index >= 0; index--) {
+      // antes da primeira medição desta rede não há dado: sem isto o total ficava esticado reto até o início do período
+      if (!Number.isFinite(points[index].values[network.name])) break;
       out.set(points[index].date, total);
       total -= news.get(points[index].date) || 0;
     }
@@ -468,6 +475,12 @@
       if (box) box.title = partial ? `Dados da Meta em ${periodInsights.length} de ${points.length} dias do período; o crescimento líquido soma todos os dias.` : '';
     });
 
+    const partialNote = el('growthPartialNote');
+    if (partialNote) {
+      partialNote.hidden = !partial;
+      if (partial) partialNote.textContent = `Novos (bruto) e saídas somam só os ${periodInsights.length} de ${points.length} dias com Insights da Meta. O líquido soma todos os dias; nos demais vale a variação do total medido.`;
+    }
+
     setText('newFollowers', hasNetForCard ? signed(netForCard) : '-');
     setTone('newFollowers', hasNetForCard ? netForCard : 0);
     setText('avg', perDayForCard === null ? '-' : signed(perDayForCard));
@@ -491,7 +504,6 @@
 
     renderChart(points, nets, grain);
     renderPlatforms(points, nets, currentPoint);
-    renderTable(points, nets, grain);
     renderIndicators(points, nets, periodDeltas.filter(item => !isOpenDay(item.date)), net, rate, perDay, grain);
     // A Meta só nos dá follows/unfollows/alcance detalhados do Instagram - não existe
     // esse dado para Facebook/YouTube/TikTok, então o bloco não faz sentido fora do
@@ -722,43 +734,6 @@
       selectedNetwork = button.dataset.network;
       render();
     }));
-  }
-  const HISTORY_PAGE_SIZE = 10;
-  let historyPage = 0;
-  let historySignature = '';
-  function renderTable(points, nets, grain) {
-    const buckets = aggregate(points, grain).slice().reverse();
-    // Muda o período/agrupamento filtrado (não a passagem do tempo em si) volta pra página 1;
-    // um refresh automático com o mesmo filtro não deve chutar o usuário da página que ele está lendo.
-    const signature = `${grain}|${points.length ? points[0].date : ''}|${points.length ? points[points.length - 1].date : ''}`;
-    if (signature !== historySignature) { historySignature = signature; historyPage = 0; }
-    const totalPages = Math.max(1, Math.ceil(buckets.length / HISTORY_PAGE_SIZE));
-    historyPage = Math.min(historyPage, totalPages - 1);
-    const pageItems = buckets.slice(historyPage * HISTORY_PAGE_SIZE, (historyPage + 1) * HISTORY_PAGE_SIZE);
-
-    // novos seguidores por período: a mesma conta do gráfico (deltas), agrupada pelo mesmo agrupamento
-    const newByBucket = new Map();
-    deltas(points, nets).forEach(item => { const key = bucketOf(item.date, grain); newByBucket.set(key, (newByBucket.get(key) || 0) + item.delta); });
-    const tracked = {};
-    nets.forEach(network => { tracked[network.name] = trackedTotals(points, network); });
-    const tableTotal = date => nets.reduce((sum, network) => sum + (tracked[network.name].get(date) || 0), 0);
-    el('historyHead').innerHTML = `<th>Período</th>${nets.map(network => `<th>${network.name}</th>`).join('')}<th>Total</th><th>Novos</th>`;
-    el('table').innerHTML = pageItems.map(item => {
-      const cells = nets.map(network => {
-        const value = tracked[network.name].get(item.point.date);
-        return `<td>${Number.isFinite(value) ? format(value) : '-'}</td>`;
-      }).join('');
-      return `<tr><td>${item.label}</td>${cells}<td><strong>${format(tableTotal(item.point.date))}</strong></td><td>${newByBucket.has(item.key) ? signed(newByBucket.get(item.key)) : '-'}</td></tr>`;
-    }).join('');
-
-    const pager = el('historyPager');
-    if (pager) {
-      pager.hidden = buckets.length <= HISTORY_PAGE_SIZE;
-      setText('historyPageLabel', `Página ${historyPage + 1} de ${totalPages}`);
-      const prevBtn = el('historyPrev'), nextBtn = el('historyNext');
-      if (prevBtn) prevBtn.disabled = historyPage <= 0;
-      if (nextBtn) nextBtn.disabled = historyPage >= totalPages - 1;
-    }
   }
 
   // ----------------------------------------------------------- marcos do mês
@@ -1124,12 +1099,13 @@
   // Barras finas divergindo de uma linha de base central - reaproveitado tanto no gráfico
   // grande de "Indicadores do período" quanto nos mini-gráficos de "Insights do Instagram".
   function divergingBarsSvg(values, width, height, minGap) {
-    const baselineY = height / 2;
+    // sem negativos, a base vai pro fundo e as barras ocupam a altura toda
+    const baselineY = values.some(value => value < 0) ? height / 2 : height;
     const maxAbs = Math.max(1, ...values.map(value => Math.abs(value)));
     const barWidth = Math.max(1.5, Math.min(14, width / values.length - minGap));
     const bars = values.map((value, index) => {
       const cx = (index + 0.5) / values.length * width;
-      const half = Math.max(1, Math.abs(value) / maxAbs * (baselineY - 4));
+      const half = Math.max(1, Math.abs(value) / maxAbs * (baselineY - 2));
       const y = value >= 0 ? baselineY - half : baselineY;
       const cls = value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral';
       return `<rect class="mini-bar ${cls}" data-index="${index}" x="${(cx - barWidth / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${half.toFixed(1)}" rx="${Math.min(2, barWidth / 2).toFixed(1)}"></rect>`;
@@ -1166,21 +1142,34 @@
     const chart = kind === 'bars'
       ? `<svg class="mini-chart-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">${divergingBarsSvg(values, width, height, 1)}</svg>`
       : (() => { const inner = areaSparklineSvg(values, width, height); return inner ? `<svg class="tile-spark-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true" style="color:${tone}">${inner}</svg>` : ''; })();
-    host.innerHTML = `${chart}<div class="chart-tooltip tile-spark-tooltip" role="status" hidden></div>`;
+    host.innerHTML = `${chart}<div class="tile-spark-guide" hidden></div><div class="tile-spark-dot" style="color:${tone}" hidden></div><div class="chart-tooltip tile-spark-tooltip" role="status" hidden></div>`;
     if (!chart || !dates || dates.length !== values.length) return;
 
     const tooltip = host.querySelector('.tile-spark-tooltip');
     if (!tooltip) return;
     const formatValue = value => unit === 'signed' ? signed(value) : unit === 'percent' ? `${value.toFixed(2).replace('.', ',')}%` : format(Math.round(value));
-    const hide = () => { tooltip.hidden = true; };
+    const guide = host.querySelector('.tile-spark-guide');
+    const dot = host.querySelector('.tile-spark-dot');
+    const hide = () => { tooltip.hidden = true; guide.hidden = true; dot.hidden = true; };
     const show = event => {
       const rect = host.getBoundingClientRect();
       const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
       const index = Math.round(ratio * (values.length - 1));
       tooltip.innerHTML = `<strong>${shortDate(dates[index])}</strong><span>${label}: <b>${formatValue(values[index])}</b></span>`;
       tooltip.hidden = false;
-      tooltip.style.left = `${Math.max(4, Math.min(rect.width - 130, event.clientX - rect.left + 8))}px`;
-      tooltip.style.top = '-8px';
+      // guia vertical + ponto sobre o dia lido; o tooltip sobe acima do mini-gráfico, sem cobrir a curva
+      const x = values.length > 1 ? index / (values.length - 1) * rect.width : 0;
+      guide.style.left = `${x}px`;
+      guide.hidden = false;
+      if (kind !== 'bars') {
+        const min = Math.min(...values, 0), range = Math.max(1, Math.max(...values, 1) - min);
+        const k = rect.height / height;
+        dot.style.left = `${x}px`;
+        dot.style.top = `${(1 - (values[index] - min) / range) * (rect.height - 4 * k) + 2 * k}px`;
+        dot.hidden = false;
+      }
+      tooltip.style.left = `${Math.max(0, Math.min(rect.width - tooltip.offsetWidth, x - tooltip.offsetWidth / 2))}px`;
+      tooltip.style.top = `${-tooltip.offsetHeight - 10}px`;
     };
     host.addEventListener('pointerenter', show);
     host.addEventListener('pointermove', show);
@@ -1485,14 +1474,13 @@
     el('growth').className = 'growth-line';
     setText('growth', message);
     ['newFollowers','avg','grossFollowsPeriod','unfollowsPeriod'].forEach(id => { setText(id, '-'); const node = el(id); if (node) node.className = 'neutral'; });
+    if (el('growthPartialNote')) el('growthPartialNote').hidden = true;
     setText('growthPeriod', '-');
     renderGoalRing({ values:{} }, activeNetworks());
     el('channelContext').textContent = 'Todas';
     el('chartY').innerHTML = '';
     el('bars').innerHTML = `<p class="muted" style="margin:auto;text-align:center;max-width:340px">${message}<br>Instagram, Facebook e YouTube são coletados automaticamente; os demais canais ainda não têm coleta própria.</p>`;
     el('platforms').innerHTML = NETWORKS.map(network => `<div class="platform" style="cursor:default"><img class="platform-logo" src="${network.icon}" alt=""><span class="platform-copy"><strong>${network.name}</strong><small>${network.connected ? 'Aguardando coleta' : 'Sem API conectada'}</small></span><span class="platform-delta"><strong class="neutral">-</strong></span></div>`).join('');
-    el('table').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted)">${message}</td></tr>`;
-    const pager = el('historyPager'); if (pager) pager.hidden = true;
     INSIGHT_SPARK_IDS.forEach(id => renderTileSpark(id, [], 'area', null));
     ['netGrowth','growthRate','dailyRate','bestDay','worstDay','ma7','ma30','mtd','ytd','cmpDay','cmpWeek','cmpMonth','cmpPeriod','cmpAccel','cmpWeekday','cmpDayDetail','cmpWeekDetail','cmpMonthDetail','cmpPeriodDetail','cmpAccelDetail','cmpWeekdayDetail','grossFollows','unfollows','insightNet','reach','followConversion','avgFollows']
       .forEach(id => { setText(id, '-'); const node = el(id); if (node) node.className = ''; });
@@ -1650,16 +1638,8 @@
     }));
   }
   renderPosts(); // estado inicial ("aguardando...") enquanto loadPosts() ainda não resolveu
-  const historyToggle = el('historyToggle'), historyBody = el('historyBody');
-  if (historyToggle && historyBody) {
-    historyToggle.addEventListener('click', () => {
-      const expanded = historyToggle.getAttribute('aria-expanded') === 'true';
-      historyToggle.setAttribute('aria-expanded', String(!expanded));
-      historyBody.hidden = expanded;
-    });
-  }
-  // "Performance em números" e "Conteúdo do Instagram" vêm abertos por padrão (ao contrário do
-  // histórico acima) - só existem para reduzir a verticalidade quando o usuário já sabe o que quer ver.
+  // "Performance em números" e "Conteúdo do Instagram" vêm abertos por padrão - só existem para
+  // reduzir a verticalidade quando o usuário já sabe o que quer ver.
   // Usa uma classe (animada via grid-template-rows no CSS) em vez de `hidden` - assim o
   // recolher/abrir anima; `hidden` continua reservado pra quando a seção inteira não se aplica
   // à plataforma selecionada (ver render()), que deve ser instantâneo, sem transição.
@@ -1674,9 +1654,6 @@
       body.inert = expanded;
     });
   });
-  const historyPrevBtn = el('historyPrev'), historyNextBtn = el('historyNext');
-  if (historyPrevBtn) historyPrevBtn.addEventListener('click', () => { if (historyPage > 0) { historyPage--; render(); } });
-  if (historyNextBtn) historyNextBtn.addEventListener('click', () => { historyPage++; render(); });
   el('startDate').addEventListener('change', () => {
     const start = el('startDate').value;
     if (!start || !looksLikeTypedYear(start)) return;

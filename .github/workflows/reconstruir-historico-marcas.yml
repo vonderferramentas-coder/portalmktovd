@@ -1,0 +1,43 @@
+name: Reconstruir histórico de seguidores das marcas
+
+# Carga sob demanda do histórico das marcas de data/meta-marcas.json (Toolmix, DWT, Grupo OVD, Dismatal, Osten).
+# Facebook: total acumulado por dia (page_follows), voltando `meses`. Instagram: só os ~29 dias que a Meta guarda
+# (entradas, saídas e alcance por dia). Grava em portalStore/followers-<marca>-v1 sem sobrescrever totais já
+# medidos pela coleta diária. Ver scripts/reconstruir_historico_marcas.py.
+
+on:
+  workflow_dispatch:
+    inputs:
+      meses:
+        description: 'Quantos meses voltar no Facebook (o Instagram é sempre ~29 dias, limite da Meta)'
+        type: choice
+        options: ['3', '6', '12', '24']
+        default: '12'
+
+concurrency:
+  group: marcas-meta-historico
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reconstruir:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o site
+        uses: actions/checkout@v4
+
+      - name: Reconstruir o histórico e publicar no Firestore
+        env:
+          META_PAGE_TOKENS: ${{ secrets.META_PAGE_TOKENS }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+          MESES: ${{ inputs.meses }}
+        run: |
+          if [ -z "$META_PAGE_TOKENS" ] || [ -z "$FIREBASE_SERVICE_ACCOUNT_KEY" ]; then
+            echo '::error::META_PAGE_TOKENS ou FIREBASE_SERVICE_ACCOUNT_KEY não configurado.'
+            exit 1
+          fi
+          pip install --quiet firebase-admin
+          python3 scripts/reconstruir_historico_marcas.py

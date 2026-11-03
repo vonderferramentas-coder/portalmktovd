@@ -1,0 +1,46 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Calendário - código FG de produto de outra marca</title>
+<body data-result="running"><pre id="result">Executando…</pre>
+<script>
+// Extrai do app.js as funções que decidem qual código aparece (OVD, FG ou referência do fabricante) e as roda com um site FG falso.
+// Precisa de --allow-file-access-from-files (como os outros testes que leem arquivos do projeto).
+(async () => {
+  try {
+    const request = new XMLHttpRequest();
+    request.open('GET', '../app.js', false);
+    request.send();
+    const source = request.responseText;
+    const cut = (from, to) => { const a = source.indexOf(from), b = source.indexOf(to, a); if (a < 0 || b < 0) throw new Error('marcador não achado: ' + from); return source.slice(a, b); };
+    const block = cut('    // Código OVD (00.00.000.000) só existe', '    // lê os produtos de uma postagem') + cut('    function chosenProduct', '    function showProductSuggestions');
+    const calls = [];
+    const build = new Function('fetchStub', `
+      const normalizeCode = s => String(s||'').replace(/[.\s-]/g,'').toLowerCase();
+      const masterCatalogByCode = new Map([['16620750001', {code:'16.62.075.001'}]]);
+      const APP_SETTINGS = { catalog: [] };
+      const productDetailsByCode = () => null;
+      const PORTAL_API_BASE = 'https://x/api';
+      const fetch = fetchStub;
+      ${block}
+      return { isOvdCode, resolveFgCodes, productCodesLabel, chosenProduct };
+    `);
+    const site = { DW44540: { code: 'DW44540', codeFG: '1086715' }, K140: { code: 'K140', codeFG: '' } };
+    const m = build(async url => { calls.push(url); const q = decodeURIComponent(/q=([^&]+)/.exec(url)[1]); const item = site[q]; return { ok: true, json: async () => ({ items: item ? [item] : [] }) }; });
+    const assert = (condition, message) => { if (!condition) throw new Error(message); };
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    assert(same([m.isOvdCode('70.60.000.300'), m.isOvdCode('DW44540'), m.isOvdCode('2608601501'), m.isOvdCode('')], [true, false, false, false]), 'só o formato 00.00.000.000 (ou do catálogo) é código OVD');
+    assert(same(m.chosenProduct({ code: 'DW44540', name: 'Disco', codeFG: '1086715' }), { code: 'DW44540', name: 'Disco', codeFG: '1086715' }), 'produto de outra marca guarda o código FG');
+    assert(same(m.chosenProduct({ code: '70.60.000.300', name: 'Abafador', codeFG: '1175218' }), { code: '70.60.000.300', name: 'Abafador' }), 'marca própria não guarda FG na postagem');
+    assert(m.productCodesLabel({ code: '70.60.000.300', name: 'a' }) === 'Códigos - OVD: 70.60.000.300', 'marca própria mostra o OVD');
+    assert(m.productCodesLabel({ code: 'DW44540', name: 'a', codeFG: '1086715' }) === 'Códigos - FG: 1086715', 'outra marca mostra só o FG, não o modelo como OVD');
+    assert(m.productCodesLabel({ code: 'DW44540', name: 'a' }) === 'Códigos - Ref.: DW44540', 'sem FG conhecido, o modelo entra como Ref.');
+    await m.resolveFgCodes([{ code: 'DW44540' }, { code: 'DW44540' }, { code: 'K140' }, { code: '70.60.000.300' }, { code: 'X', codeFG: '9' }]);
+    assert(calls.length === 2, 'uma consulta por referência: sem repetir, sem marca própria e sem FG já guardado');
+    assert(m.productCodesLabel({ code: 'DW44540', name: 'a' }) === 'Códigos - FG: 1086715', 'depois de achar no site, mostra o FG');
+    assert(m.productCodesLabel({ code: 'K140', name: 'a' }) === 'Códigos - Ref.: K140', 'site sem FG mantém a referência');
+    await m.resolveFgCodes([{ code: 'DW44540' }]);
+    assert(calls.length === 2, 'a segunda consulta da mesma referência usa o cache da sessão');
+    const falha = await (async () => { const o = build(async () => { throw new Error('rede'); }); await o.resolveFgCodes([{ code: 'ZZ999' }]); return o.productCodesLabel({ code: 'ZZ999', name: 'a' }); })();
+    assert(falha === 'Códigos - Ref.: ZZ999', 'falha de rede não derruba a exportação: segue com a referência');
+    document.body.dataset.result = 'pass'; document.getElementById('result').textContent = 'OK - código FG de produto de outra marca validado.';
+  } catch (error) { document.body.dataset.result = 'fail'; document.getElementById('result').textContent = 'FAIL: ' + error.message; }
+})();
+</script></body></html>

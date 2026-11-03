@@ -77,7 +77,6 @@ PortalTour.register('redes-sociais', {
         { target: '#advancedMetrics', title: 'Indicadores do período', text: 'Taxa de crescimento, média diária, melhor e pior dia, e o acumulado no mês e no ano.' },
         { target: '#comparePanel', title: 'Comparativos', text: 'Compara o último dia, a última semana, o mês e o período filtrado com os anteriores, e indica o melhor dia da semana para crescer.' },
         { target: '#insightsPanel', title: 'Insights do Instagram', text: 'Entradas, saídas e alcance dos dias fechados pela Meta. Só aparece quando o Instagram está selecionado. O saldo daqui pode diferir do crescimento líquido porque vem de outra fonte da Meta.' },
-        { target: '#historyToggle', interact: true, title: 'Histórico de acompanhamento', text: 'Clique para abrir a tabela com o total de cada rede, dia a dia. Clique de novo para fechar.' },
         { target: '#performanceToggle', interact: true, title: 'Recolher a seção', text: 'Para reduzir a rolagem, clique no título "Performance em números" e a seção se recolhe.' },
         { title: 'Pronto!', text: 'Agora você sabe ler os números. Lembre que o dia de hoje ainda está em andamento: os relatórios usam dias já fechados.' }
       ]
