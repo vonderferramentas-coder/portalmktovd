@@ -796,18 +796,29 @@
     const from = el('startDate').value || series[0].date, to = el('endDate').value || todayIso;
     label.textContent = `${milestoneDateLabel(from)} a ${milestoneDateLabel(to)}`;
     const dates = periodMilestones(from, to);
-    head.innerHTML = `<th>Rede social</th>${dates.map(date => `<th>${milestoneDateLabel(date)}</th>`).join('')}`;
+    // O 1º marco é o total no INÍCIO do período (antes dos novos seguidores do 1º dia), e os demais fecham com os novos
+    // seguidores (trackedTotals, a mesma base do gráfico): assim o total final menos o inicial é o crescimento líquido do período.
+    const dayBefore = iso(addDays(parse(from), -1));
+    const periodPoints = series.filter(point => point.date >= from && point.date <= to);
+    head.innerHTML = `<th>Rede social</th>${dates.map((date, index) => `<th${index === 0 ? ' title="Total no início do período, antes dos novos seguidores do primeiro dia"' : ''}>${index === 0 ? 'Início · ' : ''}${milestoneDateLabel(date)}</th>`).join('')}`;
 
     const toneClass = delta => delta === null ? 'neutral' : delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral';
     body.innerHTML = NETWORKS.map((network, netIndex) => {
-      const values = dates.map(date => date > todayIso ? null : valueAtDate(date, network.name));
+      const tracked = trackedTotals(periodPoints, network), newByDay = dailyNew(network.name);
+      const values = dates.map((date, index) => {
+        if (date > todayIso) return null;
+        const total = tracked.get(date);
+        if (!Number.isFinite(total)) return valueAtDate(date, network.name);
+        return index === 0 ? total - (newByDay.get(date) || 0) : total;
+      });
       // Ganho entre marcos = soma dos novos seguidores do intervalo, a mesma conta do gráfico (saldo real da Meta no
       // Instagram). Sem coleta real dentro da janela (ex.: meses antigos, só um número estimado por mês), o valor
       // do marco é apenas herdado do anterior - mostrar "0" aí sugeriria estagnação em vez de "sem dado".
       const deltasRow = values.map((value, index) => {
         if (index === 0 || value === null || values[index - 1] === null) return null;
-        if (!hasMeasurementInRange(network.name, dates[index - 1], dates[index])) return null;
-        return newBetween([network], dates[index - 1], dates[index]);
+        const since = index === 1 ? dayBefore : dates[index - 1]; // o 1º ganho parte do início do período, não do fim do 1º dia
+        if (!hasMeasurementInRange(network.name, since, dates[index])) return null;
+        return newBetween([network], since, dates[index]);
       });
       const known = deltasRow.filter(delta => delta !== null);
       const best = known.length ? Math.max(...known) : null;

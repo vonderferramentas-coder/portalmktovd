@@ -23,7 +23,7 @@ PortalTour.register('redes-sociais', {
         { target: '#periodControl', title: 'Período', text: 'Tudo na tela (gráfico, ganhos, posts) segue o período escolhido aqui. Há um passeio só sobre isso.' },
         { target: '#reportControl', title: 'Gerar relatório', text: 'Imprime ou salva em PDF o resumo do período, ou monta um texto pronto para enviar por e-mail.' },
         { target: '#actionsControl', title: 'Mais ações', text: 'Aqui fica o Controle de metas, onde se define quantos seguidores cada rede deve alcançar.' },
-        { target: '.milestones-card', title: 'Evolução no período', text: 'Uma tabela com o total de seguidores no primeiro e no último dia do período e em cada sexta-feira, com o ganho entre um marco e outro.' },
+        { target: '.milestones-card', title: 'Evolução no período', text: 'Uma tabela com o total de seguidores no início do período, no último dia e em cada sexta-feira, com o ganho entre um marco e outro. O total final menos o do início é o crescimento líquido.' },
         { target: '#platforms', title: 'Por plataforma', text: 'Um card por rede social, com o total mais recente. Clique num card para filtrar tudo o que está abaixo por aquela rede.' },
         { target: '#totalCard', title: 'Comunidade total', text: 'O total de seguidores da rede escolhida (ou de todas somadas) e quanto cresceu no período.' },
         { target: '#tiktokImportPanel', title: 'Importar o TikTok', text: 'O TikTok não libera os dados automaticamente. Nesta marca, o histórico é atualizado de tempos em tempos com um arquivo CSV baixado no TikTok Studio, seguindo o passo a passo desta caixa.' },
