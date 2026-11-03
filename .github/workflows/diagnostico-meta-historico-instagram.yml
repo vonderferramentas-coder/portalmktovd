@@ -3,7 +3,7 @@ name: Diagnóstico do histórico de novos e saídas do Instagram (Meta)
 # Testa até onde a Meta devolve entraram/saíram do Instagram da VONDER por dia, para decidir se dá
 # para recuperar automaticamente os dias de julho e 01 a 04/08/2026 (hoje só temos os ~29 dias que
 # reconstruir-historico.yml consulta). Só lê; não grava arquivo, não faz commit e só escreve no
-# resumo da execução. O log do Actions é público: o resumo mostra apenas contagens e o código e a
+# resumo da execução e no log. O log do Actions é público: ambos mostram apenas contagens e o código e a
 # mensagem de erro da Meta, nunca o token (que vai no cabeçalho Authorization).
 
 on:
@@ -23,7 +23,7 @@ jobs:
         run: |
           set -uo pipefail
           API="https://graph.facebook.com/v26.0"
-          test -n "$META_PAGE_ACCESS_TOKEN" || { echo 'Segredo META_PAGE_ACCESS_TOKEN não cadastrado.' >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+          test -n "$META_PAGE_ACCESS_TOKEN" || { echo 'Segredo META_PAGE_ACCESS_TOKEN não cadastrado.' | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; }
 
           {
             echo '## Novos e saídas do Instagram por dia, em idades diferentes'
@@ -32,7 +32,7 @@ jobs:
             echo ''
             echo '| Dia | Entraram | Saíram | Resposta da Meta |'
             echo '|---|---:|---:|---|'
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
           # fronteira de dia = 07:00 UTC (meia-noite no fuso da conta), igual a reconstruir-historico.yml
           for dia in "$(date -u -d '10 days ago' +%F)" 2026-09-20 2026-09-01 2026-08-15 2026-08-02 2026-07-15 2026-07-01; do
@@ -43,15 +43,15 @@ jobs:
             entraram="$(printf '%s' "$resposta" | jq -r '[.data[]?.total_value?.breakdowns[]?.results[]? | select(.dimension_values[0]=="FOLLOWER") | .value] | first // "-"' 2>/dev/null || echo '-')"
             sairam="$(printf '%s' "$resposta" | jq -r '[.data[]?.total_value?.breakdowns[]?.results[]? | select(.dimension_values[0]=="NON_FOLLOWER") | .value] | first // "-"' 2>/dev/null || echo '-')"
             erro="$(printf '%s' "$resposta" | jq -r 'if .error then "erro \(.error.code): \(.error.message[0:160])" else "ok" end' 2>/dev/null || echo 'resposta ilegível')"
-            echo "| $dia | $entraram | $sairam | ${erro//|/ } |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| $dia | $entraram | $sairam | ${erro//|/ } |" | tee -a "$GITHUB_STEP_SUMMARY"
           done
 
           {
             echo ''
             echo '## follower_count (entradas por dia) em julho/2026'
             echo ''
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
           resposta="$(curl -sS --max-time 30 -H "Authorization: Bearer $META_PAGE_ACCESS_TOKEN" \
             "$API/$META_INSTAGRAM_ID/insights?metric=follower_count&period=day&since=$(date -u -d '2026-07-01' +%s)&until=$(date -u -d '2026-07-31' +%s)")" || resposta='{}'
-          printf '%s' "$resposta" | jq -r 'if .error then "erro \(.error.code): \(.error.message[0:200])" else "dias devolvidos: \([.data[]?.values[]?] | length)" end' 2>/dev/null >> "$GITHUB_STEP_SUMMARY" \
-            || echo 'resposta ilegível' >> "$GITHUB_STEP_SUMMARY"
+          printf '%s' "$resposta" | jq -r 'if .error then "erro \(.error.code): \(.error.message[0:200])" else "dias devolvidos: \([.data[]?.values[]?] | length)" end' 2>/dev/null | tee -a "$GITHUB_STEP_SUMMARY" \
+            || echo 'resposta ilegível' | tee -a "$GITHUB_STEP_SUMMARY"
