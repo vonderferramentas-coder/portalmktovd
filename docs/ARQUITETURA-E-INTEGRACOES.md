@@ -863,6 +863,12 @@ Pedido da gestão: ensinar cada funcionalidade dentro da própria tela, para que
 - **Workflow:** `diagnostico-meta-paginas.yml` (manual, `workflow_dispatch`). Só lê; não grava arquivo, não faz commit e não pede o token de cada Página. O resultado vai para o resumo da execução (IDs, nomes, seguidores, escopos e validade do token).
 - **Credencial:** segredo `META_USER_ACCESS_TOKEN` nos GitHub Actions Secrets, token de usuário de longa duração do perfil que administra as Páginas. Nunca versionar o valor. Rotacionar antes de vencer (a validade aparece na terceira consulta do diagnóstico).
 
+### Diagnóstico do histórico de novos e saídas do Instagram (03/11/2026)
+
+- **Finalidade:** descobrir até onde a Meta devolve entraram/saíram por dia, para decidir se julho e 01 a 04/08/2026 (sem Insights no arquivo de seguidores) podem ser recuperados automaticamente. Hoje a reconstrução cobre só os ~29 dias que consulta.
+- **Workflow:** `diagnostico-meta-historico-instagram.yml` (manual, `workflow_dispatch`, `contents: read`). Consulta `follows_and_unfollows` em dias de várias idades (um recente como controle, e 20/09, 01/09, 15/08, 02/08, 15/07 e 01/07) e `follower_count` de julho. Só lê; não grava arquivo nem faz commit. O resumo da execução mostra contagens e o código/mensagem de erro da Meta, nunca o token.
+- **Credencial:** `META_PAGE_ACCESS_TOKEN`, o mesmo segredo da coleta da VONDER.
+
 ### Seguidores das marcas Toolmix, DWT, Grupo OVD, Dismatal e Osten Ferragens (30/10/2026)
 
 - **Finalidade:** mostrar no painel de Redes sociais os seguidores do Instagram e da Página do Facebook dessas marcas, sem copiar um job por marca como foi feito para a Ferramentas Gerais.
