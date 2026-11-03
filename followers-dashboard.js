@@ -497,7 +497,7 @@
       .map(point => ({ date: point.date, follows: Number(point.insights.Instagram.follows), unfollows: Number(point.insights.Instagram.unfollows) })) : [];
     const bestDelta = periodDeltas.length ? periodDeltas.reduce((top, item) => item.delta > top.delta ? item : top) : null;
     lastReport = { from: first.date, to: last.date, networkName: active ? active.name : null, hasNet: !!hasNetForCard,
-      net: netForCard, perDay: perDayForCard, insightDays, bestDelta };
+      net: netForCard, perDay: perDayForCard, insightDays, bestDelta, nets, points, last: currentPoint };
 
     renderGoalRing(currentPoint, nets);
     el('channelContext').innerHTML = active ? `<img src="${active.icon}" alt=""> ${active.name}` : 'Todas';
@@ -1781,6 +1781,111 @@
     if (!Number(top[key])) return `<b>${title}:</b> nenhuma publicação registrou ${unit} no período.`;
     return `<b>${title}:</b> ${postRef(top)}<br>com <b>${format(Number(top[key]))}</b> ${unit}.`;
   }
+  // ---- Contexto do ano para o e-mail: mesma base do painel (soma dos novos seguidores, saldo da Meta no Instagram) ----
+  const ORDINALS = ['', 'primeiro', 'segundo', 'terceiro', 'quarto', 'quinto', 'sexto', 'sétimo', 'oitavo', 'nono', 'décimo', 'décimo primeiro', 'décimo segundo'];
+  const WEEKDAYS_LONG = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+  const monthLower = month => MONTH_NAMES[month].toLowerCase();
+  const monthFirstDay = (year, month) => `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  // crescimento líquido de cada mês JÁ FECHADO do ano (o mês em andamento não entra: compará-lo parcial distorceria a posição)
+  function monthlyNet(nets, year) {
+    const rows = [];
+    // mês em que alguma rede ainda não tinha dado antes do 1º dia seria parcial: fica fora da comparação
+    const firstData = nets.map(network => Array.from(dailyNew(network.name).keys()).sort()[0]).filter(Boolean).sort().pop() || '';
+    for (let month = 0; month < 12; month++) {
+      const start = monthFirstDay(year, month), end = iso(monthEnd(parse(start)));
+      if (isOpenDay(end)) break;
+      if (start <= firstData) continue;
+      const total = newBetween(nets, iso(addDays(parse(start), -1)), end);
+      if (total !== null) rows.push({ month, total });
+    }
+    return rows;
+  }
+  // Posição do período entre os meses do ano. Só vale para um mês fechado inteiro (1º ao último dia).
+  function monthRankingText(r) {
+    const start = parse(r.from);
+    if (r.from.slice(8) !== '01' || r.to !== iso(monthEnd(start))) return '';
+    const year = start.getUTCFullYear(), rows = monthlyNet(r.nets, year);
+    const mine = rows.find(row => row.month === start.getUTCMonth());
+    if (!mine || rows.length < 2) return '';
+    const ranked = rows.slice().sort((a, b) => b.total - a.total);
+    const position = ranked.findIndex(row => row.total === mine.total) + 1; // empate fica na melhor posição
+    const ref = row => `<b>${monthLower(row.month)}</b> (${signed(row.total)})`;
+    if (position === 1) return `Foi o <b>melhor mês de ${year}</b>, um recorde de crescimento do ano; o segundo melhor foi ${ref(ranked[1])}.`;
+    if (position === 2) return `Foi o <b>segundo melhor mês do ano</b>, atrás apenas de ${ref(ranked[0])}.`;
+    if (position === rows.length && rows.length > 2) return `Foi o <b>menor crescimento do ano</b> entre os ${rows.length} meses fechados de ${year}; o melhor foi ${ref(ranked[0])}.`;
+    return `Foi o <b>${ORDINALS[position] || position + 'º'} melhor mês do ano</b> entre os ${rows.length} meses fechados de ${year}; o melhor foi ${ref(ranked[0])}.`;
+  }
+  // Projeção para a meta cadastrada, no ritmo médio do período (mesma conta do card "Progresso da meta").
+  function goalProjectionText(r) {
+    const progress = goalProgressFor(r.nets, r.last);
+    if (!progress) return '';
+    const { entries, target, reached, deadline } = progress, remaining = target - reached;
+    const names = entries.map(network => network.name).join(', ');
+    if (remaining <= 0) return `<b>Meta (${names}):</b> atingida, com <b>${format(reached)}</b> de <b>${format(target)}</b> seguidores.`;
+    const goalDeltas = deltas(r.points.filter(point => !isOpenDay(point.date)), entries); // sem o dia em andamento (parcial)
+    const days = goalDeltas.reduce((sum, item) => sum + item.days, 0);
+    const pace = goalDeltas.length ? goalDeltas.reduce((sum, item) => sum + item.delta, 0) / Math.max(1, days) : null;
+    const head = `<b>Projeção para a meta (${names}):</b> faltam <b>${format(remaining)}</b> para <b>${format(target)}</b> seguidores`;
+    const daysToDeadline = deadline ? dayDiff(r.last.date, deadline) : null;
+    const need = daysToDeadline > 0 ? ` Para cumprir o prazo de <b>${deadline.split('-').reverse().join('/')}</b>, o ritmo precisa ser de <b>${signed(remaining / daysToDeadline)}</b> por dia.` : '';
+    if (pace === null || pace <= 0) return `${head}. No ritmo do período a meta não se aproxima.${need}`;
+    const eta = addDays(parse(r.last.date), Math.ceil(remaining / pace));
+    const months = remaining / pace / 30.44;
+    const when = `por volta de <b>${monthLower(eta.getUTCMonth())} de ${eta.getUTCFullYear()}</b> (em cerca de ${months < 1 ? 'menos de 1 mês' : months < 1.5 ? '1 mês' : `${Math.round(months)} meses`})`;
+    const vsDeadline = deadline ? (iso(eta) <= deadline ? ', dentro do prazo' : ', depois do prazo') : '';
+    const few = days < 14 ? ' <i>O período tem poucos dias, então a projeção ainda é instável.</i>' : '';
+    return `${head}. No ritmo do período (<b>${signed(pace)}</b> por dia), a meta deve ser atingida ${when}${vsDeadline}.${need}${few}`;
+  }
+  // Curiosidades do ano, todas calculadas com os dados do painel; cada uma só entra se houver dado para sustentá-la.
+  function yearInsights(r) {
+    const items = [], end = parse(r.to), year = end.getUTCFullYear();
+    const sinceYear = newBetween(r.nets, `${year - 1}-12-31`, r.to);
+    const total = totalAt(r.last, r.nets);
+    if (sinceYear !== null) {
+      const startOfYear = total - sinceYear;
+      items.push(`<b>Acumulado do ano:</b> <b>${signed(sinceYear)}</b> seguidores desde 01/01/${year}${startOfYear > 0 ? ` (<b>${percent(sinceYear / startOfYear * 100)}</b> sobre o total do início do ano)` : ''}.`);
+    }
+    const startDate = parse(r.from);
+    if (r.from.slice(8) === '01' && r.to === iso(monthEnd(startDate))) {
+      const prevStart = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() - 1, 1));
+      const prev = newBetween(r.nets, iso(addDays(prevStart, -1)), iso(monthEnd(prevStart)));
+      const current = newBetween(r.nets, iso(addDays(startDate, -1)), r.to);
+      if (prev !== null && prev > 0 && current !== null) items.push(`<b>Em relação a ${monthLower(prevStart.getUTCMonth())}:</b> o crescimento do período foi <b>${percent((current - prev) / prev * 100)}</b> (${signed(current)} contra ${signed(prev)}).`);
+    }
+    const follows = r.insightDays.reduce((sum, day) => sum + day.follows, 0), unfollows = r.insightDays.reduce((sum, day) => sum + day.unfollows, 0);
+    if (follows > 0) items.push(`<b>Retenção:</b> para cada 100 novos seguidores, <b>${Math.round(unfollows / follows * 100)}</b> deixaram de seguir no período (${format(unfollows)} saídas para ${format(follows)} entradas).`);
+    // dia da semana com melhor saldo médio no ano, sem o dia em andamento
+    const byWeekday = Array.from({ length: 7 }, () => ({ sum: 0, count: 0 }));
+    const daily = new Map();
+    r.nets.forEach(network => dailyNew(network.name).forEach((value, date) => {
+      if (date < `${year}-01-01` || date > r.to || isOpenDay(date)) return;
+      const day = daily.get(date) || { sum: 0, networks: 0 };
+      day.sum += value; day.networks += 1; daily.set(date, day);
+    }));
+    daily.forEach((day, date) => { if (day.networks === r.nets.length) { const slot = byWeekday[parse(date).getUTCDay()]; slot.sum += day.sum; slot.count += 1; } });
+    if (byWeekday.every(slot => slot.count >= 4)) {
+      const averages = byWeekday.map((slot, day) => ({ day, avg: slot.sum / slot.count }));
+      const best = averages.reduce((top, item) => item.avg > top.avg ? item : top), worst = averages.reduce((low, item) => item.avg < low.avg ? item : low);
+      items.push(`<b>Melhor dia da semana em ${year}:</b> <b>${WEEKDAYS_LONG[best.day]}</b>, com média de <b>${signed(best.avg)}</b> por dia; o mais fraco é ${WEEKDAYS_LONG[worst.day]} (${signed(worst.avg)}).`);
+    }
+    return items;
+  }
+  function postsInYear(year) {
+    const active = activeNetworkOrNull();
+    return (active ? postsData.filter(post => post.network === active.name) : postsData)
+      .filter(post => String(post.timestamp || '').slice(0, 4) === String(year));
+  }
+  // Melhor publicação do ano inteiro (não só do período); avisa quando ela foi publicada dentro do período do relatório.
+  function yearBestPosts(r) {
+    const year = parse(r.to).getUTCFullYear(), posts = postsInYear(year);
+    return [['views', `Melhor publicação de ${year} em visualizações`, 'visualizações'], ['totalInteractions', `Melhor publicação de ${year} em interações`, 'interações']].map(([key, title, unit]) => {
+      const known = posts.filter(post => Number(post[key]) > 0);
+      if (!known.length) return '';
+      const top = known.reduce((best, post) => Number(post[key]) > Number(best[key]) ? post : best);
+      const day = String(top.timestamp || '').slice(0, 10);
+      return topPostItem(known, key, title, unit) + (day >= r.from && day <= r.to ? ' <b>Foi publicada neste período.</b>' : '');
+    }).filter(Boolean);
+  }
   function buildEmailReport() {
     const r = lastReport;
     if (!r) return null;
@@ -1790,7 +1895,8 @@
     const list = items => `<ul ${UL}>${items.map(item => `<li ${LI}>${item}</li>`).join('')}</ul>`;
     const followers = [];
     if (r.hasNet) {
-      followers.push(`<b>Crescimento total:</b> a comunidade ${r.net >= 0 ? 'ganhou' : 'perdeu'} ${plural(r.net, 'seguidor', 'seguidores')} no período (saldo líquido).`);
+      const ranking = monthRankingText(r);
+      followers.push(`<b>Crescimento total:</b> a comunidade ${r.net >= 0 ? 'ganhou' : 'perdeu'} ${plural(r.net, 'seguidor', 'seguidores')} no período (saldo líquido).${ranking ? ` ${ranking}` : ''}`);
       if (r.perDay !== null) followers.push(`<b>Média por dia:</b> <b>${signed(r.perDay)}</b> seguidores ao dia.`);
     } else followers.push('<b>Crescimento total e média por dia:</b> sem medições suficientes no período.');
     const worstUnfollows = r.insightDays.length ? r.insightDays.reduce((top, day) => day.unfollows > top.unfollows ? day : top) : null;
@@ -1798,6 +1904,9 @@
     else followers.push('<b>Dia com mais novos seguidores:</b> sem dado disponível no período.');
     if (worstUnfollows) followers.push(`<b>Dia com mais unfollows:</b> <b>${postDateLabel(worstUnfollows.date)}</b>, com ${plural(worstUnfollows.unfollows, 'pessoa que deixou', 'pessoas que deixaram')} de seguir.`);
     else followers.push('<b>Dia com mais unfollows:</b> esse dado só existe para o Instagram e não há registro no período.');
+    const projection = goalProjectionText(r);
+    if (projection) followers.push(projection);
+    const insights = r.hasNet ? yearInsights(r) : [];
     const posts = postsInPeriod(true);
     let publications;
     if (!posts.length) publications = `<p ${P}>Nenhuma publicação registrada no período.</p>`;
@@ -1809,13 +1918,15 @@
         topPostItem(posts, 'commentsCount', 'Post com mais comentários', 'comentários'),
         topPostItem(posts, 'totalInteractions', 'Post com mais interações', 'interações'),
         topPostItem(posts, 'saved', 'Post com mais salvamentos', 'salvamentos')
-      ]) + `<p ${P}><b>Total de publicações no período:</b> <b>${format(posts.length)}</b>, sendo ${plural(posts.length - reels, 'post', 'posts')} e ${plural(reels, 'reel', 'reels')}.</p>`;
+      ].concat(yearBestPosts(r))) + `<p ${P}><b>Total de publicações no período:</b> <b>${format(posts.length)}</b>, sendo ${plural(posts.length - reels, 'post', 'posts')} e ${plural(reels, 'reel', 'reels')}.</p>`;
     }
     const body = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#222">`
-      + `<p ${P}>Prezados,</p>`
+      + `<p ${P}>Oi pessoal, bom dia!</p>`
+      + `<p ${P}>Tudo bem?</p>`
       + `<p ${P}>Segue o resumo do desempenho das redes sociais da <b>${escapeHtml(brandName)}</b>${r.networkName ? ` (<b>${r.networkName}</b>)` : ''} no período de ${period}.</p>`
       + `<h3 ${H}>Seguidores</h3>${list(followers)}`
       + `<h3 ${H}>Publicações</h3>${publications}`
+      + (insights.length ? `<h3 ${H}>Curiosidades do ano</h3>${list(insights)}` : '')
       + `<p ${P}>Fico à disposição para qualquer dúvida.</p><p style="margin:0">Atenciosamente,<br>Equipe de Marketing</p></div>`;
     return { subject: `Relatório de redes sociais – ${brand.name || 'marca'} – ${postDateLabel(r.from)} a ${postDateLabel(r.to)}`, body };
   }
