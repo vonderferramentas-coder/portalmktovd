@@ -473,6 +473,12 @@
       if (box) box.title = partial ? `Dados da Meta em ${periodInsights.length} de ${points.length} dias do período; o crescimento líquido soma todos os dias.` : '';
     });
 
+    const partialNote = el('growthPartialNote');
+    if (partialNote) {
+      partialNote.hidden = !partial;
+      if (partial) partialNote.textContent = `Novos (bruto) e saídas somam só os ${periodInsights.length} de ${points.length} dias com Insights da Meta. O líquido soma todos os dias; nos demais vale a variação do total medido.`;
+    }
+
     setText('newFollowers', hasNetForCard ? signed(netForCard) : '-');
     setTone('newFollowers', hasNetForCard ? netForCard : 0);
     setText('avg', perDayForCard === null ? '-' : signed(perDayForCard));
@@ -1490,6 +1496,7 @@
     el('growth').className = 'growth-line';
     setText('growth', message);
     ['newFollowers','avg','grossFollowsPeriod','unfollowsPeriod'].forEach(id => { setText(id, '-'); const node = el(id); if (node) node.className = 'neutral'; });
+    if (el('growthPartialNote')) el('growthPartialNote').hidden = true;
     setText('growthPeriod', '-');
     renderGoalRing({ values:{} }, activeNetworks());
     el('channelContext').textContent = 'Todas';
