@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       dias_extra:
-        description: 'Dias a mais, além dos ~29 do follower_count, em que buscar entraram/saíram (só job da VONDER; 0 = rotina diária)'
+        description: 'Dias a mais, além dos ~29 do follower_count, em que buscar entraram/saíram (0 = rotina diária)'
         type: string
         default: '0'
 
@@ -368,6 +368,7 @@ jobs:
         env:
           META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS: ${{ secrets.META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS }}
           META_INSTAGRAM_ID: '17841404085550539'
+          DIAS_EXTRA_INPUT: ${{ inputs.dias_extra }}
         run: |
           set -euo pipefail
           API="https://graph.facebook.com/v26.0"
@@ -387,6 +388,36 @@ jobs:
 
           jq -r '.data[0].values[].end_time' fronteiras.json > limites.txt
           echo "Dias retornados pela Meta: $(wc -l < limites.txt)"
+
+          # O follower_count só alcança 30 dias, mas o follows_and_unfollows devolve dias bem mais antigos
+          # (conferido em 03/11/2026 contra a exportação do Business Suite). Para voltar além disso, as
+          # fronteiras anteriores são calculadas à meia-noite do fuso da conta (Pacífico, o mesmo que
+          # explica o end_time às 07:00 UTC no horário de verão) e entram antes das que a Meta devolveu.
+          DIAS_EXTRA="${DIAS_EXTRA_INPUT:-0}"
+          case "$DIAS_EXTRA" in ''|*[!0-9]*) echo "dias_extra inválido: $DIAS_EXTRA"; exit 1;; esac
+          # uma consulta à Meta por dia, em série, com o token compartilhado com os outros coletores
+          [ "$DIAS_EXTRA" -le 150 ] || { echo "dias_extra acima de 150: $DIAS_EXTRA"; exit 1; }
+          if [ "$DIAS_EXTRA" -gt 0 ]; then
+            python3 - "$DIAS_EXTRA" <<'PY'
+          import sys
+          from datetime import datetime, timedelta, timezone
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+
+          fuso = ZoneInfo('America/Los_Angeles')
+          # Confere a suposição de fuso nas fronteiras que a Meta devolveu (~29 dias, que incluem a troca do
+          # horário de verão): se alguma não cair na meia-noite do Pacífico, as extras sairiam deslocadas.
+          reais = [datetime.strptime(linha, '%Y-%m-%dT%H:%M:%S%z').astimezone(fuso) for linha in Path('limites.txt').read_text().split()]
+          if any(item.hour or item.minute for item in reais):
+              raise SystemExit('As fronteiras da Meta não caem na meia-noite de America/Los_Angeles; dias_extra recusado.')
+          primeira = reais[0]
+          meia_noite = primeira.replace(hour=0, minute=0, second=0, tzinfo=None)  # aritmética no relógio local: mantém a meia-noite no horário de verão
+          extras = [(meia_noite - timedelta(days=k)).replace(tzinfo=fuso).astimezone(timezone.utc) for k in range(int(sys.argv[1]), 0, -1)]
+          Path('extras.txt').write_text(''.join(item.strftime('%Y-%m-%dT%H:%M:%S+0000') + chr(10) for item in extras))
+          Path('limites.txt').write_text(Path('extras.txt').read_text() + Path('limites.txt').read_text())
+          PY
+            echo "Dias extras além do follower_count: $DIAS_EXTRA (total de fronteiras: $(wc -l < limites.txt))"
+          fi
 
           jq '[.data[0].values[]?.value] | add // 0' fronteiras.json > entradas_referencia.txt
 
@@ -456,7 +487,8 @@ jobs:
           # Sem descarte prévio: ver a explicação no job da VONDER (o dia mais antigo da janela
           # era apagado a cada execução e nunca mais recalculado).
           historico = {item['date']: item for item in doc.get('history', [])}
-          esperados = sorted(dia for dia, valor in referencia.items() if valor > 0)[1:]
+          extras = {linha[:10] for linha in Path('extras.txt').read_text().split()} if Path('extras.txt').exists() else set()
+          esperados = sorted({dia for dia, valor in referencia.items() if valor > 0} | extras)[1:]
           faltando = [dia for dia in esperados if dia not in {item['date'] for item in saldos}]
 
           proporcoes = sorted(item['sairam'] / item['entraram'] for item in saldos if item['entraram'])
@@ -523,7 +555,7 @@ jobs:
                   and existente.get('followers', {}).get('Instagram') is not None \
                   and existente.get('source') not in ('reconstruido', 'estimado')
               entrada = dict(existente) if existente else {'date': dia}
-              if not tem_instagram_medido:
+              if not tem_instagram_medido and dia not in extras:  # dia extra só ganha os Insights
                   entrada['followers'] = dict(entrada.get('followers') or {})
                   entrada['followers']['Instagram'] = int(valor)
                   entrada['source'] = 'estimado' if dia in set(estimados) else 'reconstruido'
