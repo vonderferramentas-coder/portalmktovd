@@ -1,4 +1,4 @@
-import { classificar, porPrioridade, HORAS_ATRASO } from './avaliacoes-google-regras.js';
+import { classificar, porPrioridade, HORAS_ATRASO, tempoRelativo, palavrasChave, citaPalavra, ordenarAvaliacoes, ORDENS, textoOriginal, abreviar, buscaAvaliacao } from './avaliacoes-google-regras.js';
 import { lerColado, adicionar, apelidosDoTexto, nomesAmbiguos, ordenar, idDe, paraCsv, chave } from './avaliacoes-google-vendedores.js';
 import { desenharMapa, lojaDaFicha, LOJAS } from './avaliacoes-google-mapa.js';
 
@@ -28,7 +28,11 @@ const mesesFaltando = () => state.resumo.meses.filter(m => m >= corteDoPeriodo()
 
 // Cada mês é um documento; só baixa os que o período pede e que ainda não estão em memória.
 const lerMes = mes => (state.lendo[mes] ||= window.PortalFirebase.readAvaliacoesGoogle(mes).then(
-  bloco => { state.blocos[mes] = JSON.parse((bloco && bloco.reviewsJson) || '{}'); },
+  bloco => {
+    const recs = JSON.parse((bloco && bloco.reviewsJson) || '{}');
+    Object.values(recs).forEach(r => { r.t = textoOriginal(r.t); }); // sem o bloco "(Translated by Google)"
+    state.blocos[mes] = recs;
+  },
   erro => { delete state.lendo[mes]; throw erro; }));
 const carregarMeses = () => Promise.all(mesesFaltando().map(lerMes));
 
@@ -63,15 +67,23 @@ function tile(rotulo, valor, { ruim, ir } = {}) {
 
 const painel = (titulo, corpo) => h('div', { class: 'card ag-panel' }, h('h2', {}, titulo), corpo);
 
-// "lead" = a barra que o gráfico quer destacar; as outras ficam neutras.
-function barra(rotulo, parte, valor, lead) {
-  return h('div', { class: 'ag-bar' + (lead ? ' is-lead' : '') }, h('span', {}, rotulo), h('i', {}, h('b', { style: `width:${parte * 100}%` })), h('em', {}, valor));
-}
-
 const FAIXAS = [['ok', 4.6, '4,6 ou mais'], ['atencao', 4.2, '4,2 a 4,5'], ['ruim', 0.1, 'abaixo de 4,2']];
+// "Ferramentas Gerais - Curitiba-PR": o nome da ficha mais a cidade-UF do cadastro, que é como a equipe identifica a loja no dia a dia.
+const tituloFicha = f => [f.title, [f.cidade, f.uf].filter(Boolean).join('-')].filter(Boolean).join(' - ');
+// Loja do mapa, ou a própria ficha quando ela não tem pin (centro de distribuição, por exemplo): é o que o painel da loja filtra.
+const chaveDaFicha = f => lojaDaFicha(f) || 'ficha:' + f.id;
 function escolherLojaMapa(k) { state.lojaMapa = state.lojaMapa === k ? '' : k; atualizar(); }
 
+// Quanto o painel da direita cobre do mapa: o enquadramento inicial deixa os pings fora dele.
+function reservasDoMapa(mapa) {
+  const painelDireito = mapa.parentElement && mapa.parentElement.querySelector('.ag-sobre > :last-child');
+  if (!painelDireito) return { esq: 0, dir: 0 };
+  const m = mapa.getBoundingClientRect(), d = painelDireito.getBoundingClientRect();
+  return { esq: 0, dir: d.top < m.bottom && d.bottom > m.top ? Math.max(0, m.right - d.left) : 0 };
+}
+
 // Mapa com a nota média de cada loja no período e filtros atuais ("base" = sem o filtro do próprio mapa, para os outros pings não sumirem ao clicar em um).
+// Devolve o mapa, que fica por trás de tudo (ver cena).
 function painelMapa(base) {
   const lojas = new Set([...state.fichas.values()].map(lojaDaFicha).filter(Boolean));
   if (!lojas.size) return null;
@@ -82,40 +94,112 @@ function painelMapa(base) {
     return { chave: k, nome: LOJAS[k].nome, texto: media(notas), status: m ? FAIXAS.find(f => Math.round(m * 10) / 10 >= f[1])[0] : '', vazio: !m,
       dica: notas.length ? `${LOJAS[k].nome}: nota média ${media(notas)} em ${notas.length} avaliações` : `${LOJAS[k].nome}: sem avaliações neste filtro` };
   });
-  return h('div', { class: 'card ag-panel ag-mapa-card' },
-    h('div', { class: 'ag-loja-topo' }, h('h2', {}, 'Nota média por loja'), state.lojaMapa && h('button', { type: 'button', class: 'btn ghost small', onclick: () => escolherLojaMapa('') }, 'Ver todas as lojas')),
-    desenharMapa({ pings, selecionada: state.lojaMapa, aoEscolher: escolherLojaMapa }),
-    h('p', { class: 'ag-legenda' }, h('span', {}, 'Bolinha no pin:'), ...FAIXAS.map(([cor, , texto]) => h('span', {}, h('i', { class: `ag-dot is-${cor}` }), texto)), h('span', {}, 'Clique numa loja para filtrar esta visão.')));
+  const mapa = desenharMapa({ pings, selecionada: state.lojaMapa, aoEscolher: escolherLojaMapa, chaveVisao: 'geral', reservas: () => reservasDoMapa(mapa) });
+  return mapa;
+}
+
+// Visão geral: o mapa preenche toda a largura por trás e o painel da direita fica à frente. Sem loja no mapa, só o painel.
+function cena(mapa, direita) {
+  if (!mapa) return h('div', { class: 'ag-mapa-layout is-sozinho' }, direita);
+  return h('div', { class: 'ag-cena' }, mapa, h('div', { class: 'ag-mapa-layout ag-sobre' }, direita));
+}
+
+// Estrelas com nota fracionária: a camada preenchida é cortada na largura proporcional à nota.
+function estrelasNota(nota) {
+  const cheias = '★★★★★';
+  return h('span', { class: 'ag-rate', role: 'img', 'aria-label': `${String(Math.round(nota * 10) / 10).replace('.', ',')} de 5 estrelas` },
+    h('i', { 'aria-hidden': 'true' }, cheias), h('b', { 'aria-hidden': 'true', style: `width:${Math.max(0, Math.min(5, nota)) * 20}%` }, cheias));
+}
+
+function avaliacaoLoja(rec) {
+  const nome = rec.n || 'Anônimo';
+  return h('article', { class: 'ag-rev' },
+    h('div', { class: 'ag-rev-head' },
+      h('span', { class: 'ag-avatar', 'aria-hidden': 'true' }, nome.trim().charAt(0).toUpperCase()),
+      h('div', {}, h('div', { class: 'ag-rev-nome' }, nome),
+        h('div', { class: 'ag-rev-linha' }, rec.s ? estrelasNota(rec.s) : h('span', {}, 'Sem nota'), h('span', { title: data(rec.c) }, tempoRelativo(rec.c))))),
+    rec.t && h('p', { class: 'ag-text' }, rec.t),
+    rec.r && h('div', { class: 'ag-reply' }, h('b', {}, 'Resposta da loja' + (rec.rt ? ` · ${tempoRelativo(rec.rt)}` : '')), rec.r));
+}
+
+// Campo de busca do referencial da loja: o campo é refeito a cada digitação, então quem chama devolve o foco (data-ref 'busca').
+function campoBusca(valor, aoDigitar, rotulo) {
+  return h('label', { class: 'ag-busca' }, icone(ICONES.lupa, 16),
+    h('input', { type: 'search', placeholder: 'Pesquisar avaliações', 'aria-label': rotulo, value: valor, autocomplete: 'off', 'data-ref': 'busca', oninput: aoDigitar, oncompositionend: aoDigitar }));
+}
+
+// Referencial da loja escolhida no mapa, no formato da página de avaliações do Google: nome, endereço, nota, palavras-chave, ordem e avaliações.
+// Usa as avaliações já filtradas (período, nota, resposta...). Estado próprio (palavra, ordem, quantas mostrar): cada clique redesenha só este painel.
+function painelLoja(chaveLoja, itens) {
+  const fichas = [...state.fichas.values()].filter(f => chaveDaFicha(f) === chaveLoja);
+  const porFicha = {};
+  itens.forEach(i => { porFicha[i.rec.l] = (porFicha[i.rec.l] || 0) + 1; });
+  const principal = [...fichas].sort((a, b) => (porFicha[b.id] || 0) - (porFicha[a.id] || 0))[0] || { title: (LOJAS[chaveLoja] || {}).nome || '' };
+  const enderecos = [...new Set(fichas.map(f => f.endereco || [f.cidade, f.uf].filter(Boolean).join(' / ')).filter(Boolean))];
+  const recs = itens.map(i => i.rec), notas = recs.filter(r => r.s >= 1);
+  const mediaNum = notas.length ? notas.reduce((t, r) => t + r.s, 0) / notas.length : 0;
+  const chaves = palavrasChave(recs.map(r => r.t));
+  const ui = { ordem: 'relevantes', palavra: '', busca: '', visiveis: 10 };
+  const caixa = h('div', { class: 'card ag-panel ag-ref', translate: 'no' });
+  // As palavras-chave são sugestões do campo de busca: abrem quando ele é acionado (animação de altura, DESIGN.md §1) e ficam abertas enquanto
+  // houver uma palavra escolhida. O elemento é o mesmo em todo redesenho; só o conteúdo muda, senão a animação recomeçaria.
+  const sugestoes = h('div', { class: 'ag-sugestoes is-closed', inert: '' }, h('div', { class: 'ag-sugestoes-corpo' }));
+  const mostrar = aberto => { sugestoes.classList.toggle('is-closed', !aberto); sugestoes.inert = !aberto; };
+  // setTimeout: o redesenho devolve o foco ao campo no mesmo instante, e só depois de ele assentar dá para saber se o foco saiu de verdade.
+  const fecharSeSaiu = () => setTimeout(() => { const a = document.activeElement; if (!ui.palavra && !(a && caixa.contains(a) && a.closest('.ag-busca, .ag-sugestoes'))) mostrar(false); }, 0);
+  caixa.addEventListener('focusin', e => { if (e.target.closest('.ag-busca')) mostrar(true); });
+  caixa.addEventListener('focusout', fecharSeSaiu);
+
+  const pilula = (rotulo, ativo, aoClicar, contagem, id) => h('button', { type: 'button', class: 'ag-pill', 'aria-pressed': String(ativo), 'data-ref': id, onclick: aoClicar }, rotulo, contagem != null && h('small', {}, String(contagem)));
+  function desenhar() {
+    const ativo = document.activeElement, foco = ativo && ativo.dataset.ref, selecao = foco === 'busca' ? [ativo.selectionStart, ativo.selectionEnd] : null;
+    const lista = ordenarAvaliacoes(recs.filter(r => (!ui.palavra || citaPalavra(r, ui.palavra)) && buscaAvaliacao(r, ui.busca)), ui.ordem);
+    const aoDigitar = e => { if (e.isComposing) return; ui.busca = e.target.value; ui.visiveis = 10; desenhar(); }; // durante a composição de acento o campo não é refeito
+    const mudar = mudanca => () => { Object.assign(ui, mudanca, { visiveis: 10 }); desenhar(); fecharSeSaiu(); };
+    // mousedown sem foco: clicar numa palavra não tira o foco do campo (o que fecharia as sugestões antes do clique)
+    sugestoes.firstChild.replaceChildren(h('div', { class: 'ag-pills', role: 'group', 'aria-label': 'Palavras-chave', onmousedown: e => e.preventDefault() },
+      pilula('Tudo', !ui.palavra, mudar({ palavra: '' }), null, 'p-tudo'), ...chaves.map(c => pilula(c.palavra, ui.palavra === c.palavra, mudar({ palavra: ui.palavra === c.palavra ? '' : c.palavra }), c.n, 'p-' + c.palavra))));
+    caixa.replaceChildren(...[
+      h('div', { class: 'ag-ref-topo' }, h('div', {}, h('h2', { class: 'ag-ref-nome' }, tituloFicha(principal)), ...enderecos.map(e => h('p', { class: 'ag-ref-end' }, e))),
+        h('button', { type: 'button', class: 'btn ghost small', onclick: () => escolherLojaMapa('') }, 'Ver todas as fichas')),
+      h('div', { class: 'ag-ref-nota' }, h('strong', {}, media(recs)), mediaNum ? estrelasNota(mediaNum) : null, h('span', {}, `${recs.length} ${recs.length === 1 ? 'avaliação' : 'avaliações'}`)),
+      campoBusca(ui.busca, aoDigitar, 'Pesquisar avaliações desta loja'),
+      chaves.length > 0 && sugestoes,
+      h('div', {}, h('p', { class: 'ag-ref-rotulo' }, 'Ordenar por'),
+        h('div', { class: 'ag-pills', role: 'group', 'aria-label': 'Ordenar por' }, ...ORDENS.map(([id, rotulo]) => pilula(rotulo, ui.ordem === id, mudar({ ordem: id }), null, 'o-' + id)))),
+      lista.length ? h('div', { class: 'ag-revs' }, ...lista.slice(0, ui.visiveis).map(avaliacaoLoja)) : h('p', { class: 'list-empty' }, ui.busca || ui.palavra ? 'Nenhuma avaliação encontrada.' : 'Nenhuma avaliação neste filtro.'),
+      lista.length > ui.visiveis && h('button', { type: 'button', class: 'btn ghost ag-more', 'data-ref': 'mais', onclick: () => { ui.visiveis += 10; desenhar(); } }, `Mostrar mais (${lista.length - ui.visiveis})`)].filter(Boolean)); // replaceChildren escreveria "false" como texto
+    if (foco) { const volta = [...caixa.querySelectorAll('[data-ref]')].find(b => b.dataset.ref === foco); if (volta) { volta.focus(); if (selecao) volta.setSelectionRange(selecao[0], selecao[1]); } }
+  }
+  desenhar();
+  return caixa;
 }
 
 function renderGeral(itens, base) {
   const recs = itens.map(i => i.rec), mapa = painelMapa(base);
-  if (!recs.length) { $('abaGeral').replaceChildren(...[mapa, h('p', { class: 'list-empty' }, 'Nenhuma avaliação neste filtro.')].filter(Boolean)); return; }
+  if (!recs.length) {
+    const direita = state.lojaMapa ? painelLoja(state.lojaMapa, itens) : painel('Lojas', h('p', { class: 'list-empty' }, 'Nenhuma avaliação neste filtro.'));
+    $('abaGeral').replaceChildren(cena(mapa, direita));
+    return;
+  }
   const criticas = itens.filter(i => i.cls.nivel === 'critica' && !i.rec.r).length;
   const atrasadas = itens.filter(i => i.cls.atrasada).length;
   const tiles = h('div', { class: 'ag-tiles' },
     tile('Avaliações', recs.length), tile('Nota média', media(recs)), tile('Sem resposta', recs.filter(r => !r.r).length),
     tile('Críticas pendentes', criticas, { ruim: criticas > 0, ir: 'fila' }), tile(`Atrasadas (+${HORAS_ATRASO} h)`, atrasadas, { ruim: atrasadas > 0, ir: 'fila' }));
 
-  const contagem = n => recs.filter(r => r.s === n).length;
-  const maior = Math.max(1, ...[1, 2, 3, 4, 5].map(contagem));
-  const estrelas = [5, 4, 3, 2, 1].map(n => barra(`${n} ★`, contagem(n) / maior, String(contagem(n)), contagem(n) === maior));
-
-  const porMes = {};
-  recs.forEach(r => (porMes[r.c.slice(0, 7)] ||= []).push(r));
-  const meses = Object.keys(porMes).sort().reverse().slice(0, 12);
-  const maiorMes = Math.max(1, ...meses.map(m => porMes[m].length));
-  const mensal = meses.map((m, i) => barra(`${m.slice(5)}/${m.slice(2, 4)}`, porMes[m].length / maiorMes, `${porMes[m].length} · ${media(porMes[m])}`, i === 0));
-
   const porFicha = {};
   itens.forEach(i => (porFicha[i.rec.l] ||= { ficha: i.ficha, recs: [] }).recs.push(i.rec));
-  const fichas = Object.values(porFicha).sort((a, b) => b.recs.length - a.recs.length).map(({ ficha, recs: rs }) => h('li', {},
-    h('span', {}, ficha.title), h('span', { class: 'ag-num' }, `${media(rs)} ★`),
-    h('small', {}, ficha.endereco || [ficha.cidade, ficha.uf].filter(Boolean).join(' / ') || 'Sem endereço'),
-    h('small', { class: 'ag-num' }, `${rs.length} avaliações · ${rs.filter(r => !r.r).length} sem resposta`)));
+  const fichas = Object.values(porFicha).sort((a, b) => b.recs.length - a.recs.length).map(({ ficha, recs: rs }) => {
+    const notas = rs.filter(r => r.s >= 1);
+    return h('li', {}, h('button', { type: 'button', class: 'ag-ficha', onclick: () => escolherLojaMapa(chaveDaFicha(ficha)) },
+      h('strong', { class: 'ag-ficha-nome' }, tituloFicha(ficha)),
+      h('span', { class: 'ag-ficha-nota' }, h('b', {}, media(rs)), estrelasNota(notas.length ? notas.reduce((t, r) => t + r.s, 0) / notas.length : 0), `(${abreviar(rs.length)} ${rs.length === 1 ? 'avaliação' : 'avaliações'})`,
+        ficha.categoria && ` · ${ficha.categoria}`),
+      h('small', {}, [ficha.endereco || ficha.rua || [ficha.cidade, ficha.uf].filter(Boolean).join(' - ') || 'Sem endereço', ficha.telefone].filter(Boolean).join(' · '))));
+  });
 
-  $('abaGeral').replaceChildren(tiles, h('div', { class: 'ag-mapa-layout' + (mapa ? '' : ' is-sozinho') }, ...[mapa, painel('Por ficha', h('ul', { class: 'ag-rows' }, fichas))].filter(Boolean)),
-    h('div', { class: 'ag-grid' }, painel('Notas', estrelas), painel('Por mês (quantidade · nota média)', mensal)));
+  $('abaGeral').replaceChildren(tiles, cena(mapa, state.lojaMapa ? painelLoja(state.lojaMapa, itens) : painel('Lojas', h('ul', { class: 'ag-rows' }, fichas))));
 }
 
 function cartao({ rec, cls, ficha }) {
@@ -168,6 +252,7 @@ function salvarVendedores(lista, mensagem) {
 
 const icone = (paths, tamanho = 15) => { const s = h('span', { class: 'ag-ico', 'aria-hidden': 'true' }); s.innerHTML = window.PortalShell.svgIcon(paths, tamanho); return s; }; // SVG fixo do próprio código, nunca texto de terceiros
 const ICONES = {
+  lupa: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   lapis: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
   lixeira: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5"/><path d="M14 11v5"/>',
   mais: '<path d="M12 5v14M5 12h14"/>',
@@ -311,7 +396,7 @@ function renderVendedores() {
   const pings = lojas.map(([loja, lista]) => { const n = lista.filter(v => v.ativo).length; return { chave: chave(loja), nome: loja, texto: String(n), vazio: !n, dica: `${loja}: ${n} vendedor(es) ativo(s)` }; });
   const semPosicao = lojas.map(([l]) => l).filter(l => !LOJAS[chave(l)]);
   const mapa = h('div', { class: 'card ag-panel ag-mapa-card' }, h('h2', {}, 'Lojas no mapa'),
-    desenharMapa({ pings, selecionada: state.lojaSel, aoEscolher: escolher }),
+    desenharMapa({ pings, selecionada: state.lojaSel, aoEscolher: escolher, chaveVisao: 'vendedores' }),
     h('p', { class: 'ag-legenda' }, h('span', {}, 'O número é a quantidade de vendedores ativos. Clique numa loja para ver só ela.')),
     semPosicao.length > 0 && h('p', { class: 'ag-ajuda' }, `Sem posição no mapa (cidade ainda não cadastrada): ${semPosicao.join(', ')}.`));
   const mostrar = state.lojaSel ? lojas.filter(([l]) => chave(l) === state.lojaSel) : lojas;
@@ -336,7 +421,7 @@ async function atualizar() {
   if (minha !== state.seq) return;
   $('agStatus').hidden = true; $('agConteudo').hidden = false;
   state.visiveis = PAGINA;
-  const base = filtradas(), itens = state.lojaMapa ? base.filter(i => lojaDaFicha(i.ficha) === state.lojaMapa) : base;
+  const base = filtradas(), itens = state.lojaMapa ? base.filter(i => chaveDaFicha(i.ficha) === state.lojaMapa) : base;
   renderGeral(itens, base); renderFila(base); // o clique no mapa filtra só a Visão geral
 }
 

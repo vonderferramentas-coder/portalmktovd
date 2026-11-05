@@ -14,18 +14,11 @@ button.ag-tile:hover{border-color:var(--accent-ink)}
 .ag-tile span{font-size:13px;font-weight:500;color:var(--muted)}
 .ag-tile.is-bad strong{color:var(--danger)}
 
-.ag-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-bottom:16px}
+.ag-panel{padding:24px}
 .ag-panel h2{margin:0 0 12px;font-size:14px;font-weight:600;color:var(--text)}
-.ag-bar{display:grid;grid-template-columns:64px 1fr 56px;font-variant-numeric:tabular-nums;align-items:center;gap:12px;margin:6px 0;font-size:13px}
-.ag-bar i{display:block;height:10px;border-radius:5px;background:var(--surface-muted);overflow:hidden}
-.ag-bar i b{display:block;height:100%;background:var(--border-strong);border-radius:5px;min-width:2px}
-.ag-bar.is-lead i b{background:var(--accent)}
-.ag-bar em{font-style:normal;text-align:right;color:var(--muted)}
-.ag-rows{margin:0;padding:0;list-style:none}
-.ag-rows li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:8px 0;border-top:1px solid var(--border);font-size:13px}
-.ag-rows li:first-child{border-top:0}
-.ag-rows small{color:var(--muted);font-size:12px}
-.ag-rows .ag-num{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.ag-rows{margin:0 -12px;padding:0;list-style:none} /* o texto das linhas alinha com o padding do cartão; o fundo do hover entra nele */
+.ag-rows li{position:relative;padding:0;font-size:13px}
+.ag-rows li+li::before{content:"";position:absolute;top:0;left:12px;right:12px;border-top:1px solid var(--border)}
 
 .ag-item{margin-bottom:12px;padding:16px;border-left:4px solid var(--border-strong)}
 .ag-item.is-critica{border-left-color:var(--danger)}
@@ -45,7 +38,7 @@ button.ag-tile:hover{border-color:var(--accent-ink)}
 .ag-more{display:block;margin:16px auto 0}
 .ag-note{margin:16px 0 0;font-size:12px;color:var(--muted)}
 
-@media (max-width:760px){.ag-filters label,.ag-filters select{width:100%}.ag-grid{grid-template-columns:1fr}}
+@media (max-width:760px){.ag-filters label,.ag-filters select{width:100%}}
 
 /* Aba Vendedores: lojas em cartões, vendedores numa grade de 3 colunas; edição em modal do portal */
 .ag-vtopo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
@@ -91,10 +84,13 @@ button.ag-tile:hover{border-color:var(--accent-ink)}
 .ag-loja-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
 .ag-loja-topo h2{margin:0}
 .ag-loja+.ag-loja{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
-.ag-mapa-card.card{background:none;border:0;box-shadow:none;padding:0}
-.ag-mapa{display:block;width:100%;height:auto;max-height:640px}
-.ag-uf{fill:var(--card);stroke:var(--muted);stroke-width:2;stroke-linejoin:round}
-.ag-ping{cursor:pointer;outline:none}
+/* Mapa (Leaflet). Em cartão (aba Vendedores) tem altura fixa; na Visão geral vira o fundo da cena */
+.ag-mapa{position:relative;width:100%;height:440px;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;background:var(--surface-muted);font:inherit}
+.ag-pin-svg{display:block;overflow:visible}
+.ag-ping{cursor:pointer}
+.ag-ping:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px;border-radius:12px}
+.ag-ping-fio{stroke:var(--text);stroke-width:2}
+.ag-ping-ponto{fill:var(--text)}
 .ag-pin{fill:var(--accent);stroke:var(--card);stroke-width:3;stroke-linejoin:round;filter:drop-shadow(0 3px 3px rgba(0,0,0,.3));transition:stroke .12s}
 :root[data-theme="dark"] .ag-pin{stroke:var(--text);stroke-width:2.5}
 .ag-ping:hover .ag-pin,.ag-ping:focus-visible .ag-pin{stroke:var(--text)}
@@ -106,9 +102,98 @@ button.ag-tile:hover{border-color:var(--accent-ink)}
 .ag-status.is-ruim,.ag-dot.is-ruim{fill:var(--danger);background:var(--danger)}
 .ag-ping-num{font:600 23px var(--font-ui);fill:var(--on-accent);pointer-events:none}
 .ag-ping.is-vazio .ag-ping-num{fill:var(--white)}
-.ag-ping-nome{font:700 28px var(--font-ui);fill:var(--text);paint-order:stroke;stroke:var(--bg);stroke-width:6px;stroke-linejoin:round;pointer-events:none}
-.ag-ping-fio{stroke:var(--muted);stroke-width:2}
-.ag-ping-ponto{fill:var(--muted)}
 .ag-legenda{display:flex;flex-wrap:wrap;gap:4px 16px;margin:8px 0 0;font-size:12px;color:var(--muted)}
 .ag-legenda span{display:inline-flex;align-items:center;gap:6px}
 .ag-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+
+/* Referencial da loja (ao clicar num pin): mesma ordem da página de avaliações do Google */
+.ag-ref{display:flex;flex-direction:column;gap:16px}
+.ag-ref .ag-ref-nome{margin:0;font:600 20px/24px var(--font-display);color:var(--text)}
+.ag-ref-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.ag-ref-end{margin:4px 0 0;font-size:12px;line-height:16px;color:var(--muted)}
+.ag-ref-nota{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.ag-ref-nota strong{font:500 32px/1 var(--font-display);font-variant-numeric:tabular-nums;color:var(--text)}
+.ag-ref-nota span:last-child{font-size:13px;color:var(--muted)}
+.ag-rate{position:relative;display:inline-block;white-space:nowrap;font-size:16px;line-height:1;letter-spacing:2px}
+.ag-rate i{font-style:normal;color:var(--border-strong)}
+.ag-rate b{position:absolute;left:0;top:0;overflow:hidden;font-weight:400;color:var(--accent-text)}
+.ag-pills{display:flex;flex-wrap:wrap;gap:8px}
+.ag-pill{height:32px;padding:0 12px;border:1px solid var(--border);border-radius:16px;background:var(--card);color:var(--text);font:600 13px var(--font-ui);cursor:pointer;transition:background-color .12s,border-color .12s,color .12s}
+.ag-pill small{margin-left:4px;font-size:12px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.ag-pill:hover{background:var(--surface-muted)}
+.ag-pill[aria-pressed="true"]{border-color:transparent;background:var(--accent-weak);color:var(--accent-text)}
+.ag-pill[aria-pressed="true"] small{color:inherit}
+.ag-pill:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.ag-ref-rotulo{margin:0 0 8px;font-size:13px;color:var(--muted)}
+.ag-revs{border-bottom:1px solid var(--border)}
+.ag-rev{padding:16px 0;border-top:1px solid var(--border)}
+.ag-rev-head{display:flex;align-items:center;gap:12px}
+.ag-avatar{flex:0 0 40px;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;background:var(--surface-muted);color:var(--text);font:600 16px var(--font-ui)}
+.ag-rev-nome{font-size:14px;font-weight:600;line-height:20px;color:var(--text)}
+.ag-rev-linha{display:flex;align-items:center;gap:8px;font-size:12px;line-height:16px;color:var(--muted)}
+.ag-rev-linha .ag-rate{font-size:14px}
+.ag-rev .ag-text{margin:12px 0 0}
+.ag-rev .ag-reply{margin:12px 0 0 20px;padding:0 0 0 16px;border-left:2px solid var(--border-strong);border-radius:0;background:none}
+@media (prefers-reduced-motion:reduce){.ag-pill,.ag-ficha{transition:none}}
+
+/* Linha da ficha no formato do resultado de busca do Google: nome, nota + estrelas + (contagem) · categoria, endereço · telefone */
+.ag-rows .ag-ficha-nome{font:600 16px/24px var(--font-display);color:var(--text)}
+.ag-ficha-nota{display:flex;flex-wrap:wrap;align-items:center;gap:0 4px;font-size:13px;line-height:20px;color:var(--muted)}
+.ag-ficha-nota>b{font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.ag-ficha-nota .ag-rate{font-size:12px;margin:0 2px}
+.ag-ficha{display:flex;flex-direction:column;gap:2px;width:100%;padding:12px;border:0;border-radius:var(--radius-sm);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;transition:background-color .12s}
+.ag-ficha:hover{background:var(--surface-muted)}
+.ag-ficha:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
+.ag-ficha small{font-size:13px;line-height:20px;color:var(--muted)}
+
+/* Visão geral: o mapa preenche toda a largura por trás (a página tem 28px de margem, que a cena sangra) e os cartões ficam à frente */
+.ag-cena{position:relative;isolation:isolate;box-sizing:border-box;height:680px;margin:0 -28px 16px;padding:24px 28px}
+.ag-cena>.ag-mapa{position:absolute;inset:0;z-index:0;width:auto;height:auto;border:0;border-radius:0}
+.ag-sobre{position:relative;z-index:1;display:grid;grid-template-columns:1fr minmax(380px,520px);grid-template-rows:minmax(0,1fr);gap:12px;height:100%;margin:0;pointer-events:none}
+.ag-sobre>*{pointer-events:auto}
+.ag-sobre>:last-child{grid-column:2;max-height:100%;overflow:auto;box-shadow:var(--shadow-lg)}
+/* Barra de rolagem fina do projeto (DESIGN.md §16), no lugar da nativa */
+.ag-sobre>:last-child{scrollbar-width:thin;scrollbar-color:var(--border-strong) transparent}
+.ag-sobre>:last-child::-webkit-scrollbar{width:8px}
+.ag-sobre>:last-child::-webkit-scrollbar-track{background:transparent}
+.ag-sobre>:last-child::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
+.ag-sobre>:last-child::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+.ag-ping-nome{position:absolute;top:19px;transform:translateY(-50%);white-space:nowrap;font:700 13px/1 var(--font-ui);color:var(--text);text-shadow:0 0 3px var(--card),0 0 3px var(--card),0 0 6px var(--card);pointer-events:none}
+.ag-ping-nome.is-e{right:calc(100% - 4px)}
+.ag-ping-nome.is-d{left:calc(100% - 4px)}
+@media (max-width:900px){
+  .ag-cena{height:auto;margin:0 0 16px;padding:0}
+  .ag-cena>.ag-mapa{position:relative;height:360px;border:1px solid var(--border);border-radius:var(--radius-md)}
+  .ag-sobre{height:auto;margin-top:12px;grid-template-columns:1fr;grid-template-rows:none;pointer-events:auto}
+  .ag-sobre>:last-child{grid-column:auto;max-height:none;box-shadow:none}
+}
+@media (max-width:760px){.ag-cena{margin-inline:0}}
+
+/* Leaflet nos temas do portal. Os tiles são claros; no tema escuro um filtro os inverte */
+:root[data-theme="dark"] .ag-mapa .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.85) saturate(.7)}
+.ag-cena .leaflet-left .leaflet-control{margin-left:28px}
+.ag-cena .leaflet-bottom .leaflet-control{margin-bottom:24px}
+.leaflet-container{font-family:inherit;background:var(--surface-muted)}
+.leaflet-bar{border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.leaflet-bar a,.leaflet-bar a:hover{background:var(--card);color:var(--text);border-bottom-color:var(--border)}
+.leaflet-bar a:hover{background:var(--surface-muted)}
+.leaflet-control-attribution{background:color-mix(in srgb,var(--card) 82%,transparent);color:var(--muted);font-size:11px}
+.leaflet-control-attribution a{color:var(--text)}
+.leaflet-container a.leaflet-control-zoom-in:focus-visible,.leaflet-container a.leaflet-control-zoom-out:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+
+/* Campo de busca do referencial da loja */
+.ag-busca{position:relative;display:block}
+.ag-busca .ag-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.ag-busca input{width:100%;box-sizing:border-box;height:var(--control-h);padding:0 12px 0 36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:600 14px var(--font-ui);transition:border-color .12s}
+.ag-busca input::placeholder{color:var(--muted);font-weight:500}
+.ag-busca input:hover{border-color:var(--border-strong)}
+.ag-busca input:focus-visible{border-color:var(--accent-ink);outline:none;box-shadow:0 0 0 3px var(--accent-weak)}
+@media (prefers-reduced-motion:reduce){.ag-busca input{transition:none}}
+
+/* Sugestões do campo de busca (palavras-chave): abrem e fecham com animação de altura, DESIGN.md §1 (grade 0fr/1fr, .25s ease).
+   A margem de -16px cancela o gap de 16px do .ag-ref (o 16px de cima volta como padding das pílulas): mudou o gap, mude os dois */
+.ag-sugestoes{display:grid;grid-template-rows:1fr;margin-top:-16px;transition:grid-template-rows .25s ease}
+.ag-sugestoes.is-closed{grid-template-rows:0fr}
+.ag-sugestoes-corpo{min-height:0;overflow:hidden;margin:0 -4px;padding:0 4px}
+.ag-sugestoes .ag-pills{padding:16px 0 4px}
+@media (prefers-reduced-motion:reduce){.ag-sugestoes{transition:none}}

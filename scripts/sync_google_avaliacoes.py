@@ -33,7 +33,7 @@ RESUMO = 'resumo'
 ESTRELAS = {'ONE': 1, 'TWO': 2, 'THREE': 3, 'FOUR': 4, 'FIVE': 5}
 LIMITE_DOC = 900_000  # bytes; o Firestore aceita ~1 MiB por documento
 MARGEM = timedelta(days=1)  # folga na data de corte do modo incremental
-CAMPOS_ENDERECO = ('uf', 'cidade', 'bairro', 'rua', 'cep', 'endereco')
+CAMPOS_ENDERECO = ('uf', 'cidade', 'bairro', 'rua', 'cep', 'endereco', 'categoria', 'telefone')
 env = lambda name: os.environ.get(name, '').strip()
 segredos = [env('GBP_CLIENT_SECRET'), env('GBP_REFRESH_TOKEN')]
 
@@ -141,8 +141,9 @@ def listar_fichas(auth):
     Lista incompleta seria perigosa (o --completo apagaria os blocos das fichas que faltam), por isso segue todas as páginas."""
     fichas = []
     for conta in paginas('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', 'accounts', auth, pageSize=20):
-        for ficha in paginas(f'https://mybusinessbusinessinformation.googleapis.com/v1/{conta["name"]}/locations', 'locations', auth, readMask='name,title,storefrontAddress', pageSize=100):
-            fichas.append({'conta': conta['name'], 'id': ficha['name'].split('/')[-1], 'title': ficha.get('title', '(sem título)'), **endereco_de(ficha)})
+        for ficha in paginas(f'https://mybusinessbusinessinformation.googleapis.com/v1/{conta["name"]}/locations', 'locations', auth, readMask='name,title,storefrontAddress,primaryCategory,phoneNumbers', pageSize=100):
+            fichas.append({'conta': conta['name'], 'id': ficha['name'].split('/')[-1], 'title': ficha.get('title', '(sem título)'), **endereco_de(ficha),
+                           'categoria': ((ficha.get('primaryCategory') or {}).get('displayName') or '').strip(), 'telefone': ((ficha.get('phoneNumbers') or {}).get('primaryPhone') or '').strip()})
     return fichas
 
 
@@ -151,12 +152,31 @@ def quando(texto):
     return datetime.fromisoformat(texto)
 
 
+MARCA_TRADUCAO = re.compile(r'[(](?:Translated by Google|Traduzido pelo Google)[)]', re.I)
+MARCA_ORIGINAL = re.compile(r'[(]Original[)]', re.I)
+
+
+def texto_original(comentario):
+    """O Google junta ao comentário o aviso '(Translated by Google)' com a tradução: em geral depois do texto do cliente, às vezes antes
+    ('(Translated by Google) tradução (Original) original'). Guarda só o original. Tem de vir antes do corte de 1500 caracteres."""
+    comentario = comentario or ''
+    marca = MARCA_TRADUCAO.search(comentario)
+    if not marca:
+        return comentario
+    antes = comentario[:marca.start()].strip()
+    if antes:
+        return antes
+    resto = comentario[marca.end():]
+    original = MARCA_ORIGINAL.search(resto)
+    return (resto[original.end():] if original else resto).strip()
+
+
 def registro(avaliacao, ficha_id):
     """Forma compacta guardada no Firestore. Chaves: l ficha, s estrelas, c criada, u atualizada, n autor, t texto, r resposta, rt data da resposta."""
     autor = avaliacao.get('reviewer') or {}
     resposta = avaliacao.get('reviewReply') or {}
     return {'l': ficha_id, 's': ESTRELAS.get(avaliacao.get('starRating'), 0), 'c': avaliacao.get('createTime', ''), 'u': avaliacao.get('updateTime', ''),
-            'n': '' if autor.get('isAnonymous') else autor.get('displayName', ''), 't': (avaliacao.get('comment') or '')[:1500],
+            'n': '' if autor.get('isAnonymous') else autor.get('displayName', ''), 't': texto_original(avaliacao.get('comment'))[:1500],
             'r': resposta.get('comment', ''), 'rt': resposta.get('updateTime', '')}
 
 

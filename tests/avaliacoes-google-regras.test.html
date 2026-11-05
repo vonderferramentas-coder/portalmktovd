@@ -3,7 +3,7 @@
 <body data-result="running">RUNNING
 <script type="module">
 // Exige --allow-file-access-from-files no Chrome (import de módulo via file://).
-import { classificar, porPrioridade } from '../avaliacoes-google-regras.js';
+import { classificar, porPrioridade, tempoRelativo, palavrasChave, citaPalavra, ordenarAvaliacoes, textoOriginal, abreviar, buscaAvaliacao } from '../avaliacoes-google-regras.js';
 
 const agora = Date.parse('2026-10-28T12:00:00Z');
 const rec = (s, t, c, r = '') => ({ s, t, c, r });
@@ -35,6 +35,28 @@ try {
 
   const itens = [rec(1, '', '2026-10-27T10:00:00Z'), rec(3, '', '2026-10-20T10:00:00Z'), rec(1, '', '2026-10-20T10:00:00Z')].map(r => ({ rec: r, cls: classificar(r, agora) }));
   eq(itens.sort(porPrioridade).map(i => i.rec.c.slice(0, 10) + i.rec.s), ['2026-10-201', '2026-10-271', '2026-10-203'], 'ordem: atrasadas críticas, críticas, atenção');
+
+  // texto traduzido pelo Google: fica só o original, venha antes ou depois do aviso
+  eq(textoOriginal('Ótimo atendimento\n\n(Translated by Google)\nGreat service'), 'Ótimo atendimento', 'original antes do aviso: corta a tradução');
+  eq(textoOriginal('(Translated by Google) Great service\n\n(Original)\nÓtimo atendimento'), 'Ótimo atendimento', 'tradução antes: fica o original');
+  eq(textoOriginal('(Traduzido pelo Google) Muito bom (Original) Very good'), 'Very good', 'aviso em português');
+  eq(textoOriginal('(Translated by Google) Only translated'), 'Only translated', 'só tradução, sem original: tira o aviso');
+  eq([textoOriginal('Ótimo atendimento'), textoOriginal(''), textoOriginal(undefined)], ['Ótimo atendimento', '', ''], 'texto comum não muda');
+  eq([0, 193, 999, 1000, 4832, 15208].map(abreviar), ['0', '193', '999', '1 mil', '4,8 mil', '15,2 mil'], 'contagem abreviada');
+  // busca no referencial da loja
+  const aval = { t: 'Atendimento ótimo na entrega', n: 'João Pedro', r: 'Obrigado pela avaliação' };
+  eq(['', '  ', 'atendimento', 'ATENDIMENTO OTIMO', 'joao', 'obrigado', 'entrega rapida', 'frete'].map(q => buscaAvaliacao(aval, q)), [true, true, true, true, true, true, false, false], 'busca: todas as palavras, sem acento nem caixa, em texto, nome e resposta');
+  // referencial da loja
+  eq(['2026-10-28T08:00:00Z', '2026-10-27T08:00:00Z', '2026-10-24T12:00:00Z', '2026-10-14T12:00:00Z', '2026-08-28T12:00:00Z', '2026-03-28T12:00:00Z', '2024-10-01T12:00:00Z', '2026-10-30T12:00:00Z', '2025-11-03T12:00:00Z', 'texto'].map(d => tempoRelativo(d, agora)),
+    ['hoje', 'um dia atrás', '4 dias atrás', '2 semanas atrás', '2 meses atrás', '7 meses atrás', '2 anos atrás', 'hoje', '11 meses atrás', ''], 'tempo relativo');
+  eq(palavrasChave(['Atendimento excelente e rápido', 'Atendimento muito bom', 'Entrega rápida, para mim', 'O atendimento da loja']).map(i => [i.palavra, i.n]), [['atendimento', 3]], 'palavras-chave: só quem aparece em 2+ avaliações, sem palavras de ligação');
+  eq(palavrasChave(['Atendimento Atendimento atendimento', 'atendimento']).map(i => i.n), [2], 'a mesma palavra conta uma vez por avaliação');
+  eq(citaPalavra({ t: 'Ótimo ATENDIMENTO' }, 'atendimento') && citaPalavra({ t: 'Atenção' }, 'atencao') && !citaPalavra({ t: '' }, 'loja'), true, 'cita palavra sem acento nem caixa');
+  const lista = [{ s: 5, t: '', c: '2026-10-01' }, { s: 2, t: 'ruim', c: '2026-10-02' }, { s: 4, t: 'muito bom mesmo', c: '2026-10-03' }, { s: 0, t: '', c: '2026-10-04' }];
+  eq(ordenarAvaliacoes(lista, 'relevantes').map(r => r.c.slice(8)), ['03', '02', '04', '01'], 'relevantes: comentário mais longo primeiro, sem comentário por data');
+  eq(ordenarAvaliacoes(lista, 'recentes').map(r => r.c.slice(8)), ['04', '03', '02', '01'], 'recentes');
+  eq(ordenarAvaliacoes(lista, 'maior').map(r => r.s), [5, 4, 2, 0], 'maior classificação');
+  eq(ordenarAvaliacoes(lista, 'menor').map(r => r.s), [2, 4, 5, 0], 'menor classificação deixa "sem nota" por último');
   document.body.dataset.result = 'pass'; document.body.textContent = 'PASS';
 } catch (e) { document.body.dataset.result = 'fail'; document.body.textContent = 'FAIL ' + e.message; }
 </script>
