@@ -22,6 +22,7 @@ import os
 import re
 import sys
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -32,6 +33,7 @@ RESUMO = 'resumo'
 ESTRELAS = {'ONE': 1, 'TWO': 2, 'THREE': 3, 'FOUR': 4, 'FIVE': 5}
 LIMITE_DOC = 900_000  # bytes; o Firestore aceita ~1 MiB por documento
 MARGEM = timedelta(days=1)  # folga na data de corte do modo incremental
+CAMPOS_ENDERECO = ('uf', 'cidade', 'bairro', 'rua', 'cep', 'endereco')
 env = lambda name: os.environ.get(name, '').strip()
 segredos = [env('GBP_CLIENT_SECRET'), env('GBP_REFRESH_TOKEN')]
 
@@ -100,15 +102,47 @@ def paginas(url, campo, auth, **consulta):
             return itens
 
 
+ESTADOS = {'AC': 'acre', 'AL': 'alagoas', 'AP': 'amapa', 'AM': 'amazonas', 'BA': 'bahia', 'CE': 'ceara', 'DF': 'distrito federal', 'ES': 'espirito santo',
+           'GO': 'goias', 'MA': 'maranhao', 'MT': 'mato grosso', 'MS': 'mato grosso do sul', 'MG': 'minas gerais', 'PA': 'para', 'PB': 'paraiba', 'PR': 'parana',
+           'PE': 'pernambuco', 'PI': 'piaui', 'RJ': 'rio de janeiro', 'RN': 'rio grande do norte', 'RS': 'rio grande do sul', 'RO': 'rondonia', 'RR': 'roraima',
+           'SC': 'santa catarina', 'SP': 'sao paulo', 'SE': 'sergipe', 'TO': 'tocantins'}
+
+
+def sem_acento(texto):
+    return ''.join(c for c in unicodedata.normalize('NFD', texto) if not unicodedata.combining(c)).lower().strip()
+
+
+def uf_de(area):
+    """Sigla de 2 letras a partir do que o Google devolve em administrativeArea ('PR', 'Paraná', 'Estado do Paraná'); vazio se não reconhecer.
+    Cortar nas 2 primeiras letras trocaria Paraná por PA e Santa Catarina por SA."""
+    texto = sem_acento(area or '')
+    for sigla, nome in sorted(ESTADOS.items(), key=lambda e: -len(e[1])):  # nome mais longo primeiro: "mato grosso do sul" antes de "mato grosso"
+        if texto == sigla.lower() or re.search('(?<![a-z])' + nome + '(?![a-z])', texto):
+            return sigla
+    achado = re.search('(?<![A-Za-z])([A-Z]{2})(?![A-Za-z])', (area or '') if len(texto) <= 40 else '')  # 'Paraná - PR', 'PR.' (sigla em maiúsculas)
+    return achado.group(1) if achado and achado.group(1) in ESTADOS else ''
+
+
+def endereco_de(ficha):
+    """Endereço do cadastro da ficha (storefrontAddress): rua e número, bairro, cidade, UF, CEP e a linha completa para exibir."""
+    dados = ficha.get('storefrontAddress') or {}
+    rua = ', '.join(l.strip() for l in dados.get('addressLines', []) if l and l.strip())
+    bairro, cidade = (dados.get('sublocality') or '').strip(), (dados.get('locality') or '').strip()
+    cep = (dados.get('postalCode') or '').strip()
+    uf = uf_de(dados.get('administrativeArea'))
+    cidade_uf = ' - '.join(p for p in (cidade, uf) if p)
+    bairro_na_rua = bairro and re.search('(?<![a-z])' + re.escape(sem_acento(bairro)) + '(?![a-z])', sem_acento(rua))  # o Google às vezes já traz o bairro na linha da rua
+    completo = ', '.join(p for p in (rua, '' if bairro_na_rua else bairro, cidade_uf, f'CEP {cep}' if cep else '') if p)
+    return {'uf': uf, 'cidade': cidade, 'bairro': bairro, 'rua': rua, 'cep': cep, 'endereco': completo}
+
+
 def listar_fichas(auth):
-    """[{'conta': 'accounts/1', 'id': '123', 'title': ...}]: o id é o número da ficha (sem o prefixo locations/).
+    """[{'conta': 'accounts/1', 'id': '123', 'title': ..., 'uf', 'cidade', 'bairro', 'rua', 'cep', 'endereco'}]: o id é o número da ficha (sem o prefixo locations/).
     Lista incompleta seria perigosa (o --completo apagaria os blocos das fichas que faltam), por isso segue todas as páginas."""
     fichas = []
     for conta in paginas('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', 'accounts', auth, pageSize=20):
         for ficha in paginas(f'https://mybusinessbusinessinformation.googleapis.com/v1/{conta["name"]}/locations', 'locations', auth, readMask='name,title,storefrontAddress', pageSize=100):
-            endereco = ficha.get('storefrontAddress') or {}
-            fichas.append({'conta': conta['name'], 'id': ficha['name'].split('/')[-1], 'title': ficha.get('title', '(sem título)'),
-                           'uf': (endereco.get('administrativeArea') or '').strip().upper()[:2], 'cidade': (endereco.get('locality') or '').strip()})
+            fichas.append({'conta': conta['name'], 'id': ficha['name'].split('/')[-1], 'title': ficha.get('title', '(sem título)'), **endereco_de(ficha)})
     return fichas
 
 
@@ -159,7 +193,7 @@ def mesclar(meses, novos):
 
 
 def resumir(fichas, meses, metas):
-    por = {f['id']: {'id': f['id'], 'title': f['title'], 'uf': f.get('uf', ''), 'cidade': f.get('cidade', ''), 'coletadas': 0, 'estrelas': [0] * 5, 'semResposta': 0, 'ultima': '',
+    por = {f['id']: {'id': f['id'], 'title': f['title'], **{c: f.get(c, '') for c in CAMPOS_ENDERECO}, 'coletadas': 0, 'estrelas': [0] * 5, 'semResposta': 0, 'ultima': '',
                      'googleTotal': (metas.get(f['id']) or {}).get('total'), 'googleMedia': (metas.get(f['id']) or {}).get('media')} for f in fichas}
     for bloco in meses.values():
         for rec in bloco.values():
@@ -219,6 +253,10 @@ def main(argumentos=None):
     auth = autenticar()
     fichas = listar_fichas(auth)
     print(f'Fichas: {len(fichas)}')
+    # Só contagens (o log é público): quantas fichas ficaram com endereço incompleto no cadastro do Google.
+    faltam = sum(1 for f in fichas if not (f['rua'] and f['cidade'] and f['uf']))
+    if faltam:
+        print(f'::warning::{faltam} ficha(s) sem rua, cidade ou UF no cadastro do Google.')
 
     db = firestore = None
     meses, cursor, anteriores = {}, {}, []

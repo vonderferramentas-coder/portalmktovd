@@ -4,6 +4,8 @@ import { desenharMapa, lojaDaFicha, LOJAS } from './avaliacoes-google-mapa.js';
 
 const $ = id => document.getElementById(id);
 const PAGINA = 20;
+const REGIOES = { Norte: 'AC AM AP PA RO RR TO', Nordeste: 'AL BA CE MA PB PE PI RN SE', 'Centro-Oeste': 'DF GO MS MT', Sudeste: 'ES MG RJ SP', Sul: 'PR RS SC' };
+const regiaoDe = uf => Object.keys(REGIOES).find(r => REGIOES[r].split(' ').includes(uf)) || '-';
 const NIVEIS = { critica: 'Crítica', atencao: 'Atenção', elogio: 'Elogio' };
 const state = { resumo: null, fichas: new Map(), blocos: {}, visiveis: PAGINA, vendedores: [], rev: 0, fila: Promise.resolve(), geracao: 0, menu: null, lojaSel: '', lojaMapa: '', podeEditar: false, mensagem: '', lendo: {}, seq: 0 };
 
@@ -32,7 +34,7 @@ const carregarMeses = () => Promise.all(mesesFaltando().map(lerMes));
 
 function filtradas() {
   const corte = corteDoPeriodo(), corteMs = corte ? Date.parse(corte) : 0;
-  const uf = $('fUf').value, ficha = $('fFicha').value, nota = $('fNota').value, prioridade = $('fPrioridade').value, resposta = $('fResposta').value;
+  const regiao = $('fRegiao').value, uf = $('fUf').value, ficha = $('fFicha').value, nota = $('fNota').value, prioridade = $('fPrioridade').value, resposta = $('fResposta').value;
   const agora = Date.now(), itens = [];
   Object.entries(state.blocos).forEach(([mes, bloco]) => {
     if (mes < corte.slice(0, 7)) return;
@@ -40,6 +42,7 @@ function filtradas() {
       const f = state.fichas.get(rec.l);
       if (!f || Date.parse(rec.c) < corteMs) return;
       if (ficha && rec.l !== ficha) return;
+      if (regiao && regiaoDe(f.uf) !== regiao) return;
       if (uf && (f.uf || '-') !== uf) return;
       if (nota === 'neg' ? !(rec.s >= 1 && rec.s <= 2) : nota && rec.s !== Number(nota)) return;
       if (resposta === 'sem' && rec.r) return;
@@ -108,7 +111,7 @@ function renderGeral(itens, base) {
   itens.forEach(i => (porFicha[i.rec.l] ||= { ficha: i.ficha, recs: [] }).recs.push(i.rec));
   const fichas = Object.values(porFicha).sort((a, b) => b.recs.length - a.recs.length).map(({ ficha, recs: rs }) => h('li', {},
     h('span', {}, ficha.title), h('span', { class: 'ag-num' }, `${media(rs)} ★`),
-    h('small', {}, [ficha.cidade, ficha.uf].filter(Boolean).join(' / ') || 'Sem endereço'),
+    h('small', {}, ficha.endereco || [ficha.cidade, ficha.uf].filter(Boolean).join(' / ') || 'Sem endereço'),
     h('small', { class: 'ag-num' }, `${rs.length} avaliações · ${rs.filter(r => !r.r).length} sem resposta`)));
 
   $('abaGeral').replaceChildren(tiles, h('div', { class: 'ag-mapa-layout' + (mapa ? '' : ' is-sozinho') }, ...[mapa, painel('Por ficha', h('ul', { class: 'ag-rows' }, fichas))].filter(Boolean)),
@@ -345,7 +348,12 @@ function trocarAba(aba) {
 
 function preencherFiltros() {
   const ufs = [...new Set([...state.fichas.values()].map(f => f.uf || '-'))].sort();
-  $('fUf').append(...ufs.map(u => h('option', { value: u }, u === '-' ? 'Sem UF' : u)));
+  const regioes = [...new Set(ufs.map(regiaoDe))].sort((a, b) => (a === '-') - (b === '-') || a.localeCompare(b, 'pt-BR'));
+  $('fRegiao').append(...regioes.map(r => h('option', { value: r }, r === '-' ? 'Sem região' : r)));
+  // A lista de UF acompanha a região escolhida, para os dois filtros não se contradizerem (Sul + SP).
+  const preencherUfs = () => { const r = $('fRegiao').value; $('fUf').replaceChildren(h('option', { value: '' }, 'Todas'), ...ufs.filter(u => !r || regiaoDe(u) === r).map(u => h('option', { value: u }, u === '-' ? 'Sem UF' : u))); };
+  preencherUfs();
+  $('fRegiao').addEventListener('change', preencherUfs);
   $('fFicha').append(...[...state.fichas.values()].sort((a, b) => a.title.localeCompare(b.title, 'pt-BR')).map(f => h('option', { value: f.id }, f.title)));
 }
 
