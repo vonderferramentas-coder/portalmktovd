@@ -24,19 +24,18 @@
 .ag-reply b{display:block;margin-bottom:2px;font-size:12px;color:var(--muted)}
 .ag-more{display:block;margin:16px auto 0}
 .ag-note{margin:16px 0 0;font-size:12px;color:var(--muted)}
+.ag-panel .ag-note{margin:0 0 12px}
 /* A coluna acompanha a altura do cabeçalho: abas e "Atualizado em" juntas embaixo, com o horário na linha do fim do .page-subtitle (mesma altura de linha, 21px) */
 .ag-cabecalho-dir{display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;align-self:stretch;gap:8px;flex-shrink:0}
 .ag-cabecalho-dir .ag-note{margin:0;line-height:21px;text-align:right}
 
 /* Aba Vendedores: lojas em cartões, vendedores numa grade de 3 colunas; edição em modal do portal */
-.ag-vtopo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-.ag-vtopo .ag-note{margin:0}
-.ag-mais{flex:0 0 auto;gap:6px}
-.ag-mais[aria-expanded="true"] .ag-ico{transform:rotate(180deg)}
 .ag-ico{display:inline-flex;transition:transform .25s ease}
 .ag-mapa-layout.is-sozinho{grid-template-columns:1fr}.ag-mapa-layout{display:grid;grid-template-columns:minmax(300px,6fr) 6fr;gap:12px;align-items:start;margin-bottom:16px}
 .ag-vendlist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
 .ag-vend{display:flex;align-items:center;gap:6px;padding:8px 8px 8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px}
+.ag-mencoes{flex:0 0 auto;padding:0 4px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ag-mencoes b{font-weight:600;color:var(--text)}
 .ag-vend.is-off .ag-vend-nome strong{color:var(--muted);text-decoration:line-through}
 .ag-vend-nome{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;overflow-wrap:anywhere}
 .ag-iconbtn{flex:0 0 auto;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
@@ -44,7 +43,6 @@
 .ag-iconbtn.is-danger:hover{background:var(--danger-bg);color:var(--danger)}
 .ag-iconbtn:focus-visible,.ag-menu-item:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
 @media (max-width:900px){.ag-mapa-layout{grid-template-columns:1fr}}
-@media (max-width:700px){.ag-vtopo{flex-direction:column;align-items:stretch}}
 
 /* Menu flutuante "Mais ações" (DESIGN §1) */
 .ag-menu{position:fixed;z-index:1500;min-width:200px;padding:6px;border:1px solid var(--border-strong);border-radius:var(--radius-md);background:var(--card);box-shadow:var(--shadow-lg);opacity:0;transform:translateY(-4px) scale(.98);transform-origin:top right;transition:opacity .12s,transform .12s}
@@ -66,12 +64,8 @@
 
 #agTabs{flex-shrink:0}
 #agTabs button{white-space:nowrap}
-#abaVendedores .ag-panel h2{display:flex;align-items:baseline;gap:8px;font-size:16px;font-weight:600;color:var(--text)}
 
 /* Mapa das lojas (SVG): contorno dos estados e pings coloridos pela faixa de nota */
-.ag-loja-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
-.ag-loja-topo h2{margin:0}
-.ag-loja+.ag-loja{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
 /* Mapa (Leaflet). Em cartão (aba Vendedores) tem altura fixa; na Visão geral vira o fundo da cena */
 .ag-mapa{position:relative;width:100%;height:440px;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;background:var(--surface-muted);font:inherit}
 .ag-pin-svg{display:block;overflow:visible;transform-origin:50% 96%;transition:transform .2s ease}
@@ -176,7 +170,7 @@
 .ag-achou q{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--muted);quotes:"“" "”"}
 
 /* Visão geral: o mapa preenche toda a largura por trás (a página tem 28px de margem, que a cena sangra) e os cartões ficam à frente */
-.ag-cena{position:relative;isolation:isolate;box-sizing:border-box;height:680px;margin:0 -28px 16px;padding:24px 28px}
+.ag-cena{position:relative;isolation:isolate;box-sizing:border-box;height:680px;margin:0 -28px -28px;padding:24px 28px}
 .ag-cena>.ag-mapa{position:absolute;inset:0;z-index:0;width:auto;height:auto;border:0;border-radius:0}
 .ag-sobre{position:relative;z-index:1;display:grid;grid-template-columns:1fr minmax(380px,600px);grid-template-rows:minmax(0,1fr);gap:12px;height:100%;margin:0;pointer-events:none}
 .ag-sobre>*{pointer-events:auto}
@@ -187,6 +181,14 @@
 .ag-sobre>:last-child::-webkit-scrollbar-track{background:transparent}
 .ag-sobre>:last-child::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
 .ag-sobre>:last-child::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+/* Vendedores: o cartão fica à esquerda; os controles de zoom passam para a direita, longe dele */
+.ag-esq{grid-template-columns:minmax(380px,600px) 1fr}
+.ag-esq>:last-child{grid-column:1}
+.ag-cena.is-esq .leaflet-bottom.leaflet-left{left:auto;right:0}
+.ag-cena.is-esq .leaflet-left .leaflet-control{float:right;margin:0 28px 60px 0}
+/* Círculo com a quantidade de vendedores ativos no canto direito da linha da loja */
+.ag-ficha-vend{position:relative;padding-right:60px}
+.ag-circulo{position:absolute;top:50%;right:12px;transform:translateY(-50%);width:32px;height:32px;display:grid;place-items:center;border-radius:50%;background:var(--accent-weak);color:var(--accent-text);font:600 14px/1 var(--font-ui);font-variant-numeric:tabular-nums}
 .ag-ping-nome{position:absolute;top:19px;transform:translateY(-50%);white-space:nowrap;font:700 13px/1 var(--font-ui);color:var(--text);text-shadow:0 0 3px var(--card),0 0 3px var(--card),0 0 6px var(--card);pointer-events:none}
 .ag-ping-nome.is-e{right:calc(100% - 4px)}
 .ag-ping-nome.is-d{left:calc(100% - 4px)}

@@ -15,9 +15,14 @@ export const LOJAS = {
 };
 
 // Liga uma ficha do Google (título e cidade) a uma loja da tabela, pela cidade ou apelido citado ("POA"). Vazio = sem loja conhecida.
+// O resultado fica guardado por ficha (WeakMap): a tela chama isto a cada tecla, passagem de mouse e foco, e cada chamada monta uma expressão regular por loja.
+const lojaPorFicha = new WeakMap();
 export function lojaDaFicha(ficha) {
+  if (lojaPorFicha.has(ficha)) return lojaPorFicha.get(ficha);
   const texto = chave(`${ficha.title || ''} ${ficha.cidade || ''}`);
-  return Object.keys(LOJAS).find(k => new RegExp(`\\b(${[k, ...LOJAS[k].apelidos].map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`).test(texto)) || '';
+  const loja = Object.keys(LOJAS).find(k => new RegExp(`\\b(${[k, ...LOJAS[k].apelidos].map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`).test(texto)) || '';
+  lojaPorFicha.set(ficha, loja);
+  return loja;
 }
 
 const TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'; // o tema escuro é um filtro de CSS sobre estes tiles
@@ -65,10 +70,12 @@ export function desenharMapa({ pings, selecionada, aoEscolher, aoDestacar = () =
   el.setAttribute('role', 'group');
   el.setAttribute('aria-label', 'Mapa das lojas no Paraná, Santa Catarina e Rio Grande do Sul');
   const salvo = visoes[chaveVisao];
+  let centrada = ''; // loja em que o mapa está centrado (ver centralizar)
   const mapa = L.map(el, { zoomControl: false, attributionControl: false, scrollWheelZoom: false, minZoom: 4, maxZoom: 16, zoomSnap: 0.25 })
     .setView(salvo ? salvo.centro : [-27.6, -50.5], salvo ? salvo.zoom : 6);
   el.style.position = ''; // fora da página o Leaflet crava position:relative; quem posiciona o mapa é o CSS (no fundo da cena ele é absoluto)
-  mapa.on('moveend', () => { const c = mapa.getCenter(); visoes[chaveVisao] = { centro: [c.lat, c.lng], zoom: mapa.getZoom() }; });
+  // A visão guardada leva junto a loja em que o mapa está centrado: se a tela refizer o mapa (um filtro mudou os números dos pins), o novo mapa sabe que ainda precisa reenquadrar ao voltar para a lista.
+  mapa.on('moveend', () => { const c = mapa.getCenter(); visoes[chaveVisao] = { centro: [c.lat, c.lng], zoom: mapa.getZoom(), centrada }; });
   L.tileLayer(TILES, { attribution: ATRIBUICAO, maxZoom: 19 }).addTo(mapa);
   L.control.attribution({ prefix: false }).addTo(mapa);
   L.control.zoom({ position: 'bottomleft', zoomInTitle: 'Aproximar', zoomOutTitle: 'Afastar' }).addTo(mapa);
@@ -131,20 +138,23 @@ export function desenharMapa({ pings, selecionada, aoEscolher, aoDestacar = () =
     const opcoes = { paddingTopLeft: [24 + esq + folga, 72], paddingBottomRight: [24 + dir + folga, 48], maxZoom: 8 };
     if (animar) mapa.flyToBounds(L.latLngBounds(posicoes), { ...opcoes, duration: 0.7 }); else mapa.fitBounds(L.latLngBounds(posicoes), { ...opcoes, animate: false });
   }
-  // Centraliza a loja aberta no painel (no meio da parte do mapa que sobra à esquerda do cartão), com zoom de cidade; ao voltar para a lista, reenquadra todas.
+  // Centraliza a loja aberta no painel (no meio da parte do mapa que o cartão deixa livre), com zoom de cidade; ao voltar para a lista, reenquadra todas.
   // Só age quando a loja muda: refazer a tela por causa de um filtro não move o mapa de novo.
-  let centrada = '';
-  el.centralizar = chave => {
-    if (chave === centrada || !el.clientWidth) return;
+  let enquadrado = Boolean(salvo);
+  centrada = (salvo && salvo.centrada) || '';
+  el.centralizar = (chave, forcar) => { // forcar: reenquadra mesmo que o mapa já esteja nessa loja (ao trocar de aba o cartão muda de lado)
+    if ((chave === centrada && !forcar) || !el.clientWidth) return;
     const l = LOJAS[chave];
     if (chave && !l) return; // ficha sem pin (centro de distribuição): o mapa fica onde está
     centrada = chave;
     if (!chave) { if (posicoes.length) enquadrarTodos(true); return; }
-    const zoom = Math.max(mapa.getZoom(), 10), { dir } = reservas();
-    mapa.flyTo(mapa.unproject(mapa.project([l.lat, l.lon], zoom).add([dir / 2, 0]), zoom), zoom, { duration: 0.7 });
+    const zoom = Math.max(mapa.getZoom(), 10), { esq, dir } = reservas();
+    mapa.flyTo(mapa.unproject(mapa.project([l.lat, l.lon], zoom).add([(dir - esq) / 2, 0]), zoom), zoom, { duration: 0.7 });
   };
+  // Troca de aba: o mapa da outra aba parte de onde o mapa anterior estava (visao/ir) e depois voa para o próprio enquadramento (centralizar).
+  el.visao = () => { const c = mapa.getCenter(); return { centro: [c.lat, c.lng], zoom: mapa.getZoom() }; };
+  el.ir = v => { enquadrado = true; mapa.invalidateSize({ animate: false }); mapa.setView(v.centro, v.zoom, { animate: false }); };
   // O elemento ainda não está na página quando esta função termina: o primeiro tamanho real dispara o enquadramento.
-  let enquadrado = Boolean(salvo);
   const tamanho = new ResizeObserver(() => {
     const { width, height } = el.getBoundingClientRect();
     if (!width || !height) return;
