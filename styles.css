@@ -1172,3 +1172,7 @@
       .tour-menu,.tour-pop.is-in,.tour-pop.is-nudge,.tour-hole.is-click::after{animation:none}
       .tour-hole,.tour-pop,.tour-pop-progress span{transition:none}
     }
+
+/* "x" nativo de todo campo type="search" trocado pelo ícone de traço da plataforma (DESIGN.md §5). :where zera a especificidade: ajustes locais (.home-search, .pe-catalog-search, .bc-search) continuam valendo. */
+:where(input[type="search"])::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;width:16px;height:16px;margin:0;border-radius:4px;cursor:pointer;background-color:var(--muted);transition:background-color .12s;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center/contain no-repeat}
+:where(input[type="search"])::-webkit-search-cancel-button:hover{background-color:var(--accent-ink)}

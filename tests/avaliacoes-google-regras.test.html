@@ -3,7 +3,7 @@
 <body data-result="running">RUNNING
 <script type="module">
 // Exige --allow-file-access-from-files no Chrome (import de módulo via file://).
-import { classificar, porPrioridade, tempoRelativo, palavrasChave, citaPalavra, ordenarAvaliacoes, textoOriginal, abreviar, buscaAvaliacao } from '../avaliacoes-google-regras.js';
+import { classificar, porPrioridade, tempoRelativo, palavrasChave, citaPalavra, ordenarAvaliacoes, textoOriginal, abreviar, buscaAvaliacao, limitesDoPeriodo } from '../avaliacoes-google-regras.js';
 
 const agora = Date.parse('2026-10-28T12:00:00Z');
 const rec = (s, t, c, r = '') => ({ s, t, c, r });
@@ -46,6 +46,9 @@ try {
   // busca no referencial da loja
   const aval = { t: 'Atendimento ótimo na entrega', n: 'João Pedro', r: 'Obrigado pela avaliação' };
   eq(['', '  ', 'atendimento', 'ATENDIMENTO OTIMO', 'joao', 'obrigado', 'entrega rapida', 'frete'].map(q => buscaAvaliacao(aval, q)), [true, true, true, true, true, true, false, false], 'busca: todas as palavras, sem acento nem caixa, em texto, nome e resposta');
+  const hoje = new Date(2026, 10, 6, 15, 0), dm = (a, m, d) => new Date(a, m, d).getTime();
+  eq([['hoje'], ['ontem'], ['mes'], ['mes_passado'], ['ano'], ['all']].map(([p]) => limitesDoPeriodo(p, '', '', hoje)), [[dm(2026, 10, 6), 0], [dm(2026, 10, 5), dm(2026, 10, 6) - 1], [dm(2026, 10, 1), 0], [dm(2026, 9, 1), dm(2026, 10, 1) - 1], [dm(2026, 0, 1), 0], [0, 0]], 'períodos de calendário: hoje, ontem, este mês, mês passado, este ano, tudo');
+  eq([limitesDoPeriodo('7', '', '', hoje), limitesDoPeriodo('mes_passado', '', '', new Date(2026, 0, 15)), limitesDoPeriodo('custom', '2026-03-10', '2026-03-10'), limitesDoPeriodo('custom', '', ''), limitesDoPeriodo('', '', '', hoje), limitesDoPeriodo('xyz', '', '', hoje), limitesDoPeriodo('custom', 'lixo', '2026-13-45')], [[hoje.getTime() - 7 * 864e5, 0], [dm(2025, 11, 1), dm(2026, 0, 1) - 1], [dm(2026, 2, 10), dm(2026, 2, 10) + 864e5 - 1], [0, 0], [0, 0], [0, 0], [0, 0]], 'últimos 7 dias, período vazio ou desconhecido sem limite, mês passado em janeiro, personalizado com os extremos incluídos e sem datas');
   // referencial da loja
   eq(['2026-10-28T08:00:00Z', '2026-10-27T08:00:00Z', '2026-10-24T12:00:00Z', '2026-10-14T12:00:00Z', '2026-08-28T12:00:00Z', '2026-03-28T12:00:00Z', '2024-10-01T12:00:00Z', '2026-10-30T12:00:00Z', '2025-11-03T12:00:00Z', 'texto'].map(d => tempoRelativo(d, agora)),
     ['hoje', 'um dia atrás', '4 dias atrás', '2 semanas atrás', '2 meses atrás', '7 meses atrás', '2 anos atrás', 'hoje', '11 meses atrás', ''], 'tempo relativo');

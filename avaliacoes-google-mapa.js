@@ -53,10 +53,11 @@ function iconeDoPin(p, lado, deslocar = 0) {
 }
 
 // pings: [{ chave, nome, texto, dica, status?: 'ok'|'atencao'|'ruim' (bolinha no pin), vazio?: true (sem dado, pin cinza) }].
+// aoDestacar(chave) é chamado quando o mouse (ou o foco) entra no pin e aoDestacar('') quando sai.
 // Clicar (ou Enter/Espaço) chama aoEscolher(chave); o mesmo ping de novo desmarca (a tela decide).
 // chaveVisao guarda a posição do mapa entre redesenhos; reservas() diz quantos px de cada lado estão cobertos por cartões { esq, dir } (o enquadramento inicial os evita).
 // Devolve o <div> do mapa: quem chama o põe na página e o tamanho vem do CSS (o enquadramento espera o elemento ter tamanho).
-export function desenharMapa({ pings, selecionada, aoEscolher, chaveVisao = 'mapa', reservas = () => ({ esq: 0, dir: 0 }) }) {
+export function desenharMapa({ pings, selecionada, aoEscolher, aoDestacar = () => {}, chaveVisao = 'mapa', reservas = () => ({ esq: 0, dir: 0 }) }) {
   instancias.forEach(i => { if (i.el.isConnected) i.naPagina = true; });
   instancias = instancias.filter(i => !i.naPagina || i.el.isConnected || (i.soltar(), false)); // só solta quem já esteve na página e saiu dela
   const el = document.createElement('div');
@@ -84,7 +85,7 @@ export function desenharMapa({ pings, selecionada, aoEscolher, chaveVisao = 'map
     mapa.setZoomAround(mapa.mouseEventToContainerPoint(e), mapa.getZoom() + passo, { animate: false });
   }, { passive: false });
 
-  const posicoes = [];
+  const posicoes = [], marcadores = [];
   pings.filter(p => LOJAS[p.chave]).forEach(p => {
     const l = LOJAS[p.chave], ativo = selecionada === p.chave;
     posicoes.push([l.lat, l.lon]);
@@ -93,14 +94,55 @@ export function desenharMapa({ pings, selecionada, aoEscolher, chaveVisao = 'map
       title: p.dica, keyboard: true, zIndexOffset: ativo ? 1000 : 0
     }).addTo(mapa);
     marcador.on('click', () => aoEscolher(p.chave)); // o Enter já vira clique no Leaflet
+    marcador.on('mouseover', () => aoDestacar(p.chave)); marcador.on('mouseout', () => aoDestacar('')); // mouse em cima do pin: a tela destaca a linha da loja na lista
+    marcadores.push([p.chave, marcador]);
     const icone = marcador.getElement();
     if (!icone) return;
     icone.setAttribute('role', 'button');
     icone.setAttribute('aria-pressed', String(ativo));
     icone.setAttribute('aria-label', p.dica);
     icone.addEventListener('keydown', e => { if (e.key === ' ') { e.preventDefault(); aoEscolher(p.chave); } });
+    icone.addEventListener('focus', () => aoDestacar(p.chave)); icone.addEventListener('blur', () => aoDestacar(''));
   });
 
+  // Troca a loja selecionada sem refazer o mapa (refazer recarrega os tiles e o mapa pisca): quem chama reaproveita o elemento e chama selecionar(chave).
+  let escolhida = selecionada;
+  el.classList.toggle('tem-sel', Boolean(selecionada));
+  el.selecionar = chave => {
+    escolhida = chave;
+    el.classList.toggle('tem-sel', Boolean(chave)); // com uma loja aberta, os outros pins ficam apagados (CSS)
+    marcadores.forEach(([k, m]) => {
+      const ativo = k === chave, icone = m.getElement();
+      m.setZIndexOffset(ativo ? 1000 : 0);
+      if (!icone) return;
+      icone.classList.toggle('is-sel', ativo);
+      icone.setAttribute('aria-pressed', String(ativo));
+    });
+  };
+  // Destaca (anima) o pin de uma loja enquanto o mouse ou o foco está na linha dela na lista; chave vazia apaga o destaque. Só o visual muda: a seleção continua a mesma.
+  el.destacar = chave => marcadores.forEach(([k, m]) => {
+    const on = Boolean(chave) && k === chave, icone = m.getElement();
+    m.setZIndexOffset(on ? 900 : k === escolhida ? 1000 : 0);
+    if (icone) icone.classList.toggle('is-hover', on);
+  });
+  // Enquadra todas as lojas, fora da área coberta pelos cartões (folga: o nome da cidade fica ao lado do pin).
+  function enquadrarTodos(animar) {
+    const { esq, dir } = reservas(), folga = 72;
+    const opcoes = { paddingTopLeft: [24 + esq + folga, 72], paddingBottomRight: [24 + dir + folga, 48], maxZoom: 8 };
+    if (animar) mapa.flyToBounds(L.latLngBounds(posicoes), { ...opcoes, duration: 0.7 }); else mapa.fitBounds(L.latLngBounds(posicoes), { ...opcoes, animate: false });
+  }
+  // Centraliza a loja aberta no painel (no meio da parte do mapa que sobra à esquerda do cartão), com zoom de cidade; ao voltar para a lista, reenquadra todas.
+  // Só age quando a loja muda: refazer a tela por causa de um filtro não move o mapa de novo.
+  let centrada = '';
+  el.centralizar = chave => {
+    if (chave === centrada || !el.clientWidth) return;
+    const l = LOJAS[chave];
+    if (chave && !l) return; // ficha sem pin (centro de distribuição): o mapa fica onde está
+    centrada = chave;
+    if (!chave) { if (posicoes.length) enquadrarTodos(true); return; }
+    const zoom = Math.max(mapa.getZoom(), 10), { dir } = reservas();
+    mapa.flyTo(mapa.unproject(mapa.project([l.lat, l.lon], zoom).add([dir / 2, 0]), zoom), zoom, { duration: 0.7 });
+  };
   // O elemento ainda não está na página quando esta função termina: o primeiro tamanho real dispara o enquadramento.
   let enquadrado = Boolean(salvo);
   const tamanho = new ResizeObserver(() => {
@@ -109,10 +151,9 @@ export function desenharMapa({ pings, selecionada, aoEscolher, chaveVisao = 'map
     mapa.invalidateSize({ animate: false });
     if (enquadrado || !posicoes.length) return;
     enquadrado = true;
-    const { esq, dir } = reservas(), folga = 72; // folga: o nome da cidade fica ao lado do pin
-    mapa.fitBounds(L.latLngBounds(posicoes), { paddingTopLeft: [24 + esq + folga, 72], paddingBottomRight: [24 + dir + folga, 48], maxZoom: 8, animate: false });
+    enquadrarTodos(false);
   });
   tamanho.observe(el);
-  instancias.push({ el, naPagina: false, soltar: () => { tamanho.disconnect(); mapa.remove(); } });
+  instancias.push({ el, naPagina: false, soltar: () => { el.solto = true; tamanho.disconnect(); mapa.remove(); } });
   return el;
 }

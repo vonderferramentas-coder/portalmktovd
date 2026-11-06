@@ -114,3 +114,20 @@ export function buscaAvaliacao(rec, consulta) {
   const alvo = sem(`${rec.t || ''} ${rec.n || ''} ${rec.r || ''}`);
   return termos.every(t => alvo.includes(t));
 }
+
+// Limites do período escolhido no filtro, em ms: [início, fim], 0 = sem limite. Hoje, Ontem, Este mês, Mês passado e Este ano seguem o calendário (meia-noite local);
+// "7", "30", "90" e "365" são os últimos N dias a partir de agora; "custom" usa as datas YYYY-MM-DD (extremos incluídos, sem data = sem limite).
+export function limitesDoPeriodo(periodo, de, ate, agora = new Date()) {
+  const a = agora.getFullYear(), m = agora.getMonth(), d = agora.getDate();
+  const dia = (ano, mes, dd) => new Date(ano, mes, dd).getTime(); // mês ou dia fora da faixa o próprio Date acerta (janeiro - 1 = dezembro do ano anterior)
+  switch (periodo) {
+    case 'hoje': return [dia(a, m, d), 0];
+    case 'ontem': return [dia(a, m, d - 1), dia(a, m, d) - 1];
+    case 'mes': return [dia(a, m, 1), 0];
+    case 'mes_passado': return [dia(a, m - 1, 1), dia(a, m, 1) - 1];
+    case 'ano': return [dia(a, 0, 1), 0];
+    case 'all': return [0, 0];
+    case 'custom': return [(de && Date.parse(de + 'T00:00:00')) || 0, (ate && Date.parse(ate + 'T23:59:59.999')) || 0]; // data malformada (NaN) conta como sem limite
+    default: { const dias = Number(periodo); return dias > 0 ? [agora.getTime() - dias * 864e5, 0] : [0, 0]; } // valor desconhecido ou vazio: sem limite, nunca NaN
+  }
+}

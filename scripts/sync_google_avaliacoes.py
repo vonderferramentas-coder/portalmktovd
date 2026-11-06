@@ -33,7 +33,7 @@ RESUMO = 'resumo'
 ESTRELAS = {'ONE': 1, 'TWO': 2, 'THREE': 3, 'FOUR': 4, 'FIVE': 5}
 LIMITE_DOC = 900_000  # bytes; o Firestore aceita ~1 MiB por documento
 MARGEM = timedelta(days=1)  # folga na data de corte do modo incremental
-CAMPOS_ENDERECO = ('uf', 'cidade', 'bairro', 'rua', 'cep', 'endereco', 'categoria', 'telefone')
+CAMPOS_ENDERECO = ('uf', 'cidade', 'bairro', 'rua', 'cep', 'endereco', 'categoria', 'telefone', 'mapsUri')  # dados da ficha que a tela mostra; mapsUri = link da ficha no Google Maps (botão "Ver no Google")
 env = lambda name: os.environ.get(name, '').strip()
 segredos = [env('GBP_CLIENT_SECRET'), env('GBP_REFRESH_TOKEN')]
 
@@ -137,13 +137,14 @@ def endereco_de(ficha):
 
 
 def listar_fichas(auth):
-    """[{'conta': 'accounts/1', 'id': '123', 'title': ..., 'uf', 'cidade', 'bairro', 'rua', 'cep', 'endereco'}]: o id é o número da ficha (sem o prefixo locations/).
+    """[{'conta': 'accounts/1', 'id': '123', 'title': ..., 'uf', 'cidade', 'bairro', 'rua', 'cep', 'endereco', 'categoria', 'telefone', 'mapsUri'}]: o id é o número da ficha (sem o prefixo locations/).
     Lista incompleta seria perigosa (o --completo apagaria os blocos das fichas que faltam), por isso segue todas as páginas."""
     fichas = []
     for conta in paginas('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', 'accounts', auth, pageSize=20):
-        for ficha in paginas(f'https://mybusinessbusinessinformation.googleapis.com/v1/{conta["name"]}/locations', 'locations', auth, readMask='name,title,storefrontAddress,primaryCategory,phoneNumbers', pageSize=100):
+        for ficha in paginas(f'https://mybusinessbusinessinformation.googleapis.com/v1/{conta["name"]}/locations', 'locations', auth, readMask='name,title,storefrontAddress,primaryCategory,phoneNumbers,metadata', pageSize=100):
             fichas.append({'conta': conta['name'], 'id': ficha['name'].split('/')[-1], 'title': ficha.get('title', '(sem título)'), **endereco_de(ficha),
-                           'categoria': ((ficha.get('primaryCategory') or {}).get('displayName') or '').strip(), 'telefone': ((ficha.get('phoneNumbers') or {}).get('primaryPhone') or '').strip()})
+                           'categoria': ((ficha.get('primaryCategory') or {}).get('displayName') or '').strip(), 'telefone': ((ficha.get('phoneNumbers') or {}).get('primaryPhone') or '').strip(),
+                           'mapsUri': ((ficha.get('metadata') or {}).get('mapsUri') or '').strip()})
     return fichas
 
 

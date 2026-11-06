@@ -73,7 +73,7 @@ def google_falso(pedido, timeout=0):
     if 'businessinformation' in url:
         if 'accounts/2' in url:
             return Resposta({'locations': [{'name': 'locations/7', 'title': 'Loja da conta 2'}]})
-        return Resposta({'locations': [{'name': 'locations/9', 'title': 'Loja', 'storefrontAddress': {'administrativeArea': 'sp ', 'locality': 'Campinas', 'sublocality': 'Centro', 'postalCode': '13010-000', 'addressLines': ['Rua Teste, 100', 'Sala 2']}, 'primaryCategory': {'displayName': 'Loja de ferramentas'}, 'phoneNumbers': {'primaryPhone': '(19) 3000-1000'}}], 'nextPageToken': 'f2'} if 'pageToken' not in consulta else {'locations': [{'name': 'locations/8', 'title': 'Loja B'}]})
+        return Resposta({'locations': [{'name': 'locations/9', 'title': 'Loja', 'metadata': {'mapsUri': 'https://maps.google.com/?cid=123 '}, 'storefrontAddress': {'administrativeArea': 'sp ', 'locality': 'Campinas', 'sublocality': 'Centro', 'postalCode': '13010-000', 'addressLines': ['Rua Teste, 100', 'Sala 2']}, 'primaryCategory': {'displayName': 'Loja de ferramentas'}, 'phoneNumbers': {'primaryPhone': '(19) 3000-1000'}}], 'nextPageToken': 'f2'} if 'pageToken' not in consulta else {'locations': [{'name': 'locations/8', 'title': 'Loja B'}]})
     if '/locations/9/' not in url:  # só a ficha 9 tem avaliações no teste
         return Resposta({'totalReviewCount': 0})
     return Resposta(paginas[consulta.get('pageToken', [''])[0]])
@@ -93,6 +93,7 @@ auth = {'Authorization': 'x'}
 por_id = {f['id']: f for f in coletor.listar_fichas(auth)}
 assert por_id['9']['uf'] == 'SP' and por_id['9']['cidade'] == 'Campinas' and por_id['8']['uf'] == ''  # UF vem do endereço; ficha sem endereço fica sem UF
 assert por_id['9']['endereco'] == 'Rua Teste, 100, Sala 2, Centro, Campinas - SP, CEP 13010-000' and por_id['8']['endereco'] == ''
+assert por_id['9']['mapsUri'] == 'https://maps.google.com/?cid=123' and por_id['8']['mapsUri'] == ''  # link da ficha no Google Maps (metadata.mapsUri); sem metadata fica vazio
 assert por_id['9']['categoria'] == 'Loja de ferramentas' and por_id['9']['telefone'] == '(19) 3000-1000' and por_id['8']['categoria'] == '' and por_id['8']['telefone'] == ''
 # UF por extenso vira sigla (cortar em 2 letras trocaria Paraná por PA e Santa Catarina por SA)
 assert [coletor.uf_de(a) for a in ('Paraná', 'Estado de Santa Catarina', 'rs', 'Pará', 'Bahia', 'Atlântida', '')] == ['PR', 'SC', 'RS', 'PA', 'BA', '', '']

@@ -22,8 +22,8 @@ try {
   eq(lojaDaFicha({ title: 'Joinvillense Pioneiro' }), '', 'palavra inteira, não pedaço');
 
   // desenho: um ping por loja conhecida (a desconhecida fica de fora), com o número, o nome e a bolinha; clique e Espaço chamam o callback
-  const clicados = [];
-  const el = desenharMapa({ pings: [{ chave: 'curitiba', nome: 'Curitiba', texto: '3', status: 'ok', dica: 'x' }, { chave: 'sao paulo', nome: 'SP', texto: '1', dica: 'y' }], selecionada: 'curitiba', aoEscolher: k => clicados.push(k), chaveVisao: 'teste' });
+  const clicados = [], destacados = [];
+  const el = desenharMapa({ pings: [{ chave: 'curitiba', nome: 'Curitiba', texto: '3', status: 'ok', dica: 'x' }, { chave: 'sao paulo', nome: 'SP', texto: '1', dica: 'y' }], selecionada: 'curitiba', aoEscolher: k => clicados.push(k), aoDestacar: k => destacados.push(k), chaveVisao: 'teste' });
   eq(el.querySelectorAll('.ag-ping').length, 1, 'só a loja conhecida vira ping');
   const ping = el.querySelector('.ag-ping');
   eq([ping.querySelector('.ag-ping-num').textContent, ping.querySelector('.ag-ping-nome').textContent, !!ping.querySelector('.ag-status.is-ok')], ['3', 'Curitiba', true], 'número, nome e bolinha no pin');
@@ -32,6 +32,22 @@ try {
   ping.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   ping.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
   eq(clicados, ['curitiba', 'curitiba'], 'clique e Espaço escolhem a loja');
+
+  // mouse em cima do pin avisa a tela (para destacar a linha da lista); sair apaga
+  ping.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); ping.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+  eq(destacados, ['curitiba', ''], 'mouseover e mouseout no pin chamam aoDestacar');
+
+  // trocar a loja selecionada não refaz o mapa: o mesmo elemento e os mesmos pins, só a marcação muda
+  el.selecionar('');
+  eq([el.querySelector('.ag-ping'), ping.classList.contains('is-sel'), ping.getAttribute('aria-pressed')], [ping, false, 'false'], 'selecionar("") desmarca no mesmo pin');
+  el.selecionar('curitiba');
+  eq([ping.classList.contains('is-sel'), ping.getAttribute('aria-pressed')], [true, 'true'], 'selecionar(chave) marca de novo');
+
+  // destacar anima só o pin da loja (is-hover) e apaga ao receber vazio; a seleção não muda
+  el.destacar('curitiba');
+  eq([ping.classList.contains('is-hover'), ping.classList.contains('is-sel')], [true, true], 'destacar marca o pin da loja sem mexer na seleção');
+  el.destacar('');
+  eq(ping.classList.contains('is-hover'), false, 'destacar("") apaga o destaque');
 
   // cidades coladas (Novo Hamburgo): o pin sai deslocado para a direita, com fio e ponto no lugar real; os demais não
   const el2 = desenharMapa({ pings: [{ chave: 'novo hamburgo', nome: 'Novo Hamburgo', texto: '4,2', dica: 'a' }, { chave: 'curitiba', nome: 'Curitiba', texto: '4', dica: 'b' }], selecionada: '', aoEscolher: () => {}, chaveVisao: 'teste2' });
