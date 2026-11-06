@@ -1,12 +1,20 @@
 import { classificar, porPrioridade, tempoRelativo, palavrasChave, citaPalavra, ordenarAvaliacoes, ORDENS, textoOriginal, abreviar, buscaAvaliacao, limitesDoPeriodo } from './avaliacoes-google-regras.js';
-import { lerColado, adicionar, apelidosDoTexto, nomesAmbiguos, ordenar, idDe, paraCsv, chave, mencoes } from './avaliacoes-google-vendedores.js';
+import { lerColado, adicionar, apelidosDoTexto, nomesAmbiguos, ordenar, idDe, paraCsv, chave, mencoes, termosDe, trechos } from './avaliacoes-google-vendedores.js';
 import { desenharMapa, lojaDaFicha, LOJAS } from './avaliacoes-google-mapa.js';
 
 const $ = id => document.getElementById(id);
 const PAGINA = 20;
 const NIVEIS = { critica: 'Crítica', atencao: 'Atenção', elogio: 'Elogio' };
 const FILTRO_PADRAO = { periodo: '90', de: '', ate: '', nota: '', prioridade: '', resposta: '' };
-const state = { filtro: { ...FILTRO_PADRAO }, filtroUi: null, aba: 'geral', dados: null, memoLoja: null, memoLojas: { consulta: '', ordem: 'volume' }, memoVend: null, memoVendLojas: { consulta: '', ordem: 'mencoes' }, resumo: null, fichas: new Map(), blocos: {}, visiveis: PAGINA, vendedores: [], rev: 0, fila: Promise.resolve(), geracao: 0, menu: null, lojaSel: '', lojaMapa: '', inicial: {}, podeEditar: false, mensagem: '', lendo: {}, seq: 0 };
+// Cada aba tem o seu filtro e o seu padrão: Vendedores conta desde o começo da campanha (15/05/2026), e não nos últimos 90 dias.
+const INICIO_CAMPANHA = '2026-05-15';
+const PADROES = { geral: FILTRO_PADRAO, vendedores: { ...FILTRO_PADRAO, periodo: 'custom', de: INICIO_CAMPANHA } };
+const state = { filtros: { geral: { ...PADROES.geral }, vendedores: { ...PADROES.vendedores } }, filtrosUi: {}, aba: 'geral', dados: null, memoLoja: null, memoLojas: { consulta: '', ordem: 'volume' }, memoVend: null, memoVendLojas: { consulta: '', ordem: 'mencoes' }, resumo: null, fichas: new Map(), blocos: {}, visiveis: PAGINA, vendedores: [], rev: 0, fila: Promise.resolve(), geracao: 0, menu: null, lojaSel: '', lojaMapa: '', inicial: {}, podeEditar: false, mensagem: '', lendo: {}, seq: 0 };
+
+// O filtro (e o seu painel) em vigor é o da aba aberta; a Fila de atenção usa o da Visão geral.
+const chaveFiltro = () => state.aba === 'vendedores' ? 'vendedores' : 'geral';
+const padrao = () => PADROES[chaveFiltro()];
+Object.defineProperties(state, { filtro: { get: () => state.filtros[chaveFiltro()] }, filtroUi: { get: () => state.filtrosUi[chaveFiltro()] } });
 
 // Monta nós com textContent: o texto das avaliações vem de terceiros e nunca entra como HTML.
 function h(tag, props = {}, ...filhos) {
@@ -53,7 +61,7 @@ function filtradas() {
       if (resposta === 'sem' && rec.r) return;
       if (resposta === 'com' && !rec.r) return;
       const cls = classificar(rec, agora);
-      if (prioridade && cls.nivel !== prioridade) return;
+      if (prioridade === 'editada' ? !editada(rec) : prioridade && cls.nivel !== prioridade) return; // "Editadas" não é um nível: olha a data de atualização
       itens.push({ rec, cls, ficha: f });
     });
   });
@@ -132,15 +140,29 @@ function estrelasNota(nota) {
     h('i', { 'aria-hidden': 'true' }, cheias), h('b', { 'aria-hidden': 'true', style: `width:${Math.max(0, Math.min(5, nota)) * 20}%` }, cheias));
 }
 
-function avaliacaoLoja(rec) {
+// Texto com as menções em <mark>: "termos" são os do vendedor (ver trechos); o texto entra sempre como texto, nunca como HTML.
+function textoGrifado(texto, termos) {
+  const partes = []; let fim = 0;
+  trechos(texto, termos).forEach(([a, b]) => { partes.push(texto.slice(fim, a), h('mark', {}, texto.slice(a, b))); fim = b; });
+  return [...partes, texto.slice(fim)];
+}
+
+// Mostra a data (dd/mm/aaaa) das avaliações e das respostas, e não "há x semanas" (a campanha conta por data); o tempo relativo fica na dica.
+// Avaliação modificada depois de criada: a data de atualização do Google (rec.u) passa da de criação por mais de 1 minuto. O Google não informa se foi edição
+// nem o que mudou; esta é a melhor pista que a API dá (coletas antigas, sem rec.u, não mostram nada).
+// Responder também mexe no updateTime: se a atualização coincide com a resposta (rec.rt), não foi o cliente que editou.
+const editada = rec => Boolean(rec.u) && Date.parse(rec.u) - Date.parse(rec.c) > 60000 && !(rec.rt && Math.abs(Date.parse(rec.u) - Date.parse(rec.rt)) < 60000);
+
+function avaliacaoLoja(rec, termos = []) {
   const nome = rec.n || 'Anônimo';
   return h('article', { class: 'ag-rev' },
     h('div', { class: 'ag-rev-head' },
       h('span', { class: 'ag-avatar', 'aria-hidden': 'true' }, nome.trim().charAt(0).toUpperCase()),
       h('div', {}, h('div', { class: 'ag-rev-nome' }, nome),
-        h('div', { class: 'ag-rev-linha' }, rec.s ? estrelasNota(rec.s) : h('span', {}, 'Sem nota'), h('span', { title: data(rec.c) }, tempoRelativo(rec.c))))),
-    rec.t && h('p', { class: 'ag-text' }, rec.t),
-    rec.r && h('div', { class: 'ag-reply' }, h('b', {}, 'Resposta da loja' + (rec.rt ? ` · ${tempoRelativo(rec.rt)}` : '')), rec.r));
+        h('div', { class: 'ag-rev-linha' }, rec.s ? estrelasNota(rec.s) : h('span', {}, 'Sem nota'), h('span', { title: tempoRelativo(rec.c) }, data(rec.c)),
+          editada(rec) && h('span', { class: 'ag-editada', title: 'Data da última modificação da avaliação no Google. O Google não diz o que mudou.' }, `Editada em ${data(rec.u)}`)))),
+    rec.t && h('p', { class: 'ag-text' }, ...textoGrifado(rec.t, termos)),
+    rec.r && h('div', { class: 'ag-reply' }, h('b', {}, 'Resposta da loja' + (rec.rt ? ` · ${data(rec.rt)}` : '')), rec.r));
 }
 
 const pad2 = n => String(n).padStart(2, '0');
@@ -157,20 +179,21 @@ const primeiroDoMes = iso => new Date(+iso.slice(0, 4), +iso.slice(5, 7) - 1, 1)
 const PERIODOS = [['hoje', 'Hoje'], ['ontem', 'Ontem'], ['7', 'Últimos 7 dias'], ['30', 'Últimos 30 dias'], ['mes', 'Este mês'], ['mes_passado', 'Mês passado'], ['90', 'Últimos 90 dias'], ['365', 'Últimos 12 meses'], ['ano', 'Este ano'], ['all', 'Tudo'], ['custom', 'Personalizado']];
 const OPCOES_FIXAS = {
   nota: [['', 'Todas'], ['neg', '1 e 2 estrelas'], ['5', '5 estrelas'], ['4', '4 estrelas'], ['3', '3 estrelas'], ['2', '2 estrelas'], ['1', '1 estrela']],
-  prioridade: [['', 'Todas'], ['critica', 'Críticas'], ['atencao', 'Atenção'], ['elogio', 'Elogios']],
+  prioridade: [['', 'Todas'], ['critica', 'Críticas'], ['atencao', 'Atenção'], ['elogio', 'Elogios'], ['editada', 'Editadas']],
   resposta: [['', 'Todas'], ['sem', 'Sem resposta'], ['com', 'Respondidas']]
 };
 const SELECOES = [['nota', 'Nota'], ['prioridade', 'Prioridade'], ['resposta', 'Resposta']]; // [campo, rótulo]
 const mesmoFiltro = (a, b) => Object.keys(FILTRO_PADRAO).every(k => a[k] === b[k]);
-const temFiltro = f => !mesmoFiltro(f, FILTRO_PADRAO);
+const temFiltro = f => !mesmoFiltro(f, padrao());
+const periodoPadrao = f => ['periodo', 'de', 'ate'].every(k => f[k] === padrao()[k]);
 const rotuloOpcao = (k, v) => (OPCOES_FIXAS[k].find(o => o[0] === v) || [])[1];
 // Critérios do filtro em vigor como trios [rótulo, valor, campo]: ['Nota', '5 estrelas', 'nota']. Sem "completo", o período padrão (90 dias) não entra.
 const criteriosFiltros = (f, completo) => [
-  ['Período', f.periodo === 'custom' ? ([f.de && `de ${brDia(f.de)}`, f.ate && `até ${brDia(f.ate)}`].filter(Boolean).join(' ') || 'Personalizado')
-    : (completo || f.periodo !== FILTRO_PADRAO.periodo) && PERIODOS.find(p => p[0] === f.periodo)[1], 'periodo'],
+  ['Período', !completo && periodoPadrao(f) ? '' : f.periodo === 'custom' ? ([f.de && (f.ate ? `de ${brDia(f.de)}` : `desde ${brDia(f.de)}`), f.ate && `até ${brDia(f.ate)}`].filter(Boolean).join(' ') || 'Personalizado')
+    : PERIODOS.find(p => p[0] === f.periodo)[1], 'periodo'],
   ...SELECOES.map(([k, rotulo]) => [rotulo, f[k] && rotuloOpcao(k, f[k]), k])].filter(([, v]) => v);
 let contaFiltros = 0;
-function criarFiltro(f, aoMudar) {
+function criarFiltro(f, aoMudar, pad) { // pad: o padrão desta aba
   let alvo = '', mes = new Date(); // alvo: campo que o calendário está preenchendo ('de', 'ate' ou '' se fechado)
   const r = { ...f }; // rascunho: o que o painel mostra; só vira filtro da tela em Aplicar
   const opcoes = k => OPCOES_FIXAS[k];
@@ -190,7 +213,7 @@ function criarFiltro(f, aoMudar) {
   function popular(k) { const x = selecoes.find(s => s.k === k); x.sel.replaceChildren(...opcoes(k).map(([v, t]) => h('option', { value: v }, t))); x.sel.value = r[k]; }
   selecoes.forEach(x => popular(x.k));
   const cancelar = h('button', { type: 'button', class: 'btn ghost', onclick: () => fechar() }, 'Cancelar');
-  const limpar = h('button', { type: 'button', class: 'btn ghost', onclick: () => { Object.assign(r, FILTRO_PADRAO); selecoes.forEach(x => popular(x.k)); abrirCal(''); } }, 'Limpar');
+  const limpar = h('button', { type: 'button', class: 'btn ghost', onclick: () => { Object.assign(r, pad); selecoes.forEach(x => popular(x.k)); abrirCal(''); } }, 'Limpar');
   const aplicar = h('button', { type: 'button', class: 'btn', onclick: () => { Object.assign(f, r); abrirCal(''); fechar(true); aoMudar(); } }, 'Aplicar');
   const titulo = h('strong', { class: 'ag-cal-mes', 'aria-live': 'polite' }), grade = h('div', { class: 'ag-cal-grade' });
   const passo = (rotulo, delta, ic) => { const b = h('button', { type: 'button', class: 'ag-iconbtn', 'aria-label': rotulo, onclick: () => { mes = new Date(mes.getFullYear(), mes.getMonth() + delta, 1); desenharCal(); } }); b.append(icone(ic, 16)); return b; };
@@ -258,18 +281,18 @@ function criarFiltro(f, aoMudar) {
     });
     periodoSel.value = r.periodo; datas.classList.toggle('is-closed', !custom); datas.inert = !custom;
     selecoes.forEach(x => { x.sel.value = r[x.k]; });
-    botao.classList.toggle('is-ativo', temFiltro(f));
-    limpar.disabled = mesmoFiltro(r, FILTRO_PADRAO);
+    botao.classList.toggle('is-ativo', !mesmoFiltro(f, pad));
+    limpar.disabled = mesmoFiltro(r, pad);
     aplicar.disabled = mesmoFiltro(r, f) || (custom && !r.de && !r.ate); // sem mudança, ou "Personalizado" sem nenhuma data
   }
   // Tira um critério do filtro em vigor (e do rascunho) e refaz a tela: o período volta ao padrão, com as datas; os demais voltam a "Todas".
   function remover(k) {
-    (k === 'periodo' ? ['periodo', 'de', 'ate'] : [k]).forEach(x => { f[x] = r[x] = FILTRO_PADRAO[x]; });
+    (k === 'periodo' ? ['periodo', 'de', 'ate'] : [k]).forEach(x => { f[x] = r[x] = pad[x]; });
     abrirCal(''); aoMudar();
   }
   // Volta tudo ao padrão (filtro em vigor e rascunho) e fecha o painel, sem refazer a tela: quem chama é quem refaz. Usado ao voltar do painel da loja para a lista.
   function zerar() {
-    Object.assign(f, FILTRO_PADRAO); Object.assign(r, FILTRO_PADRAO); selecoes.forEach(x => popular(x.k));
+    Object.assign(f, pad); Object.assign(r, pad); selecoes.forEach(x => popular(x.k));
     fechar(true);
   }
   painel.addEventListener('keydown', e => { if (e.key === 'Escape' && alvo) { e.stopPropagation(); const x = (alvo === 'de' ? de : ate).lastChild; abrirCal(''); x.focus(); } });
@@ -296,7 +319,7 @@ const linhaBusca = (campo, botao) => h('div', { class: 'ag-busca-linha' }, campo
 function blocoResultado(titulo, n, extras, tirarExtra) {
   const tirar = k => extras.some(e => e[2] === k) ? tirarExtra(k) : state.filtroUi.remover(k);
   const etiqueta = ([rotulo, valor, k]) => {
-    const x = !(k === 'periodo' && state.filtro.periodo === FILTRO_PADRAO.periodo) && h('button', { type: 'button', class: 'ag-crit-x', 'aria-label': `Remover ${rotulo}: ${valor}`, title: 'Remover', onclick: () => tirar(k) });
+    const x = !(k === 'periodo' && periodoPadrao(state.filtro)) && h('button', { type: 'button', class: 'ag-crit-x', 'aria-label': `Remover ${rotulo}: ${valor}`, title: 'Remover', onclick: () => tirar(k) });
     if (x) x.append(icone(ICONES.fechar, 12));
     return h('li', { class: x ? 'tem-x' : '' }, h('span', {}, rotulo), h('b', {}, valor), x);
   };
@@ -357,7 +380,7 @@ function painelLoja(chaveLoja, itens, inicial = {}) {
       resultado,
       h('div', {}, h('p', { class: 'ag-ref-rotulo' }, 'Ordenar por'),
         h('div', { class: 'ag-pills', role: 'group', 'aria-label': 'Ordenar por' }, ...ORDENS.map(([id, rotulo]) => pilula(rotulo, ui.ordem === id, mudar({ ordem: id }), null, 'o-' + id)))),
-      lista.length ? h('div', { class: 'ag-revs' }, ...lista.slice(0, ui.visiveis).map(avaliacaoLoja)) : h('p', { class: 'list-empty' }, ui.busca || ui.palavra || temFiltro(state.filtro) ? 'Nenhuma avaliação encontrada.' : 'Nenhuma avaliação neste filtro.'),
+      lista.length ? h('div', { class: 'ag-revs' }, ...lista.slice(0, ui.visiveis).map(r => avaliacaoLoja(r))) : h('p', { class: 'list-empty' }, ui.busca || ui.palavra || temFiltro(state.filtro) ? 'Nenhuma avaliação encontrada.' : 'Nenhuma avaliação neste filtro.'),
       lista.length > ui.visiveis && h('button', { type: 'button', class: 'btn ghost ag-more', 'data-ref': 'mais', onclick: () => { ui.visiveis += 10; desenhar(); } }, `Mostrar mais (${lista.length - ui.visiveis})`)].filter(Boolean)); // replaceChildren escreveria "false" como texto
     if (foco) { const volta = [...caixa.querySelectorAll('[data-ref]')].find(b => b.dataset.ref === foco); if (volta) { volta.focus(); if (selecao) volta.setSelectionRange(selecao[0], selecao[1]); } }
   }
@@ -649,10 +672,11 @@ function escolherLojaVend(k) {
   atualizar();
 }
 
-function linhaVendedor(v, ambiguos, n) {
+function linhaVendedor(v, ambiguos, n, aoAbrir) {
   const detalhe = [!v.ativo && 'Inativo', v.apelidos.length && `Apelidos: ${v.apelidos.join(', ')}`].filter(Boolean).join(' · ');
   return h('li', { class: 'ag-vend' + (v.ativo ? '' : ' is-off') },
-    h('div', { class: 'ag-vend-nome' }, h('strong', {}, v.nome), detalhe && h('span', { class: 'ag-meta' }, detalhe),
+    h('button', { type: 'button', class: 'ag-vend-nome', title: n ? 'Ver as avaliações que citam este vendedor' : 'Nenhuma avaliação cita este vendedor no período', onclick: aoAbrir, ...(n ? {} : { disabled: '' }) },
+      h('strong', {}, v.nome), detalhe && h('span', { class: 'ag-meta' }, detalhe),
       ambiguos.has(v.id) && h('span', { class: 'ag-chip is-atencao' }, 'Primeiro nome repetido: use apelidos')),
     h('span', { class: 'ag-mencoes' }, h('b', {}, String(n)), n === 1 ? ' menção' : ' menções'),
     ...(state.podeEditar ? [botaoIcone(ICONES.lapis, `Editar ${v.nome}`, () => modalEditar(v)), botaoIcone(ICONES.lixeira, `Remover ${v.nome}`, () => modalRemover(v), ' is-danger')] : []));
@@ -671,11 +695,24 @@ function painelLojaVend(k, vs, recs) {
   const ui = state.memoVend && state.memoVend.chave === k ? state.memoVend : (state.memoVend = { chave: k, busca: '' });
   const ficha = fichaDaLoja(k), lista = h('ul', { class: 'ag-vendlist' }), resultado = h('div', {});
   const busca = h('input', { type: 'search', placeholder: 'Pesquisar vendedor', 'aria-label': 'Pesquisar vendedor desta loja', autocomplete: 'off', value: ui.busca });
+  // Clicar no vendedor troca a lista por todas as avaliações do período e filtros que o citam, com a menção grifada; a busca passa a filtrar essas avaliações.
+  const abrir = id => { ui.vendedor = id; ui.busca = ''; busca.value = ''; desenharLista(); };
   const desenharLista = () => {
-    const q = ui.busca.trim();
-    const mostrar = vs.filter(v => (v.ativo || m.get(v.id).length) && buscaAvaliacao({ t: [v.nome, ...v.apelidos].join(' ') }, q))
-      .sort((a, b) => m.get(b.id).length - m.get(a.id).length || b.ativo - a.ativo || a.nome.localeCompare(b.nome, 'pt-BR'));
-    lista.replaceChildren(...(mostrar.length ? mostrar.map(v => linhaVendedor(v, ambiguos, m.get(v.id).length)) : [h('li', { class: 'list-empty' }, q ? 'Nenhum vendedor encontrado.' : 'Nenhum vendedor ativo nesta loja.')]));
+    const q = ui.busca.trim(), aberto = ui.vendedor && vs.find(v => v.id === ui.vendedor);
+    busca.placeholder = aberto ? 'Pesquisar nas avaliações' : 'Pesquisar vendedor';
+    let mostrar, itens;
+    if (aberto) {
+      const termos = termosDe(aberto, ambiguos), todas = m.get(aberto.id);
+      mostrar = ordenarAvaliacoes(todas.filter(r => buscaAvaliacao(r, q)), 'recentes');
+      const voltarLista = h('button', { type: 'button', class: 'btn ghost small', onclick: () => abrir('') }, icone(ICONES.voltar, 14), 'Vendedores');
+      itens = [h('li', { class: 'ag-vend-topo' }, voltarLista, h('div', {}, h('strong', {}, aberto.nome), h('span', { class: 'ag-meta' }, `${textoMencoes(todas.length)} no período`))),
+        mostrar.length ? h('li', {}, h('div', { class: 'ag-revs' }, ...mostrar.map(r => avaliacaoLoja(r, termos)))) : h('li', { class: 'list-empty' }, q ? 'Nenhuma avaliação encontrada.' : 'Nenhuma avaliação cita este vendedor neste filtro.')];
+    } else {
+      mostrar = vs.filter(v => (v.ativo || m.get(v.id).length) && buscaAvaliacao({ t: [v.nome, ...v.apelidos].join(' ') }, q))
+        .sort((a, b) => m.get(b.id).length - m.get(a.id).length || b.ativo - a.ativo || a.nome.localeCompare(b.nome, 'pt-BR'));
+      itens = mostrar.length ? mostrar.map(v => linhaVendedor(v, ambiguos, m.get(v.id).length, () => abrir(v.id))) : [h('li', { class: 'list-empty' }, q ? 'Nenhum vendedor encontrado.' : 'Nenhum vendedor ativo nesta loja.')];
+    }
+    lista.replaceChildren(...itens);
     resultado.replaceChildren(...[q && blocoResultado('Resultados de busca', mostrar.length, [['Busca', `“${q}”`, 'busca']], () => { ui.busca = ''; busca.value = ''; desenharLista(); })].filter(Boolean));
   };
   const digitou = e => { if (e.isComposing) return; ui.busca = e.target.value; desenharLista(); };
@@ -694,7 +731,7 @@ function painelLojaVend(k, vs, recs) {
 
 const ORDENS_VEND = [
   ['mencoes', 'Mais menções', (a, b) => b.mencoes - a.mencoes],
-  ['vendedores', 'Mais vendedores', (a, b) => b.ativos - a.ativos],
+  ['vendedores', 'Mais vendedores', (a, b) => b.vs.length - a.vs.length],
   ['az', 'A a Z', (a, b) => a.nome.localeCompare(b.nome, 'pt-BR')]
 ];
 function painelLojasVend(lojas) {
@@ -708,9 +745,9 @@ function painelLojasVend(lojas) {
       if (!buscaAvaliacao({ t: `${l.nome} ${l.ficha ? tituloFicha(l.ficha) : ''}` }, q) && !achados.length) return;
       itensLi.push(h('li', {}, h('button', { type: 'button', class: 'ag-ficha ag-ficha-vend', 'data-loja': l.k, onpointerenter: () => destacarPing(l.k), onpointerleave: () => destacarPing(''), onfocus: () => destacarPing(l.k), onblur: () => destacarPing(''), onclick: () => escolherLojaVend(l.k) },
         h('strong', { class: 'ag-ficha-nome' }, ...(l.ficha ? nomeFicha(l.ficha) : [l.nome])),
-        h('small', {}, `${textoMencoes(l.mencoes)} no período`),
+        h('small', {}, `${l.vs.length} ${l.vs.length === 1 ? 'vendedor' : 'vendedores'} no cadastro`),
         achados.length > 0 && h('span', { class: 'ag-achou' }, h('b', {}, `${achados.length} ${achados.length === 1 ? 'vendedor encontrado' : 'vendedores encontrados'}`), h('q', {}, achados.map(v => v.nome).join(', '))),
-        h('span', { class: 'ag-circulo', role: 'img', 'aria-label': `${l.ativos} vendedores ativos`, title: `${l.ativos} vendedores ativos` }, String(l.ativos)))));
+        h('span', { class: 'ag-circulo', role: 'img', 'aria-label': `${textoMencoes(l.mencoes)} no período`, title: `${textoMencoes(l.mencoes)} no período` }, String(l.mencoes)))));
     });
     lista.replaceChildren(...(itensLi.length ? itensLi : [h('li', { class: 'list-empty' }, state.vendedores.length ? 'Nenhuma loja ou vendedor encontrado.' : 'Nenhum vendedor cadastrado ainda.')]));
   };
@@ -774,10 +811,15 @@ async function atualizar() {
   }
   if (minha !== state.seq) return;
   $('agStatus').hidden = true; $('agConteudo').hidden = false;
+  recalcular();
+  renderAba(); // o clique no mapa filtra só a Visão geral
+}
+
+// Aplica o filtro da aba aberta às avaliações já em memória.
+function recalcular() {
   state.visiveis = PAGINA;
   const base = filtradas(), itens = state.lojaMapa ? base.filter(i => chaveDaFicha(i.ficha) === state.lojaMapa) : base;
   state.dados = { itens, base };
-  renderAba(); // o clique no mapa filtra só a Visão geral
 }
 
 // O cartão da cena da aba aberta (Visão geral: à direita; Vendedores: à esquerda).
@@ -788,7 +830,9 @@ function trocarAba(aba) {
   const velho = painelDaCena(), x0 = velho && velho.getBoundingClientRect().left, visao = mapaAtual() && mapaAtual().visao();
   document.querySelectorAll('#agTabs button').forEach(b => { const ativa = b.dataset.aba === aba; b.classList.toggle('active', ativa); b.setAttribute('aria-selected', ativa); });
   $('abaGeral').hidden = aba !== 'geral'; $('abaFila').hidden = aba !== 'fila'; $('abaVendedores').hidden = aba !== 'vendedores';
-  state.aba = aba; renderAba();
+  state.aba = aba;
+  if (mesesFaltando().length) { atualizar(); return; } // o filtro desta aba pede meses que ainda não foram lidos
+  recalcular(); renderAba();
   const novo = painelDaCena(), m = mapaAtual();
   // O mapa mede onde o cartão está para saber que parte ele cobre: por isso vem antes da animação (durante o deslize o cartão estaria no lado errado).
   if (visao && m && novo) { m.ir(visao); m.centralizar(aba === 'vendedores' ? state.lojaSel : state.lojaMapa, true); }
@@ -802,7 +846,7 @@ async function iniciar() {
   try { state.resumo = await window.PortalFirebase.readAvaliacoesGoogle('resumo'); } catch (e) { aviso('Você não tem acesso às avaliações ou a conexão falhou.', true); return; }
   if (!state.resumo) { aviso('Aguardando coleta. As avaliações das fichas aparecem aqui assim que a primeira coleta for feita.'); return; }
   state.resumo.fichas.forEach(f => state.fichas.set(f.id, f));
-  state.filtroUi = criarFiltro(state.filtro, atualizar);
+  Object.keys(PADROES).forEach(k => { state.filtrosUi[k] = criarFiltro(state.filtros[k], atualizar, PADROES[k]); });
   window.addEventListener('resize', ajustarAlturaCena);
   try {
     const admin = ((await window.PortalFirebase.currentContext()).profile || {}).role === 'admin';

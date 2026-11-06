@@ -37,7 +37,13 @@
 .ag-mencoes{flex:0 0 auto;padding:0 4px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .ag-mencoes b{font-weight:600;color:var(--text)}
 .ag-vend.is-off .ag-vend-nome strong{color:var(--muted);text-decoration:line-through}
-.ag-vend-nome{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;overflow-wrap:anywhere}
+.ag-vend-nome{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;overflow-wrap:anywhere;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.ag-vend-nome:disabled{cursor:default}
+.ag-vend-nome:not(:disabled):hover strong{text-decoration:underline}
+.ag-vend-nome:focus-visible{outline:2px solid var(--accent-ink);outline-offset:4px;border-radius:4px}
+.ag-vend-topo{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.ag-vend-topo>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ag-text mark{padding:0 2px;border-radius:2px;background:var(--accent-weak);color:var(--accent-text);font-weight:600}
 .ag-iconbtn{flex:0 0 auto;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
 .ag-iconbtn:hover{background:var(--surface-muted);color:var(--text)}
 .ag-iconbtn.is-danger:hover{background:var(--danger-bg);color:var(--danger)}
@@ -146,6 +152,7 @@
 .ag-rev-nome{font-size:14px;font-weight:600;line-height:20px;color:var(--text)}
 .ag-rev-linha{display:flex;align-items:center;gap:8px;font-size:12px;line-height:16px;color:var(--muted)}
 .ag-rev-linha .ag-rate{font-size:14px}
+.ag-editada{color:var(--accent-text);font-weight:600}
 .ag-rev .ag-text{margin:12px 0 0}
 .ag-rev .ag-reply{margin:12px 0 0 20px;padding:0 0 0 16px;border-left:2px solid var(--border-strong);border-radius:0;background:none}
 @media (prefers-reduced-motion:reduce){.ag-pill,.ag-ficha{transition:none}}
@@ -187,8 +194,8 @@
 .ag-cena.is-esq .leaflet-bottom.leaflet-left{left:auto;right:0}
 .ag-cena.is-esq .leaflet-left .leaflet-control{float:right;margin:0 28px 60px 0}
 /* Círculo com a quantidade de vendedores ativos no canto direito da linha da loja */
-.ag-ficha-vend{position:relative;padding-right:60px}
-.ag-circulo{position:absolute;top:50%;right:12px;transform:translateY(-50%);width:32px;height:32px;display:grid;place-items:center;border-radius:50%;background:var(--accent-weak);color:var(--accent-text);font:600 14px/1 var(--font-ui);font-variant-numeric:tabular-nums}
+.ag-ficha-vend{position:relative;padding-right:68px}
+.ag-circulo{position:absolute;top:50%;right:12px;transform:translateY(-50%);min-width:32px;height:32px;padding:0 8px;box-sizing:border-box;display:grid;place-items:center;border-radius:16px;background:var(--accent-weak);color:var(--accent-text);font:600 14px/1 var(--font-ui);font-variant-numeric:tabular-nums}
 .ag-ping-nome{position:absolute;top:19px;transform:translateY(-50%);white-space:nowrap;font:700 13px/1 var(--font-ui);color:var(--text);text-shadow:0 0 3px var(--card),0 0 3px var(--card),0 0 6px var(--card);pointer-events:none}
 .ag-ping-nome.is-e{right:calc(100% - 4px)}
 .ag-ping-nome.is-d{left:calc(100% - 4px)}

@@ -3,7 +3,7 @@
 <body data-result="running">RUNNING
 <script type="module">
 // Exige --allow-file-access-from-files no Chrome (import de módulo via file://).
-import { lerColado, adicionar, nomesAmbiguos, apelidosDoTexto, ordenar, idDe, paraCsv, mencoes } from '../avaliacoes-google-vendedores.js';
+import { lerColado, adicionar, nomesAmbiguos, apelidosDoTexto, ordenar, idDe, paraCsv, mencoes, trechos } from '../avaliacoes-google-vendedores.js';
 
 const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${msg}: esperado ${JSON.stringify(b)}, veio ${JSON.stringify(a)}`); };
 
@@ -38,6 +38,13 @@ try {
   const vs = [{ id: 'a', loja: 'X', nome: 'Ana Lima', apelidos: [], ativo: true }, { id: 'j1', loja: 'X', nome: 'João Pedro', apelidos: ['JP'], ativo: true }, { id: 'j2', loja: 'X', nome: 'Joao Lory', apelidos: [], ativo: true }];
   const m = mencoes(vs, [{ t: 'A ANA atendeu muito bem' }, { t: 'Banana e JP foram ótimos' }, { t: 'joão ajudou' }, { t: null }]);
   eq([m.get('a').length, m.get('j1').length, m.get('j2').length], [1, 1, 0], 'menções: palavra inteira, apelido, nome repetido não atribui');
+  // trechos: índices no texto original (acento e caixa não atrapalham), palavra inteira, sobreposição se funde
+  eq(trechos('O SAMUEL e o Lisboa, banana Ana', ['samuel', 'lisboa', 'ana']), [[2, 8], [13, 19], [28, 31]], 'trechos grifados');
+  eq(trechos('João ajudou', ['joao']), [[0, 4]], 'trechos com acento');
+  eq(trechos('Ana Lu foi ótima', ['ana', 'ana lu']), [[0, 6]], 'trechos sobrepostos se fundem');
+  // campanha: citar o mesmo vendedor 2 vezes na mesma avaliação vale 1 ponto; citar dois vendedores na mesma avaliação vale 1 ponto para cada um
+  const dois = mencoes([vs[0], { id: 'b', loja: 'X', nome: 'Beto Souza', apelidos: ['Lisboa'], ativo: true }], [{ t: 'Ana foi ótima, a Ana e o Lisboa também, Ana!' }]);
+  eq([dois.get('a').length, dois.get('b').length], [1, 1], 'menção repetida conta 1; dois vendedores contam um ponto cada');
   document.body.dataset.result = 'pass'; document.body.textContent = 'PASS';
 } catch (e) { document.body.dataset.result = 'fail'; document.body.textContent = 'FAIL ' + e.message; }
 </script>
