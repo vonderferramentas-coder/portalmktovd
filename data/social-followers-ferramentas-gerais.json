@@ -14847,6 +14847,14 @@
       "followers": {
         "Instagram": 190088,
         "Facebook": 49541
+      },
+      "insights": {
+        "Instagram": {
+          "follows": 442,
+          "unfollows": 47,
+          "net": 395,
+          "reach": 30460
+        }
       }
     },
     {
@@ -14864,5 +14872,5 @@
       }
     }
   ],
-  "updatedAt": "2026-11-07T03:06:17Z"
+  "updatedAt": "2026-11-07T11:41:20Z"
 }
