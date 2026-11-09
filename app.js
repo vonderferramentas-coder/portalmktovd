@@ -390,12 +390,13 @@
         const chip = document.createElement('span'); chip.className = 'product-chip';
         const img = p.code ? `<img ${productImgAttrs(p.code)} alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'" />` : '';
         const codes = productCodesLabel(p);
-        chip.innerHTML = `${img}<div class="pc-body"><span class="pc-name">${escapeHtml(p.name)}</span>${codes?`<span class="pc-code">${escapeHtml(codes)}</span>`:''}</div><button type="button" class="pc-remove" data-idx="${idx}" aria-label="Remover produto">${UI_ICONS.x(12)}</button>`;
+        chip.innerHTML = `${img}<div class="pc-body"><span class="pc-name">${escapeHtml(p.name)}</span>${codes?`<span class="pc-code">${escapeHtml(codes)}</span>`:''}</div><button type="button" class="pc-remove pc-edit" data-idx="${idx}" aria-label="Editar produto" title="Editar nome e códigos">${UI_ICONS.edit(12)}</button><button type="button" class="pc-remove" data-idx="${idx}" aria-label="Remover produto">${UI_ICONS.x(12)}</button>`;
+        chip.querySelector('.pc-edit').addEventListener('click', ()=> openProductEdit(chip, idx));
         wrap.appendChild(chip);
       });
       loadProductThumbs(selectedProducts);
       loadSiteDetails();
-      wrap.querySelectorAll('.pc-remove').forEach(bt=> bt.addEventListener('click', ()=>{
+      wrap.querySelectorAll('.pc-remove:not(.pc-edit)').forEach(bt=> bt.addEventListener('click', ()=>{
         const i = parseInt(bt.dataset.idx,10);
         // se já tem conteúdo escrito, remover o produto também apaga esse conteúdo (as pautas e a
         // legenda geradas eram sobre ele) - por ser destrutivo, passa por confirmação antes
@@ -403,6 +404,50 @@
         removeSelectedProduct(i);
       }));
       refreshModalDynamic();
+    }
+
+    // Lápis do chip: troca o chip por um formulário (Nome, Código OVD, Código FG) para o produto que o site da FG não
+    // tem ou veio só como código colado (guardado como {code:'', name:'1205227'}). O que se digita vale para esta
+    // postagem e vence o que o catálogo/site trazem (productCodeFG lê p.codeFG primeiro).
+    // ponytail: só no modal da postagem; as linhas do "Agendar em lote" (renderRowProducts) seguem sem edição.
+    function openProductEdit(chip, idx){
+      const p = selectedProducts[idx]; if(!p) return;
+      const open = chip.parentElement.querySelector('.is-editing');
+      if(open){ open.querySelector('input').focus(); return; } // um editor por vez: abrir outro redesenharia a lista e perderia o que foi digitado
+      const bare = !p.code && /^[\d.\-\s]+$/.test(p.name||''); // código colado sem nome: o número está no campo nome
+      const ovd0 = isOvdCode(p.code) ? p.code : (bare && isOvdCode(p.name) ? p.name : '');
+      const fg0 = productCodeFG(p.code, p) || (bare && !ovd0 ? p.name.replace(/\D/g,'') : '');
+      const name0 = bare ? '' : (p.name||'');
+      const f = (k, label, v, ph)=> `<label class="pc-edit-field">${label}<input type="text" data-k="${k}" value="${escapeHtml(v)}" placeholder="${ph}" autocomplete="off" /></label>`;
+      chip.classList.add('is-editing');
+      chip.innerHTML = `<div class="pc-edit-form">${f('name','Nome',name0,'Nome do produto')}<div class="pc-edit-codes">${f('ovd','Código OVD',ovd0,'00.00.000.000')}${f('fg','Código FG',fg0,'Só números')}</div><span class="pc-edit-error" role="alert" hidden></span><div class="pc-edit-actions"><button type="button" class="btn ghost small" data-act="cancel">Cancelar</button><button type="button" class="btn small" data-act="save">Salvar</button></div></div>`;
+      const q = k=> chip.querySelector(`[data-k="${k}"]`), err = chip.querySelector('.pc-edit-error');
+      const fail = (k, msg)=>{ err.textContent = msg; err.hidden = false; q(k).focus(); };
+      const save = ()=>{
+        const name = q('name').value.trim(), fg = q('fg').value.trim();
+        let ovd = q('ovd').value.trim();
+        if(!name) return fail('name', 'Informe o nome do produto');
+        if(ovd){ // 10 dígitos viram 00.00.000.000
+          const d = ovd.replace(/\D/g,'');
+          ovd = d.length===10 && /^[\d.\s]+$/.test(ovd) ? `${d.slice(0,2)}.${d.slice(2,4)}.${d.slice(4,7)}.${d.slice(7)}` : ovd;
+          if(!/^\d{2}\.\d{2}\.\d{3}\.\d{3}$/.test(ovd)) return fail('ovd', 'Use o formato 00.00.000.000');
+        }
+        if(fg && !/^\d{4,}$/.test(fg)) return fail('fg', 'O código FG tem só números');
+        // sem OVD digitado: produto OVD perde o código; produto de outra marca mantém a referência do fabricante
+        const code = ovd || (isOvdCode(p.code) || !p.code ? '' : p.code);
+        const next = { code, name };
+        if(fg && (fg!==fg0 || p.codeFG || bare)) next.codeFG = fg; // FG que só veio do catálogo não é congelado; o do código colado (que sai do nome) é gravado
+        selectedProducts[idx] = next;
+        lastInsertedPautaBlock = null;
+        renderSelectedProducts();
+      };
+      chip.querySelector('[data-act="save"]').addEventListener('click', save);
+      chip.querySelector('[data-act="cancel"]').addEventListener('click', renderSelectedProducts);
+      chip.addEventListener('keydown', ev=>{
+        if(ev.key==='Enter' && ev.target.tagName==='INPUT'){ ev.preventDefault(); save(); }
+        else if(ev.key==='Escape'){ ev.preventDefault(); ev.stopPropagation(); renderSelectedProducts(); }
+      });
+      q('name').focus();
     }
 
     // remove o produto pelo índice e reseta pautas/legenda em uso - chamada direto quando não há
