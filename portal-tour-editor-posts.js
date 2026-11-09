@@ -18,7 +18,7 @@ PortalTour.register('editor-posts', {
       summary: 'As etapas do editor e onde ficam as artes salvas.',
       steps: [
         { title: 'Boas-vindas ao Editor de Posts', text: 'Aqui você monta a arte de uma postagem (Feed e Story) a partir de um modelo pronto de cada editoria. Vou mostrar as etapas. Para sair a qualquer momento, aperte Esc.' },
-        { target: '.pe-flow', title: 'As etapas', text: 'O caminho é sempre o mesmo: escolher a editoria, escolher o produto e editar o post. Algumas editorias pulam a escolha do produto, e outras têm uma etapa extra para o banner da intranet. Etapas já feitas ficam clicáveis para você voltar.' },
+        { target: '.pe-flow', title: 'As etapas', text: 'O caminho é sempre o mesmo: escolher a editoria, escolher o produto e editar o post. Algumas editorias pulam a escolha do produto, e outras têm uma etapa extra, para o banner da intranet ou para a tradução em espanhol. Etapas já feitas ficam clicáveis para você voltar.' },
         { target: '#editoriaGrid', title: 'Editorias', text: 'Cada editoria tem o seu modelo de composição. As que aparecem como "Em breve" ainda não têm modelo pronto.' },
         { target: '#savedArts', title: 'Artes salvas', text: 'As artes que você salvou ficam aqui para continuar de onde parou. Há um passeio só sobre isso.' },
         { target: '.pe-back', title: 'Voltar ao calendário', text: 'Leva de volta ao Calendário de Postagens.' },
@@ -52,6 +52,7 @@ PortalTour.register('editor-posts', {
         { target: '#downloadBoth', title: 'Baixar', text: 'O pacote ZIP traz Feed e Story com os nomes padronizados. Se precisar de um só, use os botões Feed JPG e Story JPG.' },
         { target: '#nextProduct', title: 'Outro produto', text: 'Volta para a escolha do produto mantendo a mesma editoria, para fazer a próxima arte da sequência.' },
         { target: '[data-flow-step="banner"]', title: 'Banner da intranet', text: 'Nesta editoria dá para desdobrar a arte em um banner 900 × 258 para a intranet. Clique na etapa para montar e baixar o banner.' },
+        { target: '[data-flow-step="translate"]', title: 'Tradução automática', text: 'Na Uso e Recomendo VONDER há uma etapa extra com a versão em espanhol, um post separado para outra conta. Ela começa igual à em português, com a hashtag #UsoyRecomiendoVONDER, e você pode mudar nome, fotos e composição só nela. Baixe o pacote com final _ES e revise antes de publicar.' },
         { title: 'Pronto!', text: 'Agora você sabe criar uma arte. Para fazer outra, use "Outro produto" ou "Trocar" a editoria.' }
       ]
     },
