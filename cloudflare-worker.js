@@ -98,7 +98,7 @@ async function productCatalog(request){
  return json(request,{
   name:take(/^descri[cç][aã]o completa/i)||product.productName,
   code:formatCode(digits),
-  codeFG:String(product.productId),
+  codeFG:String((((product.items||[]).find(item=>(item.referenceId||[]).some(r=>String(r.Value||'').replace(/\D/g,'')===code))||(product.items||[])[0]||{}).itemId)||product.productId), // itemId do SKU pedido (como /product-search e catalog-fg.json); productId só agrupa as variações
   brand:product.brand,
   destaques:take(/^destaques/i),aplicacoes:take(/^aplica[cç][oõ]es/i),conteudoEmbalagem:take(/^conte[uú]do da embalagem/i),
   qualificacaoTecnica:rows.filter(([label,value])=>value&&!named.test(label)).map(([label,value])=>label+': '+value).join(' | '),
