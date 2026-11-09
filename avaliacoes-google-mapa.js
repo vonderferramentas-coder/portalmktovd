@@ -5,13 +5,15 @@ import { chave } from './avaliacoes-google-vendedores.js';
 
 // Lojas da campanha. "lado" é onde o nome da cidade fica em relação ao pin; "deslocar" (px) afasta o pin para a direita do ponto real, com uma
 // linha até ele, quando duas cidades são tão próximas que os pins se cobririam (Porto Alegre e Novo Hamburgo).
+// "ufs": ficha dessa UF sem cidade reconhecida cai nesta loja (a única de SP é a de São Paulo; a ficha pode estar cadastrada na Grande São Paulo).
 // Cidade nova: acrescente aqui (latitude/longitude do centro da cidade); sem entrada, a loja aparece só na lista.
 export const LOJAS = {
   'curitiba': { nome: 'Curitiba', lat: -25.4284, lon: -49.2733, lado: 'e', apelidos: [] },
   'joinville': { nome: 'Joinville', lat: -26.3045, lon: -48.8487, lado: 'd', apelidos: [] },
   'porto alegre': { nome: 'Porto Alegre', lat: -30.0346, lon: -51.2177, lado: 'e', apelidos: ['poa'] },
   'caxias do sul': { nome: 'Caxias do Sul', lat: -29.1678, lon: -51.1794, lado: 'd', apelidos: ['caxias'] },
-  'novo hamburgo': { nome: 'Novo Hamburgo', lat: -29.6783, lon: -51.1306, lado: 'd', deslocar: 34, apelidos: ['hamburgo'] }
+  'novo hamburgo': { nome: 'Novo Hamburgo', lat: -29.6783, lon: -51.1306, lado: 'd', deslocar: 34, apelidos: ['hamburgo'] },
+  'sao paulo': { nome: 'São Paulo', lat: -23.5505, lon: -46.6333, lado: 'd', apelidos: [], ufs: ['SP'] }
 };
 
 // Liga uma ficha do Google (título e cidade) a uma loja da tabela, pela cidade ou apelido citado ("POA"). Vazio = sem loja conhecida.
@@ -20,7 +22,8 @@ const lojaPorFicha = new WeakMap();
 export function lojaDaFicha(ficha) {
   if (lojaPorFicha.has(ficha)) return lojaPorFicha.get(ficha);
   const texto = chave(`${ficha.title || ''} ${ficha.cidade || ''}`);
-  const loja = Object.keys(LOJAS).find(k => new RegExp(`\\b(${[k, ...LOJAS[k].apelidos].map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`).test(texto)) || '';
+  const loja = Object.keys(LOJAS).find(k => new RegExp(`\\b(${[k, ...LOJAS[k].apelidos].map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`).test(texto))
+    || Object.keys(LOJAS).find(k => (LOJAS[k].ufs || []).includes(String(ficha.uf || '').toUpperCase())) || '';
   lojaPorFicha.set(ficha, loja);
   return loja;
 }
@@ -68,7 +71,7 @@ export function desenharMapa({ pings, selecionada, aoEscolher, aoDestacar = () =
   const el = document.createElement('div');
   el.className = 'ag-mapa';
   el.setAttribute('role', 'group');
-  el.setAttribute('aria-label', 'Mapa das lojas no Paraná, Santa Catarina e Rio Grande do Sul');
+  el.setAttribute('aria-label', 'Mapa das lojas em São Paulo, Paraná, Santa Catarina e Rio Grande do Sul');
   const salvo = visoes[chaveVisao];
   let centrada = ''; // loja em que o mapa está centrado (ver centralizar)
   const mapa = L.map(el, { zoomControl: false, attributionControl: false, scrollWheelZoom: false, minZoom: 4, maxZoom: 16, zoomSnap: 0.25 })

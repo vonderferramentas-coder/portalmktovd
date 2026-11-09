@@ -97,7 +97,8 @@ function reservasDoMapa(mapa) {
 const mapas = {}; // por aba: { assinatura dos pings, elemento do mapa } do último desenho
 const mapaAtual = () => { const c = mapas[state.aba]; return c && !c.el.solto ? c.el : null; };
 function painelMapa(base) {
-  const lojas = new Set([...state.fichas.values()].map(lojaDaFicha).filter(Boolean));
+  // Todas as lojas da tabela têm pin na Visão geral, cinza quando não há avaliação (São Paulo ainda não tem ficha).
+  const lojas = new Set(Object.keys(LOJAS));
   if (!lojas.size) return null;
   const porLoja = {};
   base.forEach(i => { const k = lojaDaFicha(i.ficha); if (k) (porLoja[k] ||= []).push(i.rec); });

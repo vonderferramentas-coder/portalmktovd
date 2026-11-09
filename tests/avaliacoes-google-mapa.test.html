@@ -12,18 +12,20 @@ try {
   // geografia: Porto Alegre fica ao sul de Curitiba; Joinville a leste e ao sul de Curitiba; todas no Sul do Brasil
   if (!(LOJAS['porto alegre'].lat < LOJAS['curitiba'].lat)) throw new Error('Porto Alegre deve ficar ao sul de Curitiba');
   if (!(LOJAS['joinville'].lon > LOJAS['curitiba'].lon && LOJAS['joinville'].lat < LOJAS['curitiba'].lat)) throw new Error('Joinville fica a leste e ao sul de Curitiba');
-  Object.entries(LOJAS).forEach(([k, l]) => { if (l.lat > -22 || l.lat < -34 || l.lon > -47 || l.lon < -58) throw new Error(`${k} fora do Sul do Brasil`); });
+  Object.entries(LOJAS).forEach(([k, l]) => { if (l.lat > -23 || l.lat < -34 || l.lon > -46 || l.lon < -58) throw new Error(`${k} fora do Sul e Sudeste do Brasil`); });
 
   // ficha do Google -> loja, pelo título ou pela cidade, com apelido ("POA") e sem confundir
   eq(lojaDaFicha({ title: 'FG Curitiba' }), 'curitiba', 'título com a cidade');
   eq(lojaDaFicha({ title: 'Ferramentas Gerais POA' }), 'porto alegre', 'apelido POA');
   eq(lojaDaFicha({ title: 'Loja 3', cidade: 'Caxias do Sul' }), 'caxias do sul', 'cidade da ficha');
-  eq(lojaDaFicha({ title: 'FG São Paulo', cidade: 'São Paulo' }), '', 'cidade fora da tabela');
+  eq(lojaDaFicha({ title: 'FG Florianópolis', cidade: 'Florianópolis' }), '', 'cidade fora da tabela');
+  eq(lojaDaFicha({ title: 'FG São Paulo', cidade: 'São Paulo' }), 'sao paulo', 'São Paulo está na tabela');
+  eq(lojaDaFicha({ title: 'FG Loja', cidade: 'Osasco', uf: 'SP' }), 'sao paulo', 'ficha de SP em outra cidade cai em São Paulo');
   eq(lojaDaFicha({ title: 'Joinvillense Pioneiro' }), '', 'palavra inteira, não pedaço');
 
   // desenho: um ping por loja conhecida (a desconhecida fica de fora), com o número, o nome e a bolinha; clique e Espaço chamam o callback
   const clicados = [], destacados = [];
-  const el = desenharMapa({ pings: [{ chave: 'curitiba', nome: 'Curitiba', texto: '3', status: 'ok', dica: 'x' }, { chave: 'sao paulo', nome: 'SP', texto: '1', dica: 'y' }], selecionada: 'curitiba', aoEscolher: k => clicados.push(k), aoDestacar: k => destacados.push(k), chaveVisao: 'teste' });
+  const el = desenharMapa({ pings: [{ chave: 'curitiba', nome: 'Curitiba', texto: '3', status: 'ok', dica: 'x' }, { chave: 'florianopolis', nome: 'Floripa', texto: '1', dica: 'y' }], selecionada: 'curitiba', aoEscolher: k => clicados.push(k), aoDestacar: k => destacados.push(k), chaveVisao: 'teste' });
   eq(el.querySelectorAll('.ag-ping').length, 1, 'só a loja conhecida vira ping');
   const ping = el.querySelector('.ag-ping');
   eq([ping.querySelector('.ag-ping-num').textContent, ping.querySelector('.ag-ping-nome').textContent, !!ping.querySelector('.ag-status.is-ok')], ['3', 'Curitiba', true], 'número, nome e bolinha no pin');
