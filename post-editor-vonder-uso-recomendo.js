@@ -70,6 +70,8 @@
     'Uso e Recomendo VONDER':{
       footerColor:YELLOW,
       translate:true,
+      keepCompositionOnLoad:true,
+      translateHint:' A hashtag sai como #UsoyRecomiendoVONDER.',
       supportsCodes:false,
       supportsProductCutout:false,
       supportsBrandVariant:false,
@@ -78,7 +80,7 @@
       hideCircleControls:true,
       layoutOptions:[['left','Faixas partindo da esquerda'],['right','Faixas partindo da direita']],
       moveLabel:'Mover faixas',
-      moveHint:'Arraste as faixas para cima ou para baixo e o fundo para enquadrar; duplo clique no texto amarelo para editar',
+      moveHint:'Arraste as faixas para cima ou para baixo e o fundo para enquadrar; duplo clique no texto amarelo para editar; duplo clique no fundo ou nas faixas e a roda do mouse dá zoom',
       nameLabel:'Texto da faixa amarela',
       renderer:renderer
     }

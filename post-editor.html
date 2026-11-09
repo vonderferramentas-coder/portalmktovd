@@ -88,7 +88,7 @@
               id="changeEditoriaEdit" type="button">Trocar</button></div>
           <section class="pe-section pe-tr" id="translatePanel" hidden>
             <div class="pe-step"><span>ES</span>
-              <div><strong>Versão em espanhol</strong><small>Começa igual à versão em português e é um post separado, com download próprio. Nome, fotos e composição podem mudar só aqui. A hashtag sai como #UsoyRecomiendoVONDER</small></div>
+              <div><strong>Versão em espanhol</strong><small id="translateHint">Começa igual à versão em português e é um post separado, com download próprio. Nome, fotos e composição podem mudar só aqui.</small></div>
             </div>
             <div class="pe-actions-row"><button id="trCopy" type="button" title="Descarta as mudanças do espanhol e copia de novo tudo do português">↻ Copiar de novo do português</button><button id="trBack" type="button">← Editar post</button></div>
           </section>
@@ -312,8 +312,7 @@
         </aside>
         <section class="pe-stage">
           <div class="pe-stage-toolbar">
-            <div><strong>Pré-visualização</strong><small id="stageBannerHint">Arraste uma foto para enquadrar (roda do mouse = zoom)</small><small id="stageMoveHint">Arraste direto sobre a arte para
-                reposicionar</small></div>
+            <div><strong>Pré-visualização</strong><small id="stageBannerHint">Arraste uma foto para enquadrar (roda do mouse = zoom)</small><small id="stageMoveHint">Arraste direto sobre a arte para reposicionar; duplo clique no fundo ou no destaque e use a roda do mouse para o zoom</small></div>
             <div class="pe-toolbar-actions">
               <div class="pe-segmented" id="positionControls"><button id="undoMove" type="button" disabled
                   title="Desfaz o último movimento (Ctrl+Z)">Desfazer</button><button id="resetPositions" type="button"

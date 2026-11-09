@@ -52,7 +52,7 @@ PortalTour.register('editor-posts', {
         { target: '#downloadBoth', title: 'Baixar', text: 'O pacote ZIP traz Feed e Story com os nomes padronizados. Se precisar de um só, use os botões Feed JPG e Story JPG.' },
         { target: '#nextProduct', title: 'Outro produto', text: 'Volta para a escolha do produto mantendo a mesma editoria, para fazer a próxima arte da sequência.' },
         { target: '[data-flow-step="banner"]', title: 'Banner da intranet', text: 'Nesta editoria dá para desdobrar a arte em um banner 900 × 258 para a intranet. Clique na etapa para montar e baixar o banner.' },
-        { target: '[data-flow-step="translate"]', title: 'Tradução automática', text: 'Na Uso e Recomendo VONDER há uma etapa extra com a versão em espanhol, um post separado para outra conta. Ela começa igual à em português, com a hashtag #UsoyRecomiendoVONDER, e você pode mudar nome, fotos e composição só nela. Baixe o pacote com final _ES e revise antes de publicar.' },
+        { target: '[data-flow-step="translate"]', title: 'Tradução automática', text: 'Na Uso e Recomendo VONDER e nos Destaques VONDER há uma etapa extra com a versão em espanhol, um post separado para outra conta. Ela começa igual à em português, com a hashtag ou o selo já em espanhol, e você pode mudar nome, fotos e composição só nela. Baixe o pacote com final _ES e revise antes de publicar.' },
         { title: 'Pronto!', text: 'Agora você sabe criar uma arte. Para fazer outra, use "Outro produto" ou "Trocar" a editoria.' }
       ]
     },

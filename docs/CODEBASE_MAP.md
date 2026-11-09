@@ -191,7 +191,7 @@ graph TB
 
 | Arquivo | Papel |
 |---|---|
-| `post-editor.js` | Motor de desenho em canvas (~1125 linhas, 134 KB), fluxo de 4 etapas (+ "Tradução automática" em presets com `translate`, ex.: Uso e Recomendo VONDER; `state.lang==="es"` lido pelo renderer do preset, arquivos com sufixo `_ES`), exportação JPG/ZIP; `SAFE_MARGINS` e `setMoveBox` (guias de margem, ver DESIGN.md §6); consome `OVD_BRAND_MANIFEST` (biblioteca de marcas) |
+| `post-editor.js` | Motor de desenho em canvas (~1125 linhas, 134 KB), fluxo de 4 etapas (+ "Tradução automática" em presets com `translate`, ex.: Uso e Recomendo VONDER; `state.lang==="es"` lido pelo renderer do preset, arquivos com sufixo `_ES`; o preset pode trazer `badgeFeedEs`/`badgeStoryEs` para trocar o selo e `translateHint`; `keepCompositionOnLoad` impede que subir foto recomponha/mova selo ou faixas; a roda do mouse só dá zoom depois de duplo clique no fundo ou no destaque), exportação JPG/ZIP; `SAFE_MARGINS` e `setMoveBox` (guias de margem, ver DESIGN.md §6); consome `OVD_BRAND_MANIFEST` (biblioteca de marcas) |
 | `post-editor.html` / `.css` | Shell e estilos do editor |
 | `post-editor-fg-ecommerce.js` | Preset "Post E-commerce" (FG) - caixa De/Por/Desconto |
 | `post-editor-fg-lancamentos.js` | Preset "Lançamentos" (FG) |

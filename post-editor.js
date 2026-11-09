@@ -88,7 +88,12 @@ var EDITORIA_PRESETS_BY_BRAND={
   'Destaques':{
    footerColor:'#F6BE00',
    badgeFeed:'post-editor-assets/destaques-feed.png',
-   badgeStory:'post-editor-assets/destaques-story.png'
+   badgeStory:'post-editor-assets/destaques-story.png',
+   badgeFeedEs:'post-editor-assets/destaques-feed-es.png',
+   badgeStoryEs:'post-editor-assets/destaques-story-es.png',
+   translate:true,
+   keepCompositionOnLoad:true,
+   translateHint:' O selo troca para "Destacados VONDER".'
   }
  }
 };
@@ -178,8 +183,10 @@ var FLOW_STEP_ORDER={editoria:0,choose:1,edit:2,banner:3,translate:3};
 var currentFlowMode='editoria',currentFlowModePrev='editoria',maxFlowOrder=0,pendingLeaveEditTarget=null;
 // Tradução: português e espanhol são dois posts separados. Cada um guarda a própria cópia da arte (textos, fotos, composição);
 // o espanhol nasce igual ao português e, depois de alterado (touched), deixa de acompanhá-lo até o botão "Copiar de novo".
-var ptSnap=null,esSnap=null,esEnterSig='',imgIds=new Map();
+var TRANSLATE_HINT=$('#translateHint').textContent,ptSnap=null,esSnap=null,esEnterSig='',imgIds=new Map();
 function imgId(o){if(!o)return 0;if(!imgIds.has(o))imgIds.set(o,imgIds.size+1);return imgIds.get(o)}
+// selo do preset; na etapa de tradução usa o selo em espanhol, quando o preset tem um (mesmas dimensões, mesma caixa de desenho)
+function badgeFor(format){var es=state.lang==='es'?(format==='feed'?state.badgeFeedEs:state.badgeStoryEs):null;return es||(format==='feed'?state.badgeFeed:state.badgeStory)}
 function langSnap(){
  var fields={};$$('#editorWorkspace input[id],#editorWorkspace select[id],#editorWorkspace textarea[id]').forEach(function(el){if(el.type==='file'||SAVE_SKIP.test(el.id))return;fields[el.id]=el.type==='checkbox'?el.checked:el.value});
  var pf=$('#productFileName');
@@ -284,13 +291,13 @@ function renderEditoriaGrid(){
 var editSession=0;
 function chooseEditoria(editoria,keepFlow){
  var preset=EDITORIA_PRESETS[editoria.name];if(!preset)return;editSession++;
- state.srcFile={bg:null,product:null};state.editoriaName=editoria.name;state.titleScale=1;state.editoriaColor=editoria.color||'#64748b';state.footerColor=preset.footerColor||'#FFBE00';
+ state.srcFile={bg:null,product:null};state.badgeFeedEs=state.badgeStoryEs=null;state.editoriaName=editoria.name;state.titleScale=1;state.editoriaColor=editoria.color||'#64748b';state.footerColor=preset.footerColor||'#FFBE00';
  state.brandBadgeColor=preset.brandBadgeColor||'#fbc400';if($('#brandBadgeColor'))$('#brandBadgeColor').value=state.brandBadgeColor;
  state.customAssets={};var brandField=$('#brandVariantField');if(brandField)brandField.hidden=!preset.supportsBrandVariant;
  var brandBadgeColorField=$('#brandBadgeColorField');if(brandBadgeColorField)brandBadgeColorField.hidden=preset.supportsBrandBadgeColor===false;
  var suggestionsSection=$('#compositionSuggestionsSection');if(suggestionsSection)suggestionsSection.hidden=preset.supportsCompositionSuggestions===false;
  var usesCodes=preset.supportsCodes!==false,usesCutout=preset.supportsProductCutout!==false,isCommemorative=!!preset.commemorative;
- $('#codeControls').hidden=!usesCodes;$('#selectedProductCode').hidden=!usesCodes;$('#productDrop').hidden=!usesCutout;$('#removeWhiteField').hidden=!usesCutout;$('#removeHolesField').hidden=!usesCutout;var ecommerceField=$('#ecommercePricing');if(ecommerceField)ecommerceField.hidden=!preset.ecommerce;var fgEcommerce=BRAND_SUFFIX==='__ferramentas-gerais'&&preset.ecommerce,fgOfferImport=$('#fgOfferProductImport');if(fgOfferImport)fgOfferImport.hidden=!fgEcommerce;['#catalogSearchArea','#catalogMeta','#catalogResults'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});['#layoutModeField','#moveModeControls','#overlayFormatField','#compositionSection'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});state.moveEnabled=true;state.priceMoveOnly=fgEcommerce;var stageMoveHint=$('#stageMoveHint');if(stageMoveHint)stageMoveHint.textContent=fgEcommerce?'Arraste a box de preço ou a foto de fundo para reposicionar':'Arraste direto sobre a arte para reposicionar';var chooserDescription=$('#productChooserDescription');if(chooserDescription)chooserDescription.textContent=fgEcommerce?'Cole o link da oferta da FG para preencher os dados comerciais automaticamente.':'Busque pelo nome ou código do produto para preencher os dados automaticamente.';
+ $('#codeControls').hidden=!usesCodes;$('#selectedProductCode').hidden=!usesCodes;$('#productDrop').hidden=!usesCutout;$('#removeWhiteField').hidden=!usesCutout;$('#removeHolesField').hidden=!usesCutout;var ecommerceField=$('#ecommercePricing');if(ecommerceField)ecommerceField.hidden=!preset.ecommerce;var fgEcommerce=BRAND_SUFFIX==='__ferramentas-gerais'&&preset.ecommerce,fgOfferImport=$('#fgOfferProductImport');if(fgOfferImport)fgOfferImport.hidden=!fgEcommerce;['#catalogSearchArea','#catalogMeta','#catalogResults'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});['#layoutModeField','#moveModeControls','#overlayFormatField','#compositionSection'].forEach(function(selector){var element=$(selector);if(element)element.hidden=fgEcommerce});state.moveEnabled=true;state.priceMoveOnly=fgEcommerce;var stageMoveHint=$('#stageMoveHint');if(stageMoveHint)stageMoveHint.textContent=fgEcommerce?'Arraste a box de preço ou a foto de fundo para reposicionar':'Arraste direto sobre a arte para reposicionar; duplo clique no fundo ou no destaque e use a roda do mouse para o zoom';var chooserDescription=$('#productChooserDescription');if(chooserDescription)chooserDescription.textContent=fgEcommerce?'Cole o link da oferta da FG para preencher os dados comerciais automaticamente.':'Busque pelo nome ou código do produto para preencher os dados automaticamente.';
  $('#commemorativeFields').hidden=!isCommemorative;if($('#eventPrefixField'))$('#eventPrefixField').hidden=!!preset.singleCommemorativeText;if($('#eventTitleSizeField')){$('#eventTitleSizeField').hidden=!preset.titleSizeControl;if(preset.titleSizeControl){['Feed','Story'].forEach(function(format){var input=$('#eventTitleSize'+format),output=$('#eventTitleSize'+format+'Out');if(input)input.value=100;if(output)output.value='100%'})}}$('#selectedProductSummary').hidden=isCommemorative;$('#productNameLabel').textContent=isCommemorative?(preset.singleCommemorativeText?'Texto da data comemorativa':'Título da data comemorativa'):'Nome completo';
  $('#detailsSectionTitle').textContent=isCommemorative?'Data comemorativa':'Produto';$('#detailsSectionHint').textContent=isCommemorative?(preset.singleCommemorativeText?'Data, mês e texto editáveis':'Data, mês e título editáveis'):'Dados preenchidos pelo catálogo, mas editáveis';var imageHint=$('#imageSectionHint');if(imageHint)imageHint.textContent=usesCutout?'Envie a cena e, se tiver, o produto recortado':'A imagem oficial do produto é carregada junto com a oferta';
  // Editorias com skipProductChooser (ex: Datas comemorativas) nunca passam pela etapa "Escolher
@@ -299,12 +306,12 @@ function chooseEditoria(editoria,keepFlow){
  $('[data-flow-step="choose"]').hidden=!!preset.skipProductChooser;$('#flowSepChoose').hidden=!!preset.skipProductChooser;
  $('#flowStepEditNumber').textContent=preset.skipProductChooser?'2':'3';
  $('[data-flow-step="banner"]').hidden=!preset.banner;$('#flowSepBanner').hidden=!preset.banner;$('#flowStepBannerNumber').textContent=preset.skipProductChooser?'3':'4';
- $('[data-flow-step="translate"]').hidden=!preset.translate;$('#flowSepTranslate').hidden=!preset.translate;$('#flowStepTranslateNumber').textContent=preset.skipProductChooser?'3':'4';
+ $('[data-flow-step="translate"]').hidden=!preset.translate;$('#translateHint').textContent=TRANSLATE_HINT+(preset.translateHint||'');$('#flowSepTranslate').hidden=!preset.translate;$('#flowStepTranslateNumber').textContent=preset.skipProductChooser?'3':'4';
  $('#overlayScaleField').hidden=isCommemorative||preset.supportsOverlayScale===false;if(!fgEcommerce)$('#overlayFormatField').hidden=$('#overlayScaleField').hidden;
  $('#imageSectionHint').textContent=usesCutout?'Envie a cena e, se tiver, o produto recortado':'Envie somente a imagem de uso do produto';
  applyPresetUi(preset);syncEditoriaBadges();status('Carregando preset de '+editoria.name+'…',true);
- var assetNames=Object.keys(preset.assetSources||{}),sources=[preset.badgeFeed,preset.badgeStory].concat(assetNames.map(function(name){return preset.assetSources[name]}));
- Promise.all(sources.map(function(src){return src?loadImage(src):Promise.resolve(null)})).then(function(v){state.badgeFeed=v[0];state.badgeStory=v[1];assetNames.forEach(function(name,index){state.customAssets[name]=v[index+2]});drawAll();status('Preset de '+editoria.name+' carregado',false)}).catch(function(){drawAll();status('Preset de '+editoria.name+' carregado; algumas imagens não abriram',false)});
+ var assetNames=Object.keys(preset.assetSources||{}),sources=[preset.badgeFeed,preset.badgeStory].concat(assetNames.map(function(name){return preset.assetSources[name]}),[preset.badgeFeedEs,preset.badgeStoryEs]);
+ Promise.all(sources.map(function(src){return src?loadImage(src):Promise.resolve(null)})).then(function(v){state.badgeFeed=v[0];state.badgeStory=v[1];state.badgeFeedEs=v[assetNames.length+2];state.badgeStoryEs=v[assetNames.length+3];assetNames.forEach(function(name,index){state.customAssets[name]=v[index+2]});drawAll();status('Preset de '+editoria.name+' carregado',false)}).catch(function(){drawAll();status('Preset de '+editoria.name+' carregado; algumas imagens não abriram',false)});
  if(preset.skipProductChooser){
   selectedProduct=null;state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;
 $('#productName').value=(INCOMING_COMM&&INCOMING_COMM.title)||'NOME DA DATA';$('#eventDay').value=(INCOMING_COMM&&INCOMING_COMM.day)||'01';$('#eventMonth').value=(INCOMING_COMM&&INCOMING_COMM.month)||'JANEIRO';$('#eventPrefix').value=(INCOMING_COMM&&INCOMING_COMM.prefix)||'Dia do';
@@ -348,7 +355,7 @@ function chooseCatalogProduct(item){
  state.product=null;state.productDrawable=null;state.productHasCircle=false;state.background=null;resetFormatForNewProduct();var thumbUrls=itemThumbnailUrls(item);setProductFilePreview(thumbUrls[0],'Carregada automaticamente · clique para alterar',thumbUrls.slice(1));showEditor(item,false);drawAll();
  var bgP=Promise.resolve(),bgUrl=itemBackgroundUrl(item);if(bgUrl){$('#backgroundFileName').textContent='Foto de aplicação do catálogo';bgP=loadImage(bgUrl).then(function(im){if(selectedProduct!==item)return;
   if(!im.exportSafe){$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Essa foto de aplicação não pode ser usada automaticamente (o servidor de origem não libera para exportação) - envie manualmente abaixo',false);return}
-  state.background=trimBackgroundMargins(im);state.bgZoom.feed=1;state.bgZoom.story=1;if(item.preferredLayout){state.autoLayout=item.preferredLayout;drawAll();status('Produto e foto de aplicação carregados',false)}else analyze()
+  state.background=trimBackgroundMargins(im);state.bgZoom.feed=1;state.bgZoom.story=1;if(item.preferredLayout&&!keepComposition()){state.autoLayout=item.preferredLayout;drawAll();status('Produto e foto de aplicação carregados',false)}else analyze(true)
  }).catch(function(){if(selectedProduct!==item)return;$('#backgroundFileName').textContent='Envie a foto de fundo manualmente';status('Produto carregado; a foto de aplicação não abriu',false)})}else{$('#backgroundFileName').textContent='Clique ou arraste uma imagem'}
  var urls=usoOn()?[]:itemImageUrls(item,CATALOG_PRODUCT_WIDTH);if(!urls.length){status(usoOn()?'Dados preenchidos; envie a foto de fundo':'Dados preenchidos; envie a foto do produto',false);return bgP}status(bgUrl?'Carregando produto e foto de aplicação…':'Carregando e recortando a foto do catálogo…',true);$('#productFileName').textContent='Foto do catálogo · '+(codes[0]?codes[0].code:'produto')+' · clique para alterar';
  return Promise.all([bgP,loadExportSafeImage(urls).then(function(im){if(selectedProduct!==item)return;
@@ -809,7 +816,7 @@ function drawArt(format){
  // desenhos poderiam sujar pixels perto da borda do frame - o clip garante que nada deles
  // apareça fora da área final de exportação
  ctx.save();ctx.beginPath();ctx.rect(0,0,t.w,t.h);ctx.clip();
- var badge=format==='feed'?state.badgeFeed:state.badgeStory;function drawBadge(){if(badge)ctx.drawImage(badge,badgeBox[0],badgeBox[1],badgeBox[2],badgeBox[3])}
+ var badge=badgeFor(format);function drawBadge(){if(badge)ctx.drawImage(badge,badgeBox[0],badgeBox[1],badgeBox[2],badgeBox[3])}
  if(canCircleFront(format)&&state.ov[format].circleFront){drawBadge();drawProduct(ctx,productBox,format)}else{drawProduct(ctx,productBox,format);drawBadge()}
  ctx.restore();
  drawFooter(ctx,t)
@@ -831,7 +838,7 @@ function fitRect(im,box){var s=Math.min(box[2]/im.width,box[3]/im.height),w=im.w
 function visibleBox(format){
  var pb=lastProductBox[format],bb=lastBadgeBox[format],preset=EDITORIA_PRESETS[state.editoriaName];
  if(!pb||!bb||(preset&&typeof preset.renderer==='function'))return unionBox(pb,bb);
- var badge=format==='feed'?state.badgeFeed:state.badgeStory,im=state.productDrawable,vb=bb,vp=pb;
+ var badge=badgeFor(format),im=state.productDrawable,vb=bb,vp=pb;
  if(badge){var a=alphaBox(badge);vb=[bb[0]+bb[2]*a[0],bb[1]+bb[3]*a[1],bb[2]*a[2],bb[3]*a[3]]}
  if(im){if(state.productHasCircle)vp=fitRect(im,pb);else{var r=Math.min(pb[2],pb[3])*.48,cx=pb[0]+pb[2]/2,cy=pb[1]+pb[3]/2,k=state.ov[format].photo,iw=pb[2]*.84*k,ih=pb[3]*.84*k;vp=unionBox([cx-r,cy-r,2*r,2*r],fitRect(im,[cx-iw/2,pb[1]+pb[3]*.47-ih/2,iw,ih]))}}
  return unionBox(vb,vp)
@@ -867,7 +874,10 @@ function regionScore(img,rect){
  var c=document.createElement('canvas');c.width=120;c.height=120;var x=c.getContext('2d');x.drawImage(img,rect[0]*img.width,rect[1]*img.height,rect[2]*img.width,rect[3]*img.height,0,0,120,120);
  var d=x.getImageData(0,0,120,120).data,total=0,count=0;for(var y=1;y<119;y+=3)for(var q=1;q<119;q+=3){var i=(y*120+q)*4,j=i+4,k=i+480;total+=Math.abs(d[i]-d[j])+Math.abs(d[i+1]-d[j+1])+Math.abs(d[i+2]-d[j+2])+Math.abs(d[i]-d[k])+Math.abs(d[i+1]-d[k+1])+Math.abs(d[i+2]-d[k+2]);count++}return total/count
 }
-function analyze(){
+// presets com keepCompositionOnLoad (Destaques, Uso e Recomendo): trocar a foto de fundo não recompõe nem move o selo/faixas; só o botão "Composição automática" analisa a foto
+function keepComposition(){var p=EDITORIA_PRESETS[state.editoriaName];return!!(p&&p.keepCompositionOnLoad)}
+function analyze(onLoad){
+ if(onLoad&&keepComposition()&&state.background){drawAll();status('Foto carregada; selo e composição mantidos',false);return}
  if(!state.background||usoOn()){state.autoLayout='left';drawAll();return}var candidates={left:[.02,.04,.8,.43],stacked:[.01,.03,.5,.48],right:[.5,.16,.49,.54]},best='left',score=Infinity;
  Object.keys(candidates).forEach(function(k){var s=regionScore(state.background,candidates[k]);if(s<score){score=s;best=k}});state.autoLayout=best;syncOverlayControls();drawAll();status('Composição automática: '+({left:'esquerda',stacked:'superior',right:'direita'}[best]),false)
 }
@@ -992,7 +1002,7 @@ function zipHeader(size){var bytes=new Uint8Array(size),view=new DataView(bytes.
 function zipDate(){var d=new Date(),year=Math.max(1980,d.getFullYear());return{time:(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1),date:((year-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate()}}
 function makeZip(files){var encoder=new TextEncoder(),stamp=zipDate(),locals=[],centrals=[],offset=0;files.forEach(function(file){var name=encoder.encode(file.name),data=file.data,crc=zipCrc(data),local=zipHeader(30);local.u32(0,0x04034b50);local.u16(4,20);local.u16(6,0x800);local.u16(8,0);local.u16(10,stamp.time);local.u16(12,stamp.date);local.u32(14,crc);local.u32(18,data.length);local.u32(22,data.length);local.u16(26,name.length);local.u16(28,0);locals.push(local.bytes,name,data);var central=zipHeader(46);central.u32(0,0x02014b50);central.u16(4,20);central.u16(6,20);central.u16(8,0x800);central.u16(10,0);central.u16(12,stamp.time);central.u16(14,stamp.date);central.u32(16,crc);central.u32(20,data.length);central.u32(24,data.length);central.u16(28,name.length);central.u16(30,0);central.u16(32,0);central.u16(34,0);central.u16(36,0);central.u32(38,0);central.u32(42,offset);centrals.push(central.bytes,name);offset+=30+name.length+data.length});var centralSize=centrals.reduce(function(total,part){return total+part.length},0),end=zipHeader(22);end.u32(0,0x06054b50);end.u16(4,0);end.u16(6,0);end.u16(8,files.length);end.u16(10,files.length);end.u32(12,centralSize);end.u32(16,offset);end.u16(20,0);return new Blob(locals.concat(centrals,[end.bytes]),{type:'application/zip'})}
 function downloadZip(){var base=exportBaseName()+langSuffix();status('Montando pacote ZIP…',true);Promise.all([canvasBlob('feed'),canvasBlob('story')]).then(function(blobs){return Promise.all(blobs.map(function(blob){return blob.arrayBuffer()}))}).then(function(buffers){var zip=makeZip([{name:base+'_FEED.jpg',data:new Uint8Array(buffers[0])},{name:base+'_STORY.jpg',data:new Uint8Array(buffers[1])}]);triggerBlob(zip,base+'_FEED_STORY.zip');window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+base});editDirty=false;status('Pacote ZIP baixado',false)}).catch(function(){status('Não foi possível gerar o pacote ZIP',false)})}
-function loadBackgroundFile(file,name){name.textContent=file.name;status('Analisando a foto…',true);trackSrc('bg',file);fileImage(file).then(function(im){state.background=im;state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};analyze()}).catch(function(){status('Não foi possível abrir a foto',false)})}
+function loadBackgroundFile(file,name){name.textContent=file.name;status('Analisando a foto…',true);trackSrc('bg',file);fileImage(file).then(function(im){state.background=im;var keep=keepComposition();['feed','story'].forEach(function(f){var o=state.format[f]||{};state.format[f]={bgDx:0,bgDy:0,overlayDx:keep?o.overlayDx||0:0,overlayDy:keep?o.overlayDy||0:0}});analyze(true)}).catch(function(){status('Não foi possível abrir a foto',false)})}
 setupDrop('#backgroundDrop','#backgroundFile','#backgroundFileName',loadBackgroundFile);
 // soltar a foto de fundo direto na prévia, enquanto ainda não há nenhuma (depois disso, soltar não faz nada: troca-se pelo campo de upload)
 $$('.pe-canvas-wrap').forEach(function(wrap){var over=function(ev){return!state.background&&!(EDITORIA_PRESETS[state.editoriaName]||{}).noBackground&&ev.dataTransfer&&Array.prototype.indexOf.call(ev.dataTransfer.types||[],'Files')>=0};['dragenter','dragover'].forEach(function(e){wrap.addEventListener(e,function(ev){if(over(ev)){ev.preventDefault();wrap.classList.add('is-dragging')}})});wrap.addEventListener('dragleave',function(){wrap.classList.remove('is-dragging')});wrap.addEventListener('drop',function(ev){wrap.classList.remove('is-dragging');if(!over(ev))return;ev.preventDefault();var f=ev.dataTransfer.files[0];if(f&&/^image/.test(f.type))loadBackgroundFile(f,$('#backgroundFileName'))})});
@@ -1029,7 +1039,9 @@ function flashMoveTarget(format,cap,hit,canvasRect,box,label){
 }
 $$('[data-move-mode]').forEach(function(b){b.addEventListener('click',function(){setMoveMode(b.dataset.moveMode)})});$('#moveTarget').addEventListener('change',function(){setMoveMode($('#moveTarget').value)});
 Object.keys(canvases).forEach(function(format){
- var c=canvases[format],cap=format[0].toUpperCase()+format.slice(1),drag=null,dragTarget=null,guideTimer=0;
+ var c=canvases[format],cap=format[0].toUpperCase()+format.slice(1),drag=null,dragTarget=null,guideTimer=0,wheelArmed=false;
+ // a roda só dá zoom depois de um duplo clique no fundo ou no destaque (selo); sem isso ela rola a página. Sair da arte desarma
+ c.addEventListener('mouseleave',function(){wheelArmed=false});
  c.addEventListener('pointerdown',function(e){if(ovFormat()!==format){$('#overlayFormat').value=format;syncOverlayControls()}if(!state.moveEnabled)return;clearTimeout(guideTimer);dragSnapshot=JSON.stringify(state.format);drag={x:e.clientX,y:e.clientY,push:{x:0,y:0}};dragTarget=$('#moveTarget').value;var pk=EDITORIA_PRESETS[state.editoriaName];if(pk&&pk.pickTarget){var pr=c.getBoundingClientRect();dragTarget=pk.pickTarget(format,(e.clientX-pr.left)*c.width/pr.width,(e.clientY-pr.top)*c.height/pr.height,e)||dragTarget}state.guides[format]=dragTarget==='overlay';c.setPointerCapture(e.pointerId)});
  c.addEventListener('pointermove',function(e){if(!drag)return;var scale=c.width/c.getBoundingClientRect().width,dx=(e.clientX-drag.x)*scale,dy=(e.clientY-drag.y)*scale;drag={x:e.clientX,y:e.clientY,push:drag.push};if(dragTarget==='background'){state.format[format].bgDx+=dx;state.format[format].bgDy+=dy}else if(dragTarget!=='overlay'){var pm=EDITORIA_PRESETS[state.editoriaName];if(pm&&pm.onDrag){var pmr=c.getBoundingClientRect();pm.onDrag(format,dragTarget,dx,dy,(e.clientX-pmr.left)*c.width/pmr.width,(e.clientY-pmr.top)*c.height/pmr.height)}}else{var gb=guideBox(format);if(usoOn()||vOnly())dx=0;if(gb){var gm=SAFE_MARGINS[format],gt=templates[format];dx=guideResist(drag.push,'x',gb[0],gb[0]+gb[2],dx,gm.side,gt.w-gm.side);dy=guideResist(drag.push,'y',gb[1],gb[1]+gb[3],dy,gm.top,gt.h-gm.bottom)}state.format[format].overlayDx+=dx;state.format[format].overlayDy+=dy}drawAll()});
  ['pointerup','pointercancel'].forEach(function(ev){c.addEventListener(ev,function(){var pu=EDITORIA_PRESETS[state.editoriaName];if(pu&&pu.onDragEnd&&dragTarget)pu.onDragEnd(format,dragTarget);commitDrag();drag=null;dragTarget=null;state.guides[format]=false;draw(format)})});
@@ -1041,11 +1053,12 @@ Object.keys(canvases).forEach(function(format){
   if(!state.moveEnabled)return;var rect=c.getBoundingClientRect(),scaleX=c.width/rect.width,scaleY=c.height/rect.height,px=(e.clientX-rect.left)*scaleX,py=(e.clientY-rect.top)*scaleY,destaqueBox=state.priceMoveOnly?lastProductBox[format]:visibleBox(format),hit=boxHit(destaqueBox,px,py);
   // sem foto de fundo ainda, o duplo clique no fundo/placeholder abre a escolha do arquivo (com foto, segue selecionando fundo/destaque pra mover)
   if(!state.background&&!hit){$('#backgroundFile').click();return}
-  setMoveMode(hit?'overlay':'background');status(hit?(usoOn()?'Faixas selecionadas para mover':'Box de preço selecionada para mover'):'Fundo selecionado para mover',false);
+  wheelArmed=true;setMoveMode(hit?'overlay':'background');status((hit?(usoOn()?'Faixas selecionadas para mover':'Box de preço selecionada para mover'):'Fundo selecionado para mover')+'; use a roda do mouse para o zoom',false);
   flashMoveTarget(format,cap,hit,rect,destaqueBox)
  });
  c.addEventListener('wheel',function(e){
   var pw=EDITORIA_PRESETS[state.editoriaName];if(pw&&pw.wheel){var wr=c.getBoundingClientRect();e.preventDefault();if(pw.wheel(format,(e.clientX-wr.left)*c.width/wr.width,(e.clientY-wr.top)*c.height/wr.height,e.deltaY<0?1:-1))draw(format);return}
+  if(!wheelArmed)return;// sem duplo clique antes: deixa a página rolar
   // com o destaque selecionado (Arrastar: Logo e produto) a roda ajusta o tamanho dele, só neste formato
   if(state.moveEnabled&&!state.priceMoveOnly&&$('#moveTarget').value==='overlay'&&!$('#overlayScaleField').hidden){
    e.preventDefault();var pct=Math.max(70,Math.min(135,Math.round(state.ov[format].scale*100)+(e.deltaY<0?5:-5)));
