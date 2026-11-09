@@ -35,8 +35,8 @@
   }
 
   // "#UsoeRecomendoVONDER": negrito+itálico condensado, com o "e" e o VONDER em amarelo; o espaçamento é ajustado pra fechar na largura da arte de referência
-  function drawHashtag(ctx,x,y){
-    var parts=[['#Uso','#fff'],['e',YELLOW],['Recomendo','#fff'],['VONDER',YELLOW]],all=parts.map(function(p){return p[0]}).join('');
+  function drawHashtag(ctx,x,y,lang){
+    var parts=lang==='es'?[['#Uso','#fff'],['y',YELLOW],['Recomiendo','#fff'],['VONDER',YELLOW]]:[['#Uso','#fff'],['e',YELLOW],['Recomendo','#fff'],['VONDER',YELLOW]],all=parts.map(function(p){return p[0]}).join('');
     ctx.save();ctx.font='700 italic 78px "Swiss721Editor","Arial Narrow",Impact,sans-serif';
     if('letterSpacing' in ctx){ctx.letterSpacing='0px';var natural=ctx.measureText(all).width;ctx.letterSpacing=((TAG_W-natural)/(all.length-1))+'px'}
     parts.forEach(function(p){ctx.fillStyle=p[1];ctx.fillText(p[0],x,y);x+=ctx.measureText(p[0]).width});ctx.restore()
@@ -56,7 +56,7 @@
     // faixa amarela: cantos de cima retos, o de baixo do lado de dentro arredondado
     var inner=right?yx:yx+g.yellowW,outer=right?yx+g.yellowW:yx;
     ctx.fillStyle=YELLOW;ctx.beginPath();ctx.moveTo(outer,yTop);ctx.lineTo(inner,yTop);ctx.lineTo(inner,yBot-RADIUS);ctx.arcTo(inner,yBot,right?inner+RADIUS:inner-RADIUS,yBot,RADIUS);ctx.lineTo(outer,yBot);ctx.closePath();ctx.fill();
-    ctx.textBaseline='alphabetic';ctx.textAlign='left';drawHashtag(ctx,bx+TAG_X,y+TAG_BASELINE);
+    ctx.textBaseline='alphabetic';ctx.textAlign='left';drawHashtag(ctx,bx+TAG_X,y+TAG_BASELINE,st.lang);
     ctx.fillStyle='#050505';
     if(st.usoEditing!==f)lines.forEach(function(line,i){drawLine(ctx,h.rich,line,yx+g.textX,yTop+baseline1+i*pitch,size)});
     if('letterSpacing' in ctx)ctx.letterSpacing='0px';
@@ -69,6 +69,7 @@
   global.POST_EDITOR_CUSTOM_PRESETS['']=Object.assign({},global.POST_EDITOR_CUSTOM_PRESETS['']||{},{
     'Uso e Recomendo VONDER':{
       footerColor:YELLOW,
+      translate:true,
       supportsCodes:false,
       supportsProductCutout:false,
       supportsBrandVariant:false,

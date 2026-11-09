@@ -35,6 +35,9 @@
         </div><i id="flowSepBanner" hidden></i>
         <div class="pe-flow-step" data-flow-step="banner" hidden><span id="flowStepBannerNumber">3</span>
           <div><strong>Desdobrar para banner</strong><small>Banner 900 × 258 da intranet</small></div>
+        </div><i id="flowSepTranslate" hidden></i>
+        <div class="pe-flow-step" data-flow-step="translate" hidden><span id="flowStepTranslateNumber">4</span>
+          <div><strong>Tradução automática</strong><small>Mesma arte, em espanhol</small></div>
         </div>
       </nav>
       <section class="pe-chooser" id="editoriaChooser">
@@ -83,6 +86,12 @@
           <div class="pe-selected-editoria" id="selectedEditoriaBarEdit"><span class="pe-editoria-dot"
               id="selectedEditoriaDotEdit"></span><strong id="selectedEditoriaNameEdit">Editoria</strong><span class="pe-art-state" id="artSaveState" role="status" aria-live="polite" hidden></span><button
               id="changeEditoriaEdit" type="button">Trocar</button></div>
+          <section class="pe-section pe-tr" id="translatePanel" hidden>
+            <div class="pe-step"><span>ES</span>
+              <div><strong>Versão em espanhol</strong><small>Começa igual à versão em português e é um post separado, com download próprio. Nome, fotos e composição podem mudar só aqui. A hashtag sai como #UsoyRecomiendoVONDER</small></div>
+            </div>
+            <div class="pe-actions-row"><button id="trCopy" type="button" title="Descarta as mudanças do espanhol e copia de novo tudo do português">↻ Copiar de novo do português</button><button id="trBack" type="button">← Editar post</button></div>
+          </section>
           <section class="pe-section pe-core-section">
             <div class="pe-step"><span>1</span>
               <div><strong id="detailsSectionTitle">Produto</strong><small id="detailsSectionHint">Dados preenchidos

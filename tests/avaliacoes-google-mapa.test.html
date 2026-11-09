@@ -1,41 +1,61 @@
 <!doctype html>
 <html><head><meta charset="utf-8"><title>Teste do mapa de lojas</title></head>
 <body data-result="running">RUNNING
+<script src="../vendor/leaflet/leaflet.js"></script>
 <script type="module">
 // Exige --allow-file-access-from-files no Chrome (import de módulo via file://).
-import { LOJAS, projetar, lojaDaFicha, desenharMapa } from '../avaliacoes-google-mapa.js';
-import { PROJECAO, ESTADOS } from '../avaliacoes-google-mapa-dados.js';
+import { LOJAS, lojaDaFicha, desenharMapa } from '../avaliacoes-google-mapa.js';
 
 const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${msg}: esperado ${JSON.stringify(b)}, veio ${JSON.stringify(a)}`); };
 
 try {
-  eq(Object.keys(ESTADOS), ['PR', 'SC', 'RS'], 'três estados no contorno');
-
-  // geografia: Porto Alegre fica ao sul e a oeste de Joinville; Curitiba entre os dois no eixo norte-sul
-  const p = k => projetar(LOJAS[k].lat, LOJAS[k].lon);
-  if (!(p('porto alegre')[1] > p('curitiba')[1] && p('curitiba')[1] > 0)) throw new Error('Porto Alegre deve ficar abaixo de Curitiba');
-  if (!(p('joinville')[0] > p('curitiba')[0] && p('joinville')[1] > p('curitiba')[1])) throw new Error('Joinville fica a leste e ao sul de Curitiba');
-  Object.keys(LOJAS).forEach(k => {
-    const [x, y] = p(k);
-    if (x < 0 || y < 0 || x > PROJECAO.largura || y > PROJECAO.altura) throw new Error(`${k} fora do desenho`);
-  });
+  // geografia: Porto Alegre fica ao sul de Curitiba; Joinville a leste e ao sul de Curitiba; todas no Sul do Brasil
+  if (!(LOJAS['porto alegre'].lat < LOJAS['curitiba'].lat)) throw new Error('Porto Alegre deve ficar ao sul de Curitiba');
+  if (!(LOJAS['joinville'].lon > LOJAS['curitiba'].lon && LOJAS['joinville'].lat < LOJAS['curitiba'].lat)) throw new Error('Joinville fica a leste e ao sul de Curitiba');
+  Object.entries(LOJAS).forEach(([k, l]) => { if (l.lat > -23 || l.lat < -34 || l.lon > -46 || l.lon < -58) throw new Error(`${k} fora do Sul e Sudeste do Brasil`); });
 
   // ficha do Google -> loja, pelo título ou pela cidade, com apelido ("POA") e sem confundir
   eq(lojaDaFicha({ title: 'FG Curitiba' }), 'curitiba', 'título com a cidade');
   eq(lojaDaFicha({ title: 'Ferramentas Gerais POA' }), 'porto alegre', 'apelido POA');
   eq(lojaDaFicha({ title: 'Loja 3', cidade: 'Caxias do Sul' }), 'caxias do sul', 'cidade da ficha');
-  eq(lojaDaFicha({ title: 'FG São Paulo', cidade: 'São Paulo' }), '', 'cidade fora da tabela');
+  eq(lojaDaFicha({ title: 'FG Florianópolis', cidade: 'Florianópolis' }), '', 'cidade fora da tabela');
+  eq(lojaDaFicha({ title: 'FG São Paulo', cidade: 'São Paulo' }), 'sao paulo', 'São Paulo está na tabela');
+  eq(lojaDaFicha({ title: 'FG Loja', cidade: 'Osasco', uf: 'SP' }), 'sao paulo', 'ficha de SP em outra cidade cai em São Paulo');
   eq(lojaDaFicha({ title: 'Joinvillense Pioneiro' }), '', 'palavra inteira, não pedaço');
 
-  // desenho: um ping por loja conhecida (a desconhecida fica de fora) e clique chama o callback
-  const clicados = [];
-  const svg = desenharMapa({ pings: [{ chave: 'curitiba', nome: 'Curitiba', texto: '3', cor: 'ok', dica: 'x' }, { chave: 'sao paulo', nome: 'SP', texto: '1', cor: 'ok', dica: 'y' }], selecionada: 'curitiba', aoEscolher: k => clicados.push(k) });
-  eq(svg.querySelectorAll('.ag-ping').length, 1, 'só a loja conhecida vira ping');
-  eq(svg.querySelectorAll('.ag-uf').length, 3, 'três estados desenhados');
-  eq(svg.querySelector('.ag-ping').getAttribute('aria-pressed'), 'true', 'selecionado marcado');
-  svg.querySelector('.ag-ping').dispatchEvent(new MouseEvent('click'));
-  svg.querySelector('.ag-ping').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-  eq(clicados, ['curitiba', 'curitiba'], 'clique e Enter escolhem a loja');
+  // desenho: um ping por loja conhecida (a desconhecida fica de fora), com o número, o nome e a bolinha; clique e Espaço chamam o callback
+  const clicados = [], destacados = [];
+  const el = desenharMapa({ pings: [{ chave: 'curitiba', nome: 'Curitiba', texto: '3', status: 'ok', dica: 'x' }, { chave: 'florianopolis', nome: 'Floripa', texto: '1', dica: 'y' }], selecionada: 'curitiba', aoEscolher: k => clicados.push(k), aoDestacar: k => destacados.push(k), chaveVisao: 'teste' });
+  eq(el.querySelectorAll('.ag-ping').length, 1, 'só a loja conhecida vira ping');
+  const ping = el.querySelector('.ag-ping');
+  eq([ping.querySelector('.ag-ping-num').textContent, ping.querySelector('.ag-ping-nome').textContent, !!ping.querySelector('.ag-status.is-ok')], ['3', 'Curitiba', true], 'número, nome e bolinha no pin');
+  eq([ping.getAttribute('aria-pressed'), ping.classList.contains('is-sel'), ping.getAttribute('role')], ['true', true, 'button'], 'selecionado marcado');
+  eq(el.querySelectorAll('.leaflet-tile-pane').length, 1, 'camada de tiles criada');
+  ping.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  ping.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+  eq(clicados, ['curitiba', 'curitiba'], 'clique e Espaço escolhem a loja');
+
+  // mouse em cima do pin avisa a tela (para destacar a linha da lista); sair apaga
+  ping.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); ping.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+  eq(destacados, ['curitiba', ''], 'mouseover e mouseout no pin chamam aoDestacar');
+
+  // trocar a loja selecionada não refaz o mapa: o mesmo elemento e os mesmos pins, só a marcação muda
+  el.selecionar('');
+  eq([el.querySelector('.ag-ping'), ping.classList.contains('is-sel'), ping.getAttribute('aria-pressed')], [ping, false, 'false'], 'selecionar("") desmarca no mesmo pin');
+  el.selecionar('curitiba');
+  eq([ping.classList.contains('is-sel'), ping.getAttribute('aria-pressed')], [true, 'true'], 'selecionar(chave) marca de novo');
+
+  // destacar anima só o pin da loja (is-hover) e apaga ao receber vazio; a seleção não muda
+  el.destacar('curitiba');
+  eq([ping.classList.contains('is-hover'), ping.classList.contains('is-sel')], [true, true], 'destacar marca o pin da loja sem mexer na seleção');
+  el.destacar('');
+  eq(ping.classList.contains('is-hover'), false, 'destacar("") apaga o destaque');
+
+  // cidades coladas (Novo Hamburgo): o pin sai deslocado para a direita, com fio e ponto no lugar real; os demais não
+  const el2 = desenharMapa({ pings: [{ chave: 'novo hamburgo', nome: 'Novo Hamburgo', texto: '4,2', dica: 'a' }, { chave: 'curitiba', nome: 'Curitiba', texto: '4', dica: 'b' }], selecionada: '', aoEscolher: () => {}, chaveVisao: 'teste2' });
+  const [nh, cwb] = ['novo hamburgo', 'curitiba'].map(n => [...el2.querySelectorAll('.ag-ping')].find(p => p.querySelector('.ag-ping-nome').textContent.toLowerCase() === n));
+  eq([!!nh.querySelector('.ag-ping-fio'), !!nh.querySelector('.ag-ping-ponto'), !!cwb.querySelector('.ag-ping-fio')], [true, true, false], 'só o pin deslocado tem fio e ponto');
+  eq([nh.style.marginLeft, cwb.style.marginLeft], ['15px', '-19px'], 'a âncora do ícone desloca o pin 34px para a direita');
 
   document.body.dataset.result = 'pass'; document.body.textContent = 'PASS';
 } catch (e) { document.body.dataset.result = 'fail'; document.body.textContent = 'FAIL ' + e.message; }

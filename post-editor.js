@@ -174,16 +174,52 @@ function editorCodes(item){
 function editorNameFor(item){var title=item&&(item.title||item.shortName),sub=item&&(item.subtitle||item.shortDescription||item.descriptionShort);if(title)return title+(sub?'\n'+sub:'');var parsed=splitName(item&&item.name);return parsed.title+(parsed.sub?'\n'+parsed.sub:'')}
 // escolher o produto com duplo clique na lista abre o editor e o 2º clique cai na prévia: o duplo clique logo após abrir é ignorado
 var editOpenedAt=0;
-var FLOW_STEP_ORDER={editoria:0,choose:1,edit:2,banner:3};
-var currentFlowMode='editoria',maxFlowOrder=0,pendingLeaveEditTarget=null;
+var FLOW_STEP_ORDER={editoria:0,choose:1,edit:2,banner:3,translate:3};
+var currentFlowMode='editoria',currentFlowModePrev='editoria',maxFlowOrder=0,pendingLeaveEditTarget=null;
+// Tradução: português e espanhol são dois posts separados. Cada um guarda a própria cópia da arte (textos, fotos, composição);
+// o espanhol nasce igual ao português e, depois de alterado (touched), deixa de acompanhá-lo até o botão "Copiar de novo".
+var ptSnap=null,esSnap=null,esEnterSig='',imgIds=new Map();
+function imgId(o){if(!o)return 0;if(!imgIds.has(o))imgIds.set(o,imgIds.size+1);return imgIds.get(o)}
+function langSnap(){
+ var fields={};$$('#editorWorkspace input[id],#editorWorkspace select[id],#editorWorkspace textarea[id]').forEach(function(el){if(el.type==='file'||SAVE_SKIP.test(el.id))return;fields[el.id]=el.type==='checkbox'?el.checked:el.value});
+ var pf=$('#productFileName');
+ return{fields:fields,st:JSON.stringify({titleScale:state.titleScale,titleHtml:state.titleHtml||'',originalTitle:state.originalTitle||'',autoLayout:state.autoLayout,brandLogoName:state.brandLogoName||'',brandBadgeColor:state.brandBadgeColor,bgZoom:state.bgZoom,ov:state.ov,format:state.format}),
+  bg:state.background,product:state.product,drawable:state.productDrawable,hasCircle:state.productHasCircle,srcFile:{bg:state.srcFile.bg,product:state.srcFile.product},assets:Object.assign({},state.customAssets),item:selectedProduct,
+  bgName:$('#backgroundFileName').textContent,prName:pf?pf.textContent:''}
+}
+function langSig(s){return JSON.stringify([s.fields,s.st,imgId(s.bg),imgId(s.product),imgId(s.drawable),s.bgName])}
+function applyLang(s){
+ Object.keys(s.fields).forEach(function(id){var el=document.getElementById(id);if(!el)return;if(el.type==='checkbox')el.checked=!!s.fields[id];else el.value=s.fields[id]});
+ var st=JSON.parse(s.st);
+ state.titleScale=st.titleScale;state.originalTitle=st.originalTitle;state.titleHtml=st.titleHtml;state.autoLayout=st.autoLayout;state.brandLogoName=st.brandLogoName;state.brandBadgeColor=st.brandBadgeColor;
+ ['feed','story'].forEach(function(k){state.ov[k]=st.ov[k];state.format[k]=st.format[k];state.bgZoom[k]=st.bgZoom[k]});
+ state.background=s.bg;state.product=s.product;state.productDrawable=s.drawable;state.productHasCircle=s.hasCircle;state.srcFile={bg:s.srcFile.bg,product:s.srcFile.product};state.customAssets=Object.assign({},s.assets);selectedProduct=s.item;state.usoEditing=null;
+ $('#backgroundFileName').textContent=s.bgName;var pf=$('#productFileName');if(pf)pf.textContent=s.prName;
+ syncCodeFields();syncRichFromText();
+ if(richOn()&&st.titleHtml){var rich=$('#productNameRich');rich.innerHTML=CartazTitleFormat.clean(String(st.titleHtml),{keepBr:true,always:true});applyRichInput(rich)}
+ syncOverlayControls();undoStack=[];updateUndoButton();drawAll()
+}
+function enterTranslate(){
+ ptSnap=langSnap();
+ if(!esSnap||esSnap.session!==editSession||!esSnap.touched)esSnap={s:ptSnap,session:editSession,touched:false};
+ applyLang(esSnap.s);esEnterSig=langSig(langSnap())
+}
+function leaveTranslate(){
+ var cur=langSnap();esSnap={s:cur,session:editSession,touched:!!(esSnap&&esSnap.touched)||langSig(cur)!==esEnterSig};
+ applyLang(ptSnap)
+}
 function setFlow(mode){
  currentFlowMode=mode;if(mode==='edit')editOpenedAt=Date.now();maxFlowOrder=Math.max(maxFlowOrder,FLOW_STEP_ORDER[mode]);
- $('#editoriaChooser').hidden=mode!=='editoria';$('#productChooser').hidden=mode!=='choose';$('#editorWorkspace').hidden=mode!=='edit'&&mode!=='banner';
+ $('#editoriaChooser').hidden=mode!=='editoria';$('#productChooser').hidden=mode!=='choose';$('#editorWorkspace').hidden=mode!=='edit'&&mode!=='banner'&&mode!=='translate';
+ // etapa "Tradução automática": a mesma arte da etapa de edição, só leitura, com a hashtag em espanhol (state.lang lido pelo renderer do preset)
+ var prevMode=currentFlowModePrev;currentFlowModePrev=mode;
+ state.lang=mode==='translate'?'es':null;document.body.classList.toggle('is-translate-step',mode==='translate');$$('.pe-tr').forEach(function(el){el.hidden=mode!=='translate'});
+ if(prevMode!=='translate'&&mode==='translate')enterTranslate();else if(prevMode==='translate'&&mode!=='translate')leaveTranslate();
  // etapa "Desdobrar para banner": mesma área de trabalho, com o painel e a prévia do banner no lugar dos do post
  document.body.classList.toggle('is-banner-step',mode==='banner');$$('.pe-bn').forEach(function(el){el.hidden=mode!=='banner'});
- if(mode==='edit'&&!$('[data-flow-step="banner"]').hidden)maxFlowOrder=Math.max(maxFlowOrder,FLOW_STEP_ORDER.banner);
+ if(mode==='edit'&&(!$('[data-flow-step="banner"]').hidden||!$('[data-flow-step="translate"]').hidden))maxFlowOrder=Math.max(maxFlowOrder,FLOW_STEP_ORDER.banner);
  if(mode==='banner')setTimeout(drawAll,0);
- $('#editorIntro').textContent=mode==='editoria'?'Primeiro, escolha qual editoria você vai postar.':mode==='choose'?'Agora, escolha qual produto será usado na arte.':mode==='banner'?'Banner da intranet montado com as mesmas fotos e textos da arte.':'Dados carregados. Revise a arte e ajuste o que precisar.';
+ $('#editorIntro').textContent=mode==='editoria'?'Primeiro, escolha qual editoria você vai postar.':mode==='choose'?'Agora, escolha qual produto será usado na arte.':mode==='banner'?'Banner da intranet montado com as mesmas fotos e textos da arte.':mode==='translate'?'Versão em espanhol: começa igual à em português, é um post separado e pode ter nome, fotos e composição próprios.':'Dados carregados. Revise a arte e ajuste o que precisar.';
  var cur=FLOW_STEP_ORDER[mode];
  $$('[data-flow-step]').forEach(function(el){var own=FLOW_STEP_ORDER[el.dataset.flowStep];el.classList.toggle('is-active',own===cur);el.classList.toggle('is-complete',own<cur);el.classList.toggle('is-clickable',own!==cur&&own<=maxFlowOrder)});
  if(mode==='choose'){renderCatalogResults();scheduleSiteSearch($('#catalogSearch').value);setTimeout(function(){$('#catalogSearch').focus()},20)}
@@ -193,9 +229,13 @@ function setFlow(mode){
 // nunca é salva automaticamente; indo pra frente (ou entre editoria/produto) não há nada a perder
 function goToStep(mode){
  if(mode===currentFlowMode)return;
+ // saindo do espanhol para qualquer etapa que não seja a edição: volta primeiro ao português, que é a arte salva e a que as demais etapas conhecem
+ if(currentFlowMode==='translate'&&mode!=='edit')setFlow('edit');
  // entre editar a arte (passo 2) e desdobrar para o banner (passo 3) a troca é livre: salva e segue, sem pedir confirmação
- if((currentFlowMode==='edit'&&mode==='banner')||(currentFlowMode==='banner'&&mode==='edit')){if(window.PostEditorSaved&&window.PostEditorSaved.available())window.PostEditorSaved.saveNow();setFlow(mode);return}
- if((currentFlowMode==='edit'||currentFlowMode==='banner')&&editDirty){pendingLeaveEditTarget=mode;showLeaveConfirm();return}
+ // (a arte salva é sempre a em português: salva antes de ir ao espanhol e depois de voltar dele)
+ var late=function(m){return m==='banner'||m==='translate'},fromTr=currentFlowMode==='translate',canSave=function(){return window.PostEditorSaved&&window.PostEditorSaved.available()};
+ if((currentFlowMode==='edit'&&late(mode))||(late(currentFlowMode)&&mode==='edit')){if(!fromTr&&canSave())window.PostEditorSaved.saveNow();setFlow(mode);if(fromTr&&canSave())window.PostEditorSaved.saveNow();return}
+ if((currentFlowMode==='edit'||late(currentFlowMode))&&editDirty){pendingLeaveEditTarget=mode;showLeaveConfirm();return}
  setFlow(mode)
 }
 // Editorias com artes salvas (post-editor-saved-arts.js) oferecem salvar antes de sair; as outras mantêm o aviso de perda de sempre
@@ -218,6 +258,13 @@ $('#confirmLeaveEditOk').addEventListener('click',function(){var target=pendingL
 $('#confirmLeaveEdit').addEventListener('click',function(ev){if(ev.target===ev.currentTarget)closeConfirmLeaveEdit()});
 document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&!$('#confirmLeaveEdit').hidden)closeConfirmLeaveEdit()});
 $$('[data-flow-step]').forEach(function(el){el.addEventListener('click',function(){if(el.classList.contains('is-clickable'))goToStep(el.dataset.flowStep)})});
+$('#trBack').addEventListener('click',function(){goToStep('edit')});
+// ponytail: o 1º clique só pede confirmação (4 s) porque a cópia descarta o que foi mudado no espanhol; sem desfazer
+var trCopyTimer=0,trCopyLabel=$('#trCopy').textContent;
+$('#trCopy').addEventListener('click',function(){
+ var btn=this;
+ if(!trCopyTimer){btn.textContent='Clique de novo para confirmar';trCopyTimer=setTimeout(function(){trCopyTimer=0;btn.textContent=trCopyLabel},4000);return}
+ clearTimeout(trCopyTimer);trCopyTimer=0;btn.textContent=trCopyLabel;esSnap={s:ptSnap,session:editSession,touched:false};applyLang(ptSnap);esEnterSig=langSig(langSnap());status('Versão em espanhol copiada de novo do português',false)});
 function syncEditoriaBadges(){
  [['selectedEditoriaDotChoose','selectedEditoriaNameChoose'],['selectedEditoriaDotEdit','selectedEditoriaNameEdit']].forEach(function(ids){
   var dot=$('#'+ids[0]),name=$('#'+ids[1]);if(!dot||!name)return;dot.style.background=state.editoriaColor||'#64748b';name.textContent=state.editoriaName||'Editoria'
@@ -252,6 +299,7 @@ function chooseEditoria(editoria,keepFlow){
  $('[data-flow-step="choose"]').hidden=!!preset.skipProductChooser;$('#flowSepChoose').hidden=!!preset.skipProductChooser;
  $('#flowStepEditNumber').textContent=preset.skipProductChooser?'2':'3';
  $('[data-flow-step="banner"]').hidden=!preset.banner;$('#flowSepBanner').hidden=!preset.banner;$('#flowStepBannerNumber').textContent=preset.skipProductChooser?'3':'4';
+ $('[data-flow-step="translate"]').hidden=!preset.translate;$('#flowSepTranslate').hidden=!preset.translate;$('#flowStepTranslateNumber').textContent=preset.skipProductChooser?'3':'4';
  $('#overlayScaleField').hidden=isCommemorative||preset.supportsOverlayScale===false;if(!fgEcommerce)$('#overlayFormatField').hidden=$('#overlayScaleField').hidden;
  $('#imageSectionHint').textContent=usesCutout?'Envie a cena e, se tiver, o produto recortado':'Envie somente a imagem de uso do produto';
  applyPresetUi(preset);syncEditoriaBadges();status('Carregando preset de '+editoria.name+'…',true);
@@ -933,7 +981,8 @@ function applyComposition(key){var preset=compositionPresets()[key];if(!preset)r
 function generateCompositions(){var box=$('#compositionOptions');box.hidden=false;$$('[data-composition]').forEach(function(button){button.classList.remove('is-active')});status('Três sugestões prontas para escolher',false)}
 function safePart(value){return((value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/gi,'_').replace(/^_|_$/g,'').toUpperCase()||'PRODUTO')}
 function exportBaseName(){var title=splitName($('#productName').value||'produto').title,codes=[normalizeCode($('#productCode').value)];if($('#codeCount').value==='2')codes.push(normalizeCode($('#productCode2').value));codes=codes.filter(Boolean);return safePart(title)+(codes.length?'_'+codes.join('_'):'')}
-function exportFileName(format){return exportBaseName()+'_'+format.toUpperCase()+'.jpg'}
+function langSuffix(){return state.lang?'_'+state.lang.toUpperCase():''}
+function exportFileName(format){return exportBaseName()+langSuffix()+'_'+format.toUpperCase()+'.jpg'}
 function canvasBlob(format){return new Promise(function(resolve,reject){canvases[format].toBlob(function(blob){if(blob)resolve(blob);else reject(new Error('Falha ao gerar '+format))},'image/jpeg',1)})}
 function triggerBlob(blob,name){var a=document.createElement('a'),u=URL.createObjectURL(blob);a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},1200)}
 function download(format){var name=exportFileName(format);status('Gerando '+name+'…',true);canvasBlob(format).then(function(blob){triggerBlob(blob,name);window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+exportBaseName()});editDirty=false;status(name+' baixado',false)}).catch(function(){status('Não foi possível gerar '+name,false)})}
@@ -942,7 +991,7 @@ function zipCrc(bytes){var crc=0xffffffff;for(var i=0;i<bytes.length;i++)crc=ZIP
 function zipHeader(size){var bytes=new Uint8Array(size),view=new DataView(bytes.buffer);return{bytes:bytes,u16:function(offset,value){view.setUint16(offset,value,true)},u32:function(offset,value){view.setUint32(offset,value>>>0,true)}}}
 function zipDate(){var d=new Date(),year=Math.max(1980,d.getFullYear());return{time:(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1),date:((year-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate()}}
 function makeZip(files){var encoder=new TextEncoder(),stamp=zipDate(),locals=[],centrals=[],offset=0;files.forEach(function(file){var name=encoder.encode(file.name),data=file.data,crc=zipCrc(data),local=zipHeader(30);local.u32(0,0x04034b50);local.u16(4,20);local.u16(6,0x800);local.u16(8,0);local.u16(10,stamp.time);local.u16(12,stamp.date);local.u32(14,crc);local.u32(18,data.length);local.u32(22,data.length);local.u16(26,name.length);local.u16(28,0);locals.push(local.bytes,name,data);var central=zipHeader(46);central.u32(0,0x02014b50);central.u16(4,20);central.u16(6,20);central.u16(8,0x800);central.u16(10,0);central.u16(12,stamp.time);central.u16(14,stamp.date);central.u32(16,crc);central.u32(20,data.length);central.u32(24,data.length);central.u16(28,name.length);central.u16(30,0);central.u16(32,0);central.u16(34,0);central.u16(36,0);central.u32(38,0);central.u32(42,offset);centrals.push(central.bytes,name);offset+=30+name.length+data.length});var centralSize=centrals.reduce(function(total,part){return total+part.length},0),end=zipHeader(22);end.u32(0,0x06054b50);end.u16(4,0);end.u16(6,0);end.u16(8,files.length);end.u16(10,files.length);end.u32(12,centralSize);end.u32(16,offset);end.u16(20,0);return new Blob(locals.concat(centrals,[end.bytes]),{type:'application/zip'})}
-function downloadZip(){var base=exportBaseName();status('Montando pacote ZIP…',true);Promise.all([canvasBlob('feed'),canvasBlob('story')]).then(function(blobs){return Promise.all(blobs.map(function(blob){return blob.arrayBuffer()}))}).then(function(buffers){var zip=makeZip([{name:base+'_FEED.jpg',data:new Uint8Array(buffers[0])},{name:base+'_STORY.jpg',data:new Uint8Array(buffers[1])}]);triggerBlob(zip,base+'_FEED_STORY.zip');window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+base});editDirty=false;status('Pacote ZIP baixado',false)}).catch(function(){status('Não foi possível gerar o pacote ZIP',false)})}
+function downloadZip(){var base=exportBaseName()+langSuffix();status('Montando pacote ZIP…',true);Promise.all([canvasBlob('feed'),canvasBlob('story')]).then(function(blobs){return Promise.all(blobs.map(function(blob){return blob.arrayBuffer()}))}).then(function(buffers){var zip=makeZip([{name:base+'_FEED.jpg',data:new Uint8Array(buffers[0])},{name:base+'_STORY.jpg',data:new Uint8Array(buffers[1])}]);triggerBlob(zip,base+'_FEED_STORY.zip');window.PortalUsage&&window.PortalUsage.track('post-editor','export',{dedupeKey:'post-editor:'+base});editDirty=false;status('Pacote ZIP baixado',false)}).catch(function(){status('Não foi possível gerar o pacote ZIP',false)})}
 function loadBackgroundFile(file,name){name.textContent=file.name;status('Analisando a foto…',true);trackSrc('bg',file);fileImage(file).then(function(im){state.background=im;state.format.feed={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};state.format.story={bgDx:0,bgDy:0,overlayDx:0,overlayDy:0};analyze()}).catch(function(){status('Não foi possível abrir a foto',false)})}
 setupDrop('#backgroundDrop','#backgroundFile','#backgroundFileName',loadBackgroundFile);
 // soltar a foto de fundo direto na prévia, enquanto ainda não há nenhuma (depois disso, soltar não faz nada: troca-se pelo campo de upload)
@@ -1044,12 +1093,12 @@ function savedSerialize(){
 }
 function savedRestore(d,getBlob){
  var r=d.recipe||{};if(r.v!==1)return Promise.resolve();
- restoringSaved=true;
+ esSnap=null;restoringSaved=true;
  function done(){restoringSaved=false}
  var item=null;
  return catalogReady.then(function(){
   if(r.item&&typeof r.item==='object'){var c=catalogCodes(r.item)[0],code=c&&c.code;item=(code&&catalog.filter(function(i){var k=catalogCodes(i)[0];return k&&k.code===code})[0])||r.item}
-  if(currentFlowMode==='edit'||currentFlowMode==='banner')return;
+  if(currentFlowMode==='edit'||currentFlowMode==='banner'||currentFlowMode==='translate')return;
   return item?chooseCatalogProduct(item):chooseManualProduct()
  }).then(function(){
   var f=r.fields||{};

@@ -37,3 +37,22 @@ export const ordenar = lista => [...lista].sort((a, b) => a.loja.localeCompare(b
 // Planilha para exportar (CSV com ";" e BOM, que o Excel abre direto). Reimportável: lerColado lê as duas primeiras colunas e pula o cabeçalho.
 const celula = t => { const x = String(t).replace(/[;"\s]+/g, ' ').trim(); return /^[=+\-@]/.test(x) ? "'" + x : x; }; // "'" na frente: o Excel não executa texto como fórmula
 export const paraCsv = lista => '\uFEFF' + ['Loja;Vendedor;Apelidos;Ativo', ...lista.map(v => [v.loja, v.nome, v.apelidos.join(', '), v.ativo ? 'Sim' : 'Não'].map(celula).join(';'))].join('\r\n') + '\r\n';
+
+// Menções: quantas avaliações citam cada vendedor de UMA loja. "recs" são as avaliações dessa loja (já filtradas); devolve Map id -> avaliações que citam.
+// Vale o primeiro nome (exceto quando dois ativos da loja o dividem: aí só o apelido atribui) e cada apelido, como palavra inteira, sem acento nem caixa.
+export const termosDe = (v, ambiguos) => [ambiguos.has(v.id) ? '' : primeiroNome(v.nome), ...v.apelidos.map(chave)].map(t => t.replace(/[^a-z0-9]+/g, ' ').trim()).filter(t => t.length > 1);
+
+// Onde os termos aparecem no texto, como [[início, fim], ...] sobre o texto ORIGINAL (para grifar). Cada unidade do texto vira exatamente um caractere do texto
+// normalizado (sem acento, minúsculo, o resto vira espaço), então os índices servem nos dois. Uma menção é uma palavra inteira (ou a frase inteira, num apelido composto).
+export function trechos(texto, termos) {
+  const n = ' ' + String(texto || '').split('').map(c => { const x = sem(c); return x.length === 1 && /[a-z0-9]/.test(x) ? x : ' '; }).join('') + ' '; // 1 espaço à frente: o índice do " termo " é o do termo no texto
+  const achados = [];
+  termos.forEach(t => { for (let i = n.indexOf(` ${t} `); i >= 0; i = n.indexOf(` ${t} `, i + 1)) achados.push([i, i + t.length]); });
+  achados.sort((a, b) => a[0] - b[0]);
+  return achados.reduce((r, a) => { const u = r[r.length - 1]; if (u && a[0] <= u[1]) u[1] = Math.max(u[1], a[1]); else r.push([...a]); return r; }, []);
+}
+
+export function mencoes(vendedores, recs) {
+  const ambiguos = nomesAmbiguos(vendedores);
+  return new Map(vendedores.map(v => { const termos = termosDe(v, ambiguos); return [v.id, recs.filter(r => trechos(r.t, termos).length)]; }));
+}
