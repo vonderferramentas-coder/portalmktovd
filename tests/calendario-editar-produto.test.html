@@ -1,0 +1,89 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Calendário - lápis de edição do produto</title>
+<link rel="stylesheet" href="../styles.css">
+<body data-result="running" style="padding:24px;max-width:560px">
+<pre id="result">Executando…</pre>
+<div id="selectedProductsList" class="selected-products"></div>
+<script>
+// Extrai do app.js o chip de produto e o editor do lápis (Nome, Código OVD, Código FG) e roda no DOM real.
+// Precisa de --allow-file-access-from-files (como os outros testes que leem arquivos do projeto).
+(() => {
+  try {
+    const request = new XMLHttpRequest();
+    request.open('GET', '../app.js', false);
+    request.send();
+    const source = request.responseText;
+    const cut = (from, to) => { const a = source.indexOf(from), b = source.indexOf(to, a); if (a < 0 || b < 0) throw new Error('marcador não achado: ' + from); return source.slice(a, b); };
+    const block = cut('    // Código OVD (00.00.000.000) só existe', '    // lê os produtos de uma postagem') + cut('    function renderSelectedProducts', '    // remove o produto pelo índice');
+    const escapeHtml = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const build = new Function('escapeHtml', `
+      const $ = id => document.getElementById(id);
+      const normalizeCode = s => String(s||'').replace(/[.\\s-]/g,'').toLowerCase();
+      const masterCatalogByCode = new Map();
+      const APP_SETTINGS = { catalog: [] };
+      const productDetailsByCode = () => null;
+      const UI_ICONS = { x: () => 'x', edit: () => '✎' };
+      const productImgAttrs = () => '', loadProductThumbs = () => {}, loadSiteDetails = () => {}, refreshModalDynamic = () => {}, openRemoveProductConfirm = () => {}, removeSelectedProduct = () => {};
+      let lastInsertedPautaBlock = null, PORTAL_API_BASE = '';
+      let selectedProducts = [];
+      ${block}
+      return { set: v => { selectedProducts = v; }, get: () => selectedProducts, renderSelectedProducts };
+    `);
+    const m = build(escapeHtml);
+    const assert = (condition, message) => { if (!condition) throw new Error(message); };
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const list = document.getElementById('selectedProductsList');
+    const edit = i => list.querySelectorAll('.pc-edit')[i].click();
+    const field = k => list.querySelector(`[data-k="${k}"]`);
+    const act = a => list.querySelector(`[data-act="${a}"]`).click();
+    m.set([{ code: '70.51.061.035', name: 'Botina nobuck 35 VONDER', codeFG: '1190201' }, { code: '', name: '1205227' }, { code: '', name: '70.60.000.400' }, { code: 'DW44540', name: 'Disco', codeFG: '1086715' }]);
+    m.renderSelectedProducts();
+    assert(list.querySelectorAll('.pc-edit').length === 4, 'todo chip tem o lápis');
+
+    // código colado sem nome: o número vai para o campo certo e o nome fica vazio
+    edit(1);
+    assert(field('name').value === '' && field('fg').value === '1205227' && field('ovd').value === '', 'código sem formato OVD cai no FG');
+    act('save');
+    assert(list.querySelector('.pc-edit-error').textContent === 'Informe o nome do produto' && !list.querySelector('.pc-edit-error').hidden, 'nome é obrigatório');
+    field('name').value = 'Furadeira de impacto 650 W'; field('ovd').value = '7060001'; act('save');
+    assert(list.querySelector('.pc-edit-error').textContent.includes('00.00.000.000'), 'OVD fora do formato é recusado');
+    field('ovd').value = '7060000650'; field('fg').value = '12ab'; act('save');
+    assert(list.querySelector('.pc-edit-error').textContent.includes('só números'), 'FG com letras é recusado');
+    field('fg').value = '1205227'; act('save');
+    assert(same(m.get()[1], { code: '70.60.000.650', name: 'Furadeira de impacto 650 W', codeFG: '1205227' }), '10 dígitos viram 00.00.000.000; salva nome, OVD e FG');
+    assert(list.querySelectorAll('.pc-name')[1].textContent === 'Furadeira de impacto 650 W' && list.querySelectorAll('.pc-code')[1].textContent === 'Códigos - OVD: 70.60.000.650 | FG: 1205227', 'o chip mostra o que foi salvo');
+
+    // código colado que tem formato OVD vai para o campo OVD
+    edit(2);
+    assert(field('ovd').value === '70.60.000.400' && field('fg').value === '', 'código com formato OVD cai no OVD');
+    act('cancel');
+    assert(same(m.get()[2], { code: '', name: '70.60.000.400' }), 'cancelar não altera nada');
+
+    // outra marca: apagar o FG remove o campo e a referência do fabricante fica
+    edit(3); field('fg').value = ''; act('save');
+    assert(same(m.get()[3], { code: 'DW44540', name: 'Disco' }), 'outra marca mantém a referência e perde só o FG apagado');
+    // marca própria: apagar o OVD zera o código
+    edit(0); field('ovd').value = ''; field('name').value = 'Botina 36'; act('save');
+    assert(same(m.get()[0], { code: '', name: 'Botina 36', codeFG: '1190201' }), 'marca própria sem OVD digitado perde o código e guarda o FG');
+
+    // Enter salva e Esc cancela
+    edit(1); field('name').value = 'Outro nome'; field('name').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    assert(m.get()[1].name === 'Outro nome', 'Enter salva');
+    edit(1); field('name').value = 'Descartado'; field('name').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert(m.get()[1].name === 'Outro nome', 'Esc cancela');
+
+    // código colado com traço vai limpo para o FG; um editor por vez; FG vindo só do catálogo não é congelado
+    m.set([{ code: '', name: '1205-227' }, { code: 'DW44540', name: 'Disco' }]); m.renderSelectedProducts();
+    edit(0); assert(field('fg').value === '1205227' && field('name').value === '', 'traços saem do código colado');
+    edit(0); assert(list.querySelectorAll('.is-editing').length === 1, 'só um editor aberto por vez');
+    act('cancel');
+    m.set([{ code: '70.60.000.400', name: 'Abafador' }]); m.renderSelectedProducts();
+    edit(0); field('fg').value = '1187898'; act('save');
+    assert(same(m.get()[0], { code: '70.60.000.400', name: 'Abafador', codeFG: '1187898' }), 'FG digitado pelo usuário é guardado');
+
+    // deixa um editor aberto na tela para conferir o visual (abrir o arquivo no navegador)
+    m.set([{ code: '70.51.061.035', name: 'Botina couro nobuck para eletricista com cadarço 35 VONDER', codeFG: '1190201' }, { code: '', name: '1205227' }, { code: '', name: '1081384' }]);
+    m.renderSelectedProducts(); edit(1); act('save');
+    document.body.dataset.result = 'pass'; document.getElementById('result').textContent = 'OK - lápis de edição do produto validado.';
+  } catch (error) { document.body.dataset.result = 'fail'; document.getElementById('result').textContent = 'FAIL: ' + error.message; }
+})();
+</script></body></html>
