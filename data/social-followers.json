@@ -34998,6 +34998,14 @@
         "Instagram": 699225,
         "Facebook": 46674,
         "YouTube": 41600
+      },
+      "insights": {
+        "Instagram": {
+          "follows": 2602,
+          "unfollows": 319,
+          "net": 2283,
+          "reach": 217500
+        }
       }
     },
     {
@@ -35016,7 +35024,7 @@
       }
     }
   ],
-  "updatedAt": "2026-11-10T04:31:17Z",
+  "updatedAt": "2026-11-10T11:41:33Z",
   "platforms": {
     "Instagram": {
       "accountId": "17841403154695997",
