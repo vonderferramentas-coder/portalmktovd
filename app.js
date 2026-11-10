@@ -3616,7 +3616,7 @@
     window.addEventListener('scroll', closeEditoriaMenu, true);
 
     function renderEditoriasUI(){
-      const c = $('editoriasContainer'); if(c){ c.innerHTML=''; APP_SETTINGS.editorias.forEach(e=>{ const lbl=document.createElement('label'); lbl.className='chip'; lbl.innerHTML = `<input type="checkbox" class="mEditoria" value="${escapeHtml(e.name)}" /> <span class="dot" style="background:${editoriaColor(e.name)}"></span>${escapeHtml(e.name)}`; c.appendChild(lbl); lbl.querySelector('input').addEventListener('change', refreshModalDynamic); }); }
+      const c = $('editoriasContainer'); if(c){ c.innerHTML=''; APP_SETTINGS.editorias.forEach(e=>{ const lbl=document.createElement('label'); lbl.className='chip'; lbl.innerHTML = `<input type="checkbox" class="mEditoria" value="${escapeHtml(e.name)}" /> <span class="dot" style="background:${editoriaColor(e.name)}"></span>${escapeHtml(e.name)}`; c.appendChild(lbl); lbl.querySelector('input').addEventListener('change', ev=>{ if(ev.target.checked) applyEditoriaDefaultsToModal(e.name); refreshModalDynamic(); }); }); }
       const fc = $('filterEditoriasContainer'); if(fc){ fc.innerHTML=''; APP_SETTINGS.editorias.forEach(e=>{ const lbl=document.createElement('label'); lbl.className='chip'; lbl.innerHTML = `<input type="checkbox" class="fEditoria" value="${escapeHtml(e.name)}"/> <span class="dot" style="background:${editoriaColor(e.name)}"></span>${escapeHtml(e.name)}`; fc.appendChild(lbl); }); }
 
       // dias fixos + redes/tipos/formatos do formulário de nova editoria - monta o editor
@@ -4002,6 +4002,41 @@
       const ft = $('filterTypesContainer'); if(ft){ ft.innerHTML=''; ['Static','Video'].forEach(ti=>{ const lbl = document.createElement('label'); lbl.className='chip'; lbl.innerHTML = `<input type="checkbox" class="fType" value="${ti}"/>${TYPE_ICONS[ti]} ${ti==='Static'?'Estático':'Vídeo'}`; ft.appendChild(lbl); }); }
     }
 
+    // marca, no grupo de formatos DA REDE, os formatos dela. Redes com formatos de mesmo nome (Feed e Stories no
+    // Instagram e no Facebook) têm um checkbox cada: marcar pelo nome só achava o da primeira rede e deixava o das
+    // outras desmarcado ao reabrir o card. Os dados salvos sempre estiveram certos; o briefing continua sem duplicar.
+    function checkPlacesForNet(netName, places){
+      const group = Array.from(document.querySelectorAll('#mPlacesContainer .format-net-group')).find(g=> g.dataset.net===netName);
+      if(!group) return;
+      group.querySelectorAll('input[name="mPlace"]').forEach(el=>{ if((places||[]).includes(el.value)) el.checked = true; });
+    }
+    // Postagem nova + editoria escolhida: traz o que a editoria já define para o mês da data (redes, tipo e formatos, vindos do
+    // agendamento em "Aplicar editoria ao mês"). Só soma ao que já estava marcado: a pessoa continua livre para mexer em tudo.
+    // ponytail: só a config do mês exato da data (vale a data do momento em que a editoria é marcada: mudar a data depois não refaz); mês sem agendamento não preenche nada; com tipos diferentes por rede vale o da primeira.
+    function applyEditoriaDefaultsToModal(editoriaName){
+      if(isEditing) return;
+      const editoria = APP_SETTINGS.editorias.find(x=> x.name===editoriaName);
+      const date = $('mDate').value, [y, m] = date ? date.split('-').map(Number) : [viewDate.getFullYear(), viewDate.getMonth()+1];
+      const schedule = editoria && editoria.scheduleByMonth && editoria.scheduleByMonth[monthKeyFromDate(new Date(y, m-1, 1))];
+      const channels = ((schedule && schedule.channels) || []).filter(c=> APP_SETTINGS.networks.some(n=> n.name===c.channel));
+      if(!channels.length) return;
+      const nets = Array.from(document.querySelectorAll('.mNet')), alreadyOn = nets.filter(n=> n.checked).map(n=> n.value);
+      channels.forEach(c=>{ const net = nets.find(n=> n.value===c.channel); if(net) net.checked = true; });
+      renderModalFormatsUI();
+      // renderModalFormatsUI guarda os formatos marcados pelo NOME, então a rede recém-marcada herdaria os de mesmo nome de outra rede:
+      // nas redes que entraram agora vale só o que a editoria define
+      channels.filter(c=> !alreadyOn.includes(c.channel)).forEach(c=>{
+        const group = Array.from(document.querySelectorAll('#mPlacesContainer .format-net-group')).find(g=> g.dataset.net===c.channel);
+        if(group) group.querySelectorAll('input[name="mPlace"]').forEach(el=>{ el.checked = false; });
+      });
+      channels.forEach(c=> checkPlacesForNet(c.channel, c.places));
+      // o tipo é uma escolha única: a editoria só o define enquanto ele está no padrão (Estático), para não desfazer a escolha da pessoa
+      const type = (channels[0].types||[])[0], current = document.querySelector('input[name="mType"]:checked');
+      const typeRadio = type && Array.from(document.querySelectorAll('input[name="mType"]')).find(r=> r.value===type);
+      if(typeRadio && (!current || current.value==='Static')) typeRadio.checked = true;
+      refreshModalDynamic();
+    }
+
     // preenche o Formato do modal de criar/editar postagem, com base na(s) rede(s) marcada(s) -
     // separado num grupo por rede social (cada rede tem seu próprio conjunto - ex: Reels só
     // aparece se Instagram estiver marcado - e a mesma rede pode ter um formato de mesmo nome
@@ -4018,7 +4053,7 @@
         container.innerHTML = `<span style="font-size:12px;color:var(--text-faint)">Selecione uma rede para ver os formatos disponíveis</span>`;
       } else {
         orderedNets.forEach(net=>{
-          const group = document.createElement('div'); group.className = 'format-net-group';
+          const group = document.createElement('div'); group.className = 'format-net-group'; group.dataset.net = net.name;
           group.innerHTML = `<div class="format-net-group-label">${networkIcon(net.name)}<span>${escapeHtml(net.name)}</span></div>`;
           const chips = document.createElement('div'); chips.className = 'format-net-group-chips';
           (net.formats||[]).forEach(f=>{
@@ -4199,8 +4234,7 @@
       document.querySelectorAll('.mNet').forEach(n=>{ n.checked = entryChannels.includes(n.value); });
       renderModalFormatsUI();
       document.querySelectorAll('input[name="mPlace"]').forEach(el=>{ el.checked = false; });
-      const unionPlaces = [...new Set(entries.flatMap(c=>c.places||[]))];
-      unionPlaces.forEach(pp=>{ const el = document.querySelector(`input[name="mPlace"][value="${pp}"]`); if(el) el.checked = true; });
+      entries.forEach(c=> checkPlacesForNet(c.channel, c.places));
       const unionTypes = [...new Set(entries.flatMap(c=>c.types||[]))];
       const typeVal = unionTypes[0] || post.type || 'Static';
       const typeRadio = document.querySelector(`input[name="mType"][value="${typeVal}"]`); if(typeRadio) typeRadio.checked = true;
