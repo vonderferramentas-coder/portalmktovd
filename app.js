@@ -983,6 +983,7 @@
     }
 
     function refreshModalDynamic(){
+      updateGuidedHint();
       updateCommemorativePostTypeUI();
       renderTitleSuggestion();
       renderBriefingPreview();
@@ -2515,6 +2516,7 @@
       if($('modalMenuBtn')) $('modalMenuBtn').style.display = 'none';
       renderIntelValidation(null);
       updateCommemorativePostTypeUI();
+      updateGuidedHint(); // o formulário acabou de ser limpo: o aviso "Falta:" precisa refletir o estado novo
       $('mTitle').focus();
     }
 
@@ -5321,6 +5323,23 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
     // FLUXO GUIADO DO MODAL DE POSTAGEM
     // O formulário e o preview originais são reaproveitados; o preview permanece
     // visível na lateral e continua sendo atualizado em tempo real.
+    // campos do Planejamento que faltam no formulário aberto (mesma regra do bloqueio do "Próximo" e do aviso no rodapé)
+    function currentPlanningMissing(){
+      const nets = Array.from(document.querySelectorAll('.mNet:checked')).map(n=>n.value);
+      const places = Array.from(document.querySelectorAll('input[name="mPlace"]:checked')).map(n=>n.value);
+      return missingPlanningFields({
+        title: $('mTitle').value,
+        editoria: Array.from(document.querySelectorAll('.mEditoria:checked')).map(e=>e.value),
+        channels: nets.map(net=>({ channel: net, places }))
+      });
+    }
+    // "Falta: Título, Redes" no rodapé enquanto o Planejamento está incompleto, para ninguém descobrir só ao clicar em "Próximo"
+    function updateGuidedHint(){
+      const hint = $('guidedPostHint'); if(!hint) return;
+      const missing = guidedPostStep===1 ? currentPlanningMissing() : [];
+      hint.textContent = missing.length ? 'Falta: ' + joinPt(missing) : '';
+      hint.hidden = !missing.length;
+    }
     function setGuidedPostStep(step){
 
       const modal = document.querySelector('#modalBackdrop .modal--guided-post');
@@ -5328,13 +5347,7 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
       step = Math.max(1, Math.min(3, Number(step)||1));
       // sair do Planejamento (pelo "Próximo" ou pelas abas 2 e 3) exige a etapa 1 completa
       if(step>1){
-        const nets = Array.from(document.querySelectorAll('.mNet:checked')).map(n=>n.value);
-        const places = Array.from(document.querySelectorAll('input[name="mPlace"]:checked')).map(n=>n.value);
-        const missing = missingPlanningFields({
-          title: $('mTitle').value,
-          editoria: Array.from(document.querySelectorAll('.mEditoria:checked')).map(e=>e.value),
-          channels: nets.map(net=>({ channel: net, places }))
-        });
+        const missing = currentPlanningMissing();
         if(missing.length){
           if(guidedPostStep!==1) setGuidedPostStep(1);
           notify('Preencha o Planejamento antes de avançar: ' + joinPt(missing) + '.');
@@ -5358,6 +5371,7 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
       if(save) save.hidden = guidedPostStep !== 3;
       const body = modal.querySelector('.modal-body');
       if(body) body.scrollTop = 0;
+      updateGuidedHint();
     }
 
     function setupGuidedPostFlow(){
@@ -5393,12 +5407,16 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
       back.type = 'button'; back.id = 'guidedPostBack'; back.className = 'btn ghost'; back.textContent = 'Voltar';
       const next = document.createElement('button');
       next.type = 'button'; next.id = 'guidedPostNext'; next.className = 'btn'; next.textContent = 'Próximo';
+      const hint = document.createElement('span');
+      hint.id = 'guidedPostHint'; hint.className = 'guided-post-hint'; hint.setAttribute('role', 'status'); hint.hidden = true;
       footer.insertBefore(back, save);
+      footer.insertBefore(hint, back);
       footer.insertBefore(next, save);
 
       nav.querySelectorAll('[data-guided-step-target]').forEach(btn=> btn.addEventListener('click', ()=> setGuidedPostStep(btn.dataset.guidedStepTarget)));
       back.addEventListener('click', ()=> setGuidedPostStep(guidedPostStep-1));
       next.addEventListener('click', ()=> setGuidedPostStep(guidedPostStep+1));
+      body.addEventListener('input', updateGuidedHint); body.addEventListener('change', updateGuidedHint);
       setGuidedPostStep(1);
     }
 

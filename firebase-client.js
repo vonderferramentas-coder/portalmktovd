@@ -5,8 +5,8 @@ import {
   sendPasswordResetEmail, signOut
 } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js';
 import {
-  getFirestore, doc, getDoc, setDoc, Bytes, addDoc, collection, serverTimestamp, updateDoc,
-  runTransaction, onSnapshot, writeBatch, query, where, deleteDoc, getCountFromServer, getDocs, limit
+  getFirestore, doc, getDoc as rawGetDoc, setDoc, Bytes, addDoc, collection, serverTimestamp, updateDoc,
+  runTransaction as rawRunTransaction, onSnapshot as rawOnSnapshot, writeBatch, query, where, deleteDoc, getCountFromServer as rawGetCount, getDocs as rawGetDocs, limit
 } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
 
 const config = window.PORTAL_FIREBASE_CONFIG;
@@ -17,6 +17,62 @@ const auth = getAuth(app);
 await setPersistence(auth, browserSessionPersistence);
 const db = getFirestore(app);
 const policy = window.PORTAL_AUTH_POLICY || { allowedEmailDomains: [], sessionHours: 8 };
+
+// ---- Contador de leituras do Firestore (tela "Métricas de performance") ----
+// Conta as leituras feitas por este arquivo e pelos que importam getDoc/getDocs daqui (admin-users.js, usage-dashboard.js): getDoc, getDocs, transaction.get, onSnapshot (só o que veio do servidor) e a contagem
+// de QR (1 leitura a cada 1.000 itens). O total fica só no localStorage DESTE navegador, por página e por coleção, nos últimos
+// 14 dias: nada vai para o Firestore, então o contador não gera leitura nem gravação. Falha de armazenamento não afeta o portal.
+// ponytail: mede só o navegador em que a pessoa abriu as telas (para somar todos os usuários seria preciso gravar no servidor); código novo que importe leitura direto do SDK não é contado; duas abas gravando juntas podem perder uma contagem; onSnapshot só aceita (consulta, onNext, onError).
+const READS_KEY = 'portal_fs_reads_v1', READS_KEEP_DAYS = 14;
+const readsPage = location.pathname.split('/').pop() || 'index.html';
+let readsPending = {}, readsTimer = 0;
+const readsToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+function readsLabel(ref) {
+  const id = String((ref && ref.id) || ''), collectionId = (ref && ref.parent && ref.parent.id) || 'outra';
+  return collectionId === 'portalStore' ? 'portalStore: ' + id.split('-').slice(0, 2).join('-') : collectionId; // portalStore guarda vários tipos (calendar-post, art-draft...)
+}
+function flushReads() {
+  clearTimeout(readsTimer); readsTimer = 0;
+  const pending = readsPending; readsPending = {};
+  if (!Object.keys(pending).length) return;
+  try {
+    const stored = JSON.parse(localStorage.getItem(READS_KEY) || 'null') || { since: readsToday(), days: {} };
+    const today = stored.days[readsToday()] = stored.days[readsToday()] || {};
+    for (const key in pending) today[key] = (today[key] || 0) + pending[key];
+    const limitDay = new Date(Date.now() - READS_KEEP_DAYS * 86400000);
+    for (const day in stored.days) if (new Date(day + 'T00:00:00') < limitDay) delete stored.days[day];
+    localStorage.setItem(READS_KEY, JSON.stringify(stored));
+  } catch (_) { /* armazenamento bloqueado: segue sem contar */ }
+}
+function countReads(label, amount) {
+  const key = readsPage + '|' + label;
+  readsPending[key] = (readsPending[key] || 0) + amount;
+  if (!readsTimer) readsTimer = setTimeout(flushReads, 500);
+}
+function countDocs(docs) {
+  if (!docs.length) return countReads('consulta sem resultado', 1); // consulta vazia também cobra 1 leitura
+  docs.forEach(entry => countReads(readsLabel(entry.ref), 1));
+}
+addEventListener('pagehide', flushReads);
+async function getDoc(reference) { const snapshot = await rawGetDoc(reference); countReads(readsLabel(reference), 1); return snapshot; }
+async function getDocs(source) { const snapshot = await rawGetDocs(source); countDocs(snapshot.docs); return snapshot; }
+async function getCountFromServer(source) { const snapshot = await rawGetCount(source); countReads('contagem de acessos de QR', Math.max(1, Math.ceil(snapshot.data().count / 1000))); return snapshot; }
+function runTransaction(database, update) {
+  return rawRunTransaction(database, transaction => {
+    const rawGet = transaction.get;
+    transaction.get = async reference => { const snapshot = await rawGet.call(transaction, reference); countReads(readsLabel(reference), 1); return snapshot; };
+    return update(transaction);
+  });
+}
+function onSnapshot(source, onNext, onError) {
+  return rawOnSnapshot(source, snapshot => {
+    if (!snapshot.metadata.fromCache) countDocs(snapshot.docChanges().filter(change => change.type !== 'removed' && !change.doc.metadata.hasPendingWrites).map(change => change.doc));
+    onNext(snapshot);
+  }, onError);
+}
+export function readReadStats() { flushReads(); try { return JSON.parse(localStorage.getItem(READS_KEY) || 'null'); } catch (_) { return null; } }
+export function clearReadStats() { readsPending = {}; try { localStorage.removeItem(READS_KEY); } catch (_) {} }
+export { getDoc, getDocs };
 
 function portalError(code, message) {
   const error = new Error(message); error.code = code; return error;

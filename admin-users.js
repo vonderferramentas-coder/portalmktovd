@@ -1,7 +1,7 @@
-import { app, auth, db, audit, readPortalStore, writePortalStore } from './firebase-client.js';
+import { app, auth, db, audit, readPortalStore, writePortalStore, getDocs } from './firebase-client.js';
 import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js';
-import { collection, getDocs, doc, setDoc, updateDoc, serverTimestamp, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
 
 const $ = id => document.getElementById(id);
 const $$ = selector => Array.prototype.slice.call(document.querySelectorAll(selector));

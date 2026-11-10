@@ -1,0 +1,57 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Editor de Posts - Destaques da FG</title>
+<link rel="stylesheet" href="../post-editor.css">
+<body data-result="running" style="margin:0;background:#888;font-family:sans-serif">
+<pre id="result" style="margin:8px">Executando…</pre>
+<input id="productCode" value="1130820"><input id="productCode2" value=""><select id="codeCount"><option value="1">1</option><option value="2">2</option></select>
+<div style="display:flex;gap:8px;align-items:flex-start;padding:8px"><canvas id="feed" width="1080" height="1350" style="width:432px"></canvas><canvas id="story" width="1080" height="1920" style="width:432px"></canvas></div>
+<script>
+// Roda o renderizador do preset "Destaques" (FG) com as fontes e imagens reais do projeto e confere o que ele desenha.
+// Precisa de --allow-file-access-from-files (como os outros testes que leem arquivos do projeto).
+(async () => {
+  try {
+    const read = path => { const r = new XMLHttpRequest(); r.open('GET', path, false); r.send(); return r.responseText; };
+    const app = read('../post-editor.js');
+    const a = app.indexOf('function splitName'), b = app.indexOf('function font(size)', a);
+    if (a < 0 || b < 0) throw new Error('splitName não achado');
+    (0, eval)(app.slice(a, b)); // splitName global, como na página do editor
+    (0, eval)(read('../post-editor-fg-destaques.js'));
+    const preset = window.POST_EDITOR_CUSTOM_PRESETS['__ferramentas-gerais']['Destaques'];
+    const assert = (condition, message) => { if (!condition) throw new Error(message); };
+    assert(preset && typeof preset.renderer === 'function' && preset.supportsCodes === true, 'preset Destaques registrado com código');
+    await Promise.all(['700 italic 55px Swiss721Editor', '400 italic 42px Swiss721Editor'].map(f => document.fonts.load(f)));
+    assert(document.fonts.check('700 italic 55px Swiss721Editor'), 'fonte Swiss721 carregada');
+    const load = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('imagem não carregou: ' + src)); i.src = '../' + src; });
+    const assets = {}; for (const [k, src] of Object.entries(preset.assetSources)) assets[k] = await load(src);
+    assets.brandLogo = await load('post-editor-assets/fg-lancamentos/brand-vonder.png');
+    const photo = document.createElement('canvas'); photo.width = 1080; photo.height = 1350;
+    const pg = photo.getContext('2d'), grad = pg.createLinearGradient(0, 0, 0, 1350); grad.addColorStop(0, '#556'); grad.addColorStop(1, '#bbb'); pg.fillStyle = grad; pg.fillRect(0, 0, 1080, 1350);
+    const helpers = {
+      drawCover: (ctx, img, t, format, visibleH) => { const h = visibleH > 0 ? visibleH : t.h, s = Math.max(t.w / img.width, h / img.height); ctx.drawImage(img, (t.w - img.width * s) / 2, (h - img.height * s) / 2, img.width * s, img.height * s); },
+      drawPlaceholder: ctx => {}
+    };
+    const draw = (id, format, name, color) => {
+      const c = document.getElementById(id), ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height);
+      const state = { customAssets: assets, background: photo, brandBadgeColor: color || '#f6be00' };
+      preset.renderer({ format, canvas: c, ctx, t: { w: c.width, h: c.height }, state, item: null, productName: name, helpers });
+      return ctx;
+    };
+    const px = (ctx, x, y) => Array.from(ctx.getImageData(x, y, 1, 1).data);
+    const near = (p, rgb) => rgb.every((v, i) => Math.abs(p[i] - v) <= 3);
+
+    const feed = draw('feed', 'feed', 'Bolsa em lona\nPara ferramentas BL 120');
+    assert(near(px(feed, 600, 1300), [0, 91, 68]), 'rodapé verde #005B44 no Feed');
+    assert(near(px(feed, 100, 100), [246, 190, 0]) || px(feed, 60, 20)[0] > 200, 'quadrado da marca amarelo no Feed');
+    assert(!near(px(feed, 100, 1250), [0, 91, 68]), 'o selo cobre o rodapé em x=100');
+    const story = draw('story', 'story', 'Amarradora de vergalhão sem carregador e bateria DTR180ZJ', '#e2001a');
+    assert(near(px(story, 600, 1800), [0, 91, 68]), 'rodapé verde no Story');
+    assert(px(story, 60, 100)[0] > 200 && px(story, 60, 100)[1] < 40, 'a cor da marca vale no Story (vermelho Makita)');
+    // nomes extremos não quebram o desenho
+    draw('feed', 'feed', 'A');
+    draw('feed', 'feed', 'Conjunto de chaves de impacto soquete sextavado com encaixe de 1/2 polegada e maleta rígida de transporte 120 peças CR-V');
+    document.getElementById('productCode').value = ''; draw('feed', 'feed', 'Bolsa em lona\nPara ferramentas BL 120');
+    document.getElementById('productCode').value = '1130820';
+    draw('feed', 'feed', 'Bolsa em lona\nPara ferramentas BL 120'); draw('story', 'story', 'Amarradora de vergalhão sem carregador e bateria DTR180ZJ', '#e2001a');
+    document.body.dataset.result = 'pass'; document.getElementById('result').textContent = 'OK - Destaques da FG validado.';
+  } catch (error) { document.body.dataset.result = 'fail'; document.getElementById('result').textContent = 'FAIL: ' + error.message; }
+})();
+</script></body></html>
