@@ -1,9 +1,9 @@
 # Limpeza diária das artes salvas do Editor de Posts (Firestore de produção). Usado por limpar-artes-salvas.yml (disparado pelo Worker do
 # Cloudflare, depois do backup do dia). Faz três coisas, nesta ordem:
 #   1. apaga de vez as artes que estão na lixeira há mais de TRASH_DAYS dias e as que passaram de ART_RETENTION_DAYS sem edição nem
-#      publicação (a lista do editor não cresce para sempre);
+#      data do card chegar (a lista do editor não cresce para sempre);
 #   2. apaga as fotos (coleção artPhotos) que nenhuma arte "viva" usa mais - arte viva = fora da lixeira e dentro do prazo de retenção,
-#      que conta a partir da última edição da arte ou, se o card do calendário foi publicado, da data da publicação (vale o que for mais
+#      que conta a partir da última edição da arte ou da data do card do calendário ligado a ela, se já tiver chegado (vale o que for mais
 #      recente). A receita da arte fica: depois do prazo ela reabre com "Reenviar a foto", sem perder textos e enquadramento;
 #      Na mesma ocasião a miniatura (campo thumb, pode mostrar pessoas) das artes vencidas é esvaziada;
 #   3. grava o total de bytes de fotos em portalStore/art-stats-v1, que o editor lê para parar de subir fotos novas se o teto passar.
@@ -18,7 +18,6 @@ PHOTO_RETENTION_DAYS = 30  # ponytail: um prazo só para todas as marcas; se uma
 TRASH_DAYS = 7
 ART_RETENTION_DAYS = 90  # a arte inteira (receita) some depois disso; as fotos e a miniatura já saem aos PHOTO_RETENTION_DAYS
 GRACE_MS = DAY_MS  # foto criada há menos de 1 dia fica: o upload vem antes do documento da arte e a arte pode ainda não ter sido gravada
-PUBLISHED_STATUS = 'Publicado'
 
 
 def date_to_ms(value):
@@ -30,13 +29,15 @@ def date_to_ms(value):
     return int(datetime.datetime(d.year, d.month, d.day, tzinfo=datetime.timezone.utc).timestamp() * 1000)
 
 
-def expires_at_ms(draft, card, retention_days=PHOTO_RETENTION_DAYS):
+def expires_at_ms(draft, card, now_ms, retention_days=PHOTO_RETENTION_DAYS):
     """Quando as fotos desta arte deixam de ser guardadas."""
     base = int(draft.get('updatedAt') or 0)
-    if card and card.get('status') == PUBLISHED_STATUS:
-        published = date_to_ms(card.get('date'))
-        if published:
-            base = max(base, published)
+    # o card não tem mais status de publicação: a data dele conta quando já chegou (equivale ao "publicado"
+    # de antes). Data futura não conta, senão um card planejado para longe (ou digitado errado) seguraria
+    # as fotos, que podem mostrar pessoas, sem prazo.
+    card_date = date_to_ms(card.get('date')) if card else None
+    if card_date and card_date <= now_ms:
+        base = max(base, card_date)
     return base + retention_days * DAY_MS
 
 
@@ -52,10 +53,10 @@ def plan(arts, cards, photos, now_ms, retention_days=PHOTO_RETENTION_DAYS, trash
                 delete_arts.append(art['id'])
             continue  # na lixeira (ainda no prazo ou já apagada): não segura foto
         card = cards.get(draft.get('cardId'))
-        if expires_at_ms(draft, card, art_days) <= now_ms:
+        if expires_at_ms(draft, card, now_ms, art_days) <= now_ms:
             delete_arts.append(art['id'])
             continue
-        if expires_at_ms(draft, card, retention_days) <= now_ms:
+        if expires_at_ms(draft, card, now_ms, retention_days) <= now_ms:
             if draft.get('thumb'):
                 strip_thumbs.append(art['id'])
             continue

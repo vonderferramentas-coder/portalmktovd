@@ -1,0 +1,160 @@
+name: Sincronizar posts do LinkedIn
+
+# Últimos posts da página Grupo OVD no LinkedIn, com as métricas de cada um, para o painel "Conteúdo do LinkedIn"
+# (followers-dashboard.js). Mesmo desenho de sync-meta-facebook-posts.yml: um documento só desta rede
+# (portalStore/posts-linkedin-grupo-ovd-v1; o prefixo "posts-" já é bloqueado para escrita de usuários pelo
+# firestore.rules), regravado a cada coleta. Sem JSON no Git; o backup-portalstore.yml guarda o Firestore.
+# O token de acesso não é guardado: cada execução troca o refresh token (ver sync-linkedin-followers.yml).
+# Só leitura: usa os mesmos escopos r_organization_social e rw_organization_admin já concedidos.
+
+on:
+  # Sem cron próprio: disparado pelo Worker do Cloudflare (cloudflare-agendador.js), de 12 em 12 horas. O gatilho
+  # push faz a primeira coleta sozinha quando este arquivo entra na main (e a cada edição dele), sem esperar o Worker.
+  push:
+    branches: [main]
+    paths: ['.github/workflows/sync-linkedin-posts.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linkedin-posts
+  cancel-in-progress: false
+
+jobs:
+  sync-linkedin-posts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Coletar posts e publicar no Firestore
+        env:
+          LINKEDIN_CLIENT_ID: ${{ secrets.LINKEDIN_CLIENT_ID }}
+          LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
+          LINKEDIN_REFRESH_TOKEN: ${{ secrets.LINKEDIN_REFRESH_TOKEN }}
+          LINKEDIN_ORGANIZATION_ID: ${{ secrets.LINKEDIN_ORGANIZATION_ID }}
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+          # Mês de versão da API versionada (ver sync-linkedin-followers.yml); erro 426 = trocar por uma mais nova.
+          LINKEDIN_VERSION: '202604'
+        run: |
+          pip install --quiet firebase-admin
+          python3 - <<'PY'
+          import json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
+          from datetime import datetime, timezone
+
+          def fail(message):
+              print(f'::error::{message}')
+              sys.exit(1)
+
+          for name in ('LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET', 'LINKEDIN_REFRESH_TOKEN', 'LINKEDIN_ORGANIZATION_ID', 'FIREBASE_SERVICE_ACCOUNT_KEY'):
+              if not os.environ.get(name):
+                  fail(f'Segredo {name} não configurado.')
+          org_id = re.sub(r'\D', '', os.environ['LINKEDIN_ORGANIZATION_ID'])  # só dígitos: espaço colado quebra a URL
+          if not org_id:
+              fail('LINKEDIN_ORGANIZATION_ID não tem nenhum dígito.')
+
+          def call(url, data=None, headers=None):
+              request = urllib.request.Request(url, data=data, headers=headers or {})
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      return json.loads(response.read().decode('utf-8'))
+              except urllib.error.HTTPError as error:
+                  raise RuntimeError(f'HTTP {error.code} {error.read().decode("utf-8", errors="replace")[:300]}')
+              except (urllib.error.URLError, OSError) as error:  # sem rede, tempo esgotado etc. também viram RuntimeError
+                  raise RuntimeError(f'falha de rede: {error}')
+
+          form = urllib.parse.urlencode({
+              'grant_type': 'refresh_token',
+              'refresh_token': os.environ['LINKEDIN_REFRESH_TOKEN'],
+              'client_id': os.environ['LINKEDIN_CLIENT_ID'],
+              'client_secret': os.environ['LINKEDIN_CLIENT_SECRET'],
+          }).encode()
+          try:
+              token = call('https://www.linkedin.com/oauth/v2/accessToken', form, {'Content-Type': 'application/x-www-form-urlencoded'})['access_token']
+          except RuntimeError as error:
+              fail(f'O LinkedIn recusou a renovação do token ({error}). Se venceu, gerar outro em Docs and tools > OAuth token generator e atualizar LINKEDIN_REFRESH_TOKEN.')
+          print(f'::add-mask::{token}')
+          headers = {'Authorization': f'Bearer {token}', 'LinkedIn-Version': os.environ['LINKEDIN_VERSION'], 'X-Restli-Protocol-Version': '2.0.0'}
+          api = lambda path, extra=None: call(f'https://api.linkedin.com/rest/{path}', headers=dict(headers, **(extra or {})))
+          quote = lambda value: urllib.parse.quote(value, safe='')
+          org = quote(f'urn:li:organization:{org_id}')
+
+          try:
+              listing = api(f'posts?author={org}&q=author&count=30&sortBy=LAST_MODIFIED', {'X-RestLi-Method': 'FINDER'})
+          except RuntimeError as error:
+              fail(f'A consulta de posts do LinkedIn falhou ({error}).')
+          items = [item for item in listing.get('elements', []) if item.get('lifecycleState', 'PUBLISHED') == 'PUBLISHED' and item.get('id')]
+          if not items:
+              fail('O LinkedIn não retornou nenhum post - não grava nada para não apagar o snapshot anterior.')
+
+          # Métricas por post (até 20 por consulta): impressões, curtidas, comentários e compartilhamentos.
+          stats = {}
+          for kind, parameter in (('urn:li:share:', 'shares'), ('urn:li:ugcPost:', 'ugcPosts')):
+              urns = [item['id'] for item in items if item['id'].startswith(kind)]
+              for start in range(0, len(urns), 20):
+                  ids = ','.join(quote(urn) for urn in urns[start:start + 20])
+                  try:  # um lote recusado não derruba os demais: só os posts dele entram sem números
+                      reply = api(f'organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity={org}&{parameter}=List({ids})')
+                  except RuntimeError as error:
+                      print(f'::warning::Métricas de um lote de posts ({parameter}) indisponíveis ({error}); esses posts entram sem números.')
+                      continue
+                  for element in reply.get('elements', []):
+                      stats[element.get('share') or element.get('ugcPost')] = element.get('totalShareStatistics') or {}
+
+          import firebase_admin
+          from firebase_admin import credentials, firestore
+          firebase_admin.initialize_app(credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT_KEY'])))
+          reference = firestore.client().collection('portalStore').document('posts-linkedin-grupo-ovd-v1')
+          previous = reference.get()
+          # post anterior de cada id: se a consulta da imagem ou das métricas falhar agora, ficam a miniatura e os
+          # números que já estavam (em vez de null/vazio até a próxima coleta)
+          old_posts = {post.get('id'): post for post in (((previous.to_dict() or {}).get('v') or {}).get('posts') or [])} if previous.exists else {}
+
+          def thumbnail(item):
+              content = item.get('content') or {}
+              media = (content.get('media') or {}).get('id') or ((content.get('multiImage') or {}).get('images') or [{}])[0].get('id') or (content.get('article') or {}).get('thumbnail')
+              try:
+                  if media and media.startswith('urn:li:image:'):
+                      return api(f'images/{quote(media)}').get('downloadUrl'), False
+                  if media and media.startswith('urn:li:video:'):
+                      return api(f'videos/{quote(media)}').get('thumbnail'), True
+              except RuntimeError:
+                  pass  # sem miniatura: o painel mostra o card sem imagem
+              return None, bool(media and media.startswith('urn:li:video:'))
+
+          def clean(text):  # texto do LinkedIn: menções e hashtags vêm em marcação própria e caracteres escapados com barra
+              text = re.sub(r'@\[([^\]]*)\]\([^)]*\)', r'\1', text or '')
+              text = re.sub(r'\{hashtag\|\\#\|([^}]*)\}', r'#\1', text)
+              return re.sub(r'\\([\\()\[\]{}<>@#*_~|])', r'\1', text)
+
+          posts = []
+          for item in items:
+              total = stats.get(item['id'])
+              image, is_video = thumbnail(item)
+              old = old_posts.get(item['id']) or {}
+              image = image or old.get('thumbnailUrl')
+              published = item.get('publishedAt') or item.get('createdAt')
+              post = {
+                  'id': item['id'],
+                  'caption': clean(item.get('commentary')),
+                  'permalink': f'https://www.linkedin.com/feed/update/{item["id"]}/',
+                  'thumbnailUrl': image,
+                  'timestamp': datetime.fromtimestamp(published / 1000, timezone.utc).isoformat().replace('+00:00', 'Z') if published else None,
+              }
+              if total is not None:
+                  likes, comments, shares = int(total.get('likeCount') or 0), int(total.get('commentCount') or 0), int(total.get('shareCount') or 0)
+                  post.update({'likeCount': likes, 'commentsCount': comments, 'totalInteractions': likes + comments + shares, 'views': int(total.get('impressionCount') or 0)})
+              else:
+                  post.update({key: old[key] for key in ('likeCount', 'commentsCount', 'totalInteractions', 'views') if key in old})
+              if is_video:
+                  post['mediaProductType'] = 'VIDEO'
+              posts.append(post)
+
+          document = {'version': 1, 'updatedAt': datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z'), 'posts': posts}
+          reference.set({
+              'v': document,
+              'updated_at': int(time.time() * 1000),
+              'updatedAt': firestore.SERVER_TIMESTAMP,
+          })
+          print(f'Firestore atualizado: {len(posts)} posts do LinkedIn ({sum(1 for p in posts if "views" in p)} com métricas, {sum(1 for p in posts if p["thumbnailUrl"])} com miniatura).')
+          PY

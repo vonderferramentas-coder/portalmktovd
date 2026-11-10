@@ -27,18 +27,20 @@
     const brand = activeBrand();
     document.getElementById('profilePickerAvatar').innerHTML = avatarHtml(brand);
     document.getElementById('profilePickerName').textContent = brand.name;
-    menu.innerHTML = portal.list.map(function(item){
+    menu.innerHTML = '<div class="profile-menu-box">' + portal.list.map(function(item){
       return '<button type="button" class="profile-option' + (item.id === activeId ? ' is-active' : '') + '" role="option" aria-selected="' + (item.id === activeId) + '" data-brand-id="' + escapeHtml(item.id) + '">' + avatarHtml(item) + '<strong>' + escapeHtml(item.name) + '</strong>' + (item.id === activeId ? '<span class="profile-check">✓</span>' : '') + '</button>';
-    }).join('');
+    }).join('') + '</div>';
+    // decodifica as fotos já agora: com o menu escondido o navegador adia isso pro primeiro desenho, e a foto "pisca" ao fim da animação de abrir
+    menu.querySelectorAll('img').forEach(function(img){ if(img.decode) img.decode().catch(function(){}); });
   }
-  function closeMenu(){ menu.hidden = true; picker.setAttribute('aria-expanded','false'); }
+  function closeMenu(){ menu.classList.remove('is-open'); picker.setAttribute('aria-expanded','false'); }
   function openMenu(){
-    menu.hidden = false;
+    menu.classList.add('is-open');
     picker.setAttribute('aria-expanded','true');
     const active = menu.querySelector('.is-active');
     if(active) active.focus();
   }
-  picker.addEventListener('click',function(){ menu.hidden ? openMenu() : closeMenu(); });
+  picker.addEventListener('click',function(){ menu.classList.contains('is-open') ? closeMenu() : openMenu(); });
   menu.addEventListener('click',function(event){
     const option = event.target.closest('[data-brand-id]');
     if(!option) return;
@@ -59,4 +61,36 @@
     location.reload();
   });
   renderPicker();
+
+  // Busca: filtra os cards por título, tag, descrição e data-keywords (sem acento, todos os termos).
+  // Usa .is-filtered e não [hidden], que pertence ao auth-guard (permissão/marca) e não pode ser desfeito aqui.
+  const searchForm = document.getElementById('homeSearch');
+  const searchInput = document.getElementById('homeSearchInput');
+  const searchEmpty = document.getElementById('homeSearchEmpty');
+  const cards = Array.from(document.querySelectorAll('#toolGrid .tool-card'));
+  const fold = function(text){ return String(text).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(); };
+  const haystacks = cards.map(function(card){ return fold(card.textContent + ' ' + (card.dataset.keywords || '')); });
+  function firstMatch(){ return cards.find(function(card){ return !card.hidden && !card.classList.contains('is-filtered'); }); }
+  function applySearch(){
+    const terms = fold(searchInput.value).split(/\s+/).filter(Boolean);
+    cards.forEach(function(card, i){
+      card.classList.toggle('is-filtered', !terms.every(function(term){ return haystacks[i].includes(term); }));
+    });
+    searchEmpty.hidden = !!firstMatch() || cards.every(function(card){ return card.hidden; });
+  }
+  searchInput.addEventListener('input', applySearch);
+  searchForm.addEventListener('submit', function(event){
+    event.preventDefault();
+    const match = firstMatch();
+    if(match) location.href = match.getAttribute('href');
+  });
+  searchInput.addEventListener('keydown', function(event){
+    if(event.key === 'Escape' && searchInput.value){ searchInput.value = ''; applySearch(); event.stopPropagation(); }
+  });
+  document.addEventListener('keydown', function(event){
+    if(event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return;
+    if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+    event.preventDefault();
+    searchInput.focus();
+  });
 })();

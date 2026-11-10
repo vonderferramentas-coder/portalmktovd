@@ -4,19 +4,39 @@
 
 Portal estático (HTML/CSS/JS vanilla, sem framework/build step) multi-marca para agência de marketing: calendário de postagens (`visual-editor.html`), editor de artes (`post-editor.html`), gerador de cartão de visita (`business-card-generator.html`), dashboard de seguidores (`followers-dashboard.html`) e central de inteligência de conteúdo (`intelligence-center.html`), todos atrás de autenticação Firebase e compartilhando `portal-shell.js`/`styles.css`.
 
-**Stack**: JS/HTML/CSS puro (sem bundler), Firebase (Auth + Firestore), Cloudflare Worker + PHP + PowerShell como proxies redundantes de imagem, GitHub Actions para coleta automática de dados de Instagram/Facebook (Meta Graph API) e YouTube (YouTube Data API v3) da VONDER.
+**Stack**: JS/HTML/CSS puro (sem bundler), Firebase (Auth + Firestore), Cloudflare Worker (proxy de foto, link e catálogo FG) e Cloudflare Worker agendador (único disparo dos coletores), GitHub Actions para coleta automática de Instagram/Facebook (Meta Graph API), YouTube (YouTube Data API v3) e Google Trends, hoje para VONDER e Ferramentas Gerais.
 
 Para arquitetura detalhada (módulos, fluxos, gotchas), veja [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md).
 
 ## Padrões de interface
 
-Antes de criar ou alterar qualquer tela, leia [DESIGN.md](DESIGN.md) e siga os padrões dele (animação de dropdown e sanfona, tema claro e escuro, cursores, reordenar por arrastar). Se um padrão novo for decidido, registre-o lá.
+Antes de criar ou alterar qualquer tela, leia [DESIGN.md](DESIGN.md) e siga os padrões dele (animação de dropdown e sanfona, tema claro e escuro, cursores, reordenar por arrastar, guias de margem de segurança nas artes). Se um padrão novo for decidido, registre-o lá.
+
+### Skill `unslop` (acabamento de interface)
+
+Skill instalada em `.claude/skills/unslop` (autor Damir Sokolovsky, licença CC BY 4.0: manter o crédito no `SKILL.md`). O `unslop` vale **antes** de escrever, não só depois. Toda criação ou alteração visível de tela, componente, modal, card ou arte em HTML/CSS começa por: (1) invocar o skill `unslop`; (2) ler `references/signs.md` e `references/tokens.md` dele; (3) escrever o código já nos valores certos (grade de 4px, uma rampa neutra, um acento, ícones de linha em vez de emoji, copy sem exclamação nem ponto final em rótulos, transições nomeadas, sem brilhos nem gradientes de matiz). Ao terminar, confira o checklist final do skill antes de entregar; não deixe para o usuário pedir a correção. Para ajuste pequeno e pontual (uma cor, um texto), basta seguir os mesmos valores sem rodar o fluxo completo de nove passes. Se uma regra do `unslop` conflitar com o [DESIGN.md](DESIGN.md) ou com a identidade de uma marca, o DESIGN.md e a marca prevalecem. O `unslop` não chama nenhuma API de IA; a geração de imagens que ele sugere só vale com ferramenta corporativa homologada.
+
+## Tutoriais por tela (tour guiado)
+
+Toda tela com `portal-tour-<tela>.js` tem passeio guiado ("Como usar"). Mudou um botão, texto ou fluxo dessa tela: atualize o passeio na mesma mudança e rode `tests/portal-tour.test.html`, que acusa alvo sumido. Tela nova com passeio entra em `SCREENS` desse teste. Formato dos passos e regras de interface: [DESIGN.md](DESIGN.md) §18.
 
 ## Documentação de arquitetura
 
 Sempre que uma alteração criar, remover ou modificar uma integração externa, serviço hospedado, fluxo automático, fonte de dados, credencial, dependência remota, regra de acesso ou diferencial relevante para a TI, atualize `docs/ARQUITETURA-E-INTEGRACOES.md` na mesma mudança.
 
 Não registre tokens, senhas, chaves privadas nem dados pessoais desnecessários na documentação ou no código. Registre o nome do segredo e o local administrativo quando isso for necessário para operação.
+
+## Revisão de código antes de commit e push
+
+Todo pedido de commit ou push (para `hml`, `main` ou PR) começa por uma revisão:
+
+1. Rode o skill `code-review` sobre tudo o que vai no commit, inclusive arquivos novos.
+2. Corrija os achados que procedem e valide de novo (teste ou Chrome, como nas regras acima). Para os que não procedem, anote o motivo.
+3. Se as correções mudaram lógica, rode a revisão mais uma vez sobre o diff final (uma rodada extra, no máximo).
+4. Relate ao usuário em português simples cada achado e o que foi feito com ele: a saída do skill vem em inglês.
+5. Só então faça o commit e o push.
+
+Uma revisão já feita nesta sessão sobre exatamente o mesmo diff vale; não precisa repetir.
 
 ## Política de uso de IA do Grupo OVD (30/10/2025)
 
@@ -70,7 +90,3 @@ Validar renderizando de verdade (Chrome headless) continua obrigatório para mud
 - Limite ~2 rodadas de screenshot por bug. Se a causa raiz não aparecer nessas tentativas, aplique o fix mais seguro disponível (de preferência espelhando um padrão que já funciona em outro lugar do mesmo código) e siga em frente, em vez de continuar escalando a investigação (introspecção de CSSOM, bissecção de stylesheet, etc.) até esgotar a dúvida.
 - Não monte um harness de teste novo para validar um caminho de código que já foi exercitado por um teste anterior na mesma tarefa (ex.: reabrir o mesmo modal/fluxo já testado) - revisão de código basta nesses casos.
 - Para reler código já visitado na mesma sessão, prefira grep num trecho específico a reler o arquivo inteiro em blocos grandes.
-
-## Guias de margem de segurança nas artes
-
-Toda arte de feed e story (qualquer editoria/marca, inclusive novas) deve ter as guias ciano de margem de segurança do editor (`SAFE_MARGINS` em `post-editor.js`): feed 135px cima / 66px laterais / 190px baixo; story 190px cima / 66px laterais / 190px baixo. Aparecem só ao arrastar/redimensionar o elemento que encosta nelas, barram momentaneamente (passa empurrando mais, como no Instagram) e não saem na exportação. Novos renderers precisam informar a caixa do elemento móvel via `setMoveBox`.

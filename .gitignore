@@ -26,3 +26,6 @@ data/instagram-*-20*/
 .env.*
 *.key
 *.pem
+
+# Cache do Python
+__pycache__/

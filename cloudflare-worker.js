@@ -1,5 +1,6 @@
-// Cloudflare Worker - coletor público de ofertas da Ferramentas Gerais.
-// Único proxy de foto/oferta/catálogo do portal (o PHP e os proxies PowerShell locais foram removidos em 06/10/2026: o portal só fala com a web).
+// Rotas de foto/oferta/catálogo do portal. Desde 21/10/2026 rodam no Cloudflare Pages em /api/* (functions/api/[[path]].js
+// importa este arquivo; publica sozinho a cada push) e todas as páginas usam essas rotas (window.PORTAL_API em firebase-config.js).
+// O Worker ecommerce-fg (workers.dev) com este mesmo código ficou sem uso, só como plano de volta - não precisa mais ser republicado.
 const ALLOWED_ORIGINS=new Set(['https://vonderferramentas-coder.github.io','https://portalmktovd.pages.dev','https://hml.portalmktovd.pages.dev','http://localhost:5500','http://127.0.0.1:5500']);
 const FG_HOST=/(^|\.)fg\.com\.br$/i;
 function cors(request){const origin=request.headers.get('Origin')||'';const allowed=ALLOWED_ORIGINS.has(origin)?origin:'https://vonderferramentas-coder.github.io';return {'Access-Control-Allow-Origin':allowed,'Access-Control-Allow-Methods':'GET, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Vary':'Origin'};}
@@ -69,7 +70,9 @@ const isVonderBrand=product=>/^vonder\b/i.test(String(product&&product.brand||''
 // então isto só barra uso casual; contra abuso de verdade há a regra de limite de requisições do Cloudflare, ver ARQUITETURA seção do Worker).
 // Só respostas boas ficam 10 min no cache de borda; erro do site FG (429/5xx) não é guardado, senão a mesma busca falharia até o cache vencer.
 const vtexFetch=url=>fetch(url,{headers:{Accept:'application/json'},cf:{cacheTtlByStatus:{'200-299':600,'300-599':-1},cacheEverything:true}});
-const originAllowed=request=>ALLOWED_ORIGINS.has(request.headers.get('Origin')||'');
+// Pelo domínio do portal (functions/api/[[path]].js) a chamada é da mesma origem e o navegador não manda Origin num GET;
+// nesse caso vale o Sec-Fetch-Site, que o navegador também preenche sozinho.
+const originAllowed=request=>ALLOWED_ORIGINS.has(request.headers.get('Origin')||'')||request.headers.get('Sec-Fetch-Site')==='same-origin';
 const formatCode=digits=>digits.length===10?digits.replace(/^(\d{2})(\d{2})(\d{3})(\d{3})$/,'$1.$2.$3.$4'):digits;
 // Tabela de especificações do site (descrição do produto): linhas [rótulo, valor] em texto limpo.
 const specRows=product=>[...String(product.description||'').matchAll(/<th[^>]*>([\s\S]*?)<\/th>\s*<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>[plainText(m[1]),plainText(m[2])]);
@@ -95,7 +98,7 @@ async function productCatalog(request){
  return json(request,{
   name:take(/^descri[cç][aã]o completa/i)||product.productName,
   code:formatCode(digits),
-  codeFG:String(product.productId),
+  codeFG:String((((product.items||[]).find(item=>(item.referenceId||[]).some(r=>String(r.Value||'').replace(/\D/g,'')===code))||(product.items||[])[0]||{}).itemId)||product.productId), // itemId do SKU pedido (como /product-search e catalog-fg.json); productId só agrupa as variações
   brand:product.brand,
   destaques:take(/^destaques/i),aplicacoes:take(/^aplica[cç][oõ]es/i),conteudoEmbalagem:take(/^conte[uú]do da embalagem/i),
   qualificacaoTecnica:rows.filter(([label,value])=>value&&!named.test(label)).map(([label,value])=>label+': '+value).join(' | '),
@@ -104,17 +107,42 @@ async function productCatalog(request){
 // Miniatura da lista: a CDN pública da VTEX redimensiona pela URL (/arquivos/ids/ID-120-120/arquivo, ~3 KB). A foto oficial
 // do app.ovd tem vários MB e só é carregada depois que o usuário escolhe o produto.
 const thumbUrl=(product,item=(product.items||[])[0])=>{const image=((item||{}).images||[])[0],match=image&&/^(https:\/\/[\w.-]+\.vteximg\.com\.br)\/arquivos\/ids\/(\d+)\/([^?]+)/.exec(image.imageUrl||'');return match?match[1]+'/arquivos/ids/'+match[2]+'-120-120/'+match[3]:'';};
-// Busca por nome (ou código) de produto VONDER no site FG, para a lista "Encontrados no site" do editor de posts. Devolve só
-// nome e código (a foto e os demais dados vêm depois, em /product-catalog e /product-image, quando o usuário escolhe um item).
+// Foto grande do SKU (CDN pública da VTEX, com CORS liberado): usada no editor de posts para produtos de outras marcas, que não têm foto no app.ovd.
+const photoUrl=item=>{const image=((item||{}).images||[])[0],match=image&&/^(https:\/\/[\w.-]+\.vteximg\.com\.br\/arquivos\/ids\/\d+\/[^?]+)/.exec(image.imageUrl||'');return match?match[1]:'';};
+// Busca por nome (ou código) de produto no site FG, para a lista "Encontrados no site" do editor de posts e o calendário. Por padrão
+// só marcas VONDER; com scope=all (perfil Ferramentas Gerais do editor de posts) todas as marcas do site (BOSCH etc.). Devolve nome,
+// marca, código, código FG (codeFG = itemId do SKU, o mesmo de data/catalog-fg.json), miniatura e foto grande do SKU (image).
 // ponytail: sem gêmeo em PHP/PowerShell; no máximo 12 itens, sem paginação.
+// Nome da variação: no site FG o SKU costuma trazer o nome completo ("Compressor ... 127 V~ - VONDER"), mas pode vir só
+// o rótulo ("127 V"). ponytail: heurística pelo tamanho; rótulo curto vira "nome do produto - rótulo".
+const skuName=(label,name)=>!label?name:label.length>=25?label:name+' - '+label;
 async function productSearch(request){
- const q=(new URL(request.url).searchParams.get('q')||'').trim().slice(0,60),digits=q.replace(/\D/g,''),byCode=digits.length>=5&&/^[\d.\s-]+$/.test(q);
+ const params=new URL(request.url).searchParams;
+ const all=params.get('scope')==='all',q=(params.get('q')||'').trim().slice(0,60),digits=q.replace(/\D/g,''),byCode=digits.length>=5&&/^[\d.\s-]+$/.test(q);
  if(!byCode&&q.length<3)return json(request,{error:'Digite ao menos 3 letras ou um código.'},400);
- const query=byCode?'?fq=alternateIds_RefId:'+digits:'?ft='+encodeURIComponent(q)+'&'+VONDER_BRAND_FQ+'&_from=0&_to=14';
  if(!originAllowed(request))return json(request,{error:'Origem não permitida.'},403);
- const upstream=await vtexFetch('https://www.fg.com.br/api/catalog_system/pub/products/search'+query);
- if(!upstream.ok)return json(request,{error:'O site FG não respondeu.'},502);
- const items=(await upstream.json()).filter(isVonderBrand).slice(0,12).map(product=>({name:specTake(specRows(product))(/^descri[cç][aã]o completa/i)||product.productName,brand:product.brand,code:formatCode(String(product.productReference||'').replace(/\D/g,'')),thumb:thumbUrl(product)})).filter(item=>item.code);
+ // Com scope=all um número pode ser o código FG (skuId), a referência OVD só com dígitos ou a referência do fabricante como foi
+ // digitada (o RefId da VTEX é comparado exatamente, com espaços: "0 601 390 909"). As consultas vão juntas e vale a 1ª com resultado,
+ // nessa ordem; uma que o site recusa (400) conta como vazia.
+ const queries=!byCode?['?ft='+encodeURIComponent(q)+(all?'':'&'+VONDER_BRAND_FQ)+'&_from=0&_to=14']
+  :all?[...new Set(['?fq=skuId:'+digits,'?fq=alternateIds_RefId:'+digits,'?fq=alternateIds_RefId:'+encodeURIComponent(q)])]:['?fq=alternateIds_RefId:'+digits];
+ const answers=await Promise.all(queries.map(query=>vtexFetch('https://www.fg.com.br/api/catalog_system/pub/products/search'+query).then(r=>r.ok?r.json():r.status===400||r.status===404?[]:null).catch(()=>null)));
+ const products=answers.find(answer=>answer&&answer.length)||[];
+ // Consulta que falhou sem nenhuma outra achar produto: erro (o editor oferece "tentar de novo"), não "nenhum produto".
+ if(!products.length&&answers.some(answer=>!answer))return json(request,{error:'O site FG não respondeu.'},502);
+ // Produto com variações (127 V / 220 V...): uma linha por variação, cada uma com a sua referência, nome e foto; na busca
+ // por código, só a variação pedida (antes voltava sempre a referência do produto, ex.: 68.29.774.122 virava .133).
+ // Referência: VONDER só com dígitos (vira 00.00.000.000, como no catálogo); outras marcas, o código do fabricante inteiro.
+ const items=products.filter(product=>all||isVonderBrand(product)).slice(0,12).flatMap(product=>{
+  const vonder=isVonderBrand(product),refOf=ref=>vonder?String(ref||'').replace(/\D/g,''):String(ref||'').trim();
+  const name=specTake(specRows(product))(/^descri[cç][aã]o completa/i)||product.productName;
+  const skus=(product.items||[]).map(item=>{const ref=(item.referenceId||[]).find(r=>r.Key==='RefId');return{item,code:refOf(ref&&ref.Value)};});
+  const row=(sku,label)=>({name:label,brand:product.brand,code:vonder?formatCode(sku.code):sku.code,codeFG:String((sku.item&&sku.item.itemId)||''),thumb:thumbUrl(product,sku.item),image:photoUrl(sku.item)});
+  const coded=skus.filter(sku=>sku.code);
+  if(coded.length<2){const only=coded[0]||{item:(product.items||[])[0],code:refOf(product.productReference)};return[row(only,name)];}
+  const asked=coded.filter(sku=>sku.code.replace(/\D/g,'')===digits||String(sku.item.itemId)===digits);
+  return(byCode&&asked.length?asked:coded).map(sku=>row(sku,skuName(sku.item.name,name)));
+ }).filter(item=>item.code||(all&&item.codeFG)).slice(0,24); // 12 produtos; um com muitas variações não esconde os outros
  return json(request,{items});
 }
 // Miniaturas (3 KB) de vários produtos do catálogo de uma vez, para a lista do editor de posts: a foto do app.ovd tem de 2 a 15 MB e
@@ -132,7 +160,7 @@ async function productThumbs(request){
  return json(request,{thumbs});
 }
 export default {async fetch(request){
- const path=new URL(request.url).pathname;
+ const path=new URL(request.url).pathname.replace(/^\/api(?=\/)/,''); // /api/... = mesmas rotas servidas pelo Cloudflare Pages
  if(path==='/product-image'){if(request.method==='OPTIONS')return imageReply(null,204);try{return await productImage(request);}catch{return imageReply('Não foi possível carregar a imagem do produto.',502,{'Content-Type':'text/plain; charset=utf-8'});}}
  if(request.method==='OPTIONS')return reply(request,null,204);
  try{if(path==='/product-offer')return offer(request);if(path==='/product-link')return await productLink(request);if(path==='/product-catalog')return await productCatalog(request);if(path==='/product-search')return await productSearch(request);if(path==='/product-thumbs')return await productThumbs(request);return json(request,{error:'Rota não encontrada.'},404);}catch{return json(request,{error:'Não foi possível consultar a oferta.'},502);}

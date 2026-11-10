@@ -4,43 +4,75 @@
   const M = window.ConsolidadoModel;
   const INDEX_KEY = 'consolidado-index-v1';
   const ITEM_KEY = 'consolidado-v1-';
-  const state = { items: [], original: null, texts: {}, edited: false, sheetName: '', saved: [], indexVersion: 0, id: '', version: 0, createdAt: 0, sourceName: '', workbook: null, dirty: false };
+  const state = { items: [], brands: [], collapsed: new Set(), original: null, texts: {}, edited: false, sheetName: '', saved: [], indexVersion: 0, id: '', version: 0, createdAt: 0, sourceName: '', workbook: null };
+  // Alterações não salvas: além do aviso ao sair, mostra a etiqueta ao lado do Salvar sempre que state.dirty muda.
+  let dirty = false;
+  Object.defineProperty(state, 'dirty', { get: () => dirty, set: value => { dirty = value; const badge = $('dirtyBadge'); if (badge) badge.hidden = !value; } });
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
   function toast(message) {
     $('toast').textContent = message; $('toast').hidden = false;
     clearTimeout(toast.timer); toast.timer = setTimeout(() => $('toast').hidden = true, 3600);
   }
+  // Modal de confirmação (no lugar do confirm() do navegador): resolve true só se a pessoa confirmar; Esc, × e "cancelar" resolvem false.
+  function ask({ title, text = '', items = [], ok = 'Continuar', cancel = 'Cancelar', danger = false }) {
+    const dialog = $('askDialog');
+    $('askTitle').textContent = title; $('askText').textContent = text; $('askText').hidden = !text;
+    $('askList').innerHTML = items.map(line => '<li>' + esc(line) + '</li>').join(''); $('askList').hidden = !items.length;
+    $('askOk').textContent = ok; $('askOk').classList.toggle('danger', danger); $('askCancel').textContent = cancel;
+    return new Promise(resolve => { dialog.returnValue = ''; dialog.onclose = () => resolve(dialog.returnValue === 'ok'); dialog.showModal(); (danger ? $('askCancel') : $('askOk')).focus(); });
+  }
   function monthValue() { return $('consolidadoMonth').value; }
   function generatedTitle(value = monthValue()) { return 'Consolidado ' + (M.monthLabel(value) || 'mensal'); }
   function validLink(value) { try { const url = new URL(String(value)); return /^https?:$/.test(url.protocol) ? url.href : ''; } catch (_) { return ''; } }
   function markDirty() { state.dirty = true; state.edited = true; $('saveConsolidado').disabled = !state.items.length; }
   const noLinkItems = () => state.items.filter(item => !validLink(item.link));
-  function setEditorStatus() { $('editorStatus').textContent = state.items.length ? state.items.length + ' produtos (' + state.items.filter(item => item.multi).length + ' em Multimarcas) · ' + noLinkItems().length + ' sem link.' : 'Importe a planilha ou comece do zero para adicionar produtos.'; }
+  const byBrand = key => state.items.filter(item => M.brandOf(item) === key);
+  // Marcas próprias opcionais: ativa = ligada na lista de marcas ou com algum produto (não dá para desligar uma marca que tem produtos)
+  const OPTIONAL_BRANDS = M.BRANDS.filter(brand => brand.color);
+  const brandActive = key => state.brands.includes(key) || byBrand(key).length > 0;
 
   function showLibrary() {
     $('libraryView').hidden = false; $('editorView').hidden = true; state.dirty = false; renderLibrary();
   }
-  function showEditor() { $('libraryView').hidden = true; $('editorView').hidden = false; }
+  function showEditor() { state.collapsed.clear(); $('libraryView').hidden = true; $('editorView').hidden = false; }
   function resetEditor() {
     const now = new Date();
-    state.items = []; state.original = null; state.texts = {}; state.edited = false; state.id = ''; state.version = 0; state.createdAt = 0; state.sourceName = ''; state.workbook = null; state.dirty = false;
+    state.items = []; state.brands = []; state.original = null; state.texts = {}; state.edited = false; state.id = ''; state.version = 0; state.createdAt = 0; state.sourceName = ''; state.workbook = null; state.dirty = false;
     $('consolidadoMonth').value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
     $('consolidadoTitle').value = generatedTitle(); $('editorHeading').textContent = 'Novo consolidado'; $('sheetFile').value = ''; $('sheetField').hidden = true;
     $('sheetDropzone').classList.remove('is-dragover'); renderAll();
   }
 
+  // Primeiro quadrado da biblioteca: atalho bem visível para criar um consolidado novo
+  const NEW_TILE = '<button type="button" class="saved-new"><span class="saved-new-plus" aria-hidden="true">+</span><strong>Criar novo consolidado</strong><span>Comece pela planilha mensal ou do zero</span></button>';
+  const MONTH_ABBR = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+  const fold = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const yearOf = item => String(item.month || '').slice(0, 4) || 'Sem data';
+  function savedCardHtml(item) {
+    const [year, month] = String(item.month || '').split('-').map(Number);
+    const link = item.noLink == null ? '' : item.noLink ? '<span class="saved-warn">' + item.noLink + ' sem link</span>' : '<span class="saved-ok">Todos com link</span>'; // consolidados salvos antes dessa informação não mostram nada até o próximo salvamento
+    return '<article class="saved-card"><button type="button" class="kebab saved-kebab" data-menu="' + esc(item.id) + '" aria-haspopup="menu" aria-label="Mais ações de ' + esc(item.title) + '" title="Mais ações">' + ICONS.kebab + '</button><div class="saved-thumb" aria-hidden="true"><b>' + (year && month ? MONTH_ABBR[month - 1] + ' ' + year : 'SEM DATA') + '</b></div><div><h3>' + esc(item.title) + '</h3><div class="saved-meta"><span>' + item.itemCount + ' produtos</span>' + link + '<span>Atualizado em ' + new Date(item.updatedAt).toLocaleString('pt-BR') + (item.updatedBy ? ' por ' + esc(item.updatedBy) : '') + '</span></div></div><div class="saved-actions"><button type="button" class="btn small" data-open="' + esc(item.id) + '">Abrir</button></div></article>';
+  }
+  // Biblioteca: busca por nome/mês, filtro por ano (só com mais de um ano) e cards agrupados por ano; o quadrado de criar fica no começo do primeiro grupo
   function renderLibrary() {
     $('libraryCount').textContent = state.saved.length;
-    if (!state.saved.length) {
-      $('savedConsolidados').innerHTML = '<div class="empty-library"><strong>Nenhum consolidado salvo</strong>Crie o primeiro a partir da planilha mensal.</div>';
-      return;
-    }
-    $('savedConsolidados').innerHTML = state.saved.slice().sort((a, b) => b.updatedAt - a.updatedAt).map(item => '<article class="saved-card"><div><h3>' + esc(item.title) + '</h3><div class="saved-meta"><span>' + esc(M.monthLabel(item.month)) + '</span><span>' + item.itemCount + ' produtos</span><span>Atualizado em ' + new Date(item.updatedAt).toLocaleString('pt-BR') + '</span></div></div><div class="saved-actions"><button type="button" class="btn small" data-open="' + esc(item.id) + '">Abrir</button><button type="button" class="btn ghost danger small" data-delete="' + esc(item.id) + '" aria-label="Excluir ' + esc(item.title) + '">Excluir</button></div></article>').join('');
-    $('savedConsolidados').querySelectorAll('[data-open]').forEach(button => button.onclick = () => openSaved(button.dataset.open));
-    $('savedConsolidados').querySelectorAll('[data-delete]').forEach(button => button.onclick = () => deleteSaved(button.dataset.delete));
+    const years = [...new Set(state.saved.map(yearOf))].sort().reverse(), yearSelect = $('libraryYear'), wanted = years.includes(yearSelect.value) ? yearSelect.value : '', query = fold($('librarySearch').value.trim());
+    $('libraryTools').hidden = !state.saved.length; yearSelect.hidden = years.length < 2;
+    yearSelect.innerHTML = '<option value="">Todos os anos</option>' + years.map(year => '<option' + (year === wanted ? ' selected' : '') + '>' + year + '</option>').join('');
+    const list = state.saved.filter(item => (!wanted || yearOf(item) === wanted) && fold(item.title + ' ' + M.monthLabel(item.month)).includes(query)).sort((a, b) => b.updatedAt - a.updatedAt);
+    const groups = years.map(year => ({ year, items: list.filter(item => yearOf(item) === year) })).filter(group => group.items.length);
+    $('savedConsolidados').innerHTML = groups.length
+      ? groups.map((group, index) => '<section class="saved-year">' + (years.length > 1 ? '<h3 class="saved-year-title">' + esc(group.year) + '<span class="count-pill">' + group.items.length + '</span></h3>' : '') + '<div class="saved-consolidados">' + (index ? '' : NEW_TILE) + group.items.map(savedCardHtml).join('') + '</div></section>').join('')
+      : '<div class="saved-consolidados">' + NEW_TILE + '</div>' + (state.saved.length ? '<p class="library-empty">Nenhum consolidado encontrado para essa busca.</p>' : '');
+    const root = $('savedConsolidados');
+    root.querySelector('.saved-new').onclick = () => $('newConsolidado').click();
+    root.querySelectorAll('[data-open]').forEach(button => button.onclick = () => openSaved(button.dataset.open));
+    root.querySelectorAll('[data-menu]').forEach(button => button.onclick = () => {
+      const id = button.dataset.menu;
+      openMenuWith(button, id, [{ icon: ICONS.copy, label: 'Duplicar', run: () => duplicateSaved(id) }, 'separator', { icon: ICONS.trash, label: 'Excluir', danger: true, run: () => deleteSaved(id) }]);
+    });
   }
-
   async function loadSaved() {
     try {
       const record = await SyncBackend.get(INDEX_KEY); state.saved = Array.isArray(record.v) ? record.v : []; state.indexVersion = record.updated_at || 0;
@@ -62,6 +94,7 @@
     refresh: svg('<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>'),
     kebab: svg('<circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>'),
     check: svg('<polyline points="20 6 9 17 4 12"/>'),
+    copy: svg('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
     trash: svg('<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>')
   };
   // Textos editáveis com Negrito/Itálico/Sublinhado (cartaz-title-format.js); o HTML editado fica em item.*Html / state.texts
@@ -91,12 +124,19 @@
   }
 
   function pageHtml(items) {
-    const vonder = items.filter(item => !item.multi), multi = items.filter(item => item.multi);
+    const of = key => items.filter(item => M.brandOf(item) === key), vonder = of('vonder'), multi = of('multi');
     const grid = list => layout(list).map((entry, index) => cardHtml(entry.item, index, entry.wide)).join('');
+    // Marca própria: com 1 produto o logo fica ao lado do cartão; com mais, o logo vai no topo da faixa.
+    const own = OPTIONAL_BRANDS.map(brand => {
+      const list = of(brand.key); if (!list.length) return '';
+      const logo = window.OVD_BRAND_LOGOS && window.OVD_BRAND_LOGOS[brand.logo];
+      const img = logo ? '<img src="' + esc(logo) + '" alt="' + brand.label + '">' : esc(brand.label);
+      return '<div class="consolidado-section" style="background:' + brand.color + '">' + (list.length > 1 || list[0].wide ? '<div class="consolidado-brandhead">' + img + '</div><div class="consolidado-grid">' + grid(list) + '</div>' : '<div class="consolidado-grid"><div class="consolidado-brandlogo">' + img + '</div>' + cardHtml(list[0], 0, false) + '</div>') + '</div>';
+    }).join('');
     const month = (M.monthLabel(monthValue()) || 'MÊS E ANO').toUpperCase();
     const ovdLogo = window.OVD_BRAND_LOGOS && window.OVD_BRAND_LOGOS['OVD - Grupo_amarelo'];
     const vonderLogo = window.OVD_BRAND_LOGOS && window.OVD_BRAND_LOGOS.VONDER_TIP_PTO;
-    return '<section class="consolidado-page"><header class="consolidado-page-head"><div class="consolidado-page-title"' + EDIT + ' data-fmt="title">' + rich(state.texts.title, 'Informativo Mensal Consolidado de Lançamentos - <strong>' + esc(month) + '</strong>') + '</div><div class="consolidado-ovd">' + (ovdLogo ? '<img src="' + esc(ovdLogo) + '" alt="Grupo OVD">' : 'Grupo OVD') + '</div>' + HEAD_ART + '<div class="consolidado-intro"' + EDIT + ' data-fmt="intro">' + rich(state.texts.intro, 'Confira todos os produtos lançados em ' + esc(month.toLowerCase()) + ' em um único informativo, para<br>facilitar sua busca e reforçar a disponibilidade de comercialização!') + '</div></header><div class="consolidado-brand">' + (vonderLogo ? '<img src="' + esc(vonderLogo) + '" alt="VONDER">' : 'VONDER') + '</div><div class="consolidado-grid">' + grid(vonder) + '</div>' + (multi.length ? '<div class="consolidado-multi"><h2 class="consolidado-multi-title">MULTIMARCAS</h2><div class="consolidado-grid">' + grid(multi) + '</div></div>' : '') + '<div class="consolidado-foot"></div></section>';
+    return '<section class="consolidado-page"><header class="consolidado-page-head"><div class="consolidado-page-title"' + EDIT + ' data-fmt="title">' + rich(state.texts.title, 'Informativo Mensal Consolidado de Lançamentos - <strong>' + esc(month) + '</strong>') + '</div><div class="consolidado-ovd">' + (ovdLogo ? '<img src="' + esc(ovdLogo) + '" alt="Grupo OVD">' : 'Grupo OVD') + '</div>' + HEAD_ART + '<div class="consolidado-intro"' + EDIT + ' data-fmt="intro">' + rich(state.texts.intro, 'Confira todos os produtos lançados em ' + esc(month.toLowerCase()) + ' em um único informativo, para<br>facilitar sua busca e reforçar a disponibilidade de comercialização!') + '</div></header><div class="consolidado-brand">' + (vonderLogo ? '<img src="' + esc(vonderLogo) + '" alt="VONDER">' : 'VONDER') + '</div><div class="consolidado-grid">' + grid(vonder) + '</div>' + own + (multi.length ? '<div class="consolidado-multi"><h2 class="consolidado-multi-title">MULTIMARCAS</h2><div class="consolidado-grid">' + grid(multi) + '</div></div>' : '') + '<div class="consolidado-foot"></div></section>';
   }
 
   function bindImageFallbacks(root) {
@@ -133,7 +173,7 @@
   }
 
   // Reordenar arrastando o ícone de três linhas (pointer events): um "cartão fantasma" segue o mouse, o lugar vazio (tracejado) mostra onde o produto vai
-  // cair e os vizinhos deslizam (FLIP). Dá para soltar nas duas seções (VONDER / Multimarcas); soltar em outra seção troca a marca do produto.
+  // cair e os vizinhos deslizam (FLIP). Dá para soltar em qualquer seção ativa (VONDER, marcas próprias, Multimarcas); soltar em outra seção troca a marca do produto.
   function bindReorder() {
     const root = $('squareList'), panel = root.closest('.square-settings');
     root.querySelectorAll('.drag-handle').forEach(handle => {
@@ -145,9 +185,9 @@
         const ghost = card.cloneNode(true); ghost.classList.add('drag-ghost'); ghost.style.cssText = 'left:' + box.left + 'px;top:' + box.top + 'px;width:' + box.width + 'px';
         document.body.appendChild(ghost); card.classList.add('drag-placeholder');
         let pointerX = event.clientX, pointerY = event.clientY, scrollSpeed = 0, frame = 0, ended = false;
-        const lists = [...root.querySelectorAll('.square-items')];
+        const lists = [...root.querySelectorAll('.square-group:not(.is-closed) .square-items')]; // grupo recolhido não recebe soltar
         const place = () => {
-          const target = lists.find(list => { const area = list.parentElement.getBoundingClientRect(); return pointerY >= area.top && pointerY <= area.bottom; }) || card.parentElement;
+          const target = lists.find(list => { const area = list.closest('.square-group').getBoundingClientRect(); return pointerY >= area.top && pointerY <= area.bottom; }) || card.parentElement;
           const others = [...target.querySelectorAll('.square-item')].filter(entry => entry !== card);
           const before = others.find(entry => { const r = entry.getBoundingClientRect(); return pointerY < r.top + r.height / 2; }) || null;
           if (card.parentElement === target && card.nextElementSibling === before) return;
@@ -168,9 +208,9 @@
             ghost.remove(); card.classList.remove('drag-placeholder');
             if (!commit) { renderSettings(); return; }
             const byId = new Map(state.items.map(item => [item.id, item])), read = group => [...root.querySelectorAll('.square-items[data-group="' + group + '"] .square-item')].map(entry => byId.get(entry.dataset.settingId));
-            const before = state.items.map(item => item.id + item.multi).join(), vonder = read('vonder'), multi = read('multi');
-            vonder.forEach(item => { item.multi = false; }); multi.forEach(item => { item.multi = true; }); state.items = [...vonder, ...multi];
-            if (state.items.map(item => item.id + item.multi).join() !== before) markDirty();
+            const sig = () => state.items.map(item => item.id + M.brandOf(item)).join(), before = sig();
+            state.items = M.BRANDS.flatMap(brand => read(brand.key).map(item => { item.brand = brand.key; return item; }));
+            if (sig() !== before) markDirty();
             renderAll();
           }, 170);
         };
@@ -190,16 +230,19 @@
   function onMenuOutside(event) { if (openMenu && !openMenu.contains(event.target) && !event.target.closest('.kebab')) closeSquareMenu(); }
   function onMenuKey(event) { if (event.key === 'Escape') closeSquareMenu(); }
   function openSquareMenu(button, item) {
-    const same = openMenu && openMenu.dataset.for === item.id; closeSquareMenu(); if (same) return;
-    const entries = [
-      { icon: ICONS.layers, label: 'Multimarcas', checked: item.multi, run: () => { item.multi = !item.multi; renderAll(); markDirty(); } },
+    openMenuWith(button, item.id, [
+      ...M.BRANDS.map(brand => ({ icon: ICONS.layers, label: 'Seção ' + brand.label, checked: M.brandOf(item) === brand.key, run: () => { item.brand = brand.key; state.collapsed.delete(brand.key); renderAll(); markDirty(); } })),
+      'separator',
       { icon: ICONS.star, label: 'Destaque (largura total)', checked: item.wide, run: () => { item.wide = !item.wide; renderAll(); markDirty(); } },
       { icon: ICONS.upload, label: 'Substituir foto por PNG', run: () => { photoTarget = item; photoInput.click(); } },
       { icon: ICONS.refresh, label: 'Voltar à foto automática', disabled: !item.photo, run: () => { item.photo = ''; item.photoView = { x: 0, y: 0, scale: 1 }; renderAll(); markDirty(); } },
       'separator',
       { icon: ICONS.trash, label: 'Excluir produto', danger: true, run: () => { state.items = state.items.filter(entry => entry.id !== item.id); renderAll(); markDirty(); toast('Produto excluído. Use "Voltar à planilha original" para trazê-lo de volta.'); } }
-    ];
-    const menu = document.createElement('div'); menu.className = 'square-menu'; menu.setAttribute('role', 'menu'); menu.dataset.for = item.id;
+    ]);
+  }
+  function openMenuWith(button, id, entries) {
+    const same = openMenu && openMenu.dataset.for === id; closeSquareMenu(); if (same) return;
+    const menu = document.createElement('div'); menu.className = 'square-menu'; menu.setAttribute('role', 'menu'); menu.dataset.for = id;
     menu.innerHTML = entries.map((entry, index) => entry === 'separator' ? '<div class="square-menu-sep" role="separator"></div>' : '<button type="button" role="menuitem" class="square-menu-item' + (entry.danger ? ' danger' : '') + '" data-index="' + index + '"' + (entry.disabled ? ' disabled' : '') + '><span class="ico">' + entry.icon + '</span><span class="txt">' + entry.label + '</span>' + (entry.checked ? '<span class="check">' + ICONS.check + '</span>' : '') + '</button>').join('');
     menu.onclick = event => { const target = event.target.closest('.square-menu-item'); if (!target || target.disabled) return; const entry = entries[+target.dataset.index]; closeSquareMenu(); entry.run(); };
     document.body.appendChild(menu); openMenu = menu;
@@ -211,17 +254,25 @@
   const codesInfo = item => item.rows.length ? item.rows.length + ' código(s) · foto do ' + M.formatCode(item.rows[0].code) : 'sem código';
   function renderSettings() {
     document.querySelectorAll('.drag-ghost').forEach(ghost => ghost.remove());
-    const wideIds = new Set([...layout(state.items.filter(item => !item.multi)), ...layout(state.items.filter(item => item.multi))].filter(entry => entry.wide).map(entry => entry.item.id));
+    const wideIds = new Set(M.BRANDS.flatMap(brand => layout(byBrand(brand.key))).filter(entry => entry.wide).map(entry => entry.item.id));
     const itemHtml = (item, index) => '<details class="square-item' + (wideIds.has(item.id) ? ' is-wide' : '') + '" data-setting-id="' + esc(item.id) + '"><summary><span class="square-number">' + (index + 1) + '</span><span class="square-summary"><strong>' + esc(item.title) + '</strong><small><span class="codes-info">' + esc(codesInfo(item)) + '</span>' + (wideIds.has(item.id) ? ' · largura total' : '') + '<span class="warn"' + (validLink(item.link) ? ' hidden' : '') + '> · sem link</span></small></span><button type="button" class="drag-handle" title="Arraste para reordenar" aria-label="Reordenar produto"><svg width="18" height="18" viewBox="0 0 512 512" fill="none" stroke="currentColor" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="96" y1="176" x2="416" y2="176"/><line x1="96" y1="256" x2="416" y2="256"/><line x1="96" y1="336" x2="416" y2="336"/></svg></button><button type="button" class="kebab" aria-haspopup="menu" title="Mais ações" aria-label="Mais ações">' + ICONS.kebab + '</button></summary><div class="square-body"><label>Título do produto<textarea maxlength="150" data-title>' + esc(item.title) + '</textarea></label><label>Link do informativo<input type="url" inputmode="url" placeholder="https://..." value="' + esc(item.link) + '" data-link-input></label>' + (item.manual ? '<label>Códigos (um por linha; o primeiro define a foto)<textarea rows="3" data-codes placeholder="60.01.000.300">' + esc(item.rows.map(row => M.formatCode(row.code)).join('\n')) + '</textarea></label>' : '<div class="codes-readonly">' + item.rows.map(row => esc(M.formatCode(row.code)) + ' — ' + esc(row.title)).join('<br>') + '</div>') + '</div></details>';
-    const group = (key, label, list) => '<section class="square-group"><h3 class="group-title">' + label + '<span class="count-pill">' + list.length + '</span></h3><div class="square-items" data-group="' + key + '">' + list.map(itemHtml).join('') + '</div></section>';
-    $('squareList').innerHTML = group('vonder', 'VONDER', state.items.filter(item => !item.multi)) + group('multi', 'Multimarcas', state.items.filter(item => item.multi));
+    const chevron = PortalShell.svgIcon('<path d="m6 9 6 6 6-6"/>', 14);
+    const group = (key, label, list) => '<section class="square-group' + (state.collapsed.has(key) ? ' is-closed' : '') + '"><h3 class="group-title"><button type="button" class="group-toggle" data-group="' + key + '" aria-expanded="' + !state.collapsed.has(key) + '"><span class="group-chevron" aria-hidden="true">' + chevron + '</span>' + label + '<span class="count-pill">' + list.length + '</span></button></h3><div class="square-collapse"><div class="square-collapse-inner"><div class="square-items" data-group="' + key + '">' + list.map(itemHtml).join('') + '</div></div></div></section>';
+    $('squareList').innerHTML = M.BRANDS.filter(brand => !brand.color || brandActive(brand.key)).map(brand => group(brand.key, brand.label, byBrand(brand.key))).join('');
+    $('brandToggles').innerHTML = OPTIONAL_BRANDS.map(brand => '<label class="brand-toggle" style="--c:' + brand.color + '" title="' + brand.label + '"><input type="checkbox" data-brand="' + brand.key + '" aria-label="' + brand.label + '"' + (brandActive(brand.key) ? ' checked' : '') + '>' + (window.OVD_BRAND_LOGOS && window.OVD_BRAND_LOGOS[brand.logo] ? '<img src="' + esc(window.OVD_BRAND_LOGOS[brand.logo]) + '" alt="">' : brand.label) + '</label>').join('');
+    $('brandToggles').querySelectorAll('input').forEach(input => input.onchange = () => {
+      const key = input.dataset.brand;
+      if (!input.checked && byBrand(key).length) { toast('Mova os produtos de ' + key.toUpperCase() + ' para outra seção antes de desativar a marca.'); input.checked = true; return; }
+      state.brands = input.checked ? [...state.brands, key] : state.brands.filter(entry => entry !== key); renderSettings(); markDirty();
+    });
+    $('squareList').querySelectorAll('.group-toggle').forEach(button => button.onclick = () => { const closed = button.closest('.square-group').classList.toggle('is-closed'); button.setAttribute('aria-expanded', !closed); state.collapsed[closed ? 'add' : 'delete'](button.dataset.group); });
     bindReorder();
     $('squareList').querySelectorAll('.square-item').forEach(details => {
       const item = state.items.find(entry => entry.id === details.dataset.settingId);
       const title = details.querySelector('[data-title]');
       title.oninput = () => { item.title = title.value; delete item.titleHtml; details.querySelector('.square-summary strong').textContent = title.value; document.querySelectorAll('[data-item-id="' + item.id + '"] .consolidado-card-title').forEach(el => el.textContent = title.value); markDirty(); };
       const link = details.querySelector('[data-link-input]');
-      link.oninput = () => { item.link = link.value.trim(); const card = document.querySelector('.consolidado-card[data-item-id="' + item.id + '"]'); if (card) { card.dataset.link = validLink(item.link); card.querySelector('.consolidado-link').classList.toggle('missing', !card.dataset.link); } details.querySelector('.warn').hidden = !!validLink(item.link); setEditorStatus(); markDirty(); };
+      link.oninput = () => { item.link = link.value.trim(); const card = document.querySelector('.consolidado-card[data-item-id="' + item.id + '"]'); if (card) { card.dataset.link = validLink(item.link); card.querySelector('.consolidado-link').classList.toggle('missing', !card.dataset.link); } details.querySelector('.warn').hidden = !!validLink(item.link); markDirty(); };
       const codes = details.querySelector('[data-codes]');
       if (codes) codes.oninput = () => { item.rows = codes.value.split('\n').map(line => line.replace(/\D/g, '')).filter(Boolean).map(code => ({ code, title: '', sourceRow: 0 })); details.querySelector('.codes-info').textContent = codesInfo(item); clearTimeout(codes.timer); codes.timer = setTimeout(renderPreview, 300); markDirty(); };
       details.querySelector('.kebab').onclick = event => { event.preventDefault(); openSquareMenu(event.currentTarget, item); };
@@ -240,14 +291,14 @@
     $('fileName').textContent = state.sourceName || (state.original ? 'Planilha já importada' : 'Produtos adicionados manualmente');
   }
   function addProduct() {
-    const item = { id: crypto.randomUUID(), call: '', title: 'Novo produto', rows: [], link: '', photo: '', multi: false, manual: true };
-    state.items.push(item); renderAll(); markDirty();
+    const item = { id: crypto.randomUUID(), call: '', title: 'Novo produto', rows: [], link: '', photo: '', manual: true };
+    state.items.push(item); state.collapsed.delete('vonder'); renderAll(); markDirty();
     const details = document.querySelector('[data-setting-id="' + item.id + '"]');
     if (details) { details.open = true; details.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); const title = details.querySelector('[data-title]'); title.focus(); title.select(); }
   }
   function renderAll() {
     $('workspace').hidden = !state.items.length; $('itemCount').textContent = state.items.length; $('exportPdf').disabled = !state.items.length; $('saveConsolidado').disabled = !state.items.length; $('restoreOriginal').hidden = !state.original;
-    renderSource(); renderSettings(); renderPreview(); setEditorStatus();
+    renderSource(); renderSettings(); renderPreview();
   }
 
   function compressPng(file) {
@@ -272,7 +323,7 @@
     if (!state.workbook) return;
     const name = $('sheetSelect').value; const rows = XLSX.utils.sheet_to_json(state.workbook.Sheets[name], { header: 1, defval: '', raw: false });
     try {
-      state.items = M.parseRows(rows); state.original = JSON.parse(JSON.stringify(state.items)); if (!state.items.length) throw new Error('Nenhum produto foi encontrado nessa aba.');
+      state.items = M.parseRows(rows); state.brands = []; state.original = JSON.parse(JSON.stringify(state.items)); if (!state.items.length) throw new Error('Nenhum produto foi encontrado nessa aba.');
       const month = M.monthNumber(name); const year = yearFromFile(state.sourceName); if (month) $('consolidadoMonth').value = year + '-' + String(month).padStart(2, '0');
       $('consolidadoTitle').value = generatedTitle(); state.id = ''; state.version = 0; state.createdAt = 0; renderAll(); markDirty(); state.edited = false; state.sheetName = name; toast(state.items.length + ' produtos importados da aba ' + name + '.');
     } catch (error) { toast(error.message); }
@@ -300,13 +351,13 @@
   async function saveCurrent() {
     if (!state.items.length) return;
     const title = $('consolidadoTitle').value.trim() || generatedTitle(); const now = Date.now(); const id = state.id || crypto.randomUUID(); const createdAt = state.createdAt || now;
-    const payload = { schema: 1, title, month: monthValue(), sourceName: state.sourceName, createdAt, updatedAt: now, items: state.items, texts: state.texts, original: state.original };
+    const payload = { schema: 1, title, month: monthValue(), sourceName: state.sourceName, createdAt, updatedAt: now, items: state.items, brands: state.brands, texts: state.texts, original: state.original };
     if (JSON.stringify(payload).length > 850000) { toast('As fotos enviadas deixaram o arquivo grande demais. Use PNGs menores.'); return; }
     $('saveConsolidado').disabled = true;
     try {
       const result = await SyncBackend.put(ITEM_KEY + id, payload, state.version); if (result.conflict) throw new Error('Este consolidado foi alterado em outra sessão. Abra-o novamente antes de salvar.');
       state.id = id; state.version = result.updated_at || state.version; state.createdAt = createdAt;
-      await saveIndex({ id, title, month: payload.month, createdAt, updatedAt: now, itemCount: state.items.length, pageCount: 1 }); state.dirty = false; $('saveConsolidado').disabled = false; toast('Consolidado salvo para a equipe.');
+      await saveIndex({ id, title, month: payload.month, createdAt, updatedAt: now, itemCount: state.items.length, pageCount: 1, noLink: noLinkItems().length, updatedBy: await whoAmI() }); state.dirty = false; $('saveConsolidado').disabled = false; toast('Consolidado salvo para a equipe.');
     } catch (error) { toast(error.message || 'Não foi possível salvar o consolidado.'); $('saveConsolidado').disabled = false; }
   }
 
@@ -314,13 +365,36 @@
     const entry = state.saved.find(item => item.id === id); if (!entry) return;
     try {
       const record = await SyncBackend.get(ITEM_KEY + id); const data = record.v; if (!data || !Array.isArray(data.items)) throw new Error('O conteúdo deste consolidado não foi encontrado.');
-      state.items = data.items.map(item => ({ ...item, id: item.id || crypto.randomUUID() })); state.texts = data.texts || {}; state.original = data.original || null; state.id = id; state.version = record.updated_at || 0; state.createdAt = data.createdAt || entry.createdAt || Date.now(); state.sourceName = data.sourceName || ''; state.workbook = null; state.dirty = false;
+      state.items = data.items.map(item => ({ ...item, id: item.id || crypto.randomUUID() })); state.brands = Array.isArray(data.brands) ? data.brands : []; state.texts = data.texts || {}; state.original = data.original || null; state.id = id; state.version = record.updated_at || 0; state.createdAt = data.createdAt || entry.createdAt || Date.now(); state.sourceName = data.sourceName || ''; state.workbook = null; state.dirty = false;
       $('consolidadoTitle').value = data.title || entry.title; $('consolidadoMonth').value = data.month || entry.month; $('editorHeading').textContent = data.title || entry.title; $('fileName').textContent = state.sourceName || 'Planilha já importada'; $('sheetField').hidden = true; showEditor(); renderAll(); $('saveConsolidado').disabled = false;
     } catch (error) { toast(error.message || 'Não foi possível abrir o consolidado.'); }
   }
 
+  // Nome de quem está salvando (mesmo padrão do Editor de Posts: perfil → e-mail); sem resposta em 3 s, segue sem nome
+  let myName = '';
+  async function whoAmI() {
+    if (myName) return myName;
+    try {
+      const gateway = window.PortalFirebase || await Promise.race([new Promise(resolve => addEventListener('portal-firebase-ready', () => resolve(window.PortalFirebase), { once: true })), new Promise(resolve => setTimeout(resolve, 3000))]);
+      const context = gateway && await gateway.currentContext(), profile = (context && context.profile) || {};
+      myName = profile.name || profile.displayName || (context && context.user.email) || '';
+    } catch (_) { /* sem nome: o card só não mostra "por …" */ }
+    return myName;
+  }
+
+  async function duplicateSaved(id) {
+    const entry = state.saved.find(item => item.id === id); if (!entry) return;
+    try {
+      const record = await SyncBackend.get(ITEM_KEY + id), data = record.v; if (!data || !Array.isArray(data.items)) throw new Error('O conteúdo deste consolidado não foi encontrado.');
+      const now = Date.now(), newId = crypto.randomUUID(), title = (entry.title + ' (cópia)').slice(0, 100);
+      const payload = { ...data, title, createdAt: now, updatedAt: now, items: data.items.map(item => ({ ...item, id: crypto.randomUUID() })) };
+      const result = await SyncBackend.put(ITEM_KEY + newId, payload, 0); if (result.conflict) throw new Error('Não foi possível duplicar agora. Tente novamente.');
+      await saveIndex({ ...entry, id: newId, title, createdAt: now, updatedAt: now, updatedBy: await whoAmI() }); renderLibrary(); toast('Consolidado duplicado: “' + title + '”.');
+    } catch (error) { toast(error.message || 'Não foi possível duplicar o consolidado.'); }
+  }
+
   async function deleteSaved(id) {
-    const entry = state.saved.find(item => item.id === id); if (!entry || !confirm('Excluir "' + entry.title + '"? Esta ação não pode ser desfeita.')) return;
+    const entry = state.saved.find(item => item.id === id); if (!entry || !(await ask({ title: 'Excluir consolidado?', text: '“' + entry.title + '” será excluído para toda a equipe. Esta ação não pode ser desfeita.', ok: 'Excluir', danger: true }))) return;
     try {
       const next = state.saved.filter(item => item.id !== id); const result = await SyncBackend.put(INDEX_KEY, next, state.indexVersion); if (result.conflict) { await loadSaved(); toast('A lista mudou. Confira e tente novamente.'); return; }
       state.saved = next; state.indexVersion = result.updated_at || state.indexVersion; await SyncBackend.remove(ITEM_KEY + id); renderLibrary(); toast('Consolidado excluído.');
@@ -331,18 +405,18 @@
   // Página de trabalho = 28,2222 x 52 cm do InDesign; 1 px CSS = 1 pt do PDF (os tamanhos de fonte no CSS são em px = pt reais)
   const PAGE_W = 800; // largura do InDesign (28,2222 cm); a altura acompanha o conteúdo (informativo de e-mail, sem paginação)
   // Avisos antes de baixar o PDF: produtos sem link ou sem foto (a foto é conferida na prévia já carregada)
-  function exportWarnings(page) {
+  async function exportWarnings(page) {
     const brief = list => list.slice(0, 5).map(item => '“' + item.title.slice(0, 40) + '”').join(', ') + (list.length > 5 ? ' e mais ' + (list.length - 5) : '');
     const noPhoto = state.items.filter(item => { const card = page.querySelector('.consolidado-card[data-item-id="' + item.id + '"]'), img = card && card.querySelector('.consolidado-photo img'); return !img || img.style.display === 'none'; });
     const lines = []; const noLink = noLinkItems();
-    if (noLink.length) lines.push('• ' + noLink.length + ' produto(s) sem link: ' + brief(noLink));
-    if (noPhoto.length) lines.push('• ' + noPhoto.length + ' produto(s) sem foto: ' + brief(noPhoto));
-    return !lines.length || confirm('Atenção antes de baixar o PDF:\n\n' + lines.join('\n') + '\n\nBaixar mesmo assim?');
+    if (noLink.length) lines.push(noLink.length + ' produto(s) sem link: ' + brief(noLink));
+    if (noPhoto.length) lines.push(noPhoto.length + ' produto(s) sem foto: ' + brief(noPhoto));
+    return !lines.length || ask({ title: 'Atenção antes de baixar o PDF', text: 'Encontrei pendências neste consolidado:', items: lines, ok: 'Baixar mesmo assim', cancel: 'Voltar e corrigir' });
   }
   async function exportPdf() {
-    const button = $('exportPdf'); button.disabled = true; button.textContent = 'Gerando…';
+    const button = $('exportPdf'), label = button.innerHTML; button.disabled = true; button.textContent = 'Gerando…';
     try {
-      const pages = [...$('pagesPreview').querySelectorAll('.consolidado-page')]; const { jsPDF } = window.jspdf; let pdf; await waitForImages(pages[0]); if (!exportWarnings(pages[0])) return;
+      const pages = [...$('pagesPreview').querySelectorAll('.consolidado-page')]; const { jsPDF } = window.jspdf; let pdf; await waitForImages(pages[0]); if (!(await exportWarnings(pages[0]))) return;
       for (let index = 0; index < pages.length; index++) {
         const page = pages[index]; await waitForImages(page); const height = page.offsetHeight, scale = Math.max(1, Math.min(3, 16000 / height)); /* 3x = 2400 px de largura; limita a altura do canvas (máx. do navegador ~16000 px) em informativos muito longos */ const canvas = await html2canvas(page, { scale, useCORS: true, backgroundColor: '#f6be00', logging: false, onclone: clonedDoc => ConsolidadoExport.bakeImages(page, clonedDoc.querySelector('.consolidado-page'), scale) });
         if (!pdf) pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: [PAGE_W, height], compress: true }); else pdf.addPage([PAGE_W, height], 'portrait');
@@ -351,24 +425,24 @@
       }
       const safe = ($('consolidadoTitle').value || generatedTitle()).replace(/[\\/:*?"<>|]/g, '-'); pdf.save(safe + '.pdf'); toast('PDF gerado com os links dos produtos.');
     } catch (error) { toast(error.message || 'Não foi possível gerar o PDF.'); }
-    finally { button.disabled = false; button.textContent = 'Baixar PDF'; }
+    finally { button.disabled = false; button.innerHTML = label; }
   }
 
   document.addEventListener('pointerdown', event => { if (!event.target.closest('.consolidado-photo')) document.querySelectorAll('.consolidado-photo.photo-editing').forEach(photo => photo.classList.remove('photo-editing')); });
-  $('restoreOriginal').onclick = () => {
-    if (!state.original || !confirm('Voltar à planilha original? Exclusões, ordem, destaques, textos, fotos e links dos produtos serão descartados.')) return;
+  $('restoreOriginal').onclick = async () => {
+    if (!state.original || !(await ask({ title: 'Voltar à planilha original?', text: 'Exclusões, ordem, destaques, textos, fotos e links dos produtos serão descartados.', ok: 'Voltar à original', danger: true }))) return;
     state.items = JSON.parse(JSON.stringify(state.original)); state.texts = {}; renderAll(); markDirty(); toast('Produtos restaurados a partir da planilha original.');
   };
   $('newConsolidado').onclick = () => { resetEditor(); showEditor(); };
   $('addProduct').onclick = addProduct; $('startBlank').onclick = addProduct;
-  $('backToLibrary').onclick = () => { if (state.dirty && !confirm('Voltar sem salvar as alterações?')) return; showLibrary(); };
+  $('backToLibrary').onclick = async () => { if (state.dirty && !(await ask({ title: 'Sair sem salvar?', text: 'As alterações deste consolidado ainda não foram salvas.', ok: 'Sair sem salvar', cancel: 'Continuar editando', danger: true }))) return; showLibrary(); };
   $('saveConsolidado').onclick = saveCurrent; $('exportPdf').onclick = exportPdf;
   // Trocar planilha/aba/mês substitui os produtos: pede confirmação se já houver edições ou se for um consolidado salvo
-  const confirmDiscard = () => !state.items.length || !(state.edited || state.id) || confirm('Trocar a planilha, a aba ou o mês substitui os produtos atuais e descarta as edições feitas. Continuar?');
-  function loadSheetFile(file) {
+  const confirmDiscard = async () => !state.items.length || !(state.edited || state.id) || ask({ title: 'Substituir os produtos?', text: 'Trocar a planilha ou a aba substitui os produtos atuais e descarta as edições feitas.', ok: 'Substituir', danger: true });
+  async function loadSheetFile(file) {
     if (!file) return;
     if (!/\.(xlsx|xls)$/i.test(file.name)) { toast('Envie uma planilha do Excel (.xlsx ou .xls).'); return; }
-    if (!confirmDiscard()) return;
+    if (!(await confirmDiscard())) return;
     readWorkbook(file);
   }
   // Arrastar e soltar a planilha: mesmo padrão da importação de CSV do TikTok (followers-dashboard.js) - só um arquivo por vez
@@ -382,8 +456,9 @@
   });
   ['dragover', 'drop'].forEach(type => window.addEventListener(type, event => event.preventDefault())); // soltar fora do campo não abre o arquivo no navegador
   $('sheetFile').onchange = event => { loadSheetFile(event.target.files[0]); event.target.value = ''; };
-  $('sheetSelect').onchange = () => { if (!confirmDiscard()) { $('sheetSelect').value = state.sheetName; return; } chooseSheet(); };
+  $('sheetSelect').onchange = async () => { if (!(await confirmDiscard())) { $('sheetSelect').value = state.sheetName; return; } chooseSheet(); };
   $('consolidadoMonth').onchange = () => { state.texts = {}; /* ponytail: trocar o mês refaz título e introdução do cabeçalho e descarta a formatação deles */ const old = $('consolidadoTitle').value; if (!old || /^Consolidado /.test(old)) $('consolidadoTitle').value = generatedTitle(); if (state.workbook && !(state.edited || state.id)) { const wanted = +monthValue().split('-')[1]; const match = state.workbook.SheetNames.find(name => M.monthNumber(name) === wanted); if (match) { $('sheetSelect').value = match; chooseSheet(); return; } } renderPreview(); markDirty(); };
+  $('librarySearch').oninput = renderLibrary; $('libraryYear').onchange = renderLibrary;
   $('consolidadoTitle').oninput = () => { $('editorHeading').textContent = $('consolidadoTitle').value || 'Novo consolidado'; markDirty(); };
   window.addEventListener('beforeunload', event => { if (!state.dirty) return; event.preventDefault(); event.returnValue = ''; });
   loadSaved();

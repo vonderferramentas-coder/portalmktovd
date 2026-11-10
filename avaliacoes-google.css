@@ -1,0 +1,297 @@
+/* Avaliações do Google: usa só os tokens do portal (DESIGN.md §8), nos dois temas. */
+
+
+.ag-panel{padding:24px}
+.ag-panel h2{margin:0 0 12px;font-size:14px;font-weight:600;color:var(--text)}
+.ag-rows{margin:0 -12px;padding:0;list-style:none} /* o texto das linhas alinha com o padding do cartão; o fundo do hover entra nele */
+.ag-rows li{position:relative;padding:0;font-size:13px}
+.ag-rows li+li::before{content:"";position:absolute;top:0;left:12px;right:12px;border-top:1px solid var(--border)}
+
+.ag-item{margin-bottom:12px;padding:16px;border-left:4px solid var(--border-strong)}
+.ag-item.is-critica{border-left-color:var(--danger)}
+.ag-item.is-atencao{border-left-color:var(--accent)}
+.ag-item.is-elogio{border-left-color:var(--success)}
+.ag-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:8px}
+.ag-stars{color:var(--accent-text);font-size:15px;letter-spacing:1px}
+.ag-chip{padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--border)}
+.ag-chip.is-critica{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-border)}
+.ag-chip.is-atencao{background:var(--accent-weak);color:var(--accent-text);border-color:transparent}
+.ag-chip.is-elogio{background:var(--success-bg);color:var(--success);border-color:var(--success-border)}
+.ag-meta{font-size:12.5px;color:var(--muted)}
+.ag-text{margin:0;font-size:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.ag-why{margin:8px 0 0;font-size:13px;color:var(--muted)}
+.ag-reply{margin:12px 0 0;padding:10px 12px;border-radius:var(--radius-sm);background:var(--surface-muted);font-size:13px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.ag-reply b{display:block;margin-bottom:2px;font-size:12px;color:var(--muted)}
+.ag-more{display:block;margin:16px auto 0}
+.ag-note{margin:16px 0 0;font-size:12px;color:var(--muted)}
+.ag-panel .ag-note{margin:0 0 12px}
+/* A coluna acompanha a altura do cabeçalho: abas e "Atualizado em" juntas embaixo, com o horário na linha do fim do .page-subtitle (mesma altura de linha, 21px) */
+.ag-cabecalho-dir{display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;align-self:stretch;gap:8px;flex-shrink:0}
+.ag-cabecalho-dir .ag-note{margin:0;line-height:21px;text-align:right}
+
+/* Aba Vendedores: lojas em cartões, vendedores numa grade de 3 colunas; edição em modal do portal */
+.ag-ico{display:inline-flex;transition:transform .25s ease}
+.ag-mapa-layout.is-sozinho{grid-template-columns:1fr}.ag-mapa-layout{display:grid;grid-template-columns:minmax(300px,6fr) 6fr;gap:12px;align-items:start;margin-bottom:16px}
+.ag-vendlist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.ag-vend{display:flex;align-items:center;gap:6px;padding:8px 8px 8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px}
+.ag-mencoes{flex:0 0 auto;padding:0 4px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ag-mencoes b{font-weight:600;color:var(--text)}
+.ag-vend.is-off .ag-vend-nome strong{color:var(--muted);text-decoration:line-through}
+.ag-vend-nome{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;overflow-wrap:anywhere;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.ag-vend-nome:disabled{cursor:default}
+.ag-vend-nome:not(:disabled):hover strong{text-decoration:underline}
+.ag-vend-nome:focus-visible{outline:2px solid var(--accent-ink);outline-offset:4px;border-radius:4px}
+.ag-vend-topo{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.ag-vend-topo>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ag-text mark{padding:0 2px;border-radius:2px;background:var(--accent-weak);color:var(--accent-text);font-weight:600}
+.ag-iconbtn{flex:0 0 auto;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
+.ag-iconbtn:hover{background:var(--surface-muted);color:var(--text)}
+.ag-iconbtn.is-danger:hover{background:var(--danger-bg);color:var(--danger)}
+.ag-iconbtn:focus-visible,.ag-menu-item:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+@media (max-width:900px){.ag-mapa-layout{grid-template-columns:1fr}}
+
+/* Menu flutuante "Mais ações" (DESIGN §1) */
+.ag-menu{position:fixed;z-index:1500;min-width:200px;padding:6px;border:1px solid var(--border-strong);border-radius:var(--radius-md);background:var(--card);box-shadow:var(--shadow-lg);opacity:0;transform:translateY(-4px) scale(.98);transform-origin:top right;transition:opacity .12s,transform .12s}
+.ag-menu.is-open{opacity:1;transform:none}
+.ag-menu-item{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--text);font:700 13px var(--font-ui);text-align:left;cursor:pointer;transition:background .12s}
+.ag-menu-item:hover{background:var(--surface-muted)}
+@media (prefers-reduced-motion:reduce){.ag-ico,.ag-menu{transition:none}}
+
+/* Campos dos modais */
+.modal-form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.ag-campo{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;font-size:12px;font-weight:600;color:var(--muted)}
+.ag-campo input,.modal-body textarea{width:100%;box-sizing:border-box;height:var(--control-h);padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:600 14px var(--font-ui)}
+.modal-body textarea{display:block;height:auto;padding:10px 12px}
+.ag-campo input:focus-visible,.modal-body textarea:focus-visible{border-color:var(--accent-ink);outline:none;box-shadow:0 0 0 3px var(--accent-weak)}
+.ag-ajuda{margin:0 0 12px;font-size:13px;line-height:1.5;color:var(--muted)}
+.ag-check{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;font-weight:700;cursor:pointer}
+.ag-check input{width:16px;height:16px;cursor:pointer;accent-color:var(--accent)}
+.ag-erro{margin:0;font-size:13px;font-weight:700;color:var(--danger)}
+
+#agTabs{flex-shrink:0}
+#agTabs button{white-space:nowrap}
+
+/* Mapa das lojas (SVG): contorno dos estados e pings coloridos pela faixa de nota */
+/* Mapa (Leaflet). Em cartão (aba Vendedores) tem altura fixa; na Visão geral vira o fundo da cena */
+.ag-mapa{position:relative;width:100%;height:440px;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;background:var(--surface-muted);font:inherit}
+.ag-pin-svg{display:block;overflow:visible;transform-origin:50% 96%;transition:transform .2s ease}
+/* O pin sobe e cresce com o mouse (ou o foco) nele e também quando o mouse está na linha da loja na lista (avaliacoes-google-mapa.js, destacar) */
+.ag-ping.is-hover .ag-pin-svg,.ag-ping:hover .ag-pin-svg,.ag-ping:focus-visible .ag-pin-svg{transform:translateY(-8px) scale(1.18)}
+.ag-ping.is-hover .ag-pin{stroke:var(--text)}
+@media (prefers-reduced-motion:reduce){.ag-pin-svg{transition:none}}
+.ag-ping{cursor:pointer}
+.ag-ping:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px;border-radius:12px}
+.ag-ping-fio{stroke:var(--text);stroke-width:2}
+.ag-ping-ponto{fill:var(--text)}
+.ag-pin{fill:var(--accent);stroke:var(--card);stroke-width:3;stroke-linejoin:round;filter:drop-shadow(0 3px 3px rgba(0,0,0,.3));transition:stroke .12s}
+:root[data-theme="dark"] .ag-pin{stroke:var(--text);stroke-width:2.5}
+.ag-ping:hover .ag-pin,.ag-ping:focus-visible .ag-pin{stroke:var(--text)}
+/* Pin da loja aberta no painel: maior, escuro (cor do texto, número invertido) e com o contorno do cartão; os outros pins ficam apagados */
+.ag-ping.is-sel .ag-pin-svg{transform:scale(1.3)}
+.ag-ping.is-sel .ag-pin{fill:var(--text);stroke:var(--card);stroke-width:4}
+.ag-ping.is-sel .ag-ping-num{fill:var(--card)}
+.ag-mapa.tem-sel .ag-ping:not(.is-sel){opacity:.6;transition:opacity .2s ease}
+.ag-mapa.tem-sel .ag-ping:not(.is-sel):hover,.ag-mapa.tem-sel .ag-ping.is-hover{opacity:1}
+.ag-ping.is-sel.is-hover .ag-pin-svg,.ag-ping.is-sel:hover .ag-pin-svg{transform:translateY(-8px) scale(1.4)}
+@media (prefers-reduced-motion:reduce){.ag-mapa.tem-sel .ag-ping:not(.is-sel){transition:none}}
+.ag-ping.is-vazio .ag-pin{fill:var(--muted)}
+.ag-status{stroke:var(--card);stroke-width:3}
+.ag-status.is-ok,.ag-dot.is-ok{fill:var(--success);background:var(--success)}
+.ag-status.is-atencao,.ag-dot.is-atencao{fill:#F6BE00;background:#F6BE00}
+.ag-status.is-ruim,.ag-dot.is-ruim{fill:var(--danger);background:var(--danger)}
+.ag-ping-num{font:600 23px var(--font-ui);fill:var(--on-accent);pointer-events:none}
+.ag-ping.is-vazio .ag-ping-num{fill:var(--white)}
+.ag-legenda{display:flex;flex-wrap:wrap;gap:4px 16px;margin:8px 0 0;font-size:12px;color:var(--muted)}
+.ag-legenda span{display:inline-flex;align-items:center;gap:6px}
+.ag-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+
+/* Referencial da loja (ao clicar num pin): mesma ordem da página de avaliações do Google */
+.ag-ref{display:flex;flex-direction:column;gap:16px}
+.ag-ref .ag-ref-nome,.ag-geral-topo .ag-ref-nome{margin:0;font:600 20px/24px var(--font-display);color:var(--text)}
+.btn.ag-voltar{flex:0 0 auto;width:32px;height:32px;padding:0}
+.ag-ref-acoes{display:flex;gap:8px;flex:0 0 auto}
+.ag-ref-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.ag-ref-end{margin:4px 0 0;font-size:12px;line-height:16px;color:var(--muted)}
+.ag-ref-nota{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.ag-ref-nota strong{font:500 32px/1 var(--font-display);font-variant-numeric:tabular-nums;color:var(--text)}
+.ag-ref-nota span:last-child{font-size:13px;color:var(--muted)}
+/* Período entre parênteses ao lado da quantidade de avaliações, em itálico (pedido da equipe; exceção ao "sem itálico" do unslop) */
+.ag-ref-periodo{font-style:italic}
+.ag-geral-topo{display:flex;flex-direction:column;gap:16px;margin-bottom:16px} /* cabeçalho do card Lojas: mesmo ritmo do painel da loja */
+.ag-rate{position:relative;display:inline-block;white-space:nowrap;font-size:16px;line-height:1;letter-spacing:2px}
+.ag-rate i{font-style:normal;color:var(--border-strong)}
+.ag-rate b{position:absolute;left:0;top:0;overflow:hidden;font-weight:400;color:var(--accent-text)}
+.ag-pills{display:flex;flex-wrap:wrap;gap:8px}
+.ag-pill{height:32px;padding:0 12px;border:1px solid var(--border);border-radius:16px;background:var(--card);color:var(--text);font:600 13px var(--font-ui);cursor:pointer;transition:background-color .12s,border-color .12s,color .12s}
+.ag-pill small{margin-left:4px;font-size:12px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.ag-pill:hover{background:var(--surface-muted)}
+.ag-pill[aria-pressed="true"]{border-color:transparent;background:var(--accent-weak);color:var(--accent-text)}
+.ag-pill[aria-pressed="true"] small{color:inherit}
+.ag-pill:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+.ag-resultado{display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:20px;color:var(--muted)}
+.ag-resultado-topo{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.ag-resultado p{margin:0;min-width:0;font-weight:600;color:var(--text)}
+.ag-resultado-n{flex:0 0 auto;font-variant-numeric:tabular-nums}
+/* Etiquetas dos critérios aplicados: rótulo apagado + valor, na grade de 4px */
+.ag-criterios{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+.ag-criterios li{display:inline-flex;align-items:center;gap:6px;max-width:100%;height:24px;padding:0 10px;border:1px solid var(--border);border-radius:12px;background:var(--surface-muted);font-size:12px;line-height:16px}
+.ag-criterios li.tem-x{padding-right:4px}
+.ag-criterios span{flex:0 0 auto}
+.ag-crit-x{flex:0 0 auto;width:16px;height:16px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background-color .12s,color .12s}
+.ag-crit-x:hover{background:var(--border-strong);color:var(--text)}
+.ag-crit-x:focus-visible{outline:2px solid var(--accent-ink);outline-offset:1px}
+.ag-crit-x .ag-ico{display:flex}
+@media (prefers-reduced-motion:reduce){.ag-crit-x{transition:none}}
+.ag-criterios b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--text)}
+.ag-ordem-lojas{margin:0 0 8px}
+.ag-ref-rotulo{margin:0 0 8px;font-size:13px;color:var(--muted)}
+.ag-revs{border-bottom:1px solid var(--border)}
+.ag-rev{padding:16px 0;border-top:1px solid var(--border)}
+.ag-rev-head{display:flex;align-items:center;gap:12px}
+.ag-avatar{flex:0 0 40px;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;background:var(--surface-muted);color:var(--text);font:600 16px var(--font-ui)}
+.ag-rev-nome{font-size:14px;font-weight:600;line-height:20px;color:var(--text)}
+.ag-rev-linha{display:flex;align-items:center;gap:8px;font-size:12px;line-height:16px;color:var(--muted)}
+.ag-rev-linha .ag-rate{font-size:14px}
+.ag-editada{color:var(--accent-text);font-weight:600}
+.ag-rev .ag-text{margin:12px 0 0}
+.ag-rev .ag-reply{margin:12px 0 0 20px;padding:0 0 0 16px;border-left:2px solid var(--border-strong);border-radius:0;background:none}
+@media (prefers-reduced-motion:reduce){.ag-pill,.ag-ficha{transition:none}}
+
+/* Linha da ficha no formato do resultado de busca do Google: nome, nota + estrelas + (contagem) · categoria, endereço · telefone */
+.ag-rows .ag-ficha-nome{font:600 16px/24px var(--font-display);color:var(--text)}
+.ag-ficha-nome,.ag-ref .ag-ref-nome{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+/* Cidade-UF da ficha em pílula, com o destaque amarelo suave do portal */
+.ag-local{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;background:var(--accent-weak);color:var(--accent-text);font:600 12px/16px var(--font-ui);white-space:nowrap}
+.ag-ficha-nota{display:flex;flex-wrap:wrap;align-items:center;gap:0 4px;font-size:13px;line-height:20px;color:var(--muted)}
+.ag-ficha-nota>b{font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.ag-ficha-nota .ag-rate{font-size:12px;margin:0 2px}
+.ag-ficha{display:flex;flex-direction:column;gap:2px;width:100%;padding:12px;border:0;border-radius:var(--radius-sm);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;transition:background-color .12s}
+.ag-ficha:hover,.ag-ficha.is-realce{background:var(--surface-muted)}
+.ag-ficha:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
+.ag-ficha small{font-size:13px;line-height:20px;color:var(--muted)}
+/* Resultado da busca no painel Lojas: quantas avaliações citam o termo e o trecho da primeira */
+.ag-panel:not(.ag-ref)>.ag-busca-linha{margin:0 0 12px}
+.ag-panel:not(.ag-ref)>.ag-filtro{margin:-12px 0 12px}
+.ag-achou{display:flex;flex-direction:column;gap:2px;margin-top:4px;padding-left:12px;border-left:2px solid var(--accent);font-size:13px;line-height:20px}
+.ag-achou b{font-weight:600;color:var(--accent-ink)}
+.ag-achou q{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--muted);quotes:"“" "”"}
+
+/* Visão geral: o mapa preenche toda a largura por trás (a página tem 28px de margem, que a cena sangra) e os cartões ficam à frente */
+.ag-cena{position:relative;isolation:isolate;box-sizing:border-box;height:680px;margin:0 -28px -28px;padding:24px 28px}
+.ag-cena>.ag-mapa{position:absolute;inset:0;z-index:0;width:auto;height:auto;border:0;border-radius:0}
+.ag-sobre{position:relative;z-index:1;display:grid;grid-template-columns:1fr minmax(380px,600px);grid-template-rows:minmax(0,1fr);gap:12px;height:100%;margin:0;pointer-events:none}
+.ag-sobre>*{pointer-events:auto}
+.ag-sobre>:last-child{grid-column:2;max-height:100%;overflow:auto;box-shadow:var(--shadow-lg)}
+/* Barra de rolagem fina do projeto (DESIGN.md §16), no lugar da nativa */
+.ag-sobre>:last-child{scrollbar-width:thin;scrollbar-color:var(--border-strong) transparent}
+.ag-sobre>:last-child::-webkit-scrollbar{width:8px}
+.ag-sobre>:last-child::-webkit-scrollbar-track{background:transparent}
+.ag-sobre>:last-child::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
+.ag-sobre>:last-child::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+/* Vendedores: o cartão fica à esquerda; os controles de zoom passam para a direita, longe dele */
+.ag-esq{grid-template-columns:minmax(380px,600px) 1fr}
+.ag-esq>:last-child{grid-column:1}
+.ag-cena.is-esq .leaflet-bottom.leaflet-left{left:auto;right:0}
+.ag-cena.is-esq .leaflet-left .leaflet-control{float:right;margin:0 28px 60px 0}
+/* Círculo com a quantidade de vendedores ativos no canto direito da linha da loja */
+.ag-ficha-vend{position:relative;padding-right:68px}
+.ag-circulo{position:absolute;top:50%;right:12px;transform:translateY(-50%);min-width:32px;height:32px;padding:0 8px;box-sizing:border-box;display:grid;place-items:center;border-radius:16px;background:var(--accent-weak);color:var(--accent-text);font:600 14px/1 var(--font-ui);font-variant-numeric:tabular-nums}
+.ag-ping-nome{position:absolute;top:19px;transform:translateY(-50%);white-space:nowrap;font:700 13px/1 var(--font-ui);color:var(--text);text-shadow:0 0 3px var(--card),0 0 3px var(--card),0 0 6px var(--card);pointer-events:none}
+.ag-ping-nome.is-e{right:calc(100% - 4px)}
+.ag-ping-nome.is-d{left:calc(100% - 4px)}
+@media (max-width:900px){
+  .ag-cena{height:auto;margin:0 0 16px;padding:0}
+  .ag-cena>.ag-mapa{position:relative;height:360px;border:1px solid var(--border);border-radius:var(--radius-md)}
+  .ag-sobre{height:auto;margin-top:12px;grid-template-columns:1fr;grid-template-rows:none;pointer-events:auto}
+  .ag-sobre>:last-child{grid-column:auto;max-height:none;box-shadow:none}
+}
+@media (max-width:760px){.ag-cena{margin-inline:0}}
+
+/* Leaflet nos temas do portal. Os tiles são claros; no tema escuro um filtro os inverte */
+:root[data-theme="dark"] .ag-mapa .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.85) saturate(.7)}
+.ag-cena .leaflet-left .leaflet-control{margin-left:28px}
+.ag-cena .leaflet-bottom .leaflet-control{margin-bottom:24px}
+.leaflet-container{font-family:inherit;background:var(--surface-muted)}
+.leaflet-bar{border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.leaflet-bar a,.leaflet-bar a:hover{background:var(--card);color:var(--text);border-bottom-color:var(--border)}
+.leaflet-bar a:hover{background:var(--surface-muted)}
+.leaflet-control-attribution{background:color-mix(in srgb,var(--card) 82%,transparent);color:var(--muted);font-size:11px}
+.leaflet-control-attribution a{color:var(--text)}
+.leaflet-container a.leaflet-control-zoom-in:focus-visible,.leaflet-container a.leaflet-control-zoom-out:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}
+
+/* Campo de busca do referencial da loja */
+.ag-busca{position:relative;display:block}
+.ag-busca .ag-ico{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.ag-busca input{width:100%;box-sizing:border-box;height:var(--control-h);padding:0 12px 0 36px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:600 14px var(--font-ui);transition:border-color .12s}
+.ag-busca input::placeholder{color:var(--muted);font-weight:500}
+.ag-busca input:hover{border-color:var(--border-strong)}
+.ag-busca input:focus-visible{border-color:var(--accent-ink);outline:none;box-shadow:0 0 0 3px var(--accent-weak)}
+@media (prefers-reduced-motion:reduce){.ag-busca input{transition:none}}
+
+/* Sugestões do campo de busca (palavras-chave): abrem e fecham com animação de altura, DESIGN.md §1 (grade 0fr/1fr, .25s ease).
+   A margem de -16px cancela o gap de 16px do .ag-ref (o 16px de cima volta como padding das pílulas): mudou o gap, mude os dois */
+.ag-sugestoes{display:grid;grid-template-rows:1fr;margin-top:-16px;transition:grid-template-rows .25s ease}
+.ag-sugestoes.is-closed{grid-template-rows:0fr}
+.ag-sugestoes-corpo{min-height:0;overflow:hidden;margin:0 -4px;padding:0 4px}
+.ag-sugestoes .ag-pills{padding:16px 0 4px}
+@media (prefers-reduced-motion:reduce){.ag-sugestoes{transition:none}}
+
+/* Busca + botão Filtrar na mesma linha; o painel de datas abre por baixo (grade 0fr/1fr, DESIGN.md §1).
+   No .ag-ref (gap 16px) a margem de -16px cancela o gap, como nas sugestões; no painel Lojas a margem é -12px, ver .ag-panel>.ag-filtro */
+.ag-busca-linha{display:flex;gap:8px}
+.ag-busca-linha .ag-busca{flex:1;min-width:0}
+.ag-filtrar{flex:0 0 auto;box-sizing:border-box;width:96px;height:var(--control-h);padding:0;gap:8px;font-size:13px;font-weight:600;position:relative}
+.ag-filtrar.is-ativo{border-color:var(--accent-ink);background:var(--accent-weak)}
+.ag-filtrar.is-ativo::after{content:"";position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--accent-ink)}
+.ag-filtro{display:grid;grid-template-rows:1fr;transition:grid-template-rows .25s ease}
+.ag-filtro.is-closed{grid-template-rows:0fr}
+.ag-ref>.ag-filtro{margin-top:-16px}
+.ag-filtro-corpo{min-height:0;overflow:hidden;margin:0 -4px;padding:0 4px}
+/* Todos os filtros e botões ficam numa caixa de fundo levemente diferente do cartão (raio 12 = controles de 8 + padding 4 de folga) */
+.ag-filtro-caixa{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface-muted)}
+.ag-filtro-campos{display:flex;align-items:flex-end;gap:8px}
+.ag-datas{flex:1;min-width:0}
+.ag-datas-colapso{display:grid;grid-template-rows:1fr;transition:grid-template-rows .25s ease}
+.ag-datas-colapso.is-closed{grid-template-rows:0fr}
+.ag-datas-miolo{min-height:0;overflow:hidden;margin:0 -4px;padding:0 4px}
+.ag-datas-par{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 0 4px} /* as duas datas somam a largura da busca; o Limpar fica sob o Filtrar, com o mesmo tamanho */
+.ag-data{margin:0;display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;font-size:12px;color:var(--muted)}
+.ag-data-btn{box-sizing:border-box;width:100%;height:var(--control-h);padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:600 13px var(--font-ui);text-align:left;cursor:pointer;transition:border-color .12s,box-shadow .12s}
+.ag-data-btn.is-vazio{color:var(--muted);font-weight:500}
+.ag-data-btn:hover{border-color:var(--border-strong)}
+.ag-data-btn.is-ativo,.ag-data-btn:focus-visible{border-color:var(--accent-ink);outline:none;box-shadow:0 0 0 3px var(--accent-weak)}
+/* Calendário de intervalo: abre por baixo dos campos (grade 0fr/1fr, DESIGN.md §1); dias de 36px, grade de 4px */
+.ag-cal{display:grid;grid-template-rows:1fr;transition:grid-template-rows .25s ease}
+.ag-cal.is-closed{grid-template-rows:0fr}
+.ag-cal-corpo{min-height:0;overflow:hidden;margin:0 -4px;padding:0 4px}
+.ag-cal-caixa{box-sizing:border-box;margin-top:12px;padding:8px;transition:transform .25s ease;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card)}
+.ag-cal-topo{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.ag-cal-topo .ag-iconbtn{width:24px;height:24px}
+.ag-cal-mes{white-space:nowrap;font-size:12px;font-weight:600;color:var(--text)}
+.ag-cal-grade{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
+.ag-cal-sem{height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
+.ag-cal-dia{height:36px;padding:0;min-width:0;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--text);font:500 13px var(--font-ui);font-variant-numeric:tabular-nums;cursor:pointer;transition:background-color .12s,color .12s}
+.ag-cal-dia:hover:not(:disabled){background:var(--surface-muted)}
+.ag-cal-dia.is-hoje{box-shadow:inset 0 0 0 1px var(--border-strong)}
+.ag-cal-dia.is-dentro{background:var(--accent-weak);border-radius:0}
+.ag-cal-dia.is-sel{background:var(--accent);color:var(--on-accent);font-weight:600}
+.ag-cal-dia:disabled{color:var(--muted);opacity:.4;cursor:not-allowed}
+.ag-cal-dia:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
+@media (prefers-reduced-motion:reduce){.ag-filtro,.ag-cal,.ag-datas-colapso,.ag-cal-caixa,.ag-data-btn,.ag-cal-dia{transition:none}}
+.ag-filtro-selecoes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding-top:12px}
+.ag-sel{margin:0;display:flex;flex-direction:column;gap:4px;min-width:0;font-size:12px;color:var(--muted)}
+.ag-sel select{box-sizing:border-box;width:100%;height:var(--control-h);padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:600 13px var(--font-ui);cursor:pointer;transition:border-color .12s}
+.ag-sel select:hover{border-color:var(--border-strong)}
+.ag-sel select:focus-visible{border-color:var(--accent-ink);outline:none;box-shadow:0 0 0 3px var(--accent-weak)}
+@media (prefers-reduced-motion:reduce){.ag-sel select{transition:none}}
+/* Seta dos selects da página (filtros do topo e do botão Filtrar): a nativa ignora o padding e cola na borda. Aqui ela é um chevron de traço (DESIGN.md §1),
+   a 12px da borda como o texto à esquerda, e o padding direito reserva o espaço dela. A cor vale o --muted de cada tema. */
+.ag-sel select{-webkit-appearance:none;appearance:none;padding-right:36px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2368686a' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:14px}
+:root[data-theme="dark"] .ag-sel select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa1ac' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")}
+.ag-fila-filtro{margin-bottom:12px}
+.ag-solo{align-items:center;justify-content:space-between}
+.ag-resumo{flex:1;min-width:0;margin:0;font-size:13px;color:var(--muted)}
+.ag-data-btn:disabled{opacity:.5;cursor:not-allowed}
+.ag-data-btn:disabled:hover{border-color:var(--border)}
+.ag-filtro-acoes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)} /* três botões iguais, ocupando toda a largura */
+.ag-filtro-acoes .btn{box-sizing:border-box;width:100%;height:var(--control-h);padding:0;font-size:13px;font-weight:600}

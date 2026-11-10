@@ -30,6 +30,7 @@ function defaultAllowedPages(role) {
 // "Quais páginas cada perfil pode ver" - editado em Usuários e acessos (checkbox por perfil),
 // gravado em portalStore/page-permissions-v1.
 async function loadAllowedPages(role) {
+  if (role === 'admin') return defaultAllowedPages(role); // admin é travado em todas as páginas (admin-users.js): página nova não pode ficar de fora até alguém resalvar o checklist
   try {
     const record = await readPortalStore('page-permissions-v1');
     const map = record && record.v;

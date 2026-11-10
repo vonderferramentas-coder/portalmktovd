@@ -1,0 +1,82 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Calendário - editoria preenche redes/formatos e reabrir mantém os formatos</title>
+<body data-result="running"><pre id="result">Executando…</pre>
+<div id="fx" hidden>
+  <input id="mDate" value="2026-11-26">
+  <input type="checkbox" class="mNet" value="Instagram"><input type="checkbox" class="mNet" value="Facebook"><input type="checkbox" class="mNet" value="LinkedIn">
+  <input type="radio" name="mType" value="Static" checked><input type="radio" name="mType" value="Video">
+  <div id="mPlacesContainer"></div>
+</div>
+<script>
+// Extrai do app.js os formatos por rede e o preenchimento pela editoria e roda no DOM real com um formulário de teste.
+// Precisa de --allow-file-access-from-files (como os outros testes que leem arquivos do projeto).
+(() => {
+  try {
+    const request = new XMLHttpRequest();
+    request.open('GET', '../app.js', false);
+    request.send();
+    const source = request.responseText;
+    const cut = (from, to) => { const a = source.indexOf(from), b = source.indexOf(to, a); if (a < 0 || b < 0) throw new Error('marcador não achado: ' + from); return source.slice(a, b); };
+    const block = cut('    // marca, no grupo de formatos DA REDE', '    function renderCatalogUI');
+    const build = new Function(`
+      const $ = id => document.getElementById(id);
+      const escapeHtml = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const networkIcon = () => '', formatIcon = () => '', refreshModalDynamic = () => {};
+      const monthKeyFromDate = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+      const viewDate = new Date(2026, 10, 1);
+      let isEditing = false;
+      const fmts = [{ name: 'Feed' }, { name: 'Stories' }];
+      const APP_SETTINGS = {
+        networks: [{ name: 'Instagram', formats: fmts }, { name: 'Facebook', formats: fmts }, { name: 'LinkedIn', formats: [{ name: 'Feed' }] }],
+        editorias: [{ name: 'Lançamentos', scheduleByMonth: { '2026-11': { weekdays: [6], channels: [
+          { channel: 'Instagram', types: ['Video'], places: ['Feed'] }, { channel: 'Facebook', types: ['Video'], places: ['Feed', 'Stories'] }, { channel: 'TikTok', types: ['Static'], places: ['Feed'] }] } } },
+          { name: 'Dica' }]
+      };
+      ${block}
+      const setSchedule = (name, channels) => { APP_SETTINGS.editorias.push({ name, scheduleByMonth: { '2026-11': { weekdays: [6], channels } } }); };
+      return { setSchedule, checkPlacesForNet, applyEditoriaDefaultsToModal, renderModalFormatsUI, setEditing: v => { isEditing = v; } };
+    `);
+    const m = build();
+    const assert = (condition, message) => { if (!condition) throw new Error(message); };
+    const net = n => document.querySelector(`.mNet[value="${n}"]`);
+    const checked = n => Array.from(document.querySelectorAll(`#mPlacesContainer .format-net-group[data-net="${n}"] input:checked`)).map(i => i.value);
+    const reset = () => { document.querySelectorAll('.mNet').forEach(n => { n.checked = false; }); document.querySelector('input[name="mType"][value="Static"]').checked = true; m.renderModalFormatsUI(); };
+
+    // reabrir um card com Instagram e Facebook, os dois com Feed e Stories: os dois grupos voltam marcados
+    reset(); net('Instagram').checked = true; net('Facebook').checked = true; m.renderModalFormatsUI();
+    [{ channel: 'Instagram', places: ['Feed', 'Stories'] }, { channel: 'Facebook', places: ['Feed', 'Stories'] }].forEach(c => m.checkPlacesForNet(c.channel, c.places));
+    assert(checked('Instagram').join() === 'Feed,Stories' && checked('Facebook').join() === 'Feed,Stories', 'Facebook mantém Feed e Stories marcados: ' + checked('Facebook'));
+
+    // formatos diferentes por rede continuam diferentes
+    reset(); net('Instagram').checked = true; net('Facebook').checked = true; m.renderModalFormatsUI();
+    m.checkPlacesForNet('Instagram', ['Feed']); m.checkPlacesForNet('Facebook', ['Stories']);
+    assert(checked('Instagram').join() === 'Feed' && checked('Facebook').join() === 'Stories', 'cada rede com o seu formato');
+    m.checkPlacesForNet('Pinterest', ['Feed']); // rede que não está no formulário não quebra
+
+    // postagem nova + editoria com agendamento no mês: redes, formatos e tipo vêm preenchidos
+    reset(); m.applyEditoriaDefaultsToModal('Lançamentos');
+    assert(net('Instagram').checked && net('Facebook').checked && !net('LinkedIn').checked, 'marca as redes da editoria (TikTok, que não existe nas Opções, é ignorada)');
+    assert(checked('Instagram').join() === 'Feed' && checked('Facebook').join() === 'Feed,Stories', 'formatos por rede: ' + checked('Instagram') + ' / ' + checked('Facebook'));
+    assert(document.querySelector('input[name="mType"]:checked').value === 'Video', 'tipo da editoria');
+
+    // não desmarca o que a pessoa já tinha escolhido
+    reset(); net('LinkedIn').checked = true; m.renderModalFormatsUI(); m.checkPlacesForNet('LinkedIn', ['Feed']); m.applyEditoriaDefaultsToModal('Lançamentos');
+    assert(net('LinkedIn').checked && checked('LinkedIn').join() === 'Feed', 'a escolha da pessoa continua');
+
+    // o tipo escolhido pela pessoa (Vídeo) não volta para o da editoria (Estático)
+    reset(); document.querySelector('input[name="mType"][value="Video"]').checked = true;
+    m.setSchedule('Dica2', [{ channel: 'Instagram', types: ['Static'], places: ['Feed'] }]); m.applyEditoriaDefaultsToModal('Dica2');
+    assert(document.querySelector('input[name="mType"]:checked').value === 'Video', 'o tipo da pessoa continua');
+
+    // Feed já marcado no Instagram: o Facebook, que entra agora com Stories, não herda o Feed pelo nome
+    reset(); net('Instagram').checked = true; m.renderModalFormatsUI(); m.checkPlacesForNet('Instagram', ['Feed']);
+    m.setSchedule('Dica3', [{ channel: 'Instagram', types: ['Static'], places: ['Feed'] }, { channel: 'Facebook', types: ['Static'], places: ['Stories'] }]); m.applyEditoriaDefaultsToModal('Dica3');
+    assert(checked('Instagram').join() === 'Feed' && checked('Facebook').join() === 'Stories', 'rede nova só com o que a editoria define: ' + checked('Facebook'));
+
+    // editoria sem agendamento, mês sem agendamento e edição de card existente: nada muda
+    reset(); m.applyEditoriaDefaultsToModal('Dica'); assert(!net('Instagram').checked, 'editoria sem agendamento não preenche');
+    document.getElementById('mDate').value = '2026-12-05'; m.applyEditoriaDefaultsToModal('Lançamentos'); assert(!net('Instagram').checked, 'mês sem agendamento não preenche');
+    document.getElementById('mDate').value = '2026-11-26'; m.setEditing(true); m.applyEditoriaDefaultsToModal('Lançamentos'); assert(!net('Instagram').checked, 'ao editar um card existente não preenche');
+    document.body.dataset.result = 'pass'; document.getElementById('result').textContent = 'OK - editoria predefinida e formatos por rede validados.';
+  } catch (error) { document.body.dataset.result = 'fail'; document.getElementById('result').textContent = 'FAIL: ' + error.message; }
+})();
+</script></body></html>

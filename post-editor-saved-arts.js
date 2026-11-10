@@ -267,7 +267,7 @@
     }).catch(function(){notice('Não foi possível concluir','Tente de novo em instantes.')})
   }
   var filter='',lastItems=[];  // filtro: '' = todas, '__exp' = fotos expiradas, ou o nome da editoria
-  // ponytail: aproxima o prazo da limpeza (30 dias desde a última edição); se o card foi publicado depois, as fotos ficam mais tempo e o selo aparece antes da hora
+  // ponytail: aproxima o prazo da limpeza (30 dias desde a última edição); se a data do card for depois, as fotos ficam mais tempo e o selo aparece antes da hora
   function photosExpired(d){return(d.photos||[]).some(function(p){return p&&p.hash})&&Date.now()-(d.updatedAt||0)>PHOTO_KEEP_MS}
   function busyBy(i){return i.lock&&i.lock.until>Date.now()&&(!myCtx||i.lock.uid!==myCtx.uid)?i.lock.name:''}
   function renderFilters(source){

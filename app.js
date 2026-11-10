@@ -27,7 +27,11 @@
     const notificationTargetParams = new URLSearchParams(location.search);
     const requestedPostId = notificationTargetParams.get('post');
     const requestedPostDate = notificationTargetParams.get('date');
+    // ?date=AAAA-MM-DD&commemorative=1 (sugestão "Criar post" da Início) abre o fluxo da data comemorativa daquele dia
+    const requestedCommemorative = notificationTargetParams.has('commemorative') && /^\d{4}-\d{2}-\d{2}$/.test(requestedPostDate || '');
     let requestedPostOpened = false;
+    // o fluxo da data comemorativa só abre depois da 1ª leitura das configurações da nuvem (datas personalizadas e editorias da marca)
+    let settingsPulled = false;
     if(/^\d{4}-\d{2}-\d{2}$/.test(requestedPostDate || '')){
       const [requestedYear,requestedMonth] = requestedPostDate.split('-').map(Number);
       viewDate = new Date(requestedYear, requestedMonth-1, 1);
@@ -42,7 +46,7 @@
     let isEditing = false;
     let editingId = null;
     // estado dos filtros aplicados ao calendário/lista
-    const filters = { editorias: [], places: [], types: [], statuses: [], collab: 'any' };
+    const filters = { editorias: [], places: [], types: [], collab: 'any' };
     // produtos selecionados no modal de criar/editar postagem: [{code,name}, ...]
     let selectedProducts = [];
     // texto exato ("Pauta: ...") da última pauta sugerida inserida no campo de conteúdo - se
@@ -54,7 +58,16 @@
     let pendingProductRemovalIdx = null;
     // catálogo mestre de produtos (data/catalog-vonder.json, via CatalogProvider) - carregado
     // à parte do catálogo manual em APP_SETTINGS.catalog; os dois alimentam productCandidates()
-    let masterCatalog = [];
+    let masterCatalog = [], masterCatalogByCode = new Map(), masterCatalogLoading = null, masterCatalogRetryAt = 0;
+    // uma carga por vez; se vier vazio (rede falhou), uma busca de produto tenta de novo, no máximo a cada 30 s
+    function loadMasterCatalog(){
+      if(masterCatalogLoading || Date.now() < masterCatalogRetryAt || typeof CatalogProvider==='undefined') return;
+      masterCatalogLoading = CatalogProvider.load('vonder').then(result=>{
+        masterCatalog = result.items||[]; masterCatalogLoading = null;
+        masterCatalogByCode = new Map(masterCatalog.filter(item=> item.code).reverse().map(item=> [normalizeCode(item.code), item])); // reverse: código repetido fica com o 1º item
+        if(!masterCatalog.length) masterCatalogRetryAt = Date.now() + 30000;
+      });
+    }
     // imagens de referência anexadas no modal de criar/editar postagem (campo "Referências
     // salvas em:"): [{id,name,width,height,dataUrl}, ...] - refletem na pré-visualização do
     // briefing e são embutidas no .docx exportado
@@ -62,7 +75,7 @@
     let guidedPostStep = 1;
 
     // ============================================================
-    // HELPERS DE COR E EXIBIÇÃO - cores de tags/status, ícones de rede,
+    // HELPERS DE COR E EXIBIÇÃO - cores de tags, ícones de rede,
     // normalização de texto e montagem de URL de imagem de produto
     // ============================================================
     const TAG_PALETTE = ['#7c3aed','#0284c7','#16a34a','#b45309','#dc2626','#db2777','#0d9488','#4f46e5','#65a30d','#ea580c'];
@@ -272,9 +285,17 @@
     function normalizeCode(s){
       return String(s||'').replace(/[.\s-]/g,'').toLowerCase();
     }
+    // só os dígitos do código (forma usada pelas rotas do site e pelo cache de miniaturas)
+    function codeDigits(s){
+      return String(s||'').replace(/\D/g,'');
+    }
+    // miniaturas leves (120x120, ~3 KB, CDN do site FG) por código só com dígitos: vêm junto da busca
+    // no site ou em lote de /product-thumbs (loadProductThumbs). '' = o site não tem foto do produto.
+    const productThumbCache = {};
     function productImageUrl(code){
-      const digits = String(code||'').replace(/\D/g,'');
+      const digits = codeDigits(code);
       if(!digits) return '';
+      if(productThumbCache[digits]) return productThumbCache[digits];
       // O host de imagens estáticas da Vonder bloqueia embeds <img> de outros sites
       // (proteção contra hotlink além de um simples check de Referer - só "no-referrer"
       // não bastou). Por isso passamos por um proxy público que busca a imagem no servidor.
@@ -290,6 +311,52 @@
       const box = $('productSuggestions'); if(box){ box.style.display = 'none'; box.innerHTML = ''; }
     }
 
+    // Código OVD (00.00.000.000) só existe nas marcas próprias (VONDER, NOVE54, TOOLMIX...). Em produto de outra marca
+    // (BOSCH, DEWALT...) o "code" guardado é a referência do fabricante (o modelo), não um código OVD nem FG.
+    function isOvdCode(code){
+      return /^\d{2}\.\d{2}\.\d{3}\.\d{3}$/.test(String(code||'').trim()) || (!!code && masterCatalogByCode.has(normalizeCode(code)));
+    }
+    // código FG de um produto: o guardado na postagem (produto de outra marca escolhido na busca do site), o do catálogo
+    // mestre ou de Configurações, ou o achado no site pela referência (ver resolveFgCodes)
+    const fgByRef = {}; // normalizeCode(referência do fabricante) -> código FG ('' = o site não achou)
+    function productCodeFG(code, p){
+      if(p && p.codeFG) return p.codeFG;
+      // Configurações vence o mestre quando o código se repete (mesma regra de productCandidates)
+      const manual = (APP_SETTINGS.catalog||[]).find(c=> c.code && c.code===code && c.codeFG);
+      if(manual) return manual.codeFG;
+      const d = productDetailsByCode(code);
+      return (d && d.codeFG) || fgByRef[normalizeCode(code)] || '';
+    }
+    // Produtos de outras marcas salvos antes de a postagem guardar o código FG: busca no site FG (scope=all) pela
+    // referência e guarda o resultado na sessão. Falha de rede não grava nada (tenta de novo na próxima vez).
+    // ponytail: 6 consultas por vez; referência que o site só acha com a formatação própria (ex.: "2 608 601 501") fica sem FG.
+    async function resolveFgCodes(products){
+      const todo = [...new Set(products.filter(p=> p && p.code && !p.codeFG && !isOvdCode(p.code)).map(p=> p.code))]
+        .filter(code=> !(normalizeCode(code) in fgByRef));
+      for(let i=0; i<todo.length; i+=6){
+        await Promise.all(todo.slice(i, i+6).map(code=> fetch(`${PORTAL_API_BASE}/product-search?q=${encodeURIComponent(code)}&scope=all`, { signal: AbortSignal.timeout(8000) }) // sem resposta em 8 s: segue sem o FG
+          .then(res=> res.ok ? res.json() : Promise.reject(res.status))
+          .then(data=>{
+            const hit = (data.items||[]).find(it=> normalizeCode(it.code)===normalizeCode(code));
+            fgByRef[normalizeCode(code)] = (hit && hit.codeFG) || '';
+          }).catch(()=>{})));
+      }
+    }
+    // "Códigos - OVD: x | FG: y" (só as partes que existem); '' se o produto não tem nenhum código.
+    // Produto de outra marca mostra só o FG; sem FG conhecido, a referência do fabricante entra como "Ref.".
+    function productCodesLabel(p){
+      const fg = productCodeFG(p.code, p);
+      const parts = [p.code && (isOvdCode(p.code) ? `OVD: ${p.code}` : !fg && `Ref.: ${p.code}`), fg && `FG: ${fg}`].filter(Boolean);
+      return parts.length ? `Códigos - ${parts.join(' | ')}` : '';
+    }
+    // colunas da planilha de códigos, sem misturar: OVD só de marca própria; FG da postagem, do catálogo ou do site.
+    // Produto de outra marca cujo FG o site não achou fica com FG vazio (a referência do fabricante segue no nome);
+    // código colado sem nome (pode ser OVD ou FG) vai no FG quando não tem formato de OVD.
+    function productCodeColumns(p){
+      const ovd = isOvdCode(p.code) ? p.code : '';
+      return { ovd, fg: productCodeFG(p.code, p) || (!ovd && !p.name ? (p.code||'') : '') };
+    }
+
     // lê os produtos de uma postagem, migrando o formato antigo (productCode/productName únicos)
     function getPostProducts(post){
       if(Array.isArray(post.products) && post.products.length) return post.products;
@@ -297,18 +364,23 @@
       return [];
     }
 
-    // postagem com todos os campos essenciais preenchidos? Usado pelo ícone de completo/pendência
-    // ao lado do contador de cada dia. Título, Produto(s) - ou marcada como "sem produto", pra
-    // institucionais/anúncios - Onde salvar a arte e Conteúdo da publicação contam; Imagem de
-    // referência e Referências ficam de fora por serem materiais de apoio opcionais, não algo
-    // que toda postagem precisa ter.
-    function isPostComplete(post){
+    // campos da etapa 1 (Planejamento) do modal que faltam numa postagem. Fonte única do ícone de
+    // pendência do dia e do bloqueio do "Próximo" no modal. Data e Tipo sempre têm valor; as etapas
+    // 2 e 3 (produto, conteúdo, onde salvar) não entram.
+    function missingPlanningFields(post){
+      const missing = [];
       const title = (post.title||'').trim();
-      if(!title || title==='Untitled') return false;
-      if(!getPostProducts(post).length && !post.noProduct) return false;
-      if(!(post.artsLink||'').trim()) return false;
-      if(!(post.notes||'').trim()) return false;
-      return true;
+      if(!title || title==='Untitled') missing.push('Título');
+      const eds = Array.isArray(post.editoria) ? post.editoria : [post.editoria];
+      if(!eds.some(Boolean)) missing.push('Editoria');
+      const entries = postChannelEntries(post);
+      if(!entries.length) missing.push('Redes');
+      else {
+        // rede sem formato cadastrado nas Configurações não tem o que marcar: não bloqueia
+        const hasFormats = entries.some(c=> (((APP_SETTINGS.networks||[]).find(n=>n.name===c.channel)||{}).formats||[]).length);
+        if(hasFormats && !entries.some(c=> (c.places||[]).length)) missing.push('Formato');
+      }
+      return missing;
     }
 
     function renderSelectedProducts(){
@@ -316,11 +388,15 @@
       wrap.innerHTML = '';
       selectedProducts.forEach((p, idx)=>{
         const chip = document.createElement('span'); chip.className = 'product-chip';
-        const img = p.code ? `<img src="${productImageUrl(p.code)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'" />` : '';
-        chip.innerHTML = `${img}<div class="pc-body"><span class="pc-name">${escapeHtml(p.name)}</span>${p.code?`<span class="pc-code">${escapeHtml(p.code)}</span>`:''}</div><button type="button" class="pc-remove" data-idx="${idx}" aria-label="Remover produto">${UI_ICONS.x(12)}</button>`;
+        const img = p.code ? `<img ${productImgAttrs(p.code)} alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'" />` : '';
+        const codes = productCodesLabel(p);
+        chip.innerHTML = `${img}<div class="pc-body"><span class="pc-name">${escapeHtml(p.name)}</span>${codes?`<span class="pc-code">${escapeHtml(codes)}</span>`:''}</div><button type="button" class="pc-remove pc-edit" data-idx="${idx}" aria-label="Editar produto" title="Editar nome e códigos">${UI_ICONS.edit(12)}</button><button type="button" class="pc-remove" data-idx="${idx}" aria-label="Remover produto">${UI_ICONS.x(12)}</button>`;
+        chip.querySelector('.pc-edit').addEventListener('click', ()=> openProductEdit(chip, idx));
         wrap.appendChild(chip);
       });
-      wrap.querySelectorAll('.pc-remove').forEach(bt=> bt.addEventListener('click', ()=>{
+      loadProductThumbs(selectedProducts);
+      loadSiteDetails();
+      wrap.querySelectorAll('.pc-remove:not(.pc-edit)').forEach(bt=> bt.addEventListener('click', ()=>{
         const i = parseInt(bt.dataset.idx,10);
         // se já tem conteúdo escrito, remover o produto também apaga esse conteúdo (as pautas e a
         // legenda geradas eram sobre ele) - por ser destrutivo, passa por confirmação antes
@@ -328,6 +404,50 @@
         removeSelectedProduct(i);
       }));
       refreshModalDynamic();
+    }
+
+    // Lápis do chip: troca o chip por um formulário (Nome, Código OVD, Código FG) para o produto que o site da FG não
+    // tem ou veio só como código colado (guardado como {code:'', name:'1205227'}). O que se digita vale para esta
+    // postagem e vence o que o catálogo/site trazem (productCodeFG lê p.codeFG primeiro).
+    // ponytail: só no modal da postagem; as linhas do "Agendar em lote" (renderRowProducts) seguem sem edição.
+    function openProductEdit(chip, idx){
+      const p = selectedProducts[idx]; if(!p) return;
+      const open = chip.parentElement.querySelector('.is-editing');
+      if(open){ open.querySelector('input').focus(); return; } // um editor por vez: abrir outro redesenharia a lista e perderia o que foi digitado
+      const bare = !p.code && /^[\d.\-\s]+$/.test(p.name||''); // código colado sem nome: o número está no campo nome
+      const ovd0 = isOvdCode(p.code) ? p.code : (bare && isOvdCode(p.name) ? p.name : '');
+      const fg0 = productCodeFG(p.code, p) || (bare && !ovd0 ? p.name.replace(/\D/g,'') : '');
+      const name0 = bare ? '' : (p.name||'');
+      const f = (k, label, v, ph)=> `<label class="pc-edit-field">${label}<input type="text" data-k="${k}" value="${escapeHtml(v)}" placeholder="${ph}" autocomplete="off" /></label>`;
+      chip.classList.add('is-editing');
+      chip.innerHTML = `<div class="pc-edit-form">${f('name','Nome',name0,'Nome do produto')}<div class="pc-edit-codes">${f('ovd','Código OVD',ovd0,'00.00.000.000')}${f('fg','Código FG',fg0,'Só números')}</div><span class="pc-edit-error" role="alert" hidden></span><div class="pc-edit-actions"><button type="button" class="btn ghost small" data-act="cancel">Cancelar</button><button type="button" class="btn small" data-act="save">Salvar</button></div></div>`;
+      const q = k=> chip.querySelector(`[data-k="${k}"]`), err = chip.querySelector('.pc-edit-error');
+      const fail = (k, msg)=>{ err.textContent = msg; err.hidden = false; q(k).focus(); };
+      const save = ()=>{
+        const name = q('name').value.trim(), fg = q('fg').value.trim();
+        let ovd = q('ovd').value.trim();
+        if(!name) return fail('name', 'Informe o nome do produto');
+        if(ovd){ // 10 dígitos viram 00.00.000.000
+          const d = ovd.replace(/\D/g,'');
+          ovd = d.length===10 && /^[\d.\s]+$/.test(ovd) ? `${d.slice(0,2)}.${d.slice(2,4)}.${d.slice(4,7)}.${d.slice(7)}` : ovd;
+          if(!/^\d{2}\.\d{2}\.\d{3}\.\d{3}$/.test(ovd)) return fail('ovd', 'Use o formato 00.00.000.000');
+        }
+        if(fg && !/^\d{4,}$/.test(fg)) return fail('fg', 'O código FG tem só números');
+        // sem OVD digitado: produto OVD perde o código; produto de outra marca mantém a referência do fabricante
+        const code = ovd || (isOvdCode(p.code) || !p.code ? '' : p.code);
+        const next = { code, name };
+        if(fg && (fg!==fg0 || p.codeFG || bare)) next.codeFG = fg; // FG que só veio do catálogo não é congelado; o do código colado (que sai do nome) é gravado
+        selectedProducts[idx] = next;
+        lastInsertedPautaBlock = null;
+        renderSelectedProducts();
+      };
+      chip.querySelector('[data-act="save"]').addEventListener('click', save);
+      chip.querySelector('[data-act="cancel"]').addEventListener('click', renderSelectedProducts);
+      chip.addEventListener('keydown', ev=>{
+        if(ev.key==='Enter' && ev.target.tagName==='INPUT'){ ev.preventDefault(); save(); }
+        else if(ev.key==='Escape'){ ev.preventDefault(); ev.stopPropagation(); renderSelectedProducts(); }
+      });
+      q('name').focus();
     }
 
     // remove o produto pelo índice e reseta pautas/legenda em uso - chamada direto quando não há
@@ -600,20 +720,23 @@
     let currentContentSuggestionsKey = null;
     function contentSuggestionsContextKey(){
       const editorias = Array.from(document.querySelectorAll('.mEditoria:checked')).map(e=>e.value).sort().join(',');
-      const productKey = selectedProducts.map(p=>p.code||p.name).join(',');
+      // "\u0001" = o produto já tem dados ricos: quando eles chegam do site, a chave muda e as pautas se refazem
+      const productKey = selectedProducts.map(p=> (p.code||p.name) + (productDetailsByCode(p.code) ? '\u0001' : '')).join(',');
       return editorias + '|' + productKey;
     }
 
     function renderContentSuggestions(forceRegenerate){
       const box = $('contentSuggestions'); if(!box) return;
       const key = contentSuggestionsContextKey();
+      const previousKey = currentContentSuggestionsKey;
       if(forceRegenerate || key !== currentContentSuggestionsKey){
         currentContentSuggestions = pickContentSuggestions();
         currentContentSuggestionsKey = key;
-        // contexto mudou (produto/editoria) ou pediu pautas novas - as 3 pautas em uso antes já
-        // não correspondem a nenhuma das novas, então a próxima "Usar no conteúdo" deve inserir,
-        // não tentar substituir um texto que não existe mais nessas sugestões
-        lastInsertedPautaBlock = null;
+        // contexto mudou (produto/editoria) ou pediu pautas novas: a próxima "Usar no conteúdo" insere.
+        // Exceção: se só chegaram os dados do produto (mesmos produtos e editorias) e a pauta usada ainda
+        // está no texto, ela é trocada por cima - senão o Conteúdo ficava com duas pautas
+        const onlyDetails = !forceRegenerate && previousKey!==null && key.replace(/\u0001/g,'')===previousKey.replace(/\u0001/g,'');
+        if(!(onlyDetails && lastInsertedPautaBlock && ($('mNotes').value||'').includes(lastInsertedPautaBlock))) lastInsertedPautaBlock = null;
       }
       const multiEditoria = document.querySelectorAll('.mEditoria:checked').length > 1;
       const suggestions = currentContentSuggestions;
@@ -736,8 +859,16 @@
         : joinPt(checkedPlaces);
       const products = getPostProducts(post);
       const productItems = products.map(p=> [p.code, p.name].filter(Boolean).join(' – '));
+      // a postagem guarda o código (OVD, ou a referência do fabricante em produto de outra marca) e o nome; o código
+      // FG vem da própria postagem, do catálogo (Configurações ou mestre) ou do site. Produto de outra marca não tem
+      // código OVD: mostra o FG e, sem ele, a referência como "ref"
+      const productRows = products.map(p=>{
+        const fg = productCodeFG(p.code, p), own = isOvdCode(p.code);
+        return { ovd: own ? (p.code||'') : '', ref: !own && !fg ? (p.code||'') : '', fg, name: p.name||'' };
+      });
+      const eds = Array.isArray(post.editoria) ? post.editoria : [post.editoria];
       return {
-        title, dateLabel, formatsText, hasFormats: checkedPlaces.length>0,
+        title, editoria: eds.filter(Boolean).join(', '), productRows, dateLabel, formatsText, hasFormats: checkedPlaces.length>0,
         artsLink: (post.artsLink||'').trim(), referencesLink: (post.referencesLink||'').trim(),
         productItems, imageLink: (post.imageLink||'').trim(), imageNotes: (post.imageNotes||'').trim(),
         referenceImages: Array.isArray(post.referenceImages) ? post.referenceImages : [],
@@ -852,6 +983,7 @@
     }
 
     function refreshModalDynamic(){
+      updateGuidedHint();
       updateCommemorativePostTypeUI();
       renderTitleSuggestion();
       renderBriefingPreview();
@@ -862,14 +994,6 @@
     // ============================================================
     // AUTOCOMPLETE DO CATÁLOGO DE PRODUTOS (campo "Nome do produto")
     // ============================================================
-    function addSelectedProduct(item){
-      if(item.code && selectedProducts.some(p=>p.code===item.code)){ $('mProductName').value=''; hideProductSuggestions(); return; }
-      selectedProducts.push({ code: item.code||'', name: item.name });
-      $('mProductName').value = '';
-      hideProductSuggestions();
-      renderSelectedProducts();
-      $('mProductName').focus();
-    }
 
     // catálogo de produtos cadastrado em Configurações + catálogo mestre (data/catalog-vonder.json).
     // Itens manuais de Configurações têm prioridade quando o código se repete nos dois.
@@ -882,11 +1006,17 @@
       return manual.concat(fromMaster);
     }
 
+    // item com o código ou o nome exatos digitados (q e qCode já normalizados), ou null
+    function exactProductMatch(items, q, qCode){
+      return items.find(item=> (qCode && [item.code, item.codeFG].some(c=> c && normalizeCode(c)===qCode)) || (q && normalizeStr(item.name||'')===q)) || null;
+    }
     // resultados que começam pelo termo buscado (no nome ou em algum código, OVD ou FG) vêm antes
     // dos que só contêm o termo em outro ponto - ex.: buscar "aspirador" mostra "Aspirador de
     // pó..." antes de "Escova para aspirador"
     function productMatchRank(item, q, qCode){
       const name = normalizeStr(item.name||'');
+      // exatos na frente de tudo (mesma regra de exactProductMatch, inline por ser o caminho de cada tecla)
+      if((q && name===q) || (qCode && ((item.code && normalizeCode(item.code)===qCode) || (item.codeFG && normalizeCode(item.codeFG)===qCode)))) return -1;
       if(q && name.startsWith(q)) return 0;
       if(qCode && item.code && normalizeCode(item.code).startsWith(qCode)) return 0;
       if(qCode && item.codeFG && normalizeCode(item.codeFG).startsWith(qCode)) return 0;
@@ -903,7 +1033,37 @@
       if(!code) return null;
       const nc = normalizeCode(code);
       if(!nc) return null;
-      return masterCatalog.find(item=> item.code && normalizeCode(item.code)===nc) || null;
+      return masterCatalogByCode.get(nc) || siteDetailsCache[nc] || null;
+    }
+    // Dados ricos de produto fora do catálogo local (veio da busca no site): /product-catalog, uma vez por
+    // código na sessão, só na memória (a postagem continua gravando só código e nome). Quando chegam,
+    // título sugerido, pautas e briefing se refazem. null = o site não tem o produto.
+    const siteDetailsCache = {}, siteDetailsPending = new Set(), siteDetailsRetryAt = {}, siteDetailsFails = {};
+    let siteDetailsDeferred = false;
+    function loadSiteDetails(){
+      if(masterCatalogLoading){ // talvez estejam no catálogo local: espera por ele uma vez só, e usa a lista do momento
+        if(!siteDetailsDeferred){ siteDetailsDeferred = true; masterCatalogLoading.then(()=>{ siteDetailsDeferred = false; loadSiteDetails(); }); }
+        return;
+      }
+      selectedProducts.forEach(p=>{
+        const nc = normalizeCode(p.code), digits = codeDigits(p.code);
+        if(digits.length<5 || nc in siteDetailsCache || siteDetailsPending.has(nc) || masterCatalogByCode.has(nc)) return;
+        if(Date.now() < (siteDetailsRetryAt[nc]||0)) return;
+        siteDetailsPending.add(nc);
+        fetch(`${PORTAL_API_BASE}/product-catalog?code=${digits}`)
+          // 404/400: o site não tem o produto (não muda na sessão); outro erro (429, 403 do firewall, 5xx): tenta de novo em 30 s
+          .then(res=> res.ok ? res.json() : (res.status===404 || res.status===400 ? null : Promise.reject(res.status)))
+          // o nome é o da variação escolhida (ex.: "... 220 V"); a rota devolve o do produto
+          .then(data=>{ siteDetailsCache[nc] = data && data.name ? Object.assign({}, data, { name: p.name || data.name }) : null; },
+                // até 3 tentativas automáticas, só com o modal aberto; depois, quando a pessoa mexe nos produtos ou pede a legenda
+                ()=>{ siteDetailsRetryAt[nc] = Date.now() + 30000; siteDetailsFails[nc] = (siteDetailsFails[nc]||0) + 1;
+                      if(siteDetailsFails[nc] < 3) setTimeout(()=>{ if($('modalBackdrop').style.display === 'flex') loadSiteDetails(); }, 30500); })
+          .then(()=>{ siteDetailsPending.delete(nc); if(siteDetailsCache[nc]) onSiteDetailsArrived(); });
+      });
+    }
+    function onSiteDetailsArrived(){
+      if($('modalBackdrop').style.display !== 'flex') return; // modal fechado
+      refreshModalDynamic();
     }
     // primeiro produto selecionado que tem dados ricos no catálogo mestre (produtos manuais,
     // sem correspondência, são pulados)
@@ -939,30 +1099,272 @@
       }).filter(Boolean);
     }
 
-    function showProductSuggestions(query){
-      const box = $('productSuggestions'); if(!box) return;
-      const q = normalizeStr(query.trim());
-      if(q.length < 2){ hideProductSuggestions(); return; }
-      const qCode = normalizeCode(query.trim());
-      const matches = productCandidates().filter(item=>
-        !selectedProducts.some(p=> item.code ? p.code===item.code : p.name===item.name) &&
-        (normalizeStr(item.name).includes(q)
-          || (item.code && (normalizeStr(item.code).includes(q) || normalizeCode(item.code).includes(qCode)))
-          || (item.codeFG && (normalizeStr(item.codeFG).includes(q) || normalizeCode(item.codeFG).includes(qCode))))
-      ).sort((a,b)=> productMatchRank(a,q,qCode) - productMatchRank(b,q,qCode));
-      if(matches.length===0){
-        box.innerHTML = `<div class="autocomplete-item ac-manual"><span class="ac-name">+ Adicionar "${escapeHtml(query.trim())}" (sem catálogo)</span></div>`;
-        box.querySelector('.ac-manual').addEventListener('mousedown', (ev)=>{ ev.preventDefault(); addSelectedProduct({ code:'', name: query.trim() }); });
-        box.style.display = 'block';
-        return;
+    // Busca no site FG (rota /product-search do functions/api, a mesma do Editor de Posts): cobre os
+    // produtos que faltam no catálogo local - data/catalog-vonder.json parou em 10.001 itens e deixou
+    // de fora linhas inteiras (ex.: óculos de segurança). Uma consulta por termo; erro não fica em cache.
+    const PORTAL_API_BASE = window.PORTAL_API || 'https://portalmktovd.pages.dev/api'; // ver firebase-config.js
+    const siteProductCache = {};
+    // strict: falha (rede, firewall) rejeita em vez de devolver [] - a colagem de códigos precisa distinguir
+    // "o site não tem" de "não deu para perguntar"; o autocomplete segue tratando falha como lista vazia
+    function searchSiteProducts(query, strict){
+      const q = query.trim();
+      if(!siteProductCache[q]){
+        const p = siteProductCache[q] = fetch(`${PORTAL_API_BASE}/product-search?q=${encodeURIComponent(q)}${BRAND_SUFFIX==='__ferramentas-gerais' ? '&scope=all' : ''}`) // FG: todas as marcas do site, como no Editor de Posts
+          .then(res=> res.ok ? res.json() : Promise.reject(res.status))
+          .then(data=> (data.items||[]).filter(it=> it.name).map(it=>{
+            const code = it.code||it.codeFG||'', digits = codeDigits(code); // marca não-VONDER chega só com o código FG
+            if(digits && it.thumb) productThumbCache[digits] = it.thumb;
+            return { code, codeFG: it.codeFG||'', name: it.name };
+          }));
+        p.catch(()=>{ if(siteProductCache[q]===p) delete siteProductCache[q]; });
       }
-      box.innerHTML = matches.map((item,i)=>
-        `<div class="autocomplete-item" data-idx="${i}"><img src="${productImageUrl(item.code)}" alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" /><span class="ac-name">${escapeHtml(item.name)}</span><span class="ac-code">${escapeHtml(item.code)}</span></div>`
-      ).join('');
-      box.querySelectorAll('.autocomplete-item[data-idx]').forEach(el=>{
-        el.addEventListener('mousedown', (ev)=>{ ev.preventDefault(); addSelectedProduct(matches[Number(el.dataset.idx)]); });
+      return strict ? siteProductCache[q] : siteProductCache[q].catch(()=> []);
+    }
+
+    // atributos da <img> de um produto: miniatura já no cache, ou data-thumb para loadProductThumbs preencher
+    function productImgAttrs(code){
+      const d = codeDigits(code);
+      if(d.length>=5 && !(d in productThumbCache)) return `data-thumb="${d}"`;
+      const src = productImageUrl(code);
+      return src ? `src="${src}" loading="lazy"` : '';
+    }
+    // Pede em lotes de 20 (limite da rota) as miniaturas dos itens listados que ainda não estão no cache.
+    // Quando chegam, preenche toda <img data-thumb> da página (um produto pedido pela lista pode já ter
+    // virado um chip na postagem). Falha = fica a foto antiga.
+    const productThumbPending = new Set();
+    function loadProductThumbs(items){
+      const need = [...new Set(items.map(it=> codeDigits(it.code)))]
+        .filter(d=> d.length>=5 && !(d in productThumbCache) && !productThumbPending.has(d));
+      const fill = ()=> document.querySelectorAll('img[data-thumb]').forEach(img=>{
+        const d = img.dataset.thumb;
+        if(d in productThumbCache){ img.removeAttribute('data-thumb'); img.src = productImageUrl(d); }
       });
-      box.style.display = 'block';
+      if(!need.length){ fill(); return; }
+      need.forEach(d=> productThumbPending.add(d));
+      for(let i=0; i<need.length; i+=20){
+        const batch = need.slice(i, i+20);
+        fetch(`${PORTAL_API_BASE}/product-thumbs?codes=${batch.join(',')}`)
+          .then(res=> res.ok ? res.json() : Promise.reject(res.status))
+          .then(data=> data.thumbs || {}, ()=> ({})) // falha: cai na foto antiga (proxy) nesta sessão
+          .then(thumbs=> batch.forEach(d=> productThumbCache[d] = thumbs[d] || ''))
+          .then(()=>{ batch.forEach(d=> productThumbPending.delete(d)); fill(); });
+      }
+    }
+
+    // Autocomplete de produto (modal de postagem e "Aplicar editoria"): mostra na hora o catálogo
+    // local e, após uma pausa na digitação, acrescenta o que o site tiver e o catálogo não.
+    // chosen = produtos já escolhidos (não reaparecem); onPick(item) recebe {code, name} e só registra o
+    // produto: a lista continua aberta, sem o item escolhido, para marcar vários do mesmo resultado.
+    function renderProductAutocomplete(box, input, chosen, onPick){
+      clearTimeout(box._siteTimer);
+      const query = input.value.trim();
+      const q = normalizeStr(query);
+      box._enter = null;
+      if(!masterCatalog.length) loadMasterCatalog(); // não carregou (rede lenta): tenta de novo
+      if(q.length < 2){ box.style.display = 'none'; box.innerHTML = ''; return; }
+      const qCode = normalizeCode(query);
+      // códigos normalizados (com ou sem pontos) dos já escolhidos; atualizado a cada clique
+      const chosenCodes = new Set(chosen.map(p=> normalizeCode(p.code)).filter(Boolean));
+      const chosenNames = new Set(chosen.filter(p=> !p.code).map(p=> p.name));
+      const isChosen = item=> item.code ? chosenCodes.has(normalizeCode(item.code)) : chosenNames.has(item.name);
+      let found = productCandidates().filter(item=>
+        normalizeStr(item.name).includes(q)
+          || (item.code && (normalizeStr(item.code).includes(q) || normalizeCode(item.code).includes(qCode)))
+          || (item.codeFG && (normalizeStr(item.codeFG).includes(q) || normalizeCode(item.codeFG).includes(qCode)))
+      );
+      const byRank = list=> list.map(item=> [productMatchRank(item,q,qCode), item]).sort((a,b)=> a[0]-b[0]).map(pair=> pair[1]);
+      found = byRank(found);
+      // ponytail: a lista mostra só os 50 primeiros do catálogo ainda não escolhidos (uma busca de 2 letras
+      // acha milhares e travava a lista); o exato vem antes do corte; quem não achou refina o termo.
+      const LOCAL_LIMIT = 50;
+      // o que a busca achou mas já está na postagem: aparece como "Já adicionado" quando não sobra mais
+      // nada, em vez do "+ Adicionar (sem catálogo)", que dava a entender que o produto não existe
+      let alreadyChosen = [];
+      const split = list=>{ alreadyChosen = []; return list.filter(item=> isChosen(item) ? (alreadyChosen.push(item), false) : true); };
+      const local = split(found).slice(0, LOCAL_LIMIT);
+      // Enter: escolhe o 1º resultado da lista (catálogo + site); se o site ainda está respondendo, espera
+      // por ele; só sem nenhum resultado vale o "+ Adicionar (sem catálogo)"
+      let loading_ = false;
+      box._enterPending = false;
+      let shown_ = [];
+      box._enter = ()=>{
+        // prefere o item com o código ou o nome exatos digitados; senão, o 1º da lista
+        const target = exactProductMatch(shown_.concat(alreadyChosen), q, qCode);
+        if(target && isChosen(target)){ close(); return; } // o digitado já está na postagem
+        const rows = [...box.querySelectorAll('.autocomplete-item[data-idx]:not(.is-added)')];
+        const exact = target && rows.find(el=> shown_[Number(el.dataset.idx)]===target);
+        if(!exact && loading_){ box._enterPending = true; return; } // o exato pode vir do site
+        const first = exact || rows[0] || box.querySelector('.ac-manual');
+        if(!first){ close(); return; }
+        first.dispatchEvent(new MouseEvent('mousedown', { bubbles:true, cancelable:true }));
+        close(); // Enter escolhe um e encerra; um segundo Enter não adiciona o próximo da lista
+      };
+      const close = ()=>{ clearTimeout(box._siteTimer); input.value = ''; box.style.display = 'none'; box.innerHTML = ''; };
+      const paint = (items, loading)=>{
+        // sem miniatura no cache ainda: <img> vazia que loadProductThumbs preenche (só as 20 primeiras;
+        // as demais usam direto a foto do proxy, com carregamento preguiçoso)
+        const rows = items.map((item,i)=>{
+          const img = i<20 ? productImgAttrs(item.code) : `src="${productImageUrl(item.code)}" loading="lazy"`;
+          return `<div class="autocomplete-item" data-idx="${i}"><img ${img} alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" /><span class="ac-name">${escapeHtml(item.name)}</span><span class="ac-code">${escapeHtml(item.code)}</span></div>`;
+        }).join('');
+        const dupes = items.length ? '' : alreadyChosen.slice(0,20).map(item=>{
+          return `<div class="autocomplete-item is-added ac-dupe"><img ${productImgAttrs(item.code)} alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" /><span class="ac-name">${escapeHtml(item.name)}</span><span class="ac-code">${UI_ICONS.check(12)} Já adicionado</span></div>`;
+        }).join('');
+        const tail = loading
+          ? `<div class="autocomplete-item ac-loading"><span class="ac-name">Buscando no site…</span></div>`
+          : (items.length || dupes ? '' : `<div class="autocomplete-item ac-manual"><span class="ac-name">+ Adicionar "${escapeHtml(query)}" (sem catálogo)</span></div>`);
+        box.innerHTML = rows + (loading ? '' : dupes) + tail;
+        // escolhido: a linha confirma ("✓ Adicionado", em verde) por ~0,55 s e então recolhe (.25s, DESIGN.md);
+        // o produto já entrou na lista no clique. Se a lista se redesenhar no meio (chegou o site), tudo bem.
+        box.querySelectorAll('.autocomplete-item[data-idx]').forEach(el=> el.addEventListener('mousedown', ev=>{
+          ev.preventDefault();
+          if(el.classList.contains('is-added')) return;
+          if(ev.isTrusted) box._enterPending = false; // clique da pessoa substitui um Enter que esperava o site
+          const picked = items[Number(el.dataset.idx)];
+          onPick(picked);
+          if(picked.code) chosenCodes.add(normalizeCode(picked.code)); else chosenNames.add(picked.name);
+          el.classList.add('is-added');
+          el.querySelector('.ac-code').innerHTML = `${UI_ICONS.check(12)} Adicionado`;
+          setTimeout(()=>{
+            el.style.height = el.offsetHeight + 'px';
+            void el.offsetHeight; // fixa a altura atual antes de animar até 0
+            el.classList.add('is-leaving');
+            el.style.height = '0px';
+            setTimeout(()=>{
+              el.remove();
+              if(!loading && input.value.trim()===query && !box.querySelector('.autocomplete-item[data-idx]')) close();
+            }, 250);
+          }, 550);
+        }));
+        box.querySelectorAll('.ac-dupe').forEach(el=> el.addEventListener('mousedown', ev=> ev.preventDefault())); // mantém o foco no campo
+        const manual = box.querySelector('.ac-manual');
+        if(manual) manual.addEventListener('mousedown', ev=>{ ev.preventDefault(); onPick({ code:'', name: query }); close(); });
+        box.style.display = 'block';
+        loadProductThumbs(items.length ? items.slice(0,20) : alreadyChosen.slice(0,20));
+        loading_ = loading; shown_ = items;
+      };
+      if(query.length < 3){ paint(local, false); return; }
+      paint(local, true);
+      box._siteTimer = setTimeout(()=> searchSiteProducts(query).then(site=>{
+        if(input.value.trim() !== query || box.style.display === 'none'){ if(box.style.display === 'none') box._enterPending = false; return; } // continuou digitando (o Enter pendente é da busca nova) ou fechou
+        const known = new Set(found.flatMap(item=> [item.code, item.codeFG]).map(normalizeCode).filter(Boolean));
+        const fresh = site.filter(item=> !known.has(normalizeCode(item.code)) && !known.has(normalizeCode(item.codeFG)));
+        // refaz a divisão com o que foi escolhido enquanto o site respondia
+        const rest = split(found).slice(0, LOCAL_LIMIT);
+        alreadyChosen = alreadyChosen.concat(fresh.filter(isChosen));
+        paint(rest.concat(byRank(fresh.filter(item=> !isChosen(item)))), false); // os do site entram depois: a lista não pula sob o ponteiro
+        if(box._enterPending){ box._enterPending = false; box._enter(); }
+      }), 250);
+    }
+
+    // produto como a postagem o guarda: código e nome; em produto de outra marca também o código FG, que o site
+    // devolve junto e que se perderia (o "code" dele é só a referência do fabricante)
+    function chosenProduct(item){
+      const p = { code: item.code||'', name: item.name };
+      if(item.codeFG && !isOvdCode(p.code)) p.codeFG = item.codeFG;
+      return p;
+    }
+
+    function showProductSuggestions(){
+      const box = $('productSuggestions'); if(!box) return;
+      renderProductAutocomplete(box, $('mProductName'), selectedProducts, item=>{
+        selectedProducts.push(chosenProduct(item));
+        renderSelectedProducts();
+      });
+    }
+
+    // ============================================================
+    // COLAR VÁRIOS CÓDIGOS NO CAMPO DE PRODUTO - do texto colado sai tudo que tem cara de código (dígitos e
+    // pontos, 5+ dígitos; nenhum código do catálogo tem vírgula, dois-pontos, traço ou espaço), então vale
+    // separar por vírgula, dois-pontos, traço, quebra de linha ou tópicos, e até "código - nome" por linha.
+    // Com 2 ou mais, a prévia mostra cada um (catálogo/site, já na postagem ou fora do catálogo) e só
+    // adiciona no "Adicionar"; 1 código ou texto comum segue a colagem normal (busca de sempre).
+    // ============================================================
+    const PASTE_MAX = 60; // ponytail: cada código fora do catálogo local vira 1 busca no site; acima disso, colar em partes
+    function extractProductCodes(text){
+      const seen = new Set();
+      // código com pontos no formato OVD (00.00.000.000) ou só dígitos (5+): datas (23.10.2026) e preços (12.345) ficam de fora
+      return (String(text||'').match(/\b\d{2}(?:\.\d{2,3}){2,}\b|\b\d{5,}\b/g) || [])
+        .filter(c=> !seen.has(normalizeCode(c)) && seen.add(normalizeCode(c)));
+    }
+    // {code, name, found, error}: catálogo local (código OVD ou FG) e, se não achar, a busca do site com o código exato.
+    // error: o site não respondeu (rede, firewall) - não é o mesmo que "fora do catálogo"
+    async function resolveProductCode(code, candidates){
+      const k = normalizeCode(code);
+      const local = exactProductMatch(candidates, null, k);
+      if(local) return { code: local.code || code, name: local.name, found: true };
+      let list;
+      try{ list = await searchSiteProducts(code, true); }catch(e){ return { code, name: code, found: false, error: true }; }
+      const site = list.find(item=> normalizeCode(item.code)===k || normalizeCode(item.codeFG)===k);
+      return site ? { code: site.code, name: site.name, found: true } : { code, name: code, found: false };
+    }
+    function hideProductPaste(){ const box = $('productPasteBox'); if(box){ box.hidden = true; box.innerHTML = ''; box._token = null; } }
+    function openProductPaste(codes){
+      const box = $('productPasteBox'); if(!box) return;
+      hideProductSuggestions();
+      const token = {}, extra = Math.max(0, codes.length - PASTE_MAX);
+      box._token = token;
+      // já no card: pelo código (catálogo) ou pelo nome (produto manual, que guarda o código colado no nome)
+      const inCard = code=>{ const k = normalizeCode(code); return selectedProducts.some(p=> normalizeCode(p.code || p.name)===k); };
+      const rows = codes.slice(0, PASTE_MAX).map(code=> ({ code, state: inCard(code) ? 'dupe' : 'loading' }));
+      const TAG = { missing: 'Fora do catálogo', dupe: 'Já adicionado', error: 'Busca falhou' }, total = rows.length;
+      const ready = r=> r.state==='found' || r.state==='missing';
+      // fora do catálogo entra como produto manual (mesmo formato do "+ Adicionar (sem catálogo)"); nunca duplica o que já está no card
+      const push = r=>{ const p = r.state==='found' ? chosenProduct(r.item) : { code:'', name: r.code }; if(!inCard(p.code || p.name)) selectedProducts.push(p); };
+      const paint = ()=>{
+        // a lista se redesenha a cada código resolvido: devolve o foco ao mesmo botão (teclado)
+        const f = box.contains(document.activeElement) && document.activeElement.dataset ? document.activeElement.dataset : null, fKey = f && f.pp ? f.pp + (f.i || '') : null;
+        const add = rows.filter(ready).length, busy = rows.some(r=> r.state==='loading'), failed = rows.filter(r=> r.state==='error').length;
+        const status = busy ? 'Buscando no catálogo…' : failed ? `${failed} não ${failed===1?'pôde':'puderam'} ser buscado${failed===1?'':'s'}: cole de novo para tentar` : extra ? `Só os ${PASTE_MAX} primeiros; cole o resto depois` : 'Adicione um por um ou todos de uma vez';
+        box.innerHTML = `<div class="pp-head"><strong>${total} código${total===1?'':'s'} colado${total===1?'':'s'}</strong><span role="status">${status}</span></div>`
+          + `<ul class="pp-list">${rows.map((r, i)=>{
+            const name = r.state==='loading' ? 'Buscando…' : r.state==='missing' ? 'Entra só com o código' : r.state==='error' ? 'Sem resposta do site' : escapeHtml(r.item ? r.item.name : (selectedProducts.find(p=> normalizeCode(p.code || p.name)===normalizeCode(r.code)) || {}).name || r.code);
+            const right = r.state==='added' ? `<span class="pp-tag">${UI_ICONS.check(12)} Adicionado</span>`
+              : (TAG[r.state] ? `<span class="pp-tag">${TAG[r.state]}</span>` : '') + (ready(r) ? `<button type="button" class="pp-add" data-pp="one" data-i="${i}" aria-label="Adicionar ${escapeHtml(r.item.name)}">Adicionar</button>` : '');
+            return `<li class="pp-row is-${r.state}" data-i="${i}"><img ${productImgAttrs(r.code)} alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" /><span class="pp-body"><span class="pp-name">${name}</span><span class="pp-code">${escapeHtml(r.item ? r.item.code : r.code)}</span></span>${right}</li>`;
+          }).join('')}</ul>`
+          + `<div class="pp-foot"><button type="button" class="btn ghost small" data-pp="cancel">Cancelar</button><button type="button" class="btn small" data-pp="add"${busy || !add ? ' disabled' : ''}>Adicionar ${add===rows.length || add===1 ? '' : 'os '}${add} produto${add===1?'':'s'}</button></div>`;
+        loadProductThumbs(rows);
+        if(fKey){ const el = [...box.querySelectorAll('[data-pp]')].find(e=> e.dataset.pp + (e.dataset.i || '')===fKey) || box.querySelector('[data-pp="one"]') || box.querySelector('[data-pp="add"]:not([disabled])') || box.querySelector('[data-pp="cancel"]'); if(el) el.focus({ preventScroll: true }); }
+      };
+      box.hidden = false; paint();
+      // até 4 buscas no site por vez (60 de uma vez sobrecarregariam o Worker)
+      const queue = rows.filter(r=> r.state==='loading'), candidates = productCandidates(); // catálogo montado uma vez por colagem
+      const worker = async ()=>{
+        while(queue.length){
+          const r = queue.shift(), res = await resolveProductCode(r.code, candidates);
+          if(box._token!==token) return; // cancelada ou substituída por outra colagem
+          r.item = res;
+          // o código FG de um produto já no card (ou já resolvido por outra linha) também é duplicado
+          const k = normalizeCode(res.code), twin = rows.some(o=> o!==r && o.item && (o.state==='found' || o.state==='added') && normalizeCode(o.item.code)===k);
+          r.state = res.error ? 'error' : inCard(res.code) || twin ? 'dupe' : res.found ? 'found' : 'missing';
+          paint();
+        }
+      };
+      for(let i = 0; i < 4; i++) worker();
+      // sem nada a adicionar na prévia, ela fecha e o campo limpa (os códigos já viraram produtos)
+      const doneIfEmpty = ()=>{ if(!rows.some(r=> ready(r) || r.state==='loading' || r.state==='added')){ hideProductPaste(); $('mProductName').value = ''; } };
+      box.onclick = ev=>{
+        const b = ev.target.closest('[data-pp]'); if(!b || b.disabled) return;
+        if(b.dataset.pp==='one'){
+          // um por um (DESIGN.md §11): a linha confirma "✓ Adicionado" por ~0,55 s, recolhe a altura em .25s e sai da prévia
+          const r = rows[Number(b.dataset.i)]; if(!r || !ready(r)) return;
+          push(r); renderSelectedProducts(); r.state = 'added'; paint();
+          setTimeout(()=>{
+            if(box._token!==token) return;
+            const li = box.querySelector(`.pp-row[data-i="${rows.indexOf(r)}"]`);
+            const drop = ()=>{ if(box._token!==token) return; rows.splice(rows.indexOf(r), 1); paint(); doneIfEmpty(); };
+            if(!li || matchMedia('(prefers-reduced-motion: reduce)').matches){ drop(); return; }
+            li.style.height = li.offsetHeight + 'px'; void li.offsetHeight;
+            li.classList.add('is-leaving'); li.style.height = '0px';
+            setTimeout(drop, 250);
+          }, 550);
+          return;
+        }
+        // Adicionar todos: os códigos já viraram produtos, o campo limpa. Cancelar: o colado fica no campo para ajustar
+        if(b.dataset.pp==='add'){ rows.forEach(r=>{ if(ready(r)) push(r); }); renderSelectedProducts(); $('mProductName').value = ''; }
+        hideProductPaste();
+      };
     }
 
     // ============================================================
@@ -1092,136 +1494,18 @@
     function todayStr(){ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
     // ============================================================
-    // DATAS COMEMORATIVAS - feriados nacionais + datas comerciais de referência para
-    // planejamento de conteúdo, exibidas ao lado do número do dia na grade do mês. Datas fixas
-    // (mesmo dia todo ano) ficam num dicionário "MM-DD"; datas móveis (baseadas na Páscoa, ou no
-    // "enésimo dia da semana do mês", como Dia das Mães/Pais e Black Friday) são calculadas em
-    // tempo real para o ano exibido e guardadas em cache por ano, já que o cálculo da Páscoa
-    // não é trivial de refazer a cada célula do calendário.
+    // DATAS COMEMORATIVAS - feriados nacionais + datas comerciais de referência, exibidas ao lado do
+    // número do dia na grade do mês. A lista e o cálculo das móveis ficam em commemorative-dates.js
+    // (a Início usa o mesmo arquivo nas sugestões do galpão do Calendário).
     // ============================================================
-    const FIXED_COMMEMORATIVE_DATES = {
-      '01-01': ['Confraternização Universal'],
-      '03-06': ['Data Magna de Pernambuco'],
-      '03-08': ['Dia Internacional da Mulher'],
-      '03-15': ['Dia Mundial do Consumidor'],
-      '03-19': ['Dia do Carpinteiro e Marceneiro'],
-      '03-20': ['Início do Outono'],
-      '03-22': ['Dia Mundial da Água'],
-      '03-25': ['Data Magna do Ceará'],
-      '04-05': ['Emancipação de Novo Hamburgo'],
-      '04-21': ['Tiradentes', 'Dia do Metalúrgico'],
-      '04-22': ['Descobrimento do Brasil'],
-      '04-23': ['Dia do Serralheiro'],
-      '05-01': ['Dia do Trabalho'],
-      '05-11': ['Aniversário de Aparecida de Goiânia'],
-      '05-18': ['Dia do Vidraceiro'],
-      '05-25': ['Dia da Indústria e do Trabalhador Rural'],
-      '06-05': ['Dia Mundial do Meio Ambiente'],
-      '06-12': ['Dia dos Namorados'],
-      '06-13': ['Dia de Santo Antônio'],
-      '06-15': ['Aniversário de Itajaí'],
-      '06-20': ['Dia do Revendedor'],
-      '06-21': ['Início do Inverno'],
-      '06-24': ['Dia de São João'],
-      '07-02': ['Independência da Bahia'],
-      '07-04': ['Dia Internacional do Cooperativismo'],
-      '07-09': ['Revolução Constitucionalista', 'Fundação de Cabo de Santo Agostinho'],
-      '07-16': ['Dia de N. Sra. do Carmo', 'Dia do Comerciante'],
-      '07-26': ['Dia de N. Sra. Sant’Ana'],
-      '07-28': ['Dia do Agricultor'],
-      '08-15': ['Dia de N. Sra. do Desterro'],
-      '08-17': ['Aniversário de Barbalha'],
-      '09-07': ['Independência do Brasil'],
-      '09-08': ['Dia de N. Sra. da Luz dos Pinhais'],
-      '09-15': ['Dia do Cliente'],
-      '09-19': ['Dia do Comprador'],
-      '09-20': ['Revolução Farroupilha'],
-      '09-23': ['Dia do Soldador'],
-      '09-27': ['Dia do Encanador'],
-      '09-30': ['Dia da Secretária'],
-      '10-01': ['Dia do Vendedor'],
-      '10-12': ['Dia de Nossa Sra. Aparecida', 'Dia das Crianças'],
-      '10-15': ['Aniversário VONDER'],
-      '10-17': ['Dia do Eletricista'],
-      '10-18': ['Dia do Pintor'],
-      '10-26': ['Dia do Trabalhador da Construção Civil'],
-      '10-30': ['Dia do Balconista e Comerciário'],
-      '10-31': ['Dia Municipal da Reforma Protestante e Ação de Graças'],
-      '11-02': ['Finados'],
-      '11-14': ['Emancipação de Aparecida de Goiânia'],
-      '11-15': ['Proclamação da República'],
-      '11-20': ['Dia Nacional de Zumbi e da Consciência Negra'],
-      '11-27': ['Dia do Técnico e Engenheiro de Segurança no Trabalho'],
-      '12-08': ['Dia de N. Sra. da Imaculada Conceição'],
-      '12-11': ['Dia do Engenheiro'],
-      '12-13': ['Dia do Pedreiro'],
-      '12-15': ['Dia do Jardineiro', 'Dia do Arquiteto e Urbanista'],
-      '12-20': ['Dia do Mecânico'],
-      '12-21': ['Início do Verão'],
-      '12-25': ['Natal']
-    };
-    // início da Primavera (horário de Brasília) é o único marco sazonal que oscila entre 22 e 23/09
-    // ponytail: só 2026/2027 conferidos; demais anos assumem 22/09 - revisar ao incluir novos anos
-    const SPRING_START_DAY = { 2027: 23 };
-    // data da Páscoa (algoritmo de Gauss/computus gregoriano) - base de todos os feriados móveis
-    function easterDate(year){
-      const a = year % 19, b = Math.floor(year/100), c = year % 100;
-      const d = Math.floor(b/4), e = b % 4, f = Math.floor((b+8)/25);
-      const g = Math.floor((b-f+1)/3), h = (19*a+b-d-g+15) % 30;
-      const i = Math.floor(c/4), k = c % 4, l = (32+2*e+2*i-h-k) % 7;
-      const m = Math.floor((a+11*h+22*l)/451);
-      const month = Math.floor((h+l-7*m+114)/31);
-      const day = ((h+l-7*m+114) % 31) + 1;
-      return new Date(year, month-1, day);
-    }
-    function addDays(date, days){ const d = new Date(date); d.setDate(d.getDate()+days); return d; }
-    // enésima ocorrência de um dia da semana (0=Dom...6=Sáb) num mês - usado pra Dia das Mães
-    // (2º domingo de maio) e Dia dos Pais (2º domingo de agosto)
-    function nthWeekdayOfMonth(year, month, weekday, n){
-      const first = new Date(year, month, 1);
-      const offset = (weekday - first.getDay() + 7) % 7;
-      return new Date(year, month, 1 + offset + (n-1)*7);
-    }
-    // última ocorrência de um dia da semana num mês - usado pra Black Friday (última 6ª de novembro)
-    function lastWeekdayOfMonth(year, month, weekday){
-      const last = new Date(year, month+1, 0);
-      const offset = (last.getDay() - weekday + 7) % 7;
-      return new Date(year, month, last.getDate() - offset);
-    }
+    const FIXED_COMMEMORATIVE_DATES = CommemorativeDates.FIXED;
+    const movableCommemorativeDates = CommemorativeDates.movable;
     function ymd(date){ return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; }
-    const movableCommemorativeDatesCache = {};
-    function movableCommemorativeDates(year){
-      if(movableCommemorativeDatesCache[year]) return movableCommemorativeDatesCache[year];
-      const easter = easterDate(year);
-      const map = {};
-      map[ymd(addDays(easter,-47))] = 'Carnaval';
-      map[ymd(addDays(easter,-2))] = 'Paixão de Cristo';
-      map[ymd(easter)] = 'Páscoa';
-      map[ymd(addDays(easter,39))] = 'Ascensão do Senhor';
-      map[`${year}-09-${SPRING_START_DAY[year]||22}`] = 'Início da Primavera';
-      map[ymd(addDays(easter,60))] = 'Corpus Christi';
-      map[ymd(nthWeekdayOfMonth(year,4,0,2))] = 'Dia das Mães'; // maio, domingo
-      map[ymd(nthWeekdayOfMonth(year,7,0,2))] = 'Dia dos Pais'; // agosto, domingo
-      const blackFriday = lastWeekdayOfMonth(year,10,5); // novembro, sexta
-      map[ymd(blackFriday)] = 'Black Friday';
-      map[ymd(addDays(blackFriday,3))] = 'Cyber Monday';
-      movableCommemorativeDatesCache[year] = map;
-      return map;
-    }
     // nome(s) da(s) data(s) comemorativa(s) em "YYYY-MM-DD" (fixas/móveis + personalizadas
     // cadastradas em Configurações), unidos por " · " quando mais de uma cair no mesmo dia -
     // ou null se o dia não corresponder a nenhuma
     function commemorativeDateNames(dateStr){
-      const names = [];
-      names.push(...(FIXED_COMMEMORATIVE_DATES[dateStr.slice(5)] || []));
-      const year = Number(dateStr.slice(0,4));
-      const movable = movableCommemorativeDates(year)[dateStr];
-      if(movable) names.push(movable);
-      (APP_SETTINGS.customDates||[]).forEach(c=>{
-        const matches = c.recurring ? c.date.slice(5)===dateStr.slice(5) : c.date===dateStr;
-        if(matches) names.push(c.name);
-      });
-      return Array.from(new Set(names));
+      return CommemorativeDates.names(dateStr, APP_SETTINGS.customDates);
     }
     function commemorativeDateName(dateStr){
       const names = commemorativeDateNames(dateStr);
@@ -1330,10 +1614,9 @@
       if(existing) return existing;
       const network=(APP_SETTINGS.networks||[])[0]||{name:'Instagram',formats:[{name:'Feed'}]};
       const channel=network.name||'Instagram', place=((network.formats||[])[0]||{name:'Feed'}).name||'Feed';
-      const defaultStatus=(APP_SETTINGS.statuses[0]&&APP_SETTINGS.statuses[0].name)||'Rascunho';
       const post={
         id:generateId(), title:holidayName, date:dateStr, channel, place:[place], type:'Static',
-        channels:[{channel,types:['Static'],places:[place]}], status:defaultStatus,
+        channels:[{channel,types:['Static'],places:[place]}],
         notes:'', briefingLink:'', referencesLink:'', artsLink:'', imageLink:'', imageNotes:'',
         referenceImages:[], noProduct:true, commemorativePostType:'institutional', collab:false, color:null, editoria:[editoriaName], products:[],
         order:nextOrderForDate(dateStr)
@@ -1673,8 +1956,6 @@
           const tys = postChannelEntries(p).flatMap(c=>c.types||['Static']);
           if(!tys.some(t=> filters.types.includes(t))) return false;
         }
-        // status
-        if(filters.statuses && filters.statuses.length>0){ if(!filters.statuses.includes(p.status)) return false; }
         // collab
         if(filters.collab==='only' && !p.collab) return false;
         if(filters.collab==='no' && p.collab) return false;
@@ -1737,25 +2018,6 @@
       return { btn };
     }
 
-    let quickStatusMenuEl = null;
-    function closeQuickStatusMenu(){ if(quickStatusMenuEl) quickStatusMenuEl.remove(); quickStatusMenuEl = null; }
-    function openQuickStatusMenu(anchor, post){
-      closeQuickStatusMenu();
-      const menu = quickStatusMenuEl = document.createElement('div');
-      menu.className = 'quick-status-menu';
-      menu.innerHTML = (APP_SETTINGS.statuses||[]).map(status=>`<button type="button" data-quick-status="${escapeHtml(status.name)}"><span class="post-status-dot" style="background:${status.color}" aria-hidden="true"></span>${escapeHtml(status.name)}</button>`).join('');
-      menu.querySelectorAll('[data-quick-status]').forEach(button=>button.addEventListener('click', event=>{
-        event.stopPropagation();
-        if(post.status !== button.dataset.quickStatus){ post.status = button.dataset.quickStatus; saveState(); render(); }
-        closeQuickStatusMenu();
-      }));
-      document.body.appendChild(menu);
-      const rect = anchor.getBoundingClientRect();
-      menu.style.top = `${rect.bottom + 5}px`;
-      menu.style.left = `${Math.max(5, rect.right - 205)}px`;
-    }
-    document.addEventListener('click', closeQuickStatusMenu);
-    window.addEventListener('scroll', closeQuickStatusMenu, true);
     // Ações de card passam por uma confirmação visual centralizada, coerente com os demais modais.
     let pendingCardAction = null;
     function openCardActionConfirm(action,id){
@@ -1833,11 +2095,10 @@
       const eyebrowText = eds.length ? joinPt(eds) : 'Sem editoria';
       const eyebrowColor = eds.length ? editoriaColor(eds[0]) : 'var(--text-faint)';
       const netsIconsHtml = entries.map(c=>`<span class="event-net-icon">${networkIcon(c.channel)}</span>`).join('');
-      const typeLabel = entries.some(c=>(c.types||[]).some(t=>(t||'').toLowerCase()==='video')) ? 'Vídeo' : 'Estático';
       const prods = getPostProducts(p);
       const productNames = prods.map(x=>x.name).filter(Boolean).join(', ');
-      div.title = [p.status, postChannelsDetailText(p), productNames].filter(Boolean).join(' · ');
-      div.innerHTML = `<div class="event-bar" style="background:${eyebrowColor}"></div><div class="event-body"><div class="event-nets">${netsIconsHtml}</div><div class="event-eyebrow" style="color:${eyebrowColor}">${escapeHtml(eyebrowText)}</div><div class="event-title">${escapeHtml(p.title)}</div><div class="event-subtitle">${typeLabel}</div></div>`;
+      div.title = [postChannelsDetailText(p), productNames].filter(Boolean).join(' · ');
+      div.innerHTML = `<div class="event-bar ${entries.some(c=>(c.types||[]).some(t=>(t||'').toLowerCase()==='video')) ? 'is-video' : 'is-static'}"></div><div class="event-body"><div class="event-head"><div class="event-nets">${netsIconsHtml}</div><div class="event-eyebrow" style="color:${eyebrowColor}">${escapeHtml(eyebrowText)}</div></div><div class="event-title">${escapeHtml(p.title)}</div></div>`;
       div.addEventListener('dragstart', (ev)=>{ ev.dataTransfer.setData('text/plain', p.id); div.classList.add('dragging'); ev.dataTransfer.effectAllowed='move'; });
       div.addEventListener('dragend', ()=>{ div.classList.remove('dragging'); });
       // soltar sobre um card específico reordena/insere a postagem arrastada antes ou depois dele
@@ -1860,7 +2121,7 @@
         reorderPost(draggedPost, p, before);
       });
       div.addEventListener('click', (ev)=>{ ev.stopPropagation(); openEditModal(p.id); });
-      { const dot = document.createElement('button'); dot.type='button'; dot.className='event-status-dot'; dot.style.background=((APP_SETTINGS.statuses||[]).find(status=>status.name===p.status)||{}).color || '#94a3b8'; dot.title='Alterar status: '+(p.status || 'Rascunho'); dot.setAttribute('aria-label',dot.title); dot.addEventListener('click', event=>{ event.stopPropagation(); openQuickStatusMenu(dot,p); }); div.appendChild(dot); const { btn } = buildCardMenu(p, 'event-menu-btn'); div.appendChild(btn); }
+      div.appendChild(buildCardMenu(p, 'event-menu-btn').btn);
       return div;
     }
 
@@ -1873,9 +2134,8 @@
       const eyebrowColor = eds.length ? editoriaColor(eds[0]) : 'var(--text-faint)';
       const netsIconsHtml = entries.map(c=>`<span class="event-net-icon">${networkIcon(c.channel)}</span>`).join('');
       const typeLabel = entries.some(c=>(c.types||[]).some(t=>(t||'').toLowerCase()==='video')) ? 'Vídeo' : 'Estático';
-      row.title = [p.status, postChannelsDetailText(p)].filter(Boolean).join(' · ');
+      row.title = postChannelsDetailText(p);
       row.innerHTML = `<span class="drag-handle" title="Arraste para reordenar">${UI_ICONS.grip(14)}</span><span class="list-row-bar" style="background:${eyebrowColor}"></span><div class="list-row-body"><div class="list-row-nets">${netsIconsHtml}</div><div class="list-row-eyebrow" style="color:${eyebrowColor}">${escapeHtml(eyebrowText)}</div><div class="list-row-title">${escapeHtml(p.title)}</div><div class="list-row-subtitle">${typeLabel}</div></div>`;
-      const dot = document.createElement('span'); dot.className = 'list-status-dot'; dot.style.background = ((APP_SETTINGS.statuses||[]).find(status=>status.name===p.status)||{}).color || '#94a3b8'; dot.title = p.status || 'Rascunho'; row.insertBefore(dot, row.querySelector('.list-row-body'));
       const { btn: menuBtn } = buildCardMenu(p, 'list-row-menu-btn');
       row.appendChild(menuBtn);
       row.addEventListener('click', ()=> openEditModal(p.id));
@@ -1963,14 +2223,18 @@
     function updateDayStatusIcon(cell, list){
       const icon = cell.querySelector('.day-status-icon'); if(!icon) return;
       if(!list.length){ icon.style.display = 'none'; return; }
-      const allComplete = list.every(isPostComplete);
+      // só aparece o aviso de pendência; dia com o planejamento completo fica sem ícone
+      const pending = list.map(p=>({ p, missing: missingPlanningFields(p) })).filter(x=>x.missing.length);
+      if(!pending.length){ icon.style.display = 'none'; return; }
       icon.style.display = 'flex';
-      icon.classList.toggle('is-complete', allComplete);
-      icon.classList.toggle('is-pending', !allComplete);
-      icon.title = allComplete ? 'Todos os campos preenchidos' : 'Campos pendentes de preenchimento';
-      icon.innerHTML = allComplete
-        ? '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
-        : DAY_STATUS_PENDING_SVG;
+      icon.classList.add('is-pending');
+      // uma linha por card pendente: título (ou "Sem título") e o que falta nele
+      icon.title = 'Planejamento pendente:\n' + pending.map(({ p, missing })=>{
+        const t = (p.title||'').trim();
+        return `• ${t && t!=='Untitled' ? t : 'Sem título'}: falta ${joinPt(missing)}`;
+      }).join('\n');
+      icon.setAttribute('aria-label', icon.title);
+      icon.innerHTML = DAY_STATUS_PENDING_SVG;
     }
     function render(){
       // visão semanal: reconstrói as 7 colunas da semana visível (viewDate) toda vez - é
@@ -2221,27 +2485,7 @@
       }
     }
 
-    function renderModalStatus(selected){
-      const field = $('mStatus'); if(!field) return;
-      field.innerHTML = (APP_SETTINGS.statuses||[]).map(status=>`<option value="${escapeHtml(status.name)}">${escapeHtml(status.name)}</option>`).join('');
-      field.value = selected || ((APP_SETTINGS.statuses[0]||{}).name || 'Rascunho');
-      updateModalStatusDot();
-      renderModalStatusChoices();
-    }
-    function updateModalStatusDot(){
-      const dot = $('mStatusDot'), field = $('mStatus'); if(!dot || !field) return;
-      dot.style.background = ((APP_SETTINGS.statuses||[]).find(status=>status.name===field.value)||{}).color || '#94a3b8';
-    }
-    function renderModalStatusChoices(){
-      const field = $('mStatus'), control = $('modalStatusControl'); if(!field || !control) return;
-      const statuses = APP_SETTINGS.statuses || [];
-      const current = statuses.find(status=>status.name===field.value) || statuses[0];
-      control.innerHTML = `<button type="button" id="modalStatusTrigger" class="modal-status-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="post-status-dot" style="background:${current.color}" aria-hidden="true"></span><span>${escapeHtml(current.name)}</span><svg class="modal-status-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div id="modalStatusChoices" class="modal-status-choices" role="listbox">${statuses.map(status=>`<button type="button" role="option" aria-selected="${status.name===current.name}" data-status-choice="${escapeHtml(status.name)}"><span class="post-status-dot" style="background:${status.color}" aria-hidden="true"></span>${escapeHtml(status.name)}</button>`).join('')}</div>`;
-      control.querySelector('#modalStatusTrigger').addEventListener('click', event=>{ event.stopPropagation(); const menu = $('modalStatusChoices'); const open = !menu.classList.contains('open'); menu.classList.toggle('open',open); event.currentTarget.setAttribute('aria-expanded',String(open)); });
-      control.querySelectorAll('[data-status-choice]').forEach(button=>button.addEventListener('click', ()=>{ field.value=button.dataset.statusChoice; if(isEditing && editingId){ const post=state.posts.find(item=>item.id===editingId); if(post && post.status!==field.value){ post.status=field.value; saveState(); render(); } } renderModalStatusChoices(); }));
-    }
     function openModal(dateStr){
-      closeQuickStatusMenu();
       $('modalBackdrop').style.display = 'flex';
       modalOpenedFromApplyEditoria = false;
       // só fica setada quando este open vem do fluxo de confirmação de data comemorativa (ver
@@ -2253,9 +2497,8 @@
       // da semana) ou, na ausência dela, o mês/dia atualmente visível no calendário
       const defaultDate = dateStr || viewDate.toISOString().slice(0,10);
       $('mDate').value = defaultDate;
-      renderModalStatus();
       // limpa os campos do formulário
-      $('mTitle').value=''; $('mNotes').value=''; $('mProductName').value='';
+      $('mTitle').value=''; $('mNotes').value=''; $('mProductName').value=''; hideProductPaste();
       $('mBriefingLink').value=''; $('mReferencesLink').value=''; $('mArtsLink').value='';
       $('mImageLink').value=''; $('mImageNotes').value='';
       if($('mNoProduct')) $('mNoProduct').checked = false;
@@ -2273,6 +2516,7 @@
       if($('modalMenuBtn')) $('modalMenuBtn').style.display = 'none';
       renderIntelValidation(null);
       updateCommemorativePostTypeUI();
+      updateGuidedHint(); // o formulário acabou de ser limpo: o aviso "Falta:" precisa refletir o estado novo
       $('mTitle').focus();
     }
 
@@ -2300,11 +2544,8 @@
       if(!date){ alert('Escolha uma data'); return; }
       const place = [...new Set(Array.from(document.querySelectorAll('input[name="mPlace"]:checked')).map(n=>n.value))];
       const type = document.querySelector('input[name="mType"]:checked').value;
-      // o status e o collab não têm mais controle próprio neste modal (mudança de status/collab
-      // agora é feita pela edição em lote, com várias postagens selecionadas) - postagem nova
-      // recebe o primeiro status configurado e collab desligado; ao editar, ambos são preservados
-      const defaultStatus = (APP_SETTINGS.statuses[0] && APP_SETTINGS.statuses[0].name) || 'Rascunho';
-      const status = $('mStatus') ? $('mStatus').value : defaultStatus;
+      // collab não tem controle próprio neste modal: postagem nova nasce com collab desligado e,
+      // ao editar, o valor salvo é preservado
       const notes = $('mNotes').value.trim();
       const commemorativePostType=commemorativeEditoriaIsSelected() && $('mCommemorativePostType') ? $('mCommemorativePostType').value : '';
       const isInstitutionalCommemorative=commemorativePostType==='institutional';
@@ -2328,7 +2569,7 @@
         if(!post) return;
         const before = Object.assign({}, post);
         const dateChanged = post.date !== date;
-        post.title = title; post.date = date; post.notes = notes; post.status = status;
+        post.title = title; post.date = date; post.notes = notes;
         post.briefingLink = briefingLink; post.referencesLink = referencesLink; post.artsLink = artsLink;
         post.imageLink = imageLink; post.imageNotes = imageNotes; post.noProduct = noProduct;
         post.commemorativePostType = commemorativePostType || '';
@@ -2358,7 +2599,7 @@
       const p = {
         id: generateId(), title, date, channel: nets[0], place: place.slice(), type,
         channels: nets.map(net=>({ channel: net, types: [type], places: place.slice() })),
-        status, notes, briefingLink, referencesLink, artsLink, imageLink, imageNotes,
+        notes, briefingLink, referencesLink, artsLink, imageLink, imageNotes,
         referenceImages: editingReferenceImages.slice(),
         noProduct, commemorativePostType: commemorativePostType || '', collab: false, color: null, editoria: editorias, products: products.slice(), order: nextOrderForDate(date)
       };
@@ -2380,7 +2621,7 @@
       $('mImageLink').value=''; $('mImageNotes').value='';
       if($('mNoProduct')) $('mNoProduct').checked = false;
       document.querySelectorAll('.mNet').forEach(n=>n.checked=false);
-      document.querySelectorAll('.mEditoria').forEach(e=>e.checked=false); $('mProductName').value=''; selectedProducts=[]; renderSelectedProducts();
+      document.querySelectorAll('.mEditoria').forEach(e=>e.checked=false); $('mProductName').value=''; hideProductPaste(); selectedProducts=[]; renderSelectedProducts();
       editingReferenceImages = []; renderReferenceImages();
       renderModalFormatsUI();
     }
@@ -2398,35 +2639,25 @@
       return places==='Feed Vertical' ? 'Feed' : places;
     }
 
-    function migrateLegacyPostStatus(post){
-      if(post.status==='Aprovado'){ post.status='Pronto para ser postado'; return true; }
-      if(post.status==='Agendado'){ post.status='Publicado'; return true; }
-      return false;
-    }
     function loadState(){
       const raw = localStorage.getItem(LS_POSTS_KEY);
       if(raw){ try{ state.posts = JSON.parse(raw) || []; }catch(e){ state.posts=[]; } }
-      // garante que toda postagem tenha id e status válidos
-      const defaultStatus = (APP_SETTINGS.statuses[0] && APP_SETTINGS.statuses[0].name) || 'Rascunho';
-      let statusesMigrated = false;
+      // garante que toda postagem tenha id
       state.posts.forEach(p=>{
-        if(migrateLegacyPostStatus(p)) statusesMigrated = true;
         if(!p.id) p.id = generateId();
-        if(!p.status) p.status = defaultStatus;
         if(Array.isArray(p.channels)) p.channels.forEach(c=>{ if(c.channel==='Instagram') c.places = migrateLegacyInstagramFeedPlaces(c.places); });
         if(p.channel==='Instagram') p.place = migrateLegacyInstagramFeedPlaces(p.place);
       });
-      if(statusesMigrated) localStorage.setItem(LS_POSTS_KEY,JSON.stringify(state.posts));
       // atribui `order` às postagens salvas antes desse campo existir
       migratePostOrders();
     }
 
     // ============================================================
     // CONFIGURAÇÕES DA APLICAÇÃO - redes, editorias, formatos,
-    // status, catálogo de produtos e metas (persistidas no localStorage)
+    // catálogo de produtos e metas (persistidas no localStorage)
     // ============================================================
-    const BRAND_COLORS = { Instagram:'#E4405F', Facebook:'#1877F2', LinkedIn:'#0A66C2', TikTok:'#010101', Blog:'#ef4444', Email:'#374151' };
-    const BRAND_SHORT_NAMES = { Instagram:'IG', LinkedIn:'LI', TikTok:'TT', Blog:'BL', Email:'EM' };
+    const BRAND_COLORS = { Instagram:'#E4405F', Facebook:'#1877F2', LinkedIn:'#0A66C2', TikTok:'#010101', YouTube:'#FF0000', Blog:'#ef4444', Email:'#374151' };
+    const BRAND_SHORT_NAMES = { Instagram:'IG', LinkedIn:'LI', TikTok:'TT', YouTube:'YT', Blog:'BL', Email:'EM' };
     // formatos padrão por rede - cada rede tem seu próprio conjunto (ex: Reels só existe no Instagram),
     // cada formato com as dimensões (px) e extensões de arquivo aceitas
     const NETWORK_DEFAULT_FORMATS = {
@@ -2445,6 +2676,10 @@
         { name:'Artigo', width:1200, height:644, extensions:['JPG','PNG'] }
       ],
       TikTok: [{ name:'Vídeo', width:1080, height:1920, extensions:['MP4'] }],
+      YouTube: [
+        { name:'Vídeo', width:1920, height:1080, extensions:['MP4'] },
+        { name:'Shorts', width:1080, height:1920, extensions:['MP4'] }
+      ],
       Blog: [{ name:'Post', width:1200, height:630, extensions:['JPG','PNG'] }],
       Email: [{ name:'Email', width:600, height:800, extensions:['JPG','PNG'] }]
     };
@@ -2502,6 +2737,7 @@
         { name:'Facebook', shortName:'FB', color:'#1877F2', formats: NETWORK_DEFAULT_FORMATS.Facebook.map(f=>Object.assign({},f)) },
         { name:'TikTok', shortName:'TT', color:'#010101', formats: NETWORK_DEFAULT_FORMATS.TikTok.map(f=>Object.assign({},f)) },
         { name:'LinkedIn', shortName:'LI', color:'#0A66C2', formats: NETWORK_DEFAULT_FORMATS.LinkedIn.map(f=>Object.assign({},f)) },
+        { name:'YouTube', shortName:'YT', color:'#FF0000', formats: NETWORK_DEFAULT_FORMATS.YouTube.map(f=>Object.assign({},f)) },
         { name:'Blog', shortName:'BL', color:'#ef4444', formats: NETWORK_DEFAULT_FORMATS.Blog.map(f=>Object.assign({},f)) },
         { name:'Email', shortName:'EM', color:'#374151', formats: NETWORK_DEFAULT_FORMATS.Email.map(f=>Object.assign({},f)) }
       ],
@@ -2510,14 +2746,6 @@
       editorias: (EDITORIAS_BY_BRAND[BRAND_SUFFIX] || []).concat(UNIVERSAL_DEFAULT_EDITORIAS)
         .filter((e,i,list)=> !list.slice(0,i).some(existing=> sameDefaultEditoria(existing,e)))
         .map(e=>Object.assign({},e)),
-      statuses: [
-        { name:'Rascunho', color:'#94a3b8' },
-        { name:'Em produção', color:'#3b82f6' },
-        { name:'Em revisão', color:'#f59e0b' },
-        { name:'Em ajuste', color:'#ef4444' },
-        { name:'Pronto para ser postado', color:'#10b981' },
-        { name:'Publicado', color:'#6366f1' }
-      ],
       catalog: [],
       // datas comemorativas personalizadas (ex: aniversário da empresa, um evento específico)
       // - somam-se às datas comemorativas fixas/móveis calculadas em commemorativeDateName()
@@ -2542,11 +2770,7 @@
       // como o Editor de Posts, ou outro computador puxando do servidor, continuava vendo a
       // versão antiga e incompleta para sempre.
       let migrated = !raw;
-      if(raw){ try{ const s = JSON.parse(raw); APP_SETTINGS = Object.assign({}, DEFAULT_SETTINGS, s||{}); const savedStatuses = Array.isArray(APP_SETTINGS.statuses) ? APP_SETTINGS.statuses : [];
-        const officialStatusNames = new Set(DEFAULT_SETTINGS.statuses.map(item=>item.name));
-        const customStatuses = savedStatuses.filter(item=>item && !['Aprovado','Agendado'].includes(item.name) && !officialStatusNames.has(item.name));
-        const normalizedStatuses = DEFAULT_SETTINGS.statuses.map(item=>Object.assign({},item)).concat(customStatuses);
-        if(JSON.stringify(savedStatuses)!==JSON.stringify(normalizedStatuses)){ APP_SETTINGS.statuses=normalizedStatuses; migrated=true; }
+      if(raw){ try{ const s = JSON.parse(raw); APP_SETTINGS = Object.assign({}, DEFAULT_SETTINGS, s||{});
         // acrescenta às editorias já salvas as categorizações default que ainda não existem
         // (por nome), sem mexer nas que o usuário já tinha customizado
         if(!APP_SETTINGS.editorias) APP_SETTINGS.editorias = [];
@@ -2688,15 +2912,9 @@
         localKey: LS_POSTS_KEY,
         outboxKey: LS_POSTS_OUTBOX_KEY,
         getPosts: ()=>state.posts,
-        applyPosts: posts=>{ state.posts=posts; state.posts.forEach(migrateLegacyPostStatus); migratePostOrders(); },
+        applyPosts: posts=>{ state.posts=posts; migratePostOrders(); },
         readLegacy: ()=>syncFetch(API_POSTS_KEY),
         onRemoteChange: renderRemotePostsWhenSafe,
-        getReadyNotificationRecipients: async post => {
-          if(post.status !== 'Pronto para ser postado' || !window.PortalFirebase) return null;
-          const routes = await window.PortalFirebase.readPortalStore('social-media-notification-routes-v1');
-          const brand = (window.PortalBrand.list || []).find(item => item.id === window.PortalBrand.activeId) || {};
-          return { recipientIds: (Array.isArray(routes.v) ? routes.v : []).filter(route => (route.brandIds || []).includes(brand.id)).map(route => route.uid), brandId: brand.id, brandName: brand.name };
-        },
         onStatus: setSyncStatus,
         onConflict: ()=>{
           setSyncStatus('O mesmo card foi alterado por outra pessoa','warn');
@@ -2794,6 +3012,7 @@
       }catch(e){
         setSyncStatus('Sem conexão com o servidor - usando cópia local', 'warn');
       }
+      if(!settingsPulled){ settingsPulled = true; openRequestedPostWhenReady(); } // sem conexão, segue com a cópia local
     }
 
     // ============================================================
@@ -2934,6 +3153,9 @@
       btn.addEventListener('click', ()=>{
         if(selectedProducts.length===0){ alert('Selecione um produto do catálogo antes de gerar a legenda.'); return; }
         const draft = generateCaptionDraft();
+        if(!draft) loadSiteDetails(); // se a consulta ao site falhou antes, tenta de novo agora
+        if(!draft && selectedProducts.some(p=> Date.now() < (siteDetailsRetryAt[normalizeCode(p.code)]||0))){ alert('O site não respondeu agora. Tente gerar a legenda de novo em alguns segundos.'); return; }
+        if(!draft && (siteDetailsPending.size || masterCatalogLoading)){ alert('Os dados do produto ainda estão chegando do site. Tente de novo em instantes.'); return; }
         if(!draft){ alert('O produto selecionado não tem dados de destaques/aplicações no catálogo - gere a legenda manualmente ou escolha outro produto.'); return; }
         const notes = $('mNotes');
         if(notes.value.trim() && !confirm('Isso substitui o texto atual do campo. Continuar?')) return;
@@ -2976,7 +3198,7 @@
     // ============================================================
     // UI DINÂMICA GERADA A PARTIR DAS CONFIGURAÇÕES - reconstrói
     // abas, listas de opções e o painel de Configurações sempre
-    // que uma rede/editoria/formato/status/produto muda
+    // que uma rede/editoria/formato/produto muda
     // ============================================================
     function renderTabs(){
       const tabs = $('tabs'); tabs.innerHTML = '';
@@ -3394,7 +3616,7 @@
     window.addEventListener('scroll', closeEditoriaMenu, true);
 
     function renderEditoriasUI(){
-      const c = $('editoriasContainer'); if(c){ c.innerHTML=''; APP_SETTINGS.editorias.forEach(e=>{ const lbl=document.createElement('label'); lbl.className='chip'; lbl.innerHTML = `<input type="checkbox" class="mEditoria" value="${escapeHtml(e.name)}" /> <span class="dot" style="background:${editoriaColor(e.name)}"></span>${escapeHtml(e.name)}`; c.appendChild(lbl); lbl.querySelector('input').addEventListener('change', refreshModalDynamic); }); }
+      const c = $('editoriasContainer'); if(c){ c.innerHTML=''; APP_SETTINGS.editorias.forEach(e=>{ const lbl=document.createElement('label'); lbl.className='chip'; lbl.innerHTML = `<input type="checkbox" class="mEditoria" value="${escapeHtml(e.name)}" /> <span class="dot" style="background:${editoriaColor(e.name)}"></span>${escapeHtml(e.name)}`; c.appendChild(lbl); lbl.querySelector('input').addEventListener('change', ev=>{ if(ev.target.checked) applyEditoriaDefaultsToModal(e.name); refreshModalDynamic(); }); }); }
       const fc = $('filterEditoriasContainer'); if(fc){ fc.innerHTML=''; APP_SETTINGS.editorias.forEach(e=>{ const lbl=document.createElement('label'); lbl.className='chip'; lbl.innerHTML = `<input type="checkbox" class="fEditoria" value="${escapeHtml(e.name)}"/> <span class="dot" style="background:${editoriaColor(e.name)}"></span>${escapeHtml(e.name)}`; fc.appendChild(lbl); }); }
 
       // dias fixos + redes/tipos/formatos do formulário de nova editoria - monta o editor
@@ -3628,12 +3850,11 @@
       const channelsSnapshot = schedule.channels.map(c=>({ channel: c.channel, types: c.types.slice(), places: c.places.slice() }));
       const existing = state.posts.find(p=> p.date===row.dateStr && (Array.isArray(p.editoria)?p.editoria:[p.editoria]).includes(editoriaName));
       if(existing){ row.postId = existing.id; return; }
-      const defaultStatus = (APP_SETTINGS.statuses[0] && APP_SETTINGS.statuses[0].name) || 'Rascunho';
       const p = {
         id: generateId(), title: titleForEditoriaRow(row, editoriaName), date: row.dateStr,
         channel: primary.channel, place: primary.places.slice(), type: primary.types[0] || 'Static',
         channels: channelsSnapshot,
-        status: defaultStatus, notes: '', collab: false, color: null, editoria: [editoriaName], products: row.products.slice(), order: nextOrderForDate(row.dateStr)
+        notes: '', collab: false, color: null, editoria: [editoriaName], products: row.products.slice(), order: nextOrderForDate(row.dateStr)
       };
       state.posts.push(p);
       saveState(); buildCalendar(); render();
@@ -3677,45 +3898,34 @@
           chipsWrap.innerHTML = '';
           row.products.forEach((p, idx)=>{
             const chip = document.createElement('span'); chip.className = 'product-chip';
-            const img = p.code ? `<img src="${productImageUrl(p.code)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'" />` : '';
-            chip.innerHTML = `${img}<div class="pc-body"><span class="pc-name">${escapeHtml(p.name)}</span>${p.code?`<span class="pc-code">${escapeHtml(p.code)}</span>`:''}</div><button type="button" class="pc-remove" aria-label="Remover produto">${UI_ICONS.x(12)}</button>`;
+            const img = p.code ? `<img ${productImgAttrs(p.code)} alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'" />` : '';
+            const codes = productCodesLabel(p);
+            chip.innerHTML = `${img}<div class="pc-body"><span class="pc-name">${escapeHtml(p.name)}</span>${codes?`<span class="pc-code">${escapeHtml(codes)}</span>`:''}</div><button type="button" class="pc-remove" aria-label="Remover produto">${UI_ICONS.x(12)}</button>`;
             chip.querySelector('.pc-remove').addEventListener('click', ()=>{ row.products.splice(idx,1); renderRowProducts(); });
             chipsWrap.appendChild(chip);
           });
+          loadProductThumbs(row.products);
         }
         renderRowProducts();
 
         const input = item.querySelector('.ae-product-input');
         const sugg = item.querySelector('.ae-product-suggestions');
         function hideSugg(){ sugg.style.display='none'; sugg.innerHTML=''; }
-        function showSugg(query){
-          const q = normalizeStr(query.trim());
-          if(q.length<2){ hideSugg(); return; }
-          const qCode = normalizeCode(query.trim());
-          const matches = productCandidates().filter(cand=>
-            !row.products.some(p=> cand.code ? p.code===cand.code : p.name===cand.name) &&
-            (normalizeStr(cand.name).includes(q)
-              || (cand.code && (normalizeStr(cand.code).includes(q) || normalizeCode(cand.code).includes(qCode)))
-              || (cand.codeFG && (normalizeStr(cand.codeFG).includes(q) || normalizeCode(cand.codeFG).includes(qCode))))
-          ).sort((a,b)=> productMatchRank(a,q,qCode) - productMatchRank(b,q,qCode));
-          if(matches.length===0){
-            sugg.innerHTML = `<div class="autocomplete-item ac-manual"><span class="ac-name">+ Adicionar "${escapeHtml(query.trim())}" (sem catálogo)</span></div>`;
-            sugg.querySelector('.ac-manual').addEventListener('mousedown', ev=>{ ev.preventDefault(); row.products.push({ code:'', name: query.trim() }); input.value=''; hideSugg(); renderRowProducts(); input.focus(); });
-            sugg.style.display = 'block';
-            return;
-          }
-          sugg.innerHTML = matches.map((mch,i)=>`<div class="autocomplete-item" data-idx="${i}"><img src="${productImageUrl(mch.code)}" alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'" /><span class="ac-name">${escapeHtml(mch.name)}</span><span class="ac-code">${escapeHtml(mch.code)}</span></div>`).join('');
-          sugg.querySelectorAll('.autocomplete-item[data-idx]').forEach(el=> el.addEventListener('mousedown', ev=>{
-            ev.preventDefault();
-            const mch = matches[Number(el.dataset.idx)];
+        function showSugg(){
+          renderProductAutocomplete(sugg, input, row.products, mch=>{
             row.products.push({ code: mch.code||'', name: mch.name });
-            input.value=''; hideSugg(); renderRowProducts(); input.focus();
-          }));
-          sugg.style.display = 'block';
+            renderRowProducts();
+          });
         }
         input.addEventListener('input', ev=> showSugg(ev.target.value));
         input.addEventListener('focus', ev=>{ if(ev.target.value.trim().length>=2) showSugg(ev.target.value); });
-        input.addEventListener('blur', ()=> setTimeout(hideSugg, 150));
+        input.addEventListener('blur', ()=>{ sugg._enterPending = false; setTimeout(hideSugg, 150); });
+        input.addEventListener('keydown', ev=>{
+          if(ev.key!=='Enter') return;
+          ev.preventDefault();
+          if(sugg.style.display!=='block') showSugg();
+          if(sugg._enter) sugg._enter();
+        });
 
         // "Editar card": garante que a data já tenha um card real e abre o modal de postagem
         // por cima deste (sem fechá-lo) - ao fechar o modal de postagem, esta lista reaparece
@@ -3744,7 +3954,6 @@
       if(!schedule || !(schedule.channels||[]).length){ alert(`Esta editoria não tem dias fixos configurados para ${monthLabel}.`); return; }
       const primary = schedule.channels[0];
       const channelsSnapshot = schedule.channels.map(c=>({ channel: c.channel, types: c.types.slice(), places: c.places.slice() }));
-      const defaultStatus = (APP_SETTINGS.statuses[0] && APP_SETTINGS.statuses[0].name) || 'Rascunho';
       const created = [];
       const updatedBefore = [];
       activeRows.forEach(row=>{
@@ -3766,7 +3975,7 @@
           id: generateId(), title: titleForEditoriaRow(row, editoriaName), date: row.dateStr,
           channel: primary.channel, place: primary.places.slice(), type: primary.types[0] || 'Static',
           channels: channelsSnapshot.map(c=>Object.assign({},c)),
-          status: defaultStatus, notes: '', collab: false, color: null, editoria: [editoriaName], products: row.products.slice(), order: nextOrderForDate(row.dateStr)
+          notes: '', collab: false, color: null, editoria: [editoriaName], products: row.products.slice(), order: nextOrderForDate(row.dateStr)
         };
         state.posts.push(p);
         created.push(p);
@@ -3793,6 +4002,41 @@
       const ft = $('filterTypesContainer'); if(ft){ ft.innerHTML=''; ['Static','Video'].forEach(ti=>{ const lbl = document.createElement('label'); lbl.className='chip'; lbl.innerHTML = `<input type="checkbox" class="fType" value="${ti}"/>${TYPE_ICONS[ti]} ${ti==='Static'?'Estático':'Vídeo'}`; ft.appendChild(lbl); }); }
     }
 
+    // marca, no grupo de formatos DA REDE, os formatos dela. Redes com formatos de mesmo nome (Feed e Stories no
+    // Instagram e no Facebook) têm um checkbox cada: marcar pelo nome só achava o da primeira rede e deixava o das
+    // outras desmarcado ao reabrir o card. Os dados salvos sempre estiveram certos; o briefing continua sem duplicar.
+    function checkPlacesForNet(netName, places){
+      const group = Array.from(document.querySelectorAll('#mPlacesContainer .format-net-group')).find(g=> g.dataset.net===netName);
+      if(!group) return;
+      group.querySelectorAll('input[name="mPlace"]').forEach(el=>{ if((places||[]).includes(el.value)) el.checked = true; });
+    }
+    // Postagem nova + editoria escolhida: traz o que a editoria já define para o mês da data (redes, tipo e formatos, vindos do
+    // agendamento em "Aplicar editoria ao mês"). Só soma ao que já estava marcado: a pessoa continua livre para mexer em tudo.
+    // ponytail: só a config do mês exato da data (vale a data do momento em que a editoria é marcada: mudar a data depois não refaz); mês sem agendamento não preenche nada; com tipos diferentes por rede vale o da primeira.
+    function applyEditoriaDefaultsToModal(editoriaName){
+      if(isEditing) return;
+      const editoria = APP_SETTINGS.editorias.find(x=> x.name===editoriaName);
+      const date = $('mDate').value, [y, m] = date ? date.split('-').map(Number) : [viewDate.getFullYear(), viewDate.getMonth()+1];
+      const schedule = editoria && editoria.scheduleByMonth && editoria.scheduleByMonth[monthKeyFromDate(new Date(y, m-1, 1))];
+      const channels = ((schedule && schedule.channels) || []).filter(c=> APP_SETTINGS.networks.some(n=> n.name===c.channel));
+      if(!channels.length) return;
+      const nets = Array.from(document.querySelectorAll('.mNet')), alreadyOn = nets.filter(n=> n.checked).map(n=> n.value);
+      channels.forEach(c=>{ const net = nets.find(n=> n.value===c.channel); if(net) net.checked = true; });
+      renderModalFormatsUI();
+      // renderModalFormatsUI guarda os formatos marcados pelo NOME, então a rede recém-marcada herdaria os de mesmo nome de outra rede:
+      // nas redes que entraram agora vale só o que a editoria define
+      channels.filter(c=> !alreadyOn.includes(c.channel)).forEach(c=>{
+        const group = Array.from(document.querySelectorAll('#mPlacesContainer .format-net-group')).find(g=> g.dataset.net===c.channel);
+        if(group) group.querySelectorAll('input[name="mPlace"]').forEach(el=>{ el.checked = false; });
+      });
+      channels.forEach(c=> checkPlacesForNet(c.channel, c.places));
+      // o tipo é uma escolha única: a editoria só o define enquanto ele está no padrão (Estático), para não desfazer a escolha da pessoa
+      const type = (channels[0].types||[])[0], current = document.querySelector('input[name="mType"]:checked');
+      const typeRadio = type && Array.from(document.querySelectorAll('input[name="mType"]')).find(r=> r.value===type);
+      if(typeRadio && (!current || current.value==='Static')) typeRadio.checked = true;
+      refreshModalDynamic();
+    }
+
     // preenche o Formato do modal de criar/editar postagem, com base na(s) rede(s) marcada(s) -
     // separado num grupo por rede social (cada rede tem seu próprio conjunto - ex: Reels só
     // aparece se Instagram estiver marcado - e a mesma rede pode ter um formato de mesmo nome
@@ -3809,7 +4053,7 @@
         container.innerHTML = `<span style="font-size:12px;color:var(--text-faint)">Selecione uma rede para ver os formatos disponíveis</span>`;
       } else {
         orderedNets.forEach(net=>{
-          const group = document.createElement('div'); group.className = 'format-net-group';
+          const group = document.createElement('div'); group.className = 'format-net-group'; group.dataset.net = net.name;
           group.innerHTML = `<div class="format-net-group-label">${networkIcon(net.name)}<span>${escapeHtml(net.name)}</span></div>`;
           const chips = document.createElement('div'); chips.className = 'format-net-group-chips';
           (net.formats||[]).forEach(f=>{
@@ -3826,10 +4070,6 @@
         });
       }
       refreshModalDynamic();
-    }
-
-    function renderStatusUI(){
-      const list = $('statusesList'); if(list){ list.innerHTML=''; APP_SETTINGS.statuses.forEach(s=>{ const chip=document.createElement('span'); chip.className='chip'; chip.style.display='inline-flex'; chip.innerHTML = `<span class="dot" style="background:${s.color}"></span>${escapeHtml(s.name)} <button class="btn ghost small" data-status="${escapeHtml(s.name)}" style="margin-left:8px" aria-label="Remover status">${UI_ICONS.x(13)}</button>`; list.appendChild(chip); }); list.querySelectorAll('button[data-status]').forEach(bt=> bt.addEventListener('click', ()=>{ const v=bt.dataset.status; APP_SETTINGS.statuses = APP_SETTINGS.statuses.filter(x=>x.name!==v); saveSettings(); renderAllDynamicUI(); })); }
     }
 
     function renderCatalogUI(){
@@ -3926,7 +4166,7 @@
     });
 
     // reconstrói toda a UI dependente das configurações, de uma vez
-    function renderAllDynamicUI(){ renderTabs(); renderNetsUI(); renderEditoriasUI(); renderPlacesUI(); renderStatusUI(); renderCatalogUI(); renderCustomDatesUI(); renderCommemorativeDatesYearList(); }
+    function renderAllDynamicUI(){ renderTabs(); renderNetsUI(); renderEditoriasUI(); renderPlacesUI(); renderCatalogUI(); renderCustomDatesUI(); renderCommemorativeDatesYearList(); }
 
     // ============================================================
     // MODAL DE CONFIGURAÇÕES - abrir, fechar e salvar a meta
@@ -3968,7 +4208,6 @@
     // com os dados do post clicado no calendário/lista
     // ============================================================
     function openEditModal(id){
-      closeQuickStatusMenu();
       const post = state.posts.find(p=>p.id===id); if(!post) return;
       modalOpenedFromApplyEditoria = false;
       if($('modalBackBtn')) $('modalBackBtn').style.display = 'none';
@@ -3976,7 +4215,6 @@
       if(postSync) postSync.beginEdit(id);
       // preenche os campos do modal com os dados da postagem
       $('mTitle').value = post.title || '';
-      renderModalStatus(post.status);
       $('mDate').value = post.date || '';
       $('mNotes').value = post.notes || '';
       $('mBriefingLink').value = post.briefingLink || '';
@@ -3996,8 +4234,7 @@
       document.querySelectorAll('.mNet').forEach(n=>{ n.checked = entryChannels.includes(n.value); });
       renderModalFormatsUI();
       document.querySelectorAll('input[name="mPlace"]').forEach(el=>{ el.checked = false; });
-      const unionPlaces = [...new Set(entries.flatMap(c=>c.places||[]))];
-      unionPlaces.forEach(pp=>{ const el = document.querySelector(`input[name="mPlace"][value="${pp}"]`); if(el) el.checked = true; });
+      entries.forEach(c=> checkPlacesForNet(c.channel, c.places));
       const unionTypes = [...new Set(entries.flatMap(c=>c.types||[]))];
       const typeVal = unionTypes[0] || post.type || 'Static';
       const typeRadio = document.querySelector(`input[name="mType"][value="${typeVal}"]`); if(typeRadio) typeRadio.checked = true;
@@ -4006,7 +4243,7 @@
       document.querySelectorAll('.mEditoria').forEach(e=>{ e.checked = false; });
       if(post.editoria){ const arr = Array.isArray(post.editoria)?post.editoria:[post.editoria]; arr.forEach(ed=>{ const el = Array.from(document.querySelectorAll('.mEditoria')).find(x=>x.value===ed); if(el) el.checked = true; }); }
       if($('mCommemorativePostType')) $('mCommemorativePostType').value = post.commemorativePostType || 'custom';
-      $('mProductName').value = '';
+      $('mProductName').value = ''; hideProductPaste();
       selectedProducts = getPostProducts(post).slice();
       renderSelectedProducts();
       hideProductSuggestions();
@@ -4024,6 +4261,17 @@
     }
 
     function openRequestedPostWhenReady(){
+      if(requestedCommemorative){
+        if(requestedPostOpened || (SYNC_ENABLED && !settingsPulled)) return false;
+        // outro modal aberto (aviso, conflito): tenta de novo até ele fechar, senão o fluxo prometido pela Início nunca abriria
+        if(anyModalOpen() || [...document.querySelectorAll('.modal-backdrop')].some(el=> getComputedStyle(el).display!=='none')){ clearTimeout(openRequestedPostWhenReady._retry); openRequestedPostWhenReady._retry = setTimeout(openRequestedPostWhenReady, 500); return false; }
+        requestedPostOpened = true;
+        if(!commemorativeDateNames(requestedPostDate).length) return false; // data que não existe mais nas configurações: só mostra o mês
+        openCommemorativeFromDay(requestedPostDate);
+        // tira o commemorative da URL: recarregar a página não reabre o fluxo (a data continua, o mês é o mesmo)
+        try{ const u = new URL(location.href); u.searchParams.delete('commemorative'); history.replaceState(history.state, '', u); }catch(e){}
+        return true;
+      }
       if(!requestedPostId || requestedPostOpened || anyModalOpen()) return false;
       const post = state.posts.find(item=>item.id===requestedPostId);
       if(!post) return false;
@@ -4158,9 +4406,9 @@
     // EXPORTAÇÃO CSV E UTILITÁRIOS GERAIS
     // ============================================================
     // baixa um arquivo de texto no navegador (usado pela exportação CSV)
-    function download(name, text){
+    function download(name, text, type){
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([text],{type:'text/plain'}));
+      a.href = URL.createObjectURL(new Blob([text],{type: type||'text/plain'}));
       a.download = name;
       document.body.appendChild(a);
       a.click();
@@ -4172,7 +4420,7 @@
     function exportCSV(){
       if(!state.posts || state.posts.length===0){ alert('Nenhuma postagem para exportar'); return; }
       const rows = [];
-      const header = ['Date','Title','Channel','Place','Type','Status','Collab','Notes','Editorias','ProductCode','ProductName','id'];
+      const header = ['Date','Title','Channel','Place','Type','Collab','Notes','Editorias','ProductCode','ProductName','id'];
       rows.push(header.join(','));
       // ordena por data e, dentro do dia, pela ordem manual definida no calendário
       // (a mesma ordem que será usada para montar o briefing a partir do calendário)
@@ -4186,9 +4434,239 @@
         const prods = getPostProducts(p);
         const productCodesVal = prods.map(x=>x.code).join('|');
         const productNamesVal = prods.map(x=>x.name).join('|');
-        rows.push([csvEscape(p.date), csvEscape(p.title), csvEscape(channelVal), csvEscape(placeVal), csvEscape(typeVal), csvEscape(p.status||''), csvEscape(p.collab? 'true':'false'), csvEscape(p.notes), csvEscape(editoriasVal), csvEscape(productCodesVal), csvEscape(productNamesVal), csvEscape(p.id)].join(','));
+        rows.push([csvEscape(p.date), csvEscape(p.title), csvEscape(channelVal), csvEscape(placeVal), csvEscape(typeVal), csvEscape(p.collab? 'true':'false'), csvEscape(p.notes), csvEscape(editoriasVal), csvEscape(productCodesVal), csvEscape(productNamesVal), csvEscape(p.id)].join(','));
       });
       download('calendar_posts.csv', rows.join('\n'));
+    }
+
+    // baixa uma planilha (CSV com ";" e BOM, abre direto no Excel pt-BR) com um código de produto por linha,
+    // sem repetição, para montar a planilha de validação do catálogo. Só entra o período e os
+    // filtros que estão na tela (mês, quinzena ou semana; Lista = mês)
+    async function exportProductCodes(){
+      const [s,e] = periodPresetRange(defaultExportPreset(), viewDate);
+      const startStr = ymd(s), endStr = ymd(e);
+      const byKey = new Map();
+      const posts = getFilteredPosts().filter(p=> p.date && p.date>=startStr && p.date<=endStr).sort((a,b)=> a.date.localeCompare(b.date));
+      await resolveFgCodes(posts.flatMap(getPostProducts)); // produto de outra marca: acha o código FG pela referência
+      posts.forEach(p=>{
+        getPostProducts(p).forEach(prod=>{
+          const x = fixCodeOnlyProduct(prod, masterCatalogByCode);
+          if(!x.code && !x.name) return;
+          // duas colunas: Código OVD (marca própria) e Código FG; produto de outra marca guarda só a referência do
+          // fabricante, que não entra em nenhuma das duas
+          const { ovd, fg } = productCodeColumns(x);
+          // chave com códigos E nome: o mesmo código com nomes diferentes aparece em linhas separadas
+          const key = [ovd, fg, x.code||'', x.name||''].join('\u0001');
+          if(!byKey.has(key)) byKey.set(key, { ovd, fg, name: x.name||'', dates: [] });
+          const dates = byKey.get(key).dates;
+          if(!dates.includes(p.date)) dates.push(p.date);
+        });
+      });
+      if(byKey.size===0){ alert('Nenhum produto nas postagens do período visível para exportar'); return; }
+      // nome começando com = + - @ viraria fórmula no Excel; código só de dígitos (ou 1E5) perderia zeros à esquerda
+      const safe = v => { const s = String(v==null?'':v); return /^[=+\-@]/.test(s) ? "'"+s : s; };
+      const cell = v => '"'+v.replace(/"/g,'""')+'"';
+      const codeCell = v => /^\d+$|^\d+e\d+$/i.test(v) ? '="'+v+'"' : cell(safe(v));
+      const rows = [['Código OVD','Código FG','Produto','Postagens','Datas'].map(cell).join(';')];
+      byKey.forEach(r=> rows.push([codeCell(r.ovd), codeCell(r.fg), cell(safe(r.name)), cell(String(r.dates.length)), cell(r.dates.join(' | '))].join(';')));
+      download('codigos_produtos.csv', '﻿'+rows.join('\r\n'), 'text/csv;charset=utf-8');
+    }
+
+    // produto colado só com o código (não achado no catálogo) fica salvo como nome: devolve o
+    // código na posição de código, com o código/nome do catálogo quando ele existir lá
+    function fixCodeOnlyProduct(x, byCode){
+      if(x.code || !/^[\d.\-\s]+$/.test(x.name||'') || !/\d/.test(x.name)) return x;
+      const hit = byCode && byCode.get(normalizeCode(x.name));
+      return { ...x, code: hit ? hit.code : x.name.trim(), name: hit ? (hit.name||'') : '' }; // ...x mantém codeFG e demais campos do produto
+    }
+
+    // ============================================================
+    // IMPORTAR PLANILHA (Mais ações) - cada linha de um .xlsx/.xls/.csv vira um card. A primeira
+    // linha que tiver a coluna "Data" é o cabeçalho; as colunas são achadas pelo nome (português
+    // ou o cabeçalho do "Exportar CSV"), em qualquer ordem. Vários valores numa célula: "|".
+    // ============================================================
+    // ponytail: teto fixo pra não disparar centenas de gravações de uma vez no Firestore; se precisar de mais, gravar em lotes
+    const IMPORT_MAX_POSTS = 300;
+    const IMPORT_HEADERS = {
+      date:['data','date'], title:['titulo','title','tema','pauta'],
+      channel:['rede','redes','canal','canais','channel'], place:['formato','formatos','place'],
+      type:['tipo','type'], editoria:['editoria','editorias'],
+      code:['codigo','codigos','codigo do produto','productcode'], name:['produto','produtos','nome do produto','productname'],
+      notes:['conteudo','conteudo da publicacao','legenda','texto','notas','notes'], id:['id']
+    };
+    // data da célula -> 'aaaa-mm-dd' ('' se não for data). Número = data serial do Excel;
+    // texto aceita dd/mm/aaaa (padrão brasileiro), dd/mm/aa e aaaa-mm-dd
+    function parseSheetDate(v){
+      if(typeof v==='number'){
+        if(v<20000 || v>80000) return '';
+        const d = new Date(Math.round((v-25569)*864e5));
+        return ymd(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+      }
+      const s = String(v||'').trim();
+      let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[\sT]|$)/), y, mo, d;
+      if(m){ y=+m[1]; mo=+m[2]; d=+m[3]; }
+      else if((m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4}|\d{2})(?:\s|$)/))){ d=+m[1]; mo=+m[2]; y=+m[3]; if(y<100) y+=2000; }
+      else return '';
+      const dt = new Date(y, mo-1, d);
+      return dt.getFullYear()===y && dt.getMonth()===mo-1 && dt.getDate()===d ? ymd(dt) : '';
+    }
+    // linhas da planilha (array de arrays) -> { posts, skipped:[{line,reason}], warnings:[{line,msg}] }
+    // ou { error }. Não mexe no estado: quem chama decide se cria. ctx = configurações da marca.
+    function parseImportSheet(rows, ctx){
+      const norm = s=> normalizeStr(s).replace(/\s+/g,' ').trim();
+      const split = (v, re)=> String(v==null?'':v).split(re).map(s=>s.trim()).filter(Boolean);
+      const LIST = /[|;,\n]/, NAMES = /[|;\n]/;
+      const hi = rows.findIndex(r=> (r||[]).some(c=> IMPORT_HEADERS.date.includes(norm(c))));
+      if(hi<0) return { error:'Não achei a coluna "Data" na planilha. A primeira linha precisa ter os nomes das colunas.' };
+      const col = {};
+      rows[hi].forEach((c,i)=>{ const n = norm(c); for(const k in IMPORT_HEADERS) if(col[k]==null && IMPORT_HEADERS[k].includes(n)) col[k] = i; });
+      const networks = ctx.networks||[], editorias = (ctx.editorias||[]).map(e=>e.name);
+      const posts = [], skipped = [], warnings = [], seen = new Set();
+      for(let i=hi+1; i<rows.length; i++){
+        const r = rows[i]||[], line = i+1;
+        const get = k=> col[k]==null || r[col[k]]==null ? '' : r[col[k]];
+        if(!r.some(c=> String(c==null?'':c).trim())) continue;
+        const warn = msg=> warnings.push({ line, msg });
+        const date = parseSheetDate(get('date'));
+        if(!date){ skipped.push({ line, reason: String(get('date')).trim() ? `data "${get('date')}" inválida` : 'sem data' }); continue; }
+        const id = String(get('id')).trim();
+        if(id && ctx.existingIds.has(id)){ skipped.push({ line, reason:'esse card já existe no calendário' }); continue; }
+        // rede: precisa existir nas Configurações; sem rede, usa a primeira (igual às datas comemorativas)
+        const netNames = split(get('channel'), LIST);
+        const nets = netNames.map(n=> networks.find(x=> norm(x.name)===norm(n) || (x.shortName && norm(x.shortName)===norm(n))));
+        const badNet = netNames.find((n,k)=> !nets[k]);
+        if(badNet){ skipped.push({ line, reason:`rede "${badNet}" não existe nas Configurações` }); continue; }
+        const chosen = nets.length ? [...new Set(nets)] : networks.slice(0,1);
+        if(!chosen.length){ skipped.push({ line, reason:'nenhuma rede cadastrada nas Configurações' }); continue; }
+        const formats = [...new Set(chosen.flatMap(n=> (n.formats||[]).map(f=>f.name)))];
+        let place = [];
+        split(get('place'), LIST).forEach(f=>{ const hit = formats.find(x=> norm(x)===norm(f)); if(hit) place.push(hit); else warn(`formato "${f}" ignorado`); });
+        place = [...new Set(place)];
+        if(!place.length && formats.length) place = [formats[0]];
+        const typeRaw = norm(get('type'));
+        const type = /video|reel|short/.test(typeRaw) ? 'Video' : 'Static';
+        if(typeRaw && type==='Static' && !/estatic|static|imagem|foto|carross/.test(typeRaw)) warn(`tipo "${get('type')}" virou Estático`);
+        const eds = [];
+        split(get('editoria'), LIST).forEach(e=>{ const hit = editorias.find(x=> norm(x)===norm(e)); if(hit){ if(!eds.includes(hit)) eds.push(hit); } else warn(`editoria "${e}" não existe`); });
+        // produtos: códigos e nomes casados pela posição; código do catálogo completa o nome
+        // célula vazia entre "|" mantém a posição (o "Exportar CSV" grava "|60.01" pra produto sem código)
+        const slots = v=> String(v==null?'':v).split(NAMES).map(x=>x.trim());
+        const codes = slots(get('code')), names = slots(get('name')), products = [];
+        for(let k=0; k<Math.max(codes.length, names.length); k++){
+          if(!codes[k] && !names[k]) continue;
+          let p = fixCodeOnlyProduct({ code: codes[k]||'', name: names[k]||'' }, ctx.catalogByCode);
+          const hit = p.code && ctx.catalogByCode && ctx.catalogByCode.get(normalizeCode(p.code));
+          if(hit) p = { code: hit.code, name: p.name || hit.name || '' };
+          if(!products.some(x=> (x.code||x.name)===(p.code||p.name))) products.push(p);
+        }
+        const prodLabels = products.map(p=> shortenProductName(p.name) || p.code).filter(Boolean);
+        const title = String(get('title')).trim() || (prodLabels.length ? joinProductNames(prodLabels) : eds[0] || '');
+        if(!title){ skipped.push({ line, reason:'sem título nem produto' }); continue; }
+        const key = date+'\u0001'+norm(title);
+        if(ctx.existingKeys.has(key)){ skipped.push({ line, reason:'já existe um card com esse título nessa data' }); continue; }
+        if(seen.has(key)){ skipped.push({ line, reason:'linha repetida na planilha' }); continue; }
+        seen.add(key);
+        posts.push({
+          id: generateId(), title, date, channel: chosen[0].name, place: place.slice(), type,
+          channels: chosen.map(n=>({ channel: n.name, types:[type], places: place.slice() })),
+          notes: String(get('notes')).trim(), briefingLink:'', referencesLink:'', artsLink:'', imageLink:'', imageNotes:'',
+          referenceImages:[], noProduct:false, commemorativePostType:'', collab:false, color:null, editoria: eds, products
+        });
+      }
+      if(posts.length > IMPORT_MAX_POSTS) return { error:`A planilha geraria ${posts.length} cards. O limite por importação é ${IMPORT_MAX_POSTS}: divida em arquivos menores.` };
+      return { posts, skipped, warnings };
+    }
+
+    let importSheetResult = null, importReadSeq = 0;
+    // a biblioteca de planilhas (~1 MB) só é baixada na primeira importação
+    let xlsxLoading = null;
+    function loadXlsxLib(){
+      if(window.XLSX) return Promise.resolve();
+      return xlsxLoading = xlsxLoading || new Promise((resolve, reject)=>{
+        const s = document.createElement('script'); s.src = 'vendor/xlsx.full.min.js';
+        s.onload = resolve; s.onerror = ()=>{ xlsxLoading = null; reject(new Error('xlsx')); };
+        document.head.appendChild(s);
+      });
+    }
+    function openImportSheetModal(){
+      importSheetResult = null;
+      $('importSheetSummary').innerHTML = '';
+      $('confirmImportSheet').disabled = true;
+      $('confirmImportSheet').textContent = 'Criar postagens';
+      $('importSheetBackdrop').style.display = 'flex';
+    }
+    function closeImportSheetModal(){ $('importSheetBackdrop').style.display = 'none'; importSheetResult = null; importReadSeq++; }
+    async function readImportFile(file){
+      const seq = ++importReadSeq; // só a última leitura pedida pode preencher o resumo
+      const box = $('importSheetSummary');
+      box.textContent = 'Lendo a planilha...';
+      $('confirmImportSheet').disabled = true;
+      let result;
+      try{
+        try{ await loadXlsxLib(); }
+        catch(e){ throw new Error('Não consegui carregar o leitor de planilhas. Confira a conexão e tente de novo.'); }
+        let wb;
+        if(/\.csv$/i.test(file.name)){
+          // CSV: UTF-8 (o do "Exportar CSV"); se não for, é o padrão do Excel brasileiro (Windows-1252).
+          // raw:true mantém "07/11/2026" como texto, pra não virar data no formato americano
+          const buf = await file.arrayBuffer();
+          let text; try{ text = new TextDecoder('utf-8', { fatal:true }).decode(buf); }catch(e){ text = new TextDecoder('windows-1252').decode(buf); }
+          wb = XLSX.read(text.replace(/^﻿/,''), { type:'string', raw:true });
+        } else wb = XLSX.read(await file.arrayBuffer(), { type:'array' });
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, raw:true, defval:'' });
+        const norm = s=> normalizeStr(s).replace(/\s+/g,' ').trim();
+        // o catálogo (~12 MB) só completa produto: espera por ele só se a planilha tem coluna de produto
+        const productHeaders = IMPORT_HEADERS.code.concat(IMPORT_HEADERS.name);
+        if(rows.some(r=> (r||[]).some(c=> productHeaders.includes(norm(c))))){
+          loadMasterCatalog();
+          if(masterCatalogLoading) await masterCatalogLoading.catch(()=>{});
+        }
+        result = parseImportSheet(rows, {
+          networks: APP_SETTINGS.networks, editorias: APP_SETTINGS.editorias,
+          catalogByCode: masterCatalogByCode,
+          existingIds: new Set(state.posts.map(p=>p.id)),
+          existingKeys: new Set(state.posts.map(p=> p.date+'\u0001'+norm(p.title)))
+        });
+      }catch(e){
+        result = { error: /leitor de planilhas/.test(e.message) ? e.message : 'Não consegui ler esse arquivo. Envie um .xlsx, .xls ou .csv.' };
+      }
+      if(seq !== importReadSeq) return; // modal fechado ou outro arquivo escolhido no meio
+      importSheetResult = result;
+      renderImportSummary(file.name);
+    }
+    function renderImportSummary(fileName){
+      const box = $('importSheetSummary'), btn = $('confirmImportSheet'), r = importSheetResult;
+      if(r.error){ box.innerHTML = `<p class="import-sheet-error">${escapeHtml(r.error)}</p>`; btn.disabled = true; return; }
+      const n = r.posts.length, dates = r.posts.map(p=>p.date).sort();
+      const list = (items, fmt)=> `<ul class="import-sheet-list">${items.slice(0,50).map(x=>`<li>${fmt(x)}</li>`).join('')}${items.length>50?`<li>... e mais ${items.length-50}</li>`:''}</ul>`;
+      let html = `<p><strong>${escapeHtml(fileName)}</strong>: ${n ? `${n} card${n===1?'':'s'} pronto${n===1?'':'s'} para criar, de ${formatDatePt(dates[0])} a ${formatDatePt(dates[n-1])}.` : 'nenhum card para criar.'}</p>`;
+      if(r.skipped.length) html += `<p class="import-sheet-label">${r.skipped.length} linha${r.skipped.length===1?'':'s'} fora da importação:</p>` + list(r.skipped, x=> `Linha ${x.line}: ${escapeHtml(x.reason)}`);
+      if(r.warnings.length) html += `<p class="import-sheet-label">Ajustes:</p>` + list(r.warnings, x=> `Linha ${x.line}: ${escapeHtml(x.msg)}`);
+      box.innerHTML = html;
+      btn.disabled = !n;
+      btn.textContent = n ? `Criar ${n} card${n===1?'':'s'}` : 'Criar postagens';
+    }
+    function confirmImportSheet(){
+      const r = importSheetResult; if(!r || !r.posts || !r.posts.length) return;
+      r.posts.forEach(p=>{ p.order = nextOrderForDate(p.date); state.posts.push(p); });
+      pushUndo({ type:'create', posts: r.posts.map(p=>p.id) }); redoStack = [];
+      // leva o calendário até a primeira data importada
+      const [y,m,d] = r.posts.map(p=>p.date).sort()[0].split('-').map(Number);
+      viewDate = new Date(y, m-1, d);
+      saveState(); buildCalendar(); updateMonthLabelText(); render();
+      closeImportSheetModal();
+      notify(`${r.posts.length} card${r.posts.length===1?'':'s'} criado${r.posts.length===1?'':'s'}. Ctrl+Z desfaz.`);
+    }
+    // modelo com as colunas reconhecidas e uma linha de exemplo (abre direto no Excel pt-BR)
+    function downloadImportTemplate(){
+      const net = (APP_SETTINGS.networks||[])[0] || { name:'Instagram', formats:[{name:'Feed'}] };
+      const cell = v=> '"'+String(v).replace(/"/g,'""')+'"';
+      const rows = [
+        ['Data','Título','Redes','Formatos','Tipo','Editorias','Código','Produto','Conteúdo'],
+        [new Date().toLocaleDateString('pt-BR'), 'Exemplo de pauta', net.name, ((net.formats||[])[0]||{name:'Feed'}).name, 'Estático',
+          ((APP_SETTINGS.editorias||[])[0]||{name:''}).name, '60.01.120.000', '', 'Texto da publicação']
+      ];
+      download('modelo_importacao_calendario.csv', '﻿'+rows.map(r=> r.map(cell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
     }
 
     // escapa caracteres especiais de HTML para evitar quebra de layout/XSS ao injetar texto do usuário
@@ -4242,7 +4720,6 @@
       document.querySelectorAll('#monthSummaryToggle button').forEach(x=> x.classList.toggle('active', x===b));
       renderMonthSummary();
     }));
-    if($('addStatusBtn')) $('addStatusBtn').addEventListener('click', ()=>{ const v=$('newStatusInput').value.trim(); if(!v) return; const c = $('newStatusColor') ? $('newStatusColor').value : '#F6BE00'; APP_SETTINGS.statuses.push({name:v, color:c}); $('newStatusInput').value=''; saveSettings(); renderAllDynamicUI(); });
     if($('addCatalogBtn')) $('addCatalogBtn').addEventListener('click', ()=>{
       const code = $('newCatalogCode').value.trim();
       const name = $('newCatalogName').value.trim();
@@ -4266,14 +4743,6 @@
     });
     if($('mTitle')) $('mTitle').addEventListener('input', refreshModalDynamic);
     if($('mDate')) $('mDate').addEventListener('input', refreshModalDynamic);
-    if($('mStatus')) $('mStatus').addEventListener('change', ()=>{
-      updateModalStatusDot();
-      if(!isEditing || !editingId) return;
-      const post = state.posts.find(item=>item.id===editingId);
-      if(!post || post.status === $('mStatus').value) return;
-      post.status = $('mStatus').value;
-      saveState(); render();
-    });
     if($('mCommemorativePostType')) $('mCommemorativePostType').addEventListener('change', refreshModalDynamic);
     if($('mOpenInstitutionalCommemorativeEditorBtn')) $('mOpenInstitutionalCommemorativeEditorBtn').addEventListener('click', ()=> saveModal({openInstitutionalEditor:true}));
     if($('mArtsLink')) $('mArtsLink').addEventListener('input', refreshModalDynamic);
@@ -4348,20 +4817,34 @@
     });
     document.querySelectorAll('input[name="mType"]').forEach(el=> el.addEventListener('change', refreshModalDynamic));
     if($('mProductName')){
-      $('mProductName').addEventListener('input', (ev)=> showProductSuggestions(ev.target.value));
+      $('mProductName').addEventListener('input', (ev)=>{ hideProductPaste(); showProductSuggestions(ev.target.value); });
+      $('mProductName').addEventListener('paste', (ev)=>{
+        const codes = extractProductCodes((ev.clipboardData || window.clipboardData).getData('text'));
+        if(codes.length < 2) return; // 1 código ou texto comum: colagem normal e busca de sempre
+        // o colado continua visível no campo (quebras de linha viram ", ": o campo é de uma linha só), sem disparar
+        // o "input", que fecharia a prévia e abriria a busca comum
+        ev.preventDefault();
+        const text = (ev.clipboardData || window.clipboardData).getData('text').trim().replace(/\s*[\r\n]+\s*/g, ', ');
+        ev.target.value = text; // substitui: colar de novo (ex.: depois de "Busca falhou") não duplica os códigos
+        openProductPaste(codes);
+      });
       $('mProductName').addEventListener('focus', (ev)=>{ if(ev.target.value.trim().length>=2) showProductSuggestions(ev.target.value); });
-      $('mProductName').addEventListener('blur', ()=> setTimeout(hideProductSuggestions, 150));
+      // saiu do campo: um Enter que esperava o site deixa de valer (a postagem pode ser salva em seguida)
+      $('mProductName').addEventListener('blur', ()=>{ $('productSuggestions')._enterPending = false; setTimeout(hideProductSuggestions, 150); });
       $('mProductName').addEventListener('keydown', (ev)=>{
+        const paste = $('productPasteBox');
+        if(paste && !paste.hidden && (ev.key==='Escape' || ev.key==='Enter')){
+          // prévia de códigos colados aberta: Enter confirma (se já terminou de buscar), Esc descarta
+          ev.preventDefault(); ev.stopPropagation();
+          const b = paste.querySelector(ev.key==='Enter' ? '[data-pp="add"]' : '[data-pp="cancel"]');
+          if(b && !b.disabled) b.click();
+          return;
+        }
         if(ev.key!=='Enter') return;
         ev.preventDefault();
-        const q = ev.target.value.trim();
-        if(!q) return;
-        const qn = normalizeStr(q);
-        const qCode = normalizeCode(q);
-        const available = (APP_SETTINGS.catalog||[]).filter(item=> !selectedProducts.some(p=>p.code===item.code));
-        const match = available.find(item=> normalizeStr(item.name)===qn || normalizeStr(item.code)===qn || normalizeCode(item.code)===qCode)
-          || available.find(item=> normalizeStr(item.name).includes(qn) || normalizeStr(item.code).includes(qn) || normalizeCode(item.code).includes(qCode));
-        addSelectedProduct(match || { code:'', name: q });
+        const box = $('productSuggestions');
+        if(box.style.display!=='block') showProductSuggestions();
+        if(box._enter) box._enter();
       });
     }
 
@@ -4515,7 +4998,7 @@
         // linha divisória embutida no próprio parágrafo do título (borda inferior), em vez de
         // um parágrafo vazio separado - evita pular uma linha em branco entre título e metadados
         const titleBorder = hasMeta ? '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="4" w:color="C9C9C9"/></w:pBdr>' : '';
-        xml += docxParagraph(docxRun(f.title.toUpperCase(), { bold:true, underline:true, highlight:'yellow' }), titleBorder + '<w:spacing w:after="120"/>');
+        xml += docxParagraph(docxRun((f.editoria ? `${f.editoria} - ` : '').toUpperCase() + f.title.toUpperCase(), { bold:true, underline:true, highlight:'yellow' }), titleBorder + '<w:spacing w:after="120"/>');
       }
       if(f.dateLabel) xml += docxParagraph(docxRun('Publicação prevista para ', { bold:true }) + docxRun(f.dateLabel), '<w:spacing w:after="80"/>');
       if(f.hasFormats) xml += docxParagraph(docxRun('Formatos: ', { bold:true }) + docxRun(f.formatsText), '<w:spacing w:after="80"/>');
@@ -4523,7 +5006,15 @@
       if(f.referencesLink) xml += docxParagraph(docxRun('Referências salvas em: ', { bold:true }) + docxHyperlinkRun(f.referencesLink, f.referencesLink, assets), '<w:spacing w:after="80"/>');
       if(f.productItems.length){
         xml += docxParagraph(docxRun('Produto(s):', { bold:true }), '<w:spacing w:after="40"/>');
-        f.productItems.forEach(item=>{ xml += docxParagraph(docxRun('•  '+item), '<w:ind w:left="260"/><w:spacing w:after="40"/>'); });
+        // um bloco por produto: "• Códigos - OVD: x | FG: y" e, na linha de baixo, "Produto: nome";
+        // linha em branco (espaço depois do parágrafo) entre um produto e o próximo
+        f.productRows.forEach(r=>{
+          const codes = [r.ovd && docxRun('OVD:', { bold:true }) + docxRun(' '+r.ovd), r.ref && docxRun('Ref.:', { bold:true }) + docxRun(' '+r.ref), r.fg && docxRun('FG:', { bold:true }) + docxRun(' '+r.fg)].filter(Boolean);
+          let runs = docxRun('•  ');
+          if(codes.length) runs += docxRun('Códigos - ') + codes.join(docxRun(' | ')) + '<w:r><w:br/></w:r>';
+          if(r.name) runs += docxRun('Produto: '+r.name);
+          xml += docxParagraph(runs, '<w:ind w:left="260"/><w:spacing w:after="200"/>');
+        });
       }
       if(f.imageLink) xml += docxParagraph(docxRun('Imagem: ', { bold:true }) + docxHyperlinkRun(f.imageLink, f.imageLink, assets), '<w:spacing w:after="80"/>');
       if(f.imageNotes) xml += docxParagraph(docxRun('Observações: ', { bold:true }) + docxRun(f.imageNotes), '<w:spacing w:after="80"/>');
@@ -4613,9 +5104,10 @@
     }
     // gera e baixa o .docx só com as postagens cuja data (YYYY-MM-DD) cai entre startStr e endStr,
     // inclusive nos dois extremos - chamado pelo botão "Exportar .docx" do modal de período
-    function exportBriefingForRange(startStr, endStr){
+    async function exportBriefingForRange(startStr, endStr){
       const posts = state.posts.filter(p=> p.date && p.date>=startStr && p.date<=endStr);
       if(!posts.length){ alert('Nenhuma postagem no período selecionado.'); return; }
+      await resolveFgCodes(posts.flatMap(getPostProducts)); // produto de outra marca: acha o código FG pela referência
       const byDate = {};
       posts.forEach(p=>{ (byDate[p.date] = byDate[p.date] || []).push(p); });
       const dateKeys = Object.keys(byDate).sort();
@@ -4726,13 +5218,20 @@
         }
       });
       $('toolbarMoreMenu').addEventListener('click', ev=> ev.stopPropagation());
-      ['exportBriefingBtn','exportCsvBtn','resetMonthBtn'].forEach(id=>{
+      ['exportBriefingBtn','exportCsvBtn','exportProductCodesBtn','importSheetBtn','resetMonthBtn'].forEach(id=>{
         const action = $(id); if(action) action.addEventListener('click', closeToolbarMoreMenu);
       });
       document.addEventListener('click', closeToolbarMoreMenu);
       document.addEventListener('keydown', ev=>{ if(ev.key==='Escape') closeToolbarMoreMenu(); });
     }
     const _exportCsvBtn = $('exportCsvBtn'); if(_exportCsvBtn) _exportCsvBtn.addEventListener('click', exportCSV);
+    const _exportCodesBtn = $('exportProductCodesBtn'); if(_exportCodesBtn) _exportCodesBtn.addEventListener('click', async ()=>{
+      if(_exportCodesBtn.disabled) return;
+      _exportCodesBtn.disabled = true;
+      try{ await exportProductCodes(); }
+      catch(err){ console.error(err); alert('Não foi possível exportar os códigos. Tente de novo.'); }
+      finally{ _exportCodesBtn.disabled = false; }
+    });
     if($('exportBriefingBtn')) $('exportBriefingBtn').addEventListener('click', openExportBriefingModal);
     const _resetMonthBtn = $('resetMonthBtn'); if(_resetMonthBtn) _resetMonthBtn.addEventListener('click', resetMonth);
     // botão que abre o modal de filtros
@@ -4750,7 +5249,7 @@
       document.querySelectorAll('.fPlace').forEach(x=>x.checked=false);
       document.querySelectorAll('.fType').forEach(x=>x.checked=false);
       const any = document.querySelector('input[name="fCollab"][value="any"]'); if(any) any.checked = true;
-      filters.editorias = []; filters.places = []; filters.types = []; filters.statuses = []; filters.collab='any'; $('filtersBackdrop').style.display='none'; buildCalendar(); render();
+      filters.editorias = []; filters.places = []; filters.types = []; filters.collab='any'; $('filtersBackdrop').style.display='none'; buildCalendar(); render();
     });
     function closeFilters(){ $('filtersBackdrop').style.display = 'none'; }
 
@@ -4800,6 +5299,16 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
     // lista de volta, igual ao "X", mas com o rótulo certo pra esse contexto
     if($('modalBackBtn')) $('modalBackBtn').addEventListener('click', closeModal);
     wireModalDismiss('exportBriefingBackdrop', closeExportBriefingModal);
+    if($('importSheetBackdrop')){
+      wireModalDismiss('importSheetBackdrop', closeImportSheetModal);
+      if(window.PortalShell && PortalShell.wireModalA11y) PortalShell.wireModalA11y($('importSheetBackdrop'), closeImportSheetModal);
+      $('importSheetBtn').addEventListener('click', openImportSheetModal);
+      $('cancelImportSheet').addEventListener('click', closeImportSheetModal);
+      $('confirmImportSheet').addEventListener('click', confirmImportSheet);
+      $('importSheetTemplate').addEventListener('click', downloadImportTemplate);
+      $('importSheetPick').addEventListener('click', ()=> $('importSheetFile').click());
+      $('importSheetFile').addEventListener('change', ev=>{ const f = ev.target.files[0]; ev.target.value = ''; if(f) readImportFile(f); });
+    }
     if($('cancelExportBriefing')) $('cancelExportBriefing').addEventListener('click', closeExportBriefingModal);
     if($('exportPeriodPreset')) $('exportPeriodPreset').addEventListener('change', ()=>{
       const preset = $('exportPeriodPreset').value;
@@ -4814,12 +5323,17 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
     });
     if($('exportStartDate')) $('exportStartDate').addEventListener('input', updateExportPeriodSummary);
     if($('exportEndDate')) $('exportEndDate').addEventListener('input', updateExportPeriodSummary);
-    if($('confirmExportBriefing')) $('confirmExportBriefing').addEventListener('click', ()=>{
+    if($('confirmExportBriefing')) $('confirmExportBriefing').addEventListener('click', async ()=>{
       const startStr = $('exportStartDate').value, endStr = $('exportEndDate').value;
       if(!startStr || !endStr){ alert('Escolha as duas datas do período.'); return; }
       if(startStr > endStr){ alert('A data final precisa ser igual ou depois da inicial.'); return; }
-      exportBriefingForRange(startStr, endStr);
-      closeExportBriefingModal();
+      const btn = $('confirmExportBriefing');
+      if(btn.disabled) return; // o código FG é buscado no site (até alguns segundos): evita segundo clique gerar dois downloads
+      const label = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Gerando...';
+      try{ await exportBriefingForRange(startStr, endStr); closeExportBriefingModal(); }
+      catch(err){ console.error(err); alert('Não foi possível gerar o briefing. Tente de novo.'); }
+      finally{ btn.disabled = false; btn.textContent = label; }
     });
     wireModalDismiss('dayPostsBackdrop', closeDayPosts, '#dayPostsCloseBtn');
     // botão "+" do modal "Postagens do dia" - cria uma postagem nova já com a data do dia aberto
@@ -4843,11 +5357,40 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
     // FLUXO GUIADO DO MODAL DE POSTAGEM
     // O formulário e o preview originais são reaproveitados; o preview permanece
     // visível na lateral e continua sendo atualizado em tempo real.
+    // campos do Planejamento que faltam no formulário aberto (mesma regra do bloqueio do "Próximo" e do aviso no rodapé)
+    function currentPlanningMissing(){
+      const nets = Array.from(document.querySelectorAll('.mNet:checked')).map(n=>n.value);
+      const places = Array.from(document.querySelectorAll('input[name="mPlace"]:checked')).map(n=>n.value);
+      return missingPlanningFields({
+        title: $('mTitle').value,
+        editoria: Array.from(document.querySelectorAll('.mEditoria:checked')).map(e=>e.value),
+        channels: nets.map(net=>({ channel: net, places }))
+      });
+    }
+    // "Falta: Título, Redes" no rodapé enquanto o Planejamento está incompleto, para ninguém descobrir só ao clicar em "Próximo"
+    function updateGuidedHint(){
+      const hint = $('guidedPostHint'); if(!hint) return;
+      const missing = guidedPostStep===1 ? currentPlanningMissing() : [];
+      hint.textContent = missing.length ? 'Falta: ' + joinPt(missing) : '';
+      hint.hidden = !missing.length;
+    }
     function setGuidedPostStep(step){
 
       const modal = document.querySelector('#modalBackdrop .modal--guided-post');
       if(!modal) return;
-      guidedPostStep = Math.max(1, Math.min(3, Number(step)||1));
+      step = Math.max(1, Math.min(3, Number(step)||1));
+      // sair do Planejamento (pelo "Próximo" ou pelas abas 2 e 3) exige a etapa 1 completa
+      if(step>1){
+        const missing = currentPlanningMissing();
+        if(missing.length){
+          if(guidedPostStep!==1) setGuidedPostStep(1);
+          notify('Preencha o Planejamento antes de avançar: ' + joinPt(missing) + '.');
+          const focusEl = { 'Título': $('mTitle'), 'Editoria': document.querySelector('.mEditoria'), 'Redes': document.querySelector('.mNet'), 'Formato': document.querySelector('input[name="mPlace"]') }[missing[0]];
+          if(focusEl) focusEl.focus();
+          return;
+        }
+      }
+      guidedPostStep = step;
       modal.querySelectorAll('[data-guided-step]').forEach(group=>{
         group.hidden = Number(group.dataset.guidedStep) !== guidedPostStep;
       });
@@ -4862,6 +5405,7 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
       if(save) save.hidden = guidedPostStep !== 3;
       const body = modal.querySelector('.modal-body');
       if(body) body.scrollTop = 0;
+      updateGuidedHint();
     }
 
     function setupGuidedPostFlow(){
@@ -4873,20 +5417,6 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
       const footer = modal && modal.querySelector('.modal-footer');
       const save = $('saveModal');
       if(!modal || !body || !grid || !preview || !footer || !save) return;
-      const statusField = $('mStatus');
-      const headerActions = modal.querySelector('.modal-header-actions');
-      if(statusField && headerActions && !$('modalStatusControl')){
-        const statusControl = document.createElement('div');
-        statusControl.id = 'modalStatusControl';
-        statusControl.className = 'modal-status-control';
-        headerActions.before(statusControl);
-        const statusLabel = statusField.parentElement && statusField.parentElement.previousElementSibling;
-        const statusWrap = statusField.parentElement;
-        if(statusLabel && statusLabel.htmlFor === 'mStatus') statusLabel.remove();
-        statusControl.after(statusField);
-        statusField.hidden = true;
-        if(statusWrap) statusWrap.remove();
-      }
 
       modal.classList.add('modal--guided-post');
       footer.classList.add('guided-post-footer');
@@ -4911,12 +5441,16 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
       back.type = 'button'; back.id = 'guidedPostBack'; back.className = 'btn ghost'; back.textContent = 'Voltar';
       const next = document.createElement('button');
       next.type = 'button'; next.id = 'guidedPostNext'; next.className = 'btn'; next.textContent = 'Próximo';
+      const hint = document.createElement('span');
+      hint.id = 'guidedPostHint'; hint.className = 'guided-post-hint'; hint.setAttribute('role', 'status'); hint.hidden = true;
       footer.insertBefore(back, save);
+      footer.insertBefore(hint, back);
       footer.insertBefore(next, save);
 
       nav.querySelectorAll('[data-guided-step-target]').forEach(btn=> btn.addEventListener('click', ()=> setGuidedPostStep(btn.dataset.guidedStepTarget)));
       back.addEventListener('click', ()=> setGuidedPostStep(guidedPostStep-1));
       next.addEventListener('click', ()=> setGuidedPostStep(guidedPostStep+1));
+      body.addEventListener('input', updateGuidedHint); body.addEventListener('change', updateGuidedHint);
       setGuidedPostStep(1);
     }
 
@@ -4928,9 +5462,7 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
     loadSettings();
     renderAllDynamicUI();
     // catálogo mestre de produtos, pro autocomplete de Produto(s) - ver productCandidates()
-    if(typeof CatalogProvider!=='undefined'){
-      CatalogProvider.load('vonder').then(result=>{ masterCatalog = result.items||[]; });
-    }
+    loadMasterCatalog();
     // ícone escolhido (ainda) para a próxima rede a ser adicionada no formulário "Adicionar rede"
     let newNetIconValue = null;
     function refreshNewNetIconPicker(){
@@ -4997,9 +5529,9 @@ if($('mReopenSavedArtBtn')) $('mReopenSavedArtBtn').addEventListener('click', ()
     // exemplos de demonstração só fazem sentido pra marca padrão (a base de dados que já
     // existia antes do portal) - uma marca nova criada pelo usuário deve começar zerada
     if(!SYNC_ENABLED && state.posts.length===0 && BRAND_SUFFIX===''){
-      state.posts.push({ id: generateId(), title: 'Campanha: Lançamento Comunidade', date: '2026-08-18', channel: 'Instagram', color:'#E4405F', status:'Aprovado', editoria:['Lançamentos'], place:'Feed', type:'Static' });
-      state.posts.push({ id: generateId(), title: 'Blog: Anúncio oficial', date: '2026-08-20', channel: 'Blog', color:'#06b6d4', status:'Em produção', editoria:['Informativo'], place:'Feed', type:'Static' });
-      state.posts.push({ id: generateId(), title: 'Postagem de teste - Social', date: '2026-08-19', channel: 'LinkedIn', color:'#f97316', status:'Rascunho', editoria:['Destaques'], place:'Feed', type:'Video' });
+      state.posts.push({ id: generateId(), title: 'Campanha: Lançamento Comunidade', date: '2026-08-18', channel: 'Instagram', color:'#E4405F', editoria:['Lançamentos'], place:'Feed', type:'Static' });
+      state.posts.push({ id: generateId(), title: 'Blog: Anúncio oficial', date: '2026-08-20', channel: 'Blog', color:'#06b6d4', editoria:['Informativo'], place:'Feed', type:'Static' });
+      state.posts.push({ id: generateId(), title: 'Postagem de teste - Social', date: '2026-08-19', channel: 'LinkedIn', color:'#f97316', editoria:['Destaques'], place:'Feed', type:'Video' });
       saveState();
     }
     const tbAll = document.querySelector('#tabs button[data-tab="All"]'); if(tbAll) tbAll.classList.remove('ghost');

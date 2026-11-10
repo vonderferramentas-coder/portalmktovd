@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Avaliações do Google</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="avaliacoes-google.css">
+  <script>document.documentElement.classList.add('auth-pending')</script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="auth-guard.js"></script>
+</head>
+<body>
+  <div class="portal-shell">
+    <aside class="portal-sidebar" id="portalSidebar"></aside>
+    <main class="portal-main">
+      <header class="page-header">
+        <div>
+          <span class="page-kicker">Mídias Sociais</span>
+          <h1>Avaliações do Google</h1>
+          <p class="page-subtitle">Notas e comentários que os clientes deixam nas fichas da Ferramentas Gerais no Google Meu Negócio.</p>
+        </div>
+        <div class="ag-cabecalho-dir">
+          <div class="view-toggle" role="tablist" aria-label="Seções" id="agTabs">
+            <button type="button" role="tab" class="active" aria-selected="true" data-aba="geral">Visão geral</button>
+            <button type="button" role="tab" aria-selected="false" data-aba="fila">Fila de atenção</button>
+            <button type="button" role="tab" aria-selected="false" data-aba="vendedores">Vendedores</button>
+          </div>
+          <p class="ag-note" id="agNota"></p>
+        </div>
+      </header>
+
+      <p class="list-empty" id="agStatus" role="status">Carregando as avaliações…</p>
+
+      <div id="agConteudo" hidden>
+        <section id="abaGeral" aria-label="Visão geral"></section>
+        <section id="abaFila" aria-label="Fila de atenção" hidden></section>
+        <section id="abaVendedores" aria-label="Cadastro de vendedores" hidden></section>
+      </div>
+    </main>
+  </div>
+
+  <script src="portal-shell.js"></script>
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script type="module" src="avaliacoes-google.js"></script>
+</body>
+</html>

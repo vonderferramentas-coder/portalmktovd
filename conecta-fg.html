@@ -324,11 +324,14 @@
   <div class="portal-shell">
     <aside class="portal-sidebar" id="portalSidebar"></aside>
     <main class="portal-main cf">
-      <header class="cf-head">
-        <span class="page-kicker">Blog · Ferramentas Gerais</span>
-        <h1>Conecta FG</h1>
-        <p class="page-subtitle">Envie o texto do blog em .docx. O portal converte para o formato do WordPress e monta os produtos do
-          documento (tabela com código ou links do site FG) com foto e link - é só copiar o código e colar no post.</p>
+      <header class="cf-head page-header">
+        <div>
+          <span class="page-kicker">Blog · Ferramentas Gerais</span>
+          <h1>Conecta FG</h1>
+          <p class="page-subtitle">Envie o texto do blog em .docx. O portal converte para o formato do WordPress e monta os produtos do
+            documento (tabela com código ou links do site FG) com foto e link - é só copiar o código e colar no post.</p>
+        </div>
+        <div class="page-header-actions"></div>
       </header>
 
       <div id="library">
@@ -503,6 +506,8 @@
   <script src="usage-analytics.js"></script>
   <script src="catalog-provider.js"></script>
   <script src="conecta-fg.js"></script>
+  <script src="portal-tour.js"></script>
+  <script src="portal-tour-conecta-fg.js"></script>
   <script>
     (function () {
       const $ = id => document.getElementById(id);

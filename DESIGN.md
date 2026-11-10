@@ -37,13 +37,15 @@
    - **Abrir:** renderize o conteúdo já com `.is-closed` e remova a classe no quadro seguinte (`requestAnimationFrame` duplo).
    - **Fechar:** adicione `.is-closed`, espere a transição (250 ms) e só então remova o conteúdo do estado/DOM. Se redesenhar a lista antes, o elemento some no meio da animação.
 
+3. **Dropdown flutuante com lista rolável ou sombra grande** (referência: `.profile-menu` em `index.css`): a grade `0fr ↔ 1fr` recalcula o layout a cada quadro e trava nesses casos. Revele com `clip-path: inset(0 -28px 100% -28px)` → `inset(0 -28px -32px -28px)` (sem `opacity` nem `will-change`: ambos promovem o elemento a uma camada própria e, ao fim da animação, o texto é redesenhado e dá uma "piscada"), `.25s ease`, e `visibility` com atraso de `.25s` ao fechar. O inset negativo deixa a sombra aparecer.
+
 **Menus flutuantes (⋮, popovers):** `position: fixed` para não serem cortados pela rolagem, entrada de `.12s` (`opacity` + `translateY(-4px) scale(.98)`), fecham com Esc, clique fora, rolagem e redimensionamento. Referência: `.card-menu` em `cartaz-generator.css` e `.square-menu` em `consolidado-generator.css`.
 
 ## 2. Tema claro e escuro
 
 - Nunca use cor fixa (`#fff`, `#111`...) em componente novo: use as variáveis do tema (`--cg-*` no Gerador de Cartazes; `--card`, `--text`, `--muted`, `--border`, `--surface-muted` no restante).
 - Todo componente novo é conferido nos **dois** temas antes de ser entregue.
-- Foco visível usa a cor de destaque (`--cg-accent`).
+- Foco visível usa a cor de destaque: `--accent-text` no portal, `--cg-accent` no Gerador de Cartazes (ver §14).
 
 ## 3. Cursores
 
@@ -67,6 +69,7 @@ Padrão do Gerador de Consolidado, reaproveitado no Gerador de Cartazes e em Dat
 
 - Ícones SVG de traço (`stroke="currentColor"`, 1,75 px) vindos de `PortalShell.svgIcon`; não duplique SVG no código.
 - Controle de ícone: caixa de 24 px, raio 6 px, fundo `--cg-accent-weak` no hover.
+- **"x" de limpar em campo de busca**: todo `input[type="search"]` herda de `styles.css` o x de traço (16 px, `--muted`, `--accent-ink` no hover) no lugar do nativo do navegador. Não escreva outro; só ajuste margem no campo, se precisar.
 
 - **Painéis de configuração** (referência: "Configurações do cartaz", `.cfg-*` em `cartaz-generator.css`): seções numeradas (01, 02…), cada uma um dropdown fechado por padrão (`.cfg-sec`, animação do §1), com **prévia ao vivo** ao lado quando houver resultado visual; ligar/desligar por **switch** (`.cfg-switch`, amarelo ligado); escolha entre poucas opções por **segmentado** (`.cfg-seg`); cor em quadradinho ao lado do campo; texto de ajuda pequeno e cinza abaixo do título; aviso em `--cg-accent`.
 
@@ -74,14 +77,214 @@ Padrão do Gerador de Consolidado, reaproveitado no Gerador de Cartazes e em Dat
 - **Modal de decisão** (`<dialog class="cg-dialog">`): título, texto curto com a contagem do problema e dois botões — o que não muda nada ("Tratar na planilha") e o que aplica (`.save-grid`, amarelo). Fechar no × não altera nada. A ação aplicada entra no Ctrl+Z.
 - **Foto ao lado do QR** (cards Live Shop, comuns e destaque): a foto é uma caixa que cresce e encolhe com o zoom (roda do mouse, 0,5x a 2x, depois de duplo clique); o corpo do card é centralizado, então o QR cede espaço sozinho e o conjunto continua no meio. Arrastar a foto ou usar ← → (Shift = passo maior) afasta foto e QR em sentidos opostos até a borda do corpo; a posição fica na grade salva. Com os lados trocados (segurar e arrastar) o sentido se inverte. Foto em edição nunca dispara a troca de lados.
 
-## 6. A detalhar
+- **Cena/mapa 3D no meio da página** (mapa da Início, `home-map.js`): rolagem comum continua rolando a página; zoom só com **Ctrl/⌘ + rolagem** (aviso flutuante "Use Ctrl + rolagem…") ou pelos botões +/−. Arrastar move a câmera (`grab`/`grabbing`), item clicável vira `pointer`.
+- **Modo escuro em cena 3D = noite** (mapa da Início): luz azulada de lua, janelas dos galpões acesas, postes com halo no chão, faróis/lanternas e feixe de luz nos caminhões (só quando andam de frente), letreiros e emblemas brilhando. Modo claro = dia, sem nenhuma dessas luzes.
 
-- Paleta, tipografia e escala de espaçamento (hoje espalhadas em `styles.css` e `cartaz-generator.css`).
-- Componentes padrão: botões, campos, cards, avisos, toasts.
-- Estados de carregamento, vazio e erro.
-- Acessibilidade (ordem de foco, `aria-*` dos componentes expansíveis).
+## 6. Guias de margem de segurança nas artes
+
+Toda arte de feed e story (qualquer editoria/marca, inclusive novas) deve ter as guias ciano de margem de segurança do editor (`SAFE_MARGINS` em `post-editor.js`): feed 135px cima / 66px laterais / 190px baixo; story 190px cima / 66px laterais / 190px baixo. Aparecem só ao arrastar/redimensionar o elemento que encosta nelas, barram momentaneamente (passa empurrando mais, como no Instagram) e não saem na exportação. Novos renderers precisam informar a caixa do elemento móvel via `setMoveBox`.
+
+## 7. Identidade visual do portal
+
+### Tipografia
+
+Carregada do Google Fonts no topo de `styles.css` (dependência de terceiro, registrada em `docs/ARQUITETURA-E-INTEGRACOES.md`).
+
+| Token | Fonte | Uso |
+|---|---|---|
+| `--font-display` | Space Grotesk (500/600/700) | títulos `h1`–`h6` |
+| `--font-body` (= `--base-font-family`) | Plus Jakarta Sans (400–800) | texto corrido do `body` |
+| `--font-ui` | Urbanist (400–800) | `button`, `input`, `select`, `textarea` |
+
+Fallback de todas: `Segoe UI, Arial, sans-serif`. A fonte **Montserrat** (OFL) é só da arte "Datas comemorativas" da VONDER, hospedada em `post-editor-assets/fonts/`; não é fonte da interface.
+
+### Cor de destaque por marca
+
+A cor de destaque da interface é a da **marca ativa** (`DEFAULT_BRANDS` em `portal-shell.js`, aplicada por `applyColorTheme()`); não fixe amarelo em componente novo, use `--accent*`. Quem quiser outra cor usa o tema "Personalizado" em Configurações, que não altera a identidade da marca.
+
+| Marca | `--accent` | Ênfase (`themeColorInk`) | Texto sobre o botão |
+|---|---|---|---|
+| VONDER | `#F6BE00` | `#000000` | automático |
+| FERRAMENTAS GERAIS | `#005745` | `#005745` | automático |
+| OSTEN FERRAGENS | `#ED8B00` | `#2E2E2E` | automático |
+| DISMATAL | `#FFED00` | `#000000` | automático |
+| TOOLMIX | `#F26522` | `#FFFFFF` | branco (exceção deliberada) |
+| DWT | `#285C4D` | `#AB2328` | automático |
+| NOVE54 | `#BD1D1D` | `#000000` | automático |
+| GRUPO OVD | `#A6A6A6` (cinza neutro, institucional; não herda o amarelo da VONDER) | `#000000` | automático |
+| PILAR TECNOLOGIA | `#003A5D` | `#FFFFFF` | branco (exceção deliberada) |
+
+- Cada marca tem avatar redondo (28px, `.portal-brand-dot`, `object-fit:cover`) em `icons/icon_<marca>.*`. Marca sem foto usa as iniciais sobre uma cor escolhida por hash do id.
+- O texto sobre o destaque (`--on-accent`) é calculado por contraste; só a marca com `onAccent` definido foge disso.
+- Texto na cor de destaque (antetítulo `.page-kicker`, rótulos) usa `--accent-text`: no claro é a ênfase da marca; no escuro sobe a luminosidade até ficar legível (`oklch`, com fallback por mistura com branco). Nunca use `--accent` direto como cor de texto.
+- O amarelo `#F6BE00` é a identidade-base do portal (marca VONDER, tema padrão e marca do portal no menu lateral).
+
+## 8. Tokens `:root` (`styles.css`)
+
+Fonte de verdade: o bloco `:root` e `:root[data-theme="dark"]` no topo de `styles.css`. O tema escuro é ativado por `data-theme="dark"` na tag `<html>`, alternado pelo botão de tema e persistido pelo JS. Ao criar token novo, defina-o **nos dois blocos**.
+
+| Token | Claro | Escuro | Uso |
+|---|---|---|---|
+| `--bg` | `#f7f7f6` | `#121214` | fundo da página |
+| `--card` | `#ffffff` | `#1c1d22` | cartões, painéis, menu lateral |
+| `--surface-muted` | `#f7f7f5` | `#202126` | fundo secundário, hover |
+| `--text` | `#17171a` | `#f1f2f4` | texto principal |
+| `--muted` | `#68686a` | `#9aa1ac` | texto secundário |
+| `--text-faint` | `#9a9a98` | `#8a92a0` | texto terciário, placeholders |
+| `--border` | `#e5e5e3` | `#2c2d33` | bordas |
+| `--border-strong` | `#d3d3d0` | `#3d3e46` | bordas de ênfase |
+| `--accent` | marca ativa | marca ativa | destaque, botões |
+| `--accent-ink` | ênfase da marca | = `--accent` | texto/ícone ativo sobre fundo |
+| `--accent-weak` | `rgba(accent, .16)` | `rgba(accent, .16)` | fundo de item ativo, hover |
+| `--accent-hover` | accent + 15% preto | idem | hover de botão |
+| `--on-accent` | `#1a1a1a` (padrão) | idem | texto sobre `--accent` |
+| `--selection-text` | `#000000` | calculado | texto selecionado (`::selection`) |
+| `--white` | `#ffffff` | não redefinido | branco fixo (evite em componente novo) |
+| `--danger` / `-bg` / `-bg-strong` / `-border` | `#dc2626` / `#fef2f2` / `#fee2e2` / `#fecaca` | `#f87171` / `#3a1518` / `#4a1a1e` / `#5c2328` | erro, ações destrutivas |
+| `--success` / `-bg` / `-border` | `#16a34a` / `#f0fdf4` / `#bbf7d0` | `#4ade80` / `#142a1c` / `#1f4b2c` | sucesso |
+| `--backdrop` | `rgba(15,15,13,.5)` | `rgba(0,0,0,.65)` | fundo de modal |
+| `--radius-sm` / `-md` / `-lg` | `8px` / `12px` / `16px` | igual | raios |
+| `--shadow-sm` / `-md` / `-lg` | `0 1px 2px` / `0 6px 16px` / `0 20px 40px` (preto a 6% / 8% / 16%) | preto a 25% / 35% / 50% | sombras |
+| `--event-shadow` / `-hover` | sombra de cartão do calendário | mais forte no escuro | cartões de evento |
+| `--control-h` | `38px` | igual | altura única de input, select, seletor de cor e botão |
+
+Derivados por tela (apontam para os tokens acima; mantenha assim): `--cg-*` no Gerador de Cartazes (`cartaz-generator.css`, onde `--cg-accent` = `--accent-text`) e `--pe-*` no Editor de Posts (`post-editor.css`: `--pe-yellow` = `--accent`, `--pe-ink` = `--text`, `--pe-muted`, `--pe-line` = `--border`, `--pe-panel` = `--card`, `--pe-bg` = `--bg`).
+
+Cores fixas que existem de propósito: a folha `.sheet` do cartaz é arte de impressão e **nunca muda com o tema nem com a marca** (texto `#18242d`); no escuro ganha só um contorno `rgba(255,255,255,.16)`.
+
+## 9. Texto, botões, modais e transições
+
+### Tamanhos de texto da interface
+
+| Elemento | Tamanho / peso |
+|---|---|
+| Campo (`input`, `select`, `textarea`) | 14px |
+| Botão `.btn` | 13px / 700 (`.small`: 12px) |
+| Item de menu e de lista (`.portal-nav-item`, `.toolbar-more-item`, menu da conta) | 12.5–13px / 700 |
+| Antetítulo `.page-kicker` | 12px / 800, caixa alta, `letter-spacing:.12em`, cor `--accent-text` |
+| Iniciais do avatar de marca | 11.5px / 900 |
+
+### Botões e campos
+
+- Altura única `--control-h` (38px) em campo, select, seletor de cor e botão, para alinhar lado a lado. `.small` = 28px. Raio `--radius-sm`.
+- `.btn` padrão: fundo `--accent`, texto `--on-accent`, hover `--accent-hover`. Uma ação principal por área.
+- `.btn.ghost`: fundo `--card`, borda `--border`, hover `--surface-muted`. `.btn.ghost.danger`: texto `--danger`, borda `--danger-border`, hover `--danger-bg`.
+- Desabilitado: cursor `not-allowed` (ver §3).
+
+### Modais
+
+- Padrão do portal (`styles.css`): `.modal-backdrop` (fixo, `--backdrop`, `z-index:60`, `padding:20px`) + `.modal` (`--card`, `--radius-lg`, `--shadow-lg`, máx. 820px, `max-height:90vh`) com `.modal-header`, `.modal-body` (rola) e `.modal-footer` (botões à direita). Larguras: `.modal-sm` 420px, `.modal--narrow` 440px, `.modal--wide` 900px.
+- O Gerador de Cartazes usa `<dialog class="cg-dialog">` (§5) com as variáveis `--cg-*`.
+- Em modal novo, só o corpo rola; cabeçalho e rodapé ficam fixos.
+
+### Transições
+
+| Onde | Duração |
+|---|---|
+| Hover de botão, menu, item, borda e campo | `.12s` |
+| Troca de tema (`body`: fundo e cor) | `.2s` |
+| Largura da sidebar | `.2s ease` |
+| Sanfonas e dropdowns | `.25s ease` (§1) |
+| Menus flutuantes ⋮ | `.12s` (§1) |
+
+Toda animação nova respeita `prefers-reduced-motion`.
+
+### Armadilha do atributo `hidden`
+
+Um `display:flex`/`grid` escrito no CSS vence o atributo `hidden`. Em todo elemento que tem `display` próprio e usa `hidden`, repita `.x[hidden]{display:none}` (exemplo: `.portal-nav-item[hidden]`).
+
+### Validação visual
+
+Mudança de canvas, cor ou layout só é entregue depois de renderizar de verdade (Chrome headless, skill `run`) e conferir nos **dois** temas. Limite de ~2 rodadas de screenshot por bug (ver AGENTS.md).
+
+## 10. Espaçamento
+
+Não há tokens `--space-*`. O levantamento (contagem de `padding`/`gap`/`margin` em todos os CSS, 21/10/2026) mostrou que a escala real não é de múltiplos de 4: 8px (217), 10px (213), 6px (163), 12px (154), 4px (117), 14px (111), 16px (84), 24px (44).
+
+- **Código novo:** use 4, 8, 12, 16, 20 e 24px. 6px e 10px são tolerados como "meio passo" já consagrado.
+- **Evite** 5, 7, 9, 11 e 13px (cerca de 190 usos legados). Não migre o legado em lote; ajuste só ao mexer no componente.
+- Padding da página: `.portal-main` 28px (18px 14px em ≤760px). Padding de modal: `16px 18px`.
+
+## 11. Estados de vazio, carregamento e erro
+
+Não existe padrão único: há mais de 20 classes "empty" e nenhum spinner. Regra para código novo, espelhando o que já predomina:
+
+- **Vazio:** bloco centralizado, texto `--muted`, borda tracejada, `--radius-md`, `padding:44px 20px`, 13px (`.list-empty`, `styles.css`). Quando houver ícone e título, siga `.marcas-empty` (`marcas.css`). Texto no formato "Nenhum(a) X …" com ponto final.
+- **Carregando:** skeleton com brilho (`.is-loading` + `marcas-shimmer` em `marcas.css`; `.pe-skeleton` em `post-editor.css`), com `animation:none` em `prefers-reduced-motion`. Evite "Carregando…" solto e não crie spinner.
+- **Item adicionado a partir de uma lista que continua aberta:** a linha confirma antes de sair: fundo `--success-bg`, texto `--success` e "✓ Adicionado" por ~0,55 s, depois recolhe a altura em `.25s ease` e só então sai do DOM (sem transição em `prefers-reduced-motion`). Referência: `.autocomplete-item.is-added`/`.is-leaving` (`styles.css`) e `renderProductAutocomplete` (`app.js`).
+- **Erro de campo:** `aria-invalid="true"` + `.is-invalid` (borda `--danger`, texto de ajuda `--danger`). Referência: `business-card-generator.css` e `conecta-fg.html`.
+- **Mensagem de região:** `role="alert"` para erro e `role="status"` para informação (referência: `.auth-message`, `.cf-alert`).
+- **Sem dados ainda** (coleta automática): texto explícito, como "Aguardando coleta" (`followers-dashboard.js`), nunca gráfico vazio sem explicação.
+
+## 12. Toasts, avisos e confirmações
+
+Hoje há **4 implementações paralelas** de toast (`.portal-notice` em `app.js`/`styles.css`, `.toast` do Gerador de Cartazes, `.toast` de `consolidado-generator.css`/`marcas.css`, `.bc-toast`), com durações de 3,2 a 4,2 s, e cerca de 63 chamadas nativas de `alert()`/`confirm()` (maioria em `app.js`, `templates.js`, `portal-shell.js`, `followers-dashboard.js`, `qr-code-generator.js`).
+
+Regra para código novo:
+
+- **Nada de `alert()`, `confirm()` ou `prompt()`.** Aviso = toast; confirmação destrutiva = modal (`<dialog class="cg-dialog">` ou o modal de confirmação de `consolidado-generator.js`).
+- **Toast:** canto inferior direito, 24px da borda, `max-width:min(420px, calc(100vw - 40px))`, fundo `--card` com borda `--border-strong`, 13px/700, 4 s, `role="status"` (`role="alert"` se for erro). Base: `.portal-notice`.
+- O toast precisa ficar **acima** de modais e menus (ver camadas, §13).
+
+## 13. Camadas (`z-index`)
+
+Valores em uso hoje, do menor para o maior: conteúdo interno 1–6; dropdowns de página 20–50; `.modal-backdrop` 60; autocomplete 80; popovers de marca/ícone 200; lightbox 500; modais de status e menus de evento 1000–1005; gavetas 1100–1200; menus ⋮ 1500; fantasma de arrastar 2000; toasts do Consolidado/Marcas 3000.
+
+Problema conhecido: o `.portal-notice` global está em 120, **abaixo** de menus e modais de status. Para código novo, use estas camadas: dropdown **50**, modal **1000**, menu flutuante **1500**, fantasma de arrastar **2000**, toast **3000**. Não invente valor novo entre elas. O tour guiado (§18) usa **2000**, a camada do fantasma: precisa ficar acima de modais e menus, e os dois nunca aparecem juntos (o tour barra o arrasto).
+
+## 14. Acessibilidade
+
+- **Sanfonas e menus:** `aria-expanded` no botão que abre; conteúdo fechado escondido com `inert` (referência: `followers-dashboard.js`, `intelligence-center.js`).
+- **Botão só de ícone:** sempre `aria-label`.
+- **Modais:** `role="dialog" aria-modal="true"` com `aria-labelledby`, foco preso, Esc fecha, foco volta ao elemento de origem. O `<dialog>` com `showModal()` já entrega isso de graça (preferido). Modal montado à mão em `portal-shell.js` (`.modal-backdrop` aberto com `style.display='flex'`): chame `wireModalA11y(backdrop, close)` logo após definir `close`; ele cobre tudo isso.
+- **Foco visível:** campos usam borda `--accent-ink` + anel `0 0 0 3px var(--accent-weak)`; checkbox usa `outline:2px solid var(--accent)` com offset 2px. Botões e itens de menu usam `outline:2px solid var(--accent-text)` com offset 2px (regra única com `:is(...)` em `styles.css`, junto de `.btn`: `.btn`, `.btn-icon`, `.portal-nav-item`, `.portal-account-menu-item`, `.toolbar-more-item`, `.portal-brand-trigger`, `.view-toggle button`). Controle clicável novo: acrescente-o a essa lista, ou ponha o mesmo `:focus-visible`; não remova o `outline` sem um anel equivalente.
+- **Movimento:** toda animação ou transição nova tem bloco `@media (prefers-reduced-motion: reduce)`.
+- **Toque:** alvos clicáveis em telas de uso por celular com pelo menos 36px (o padrão `--control-h` é 38px; `.small` com 28px só para desktop).
+- **Contraste:** `--text-faint` (`#9a9a98`) no tema claro fica abaixo de 4,5:1 sobre fundo branco; não use para texto que carregue informação, só para placeholder e dica.
+
+## 15. Responsividade
+
+Hoje há 20 valores de `max-width` diferentes. O mais usado é **760px**, seguido de 720, 700 e 600. Para código novo, use só estes três: **1000px**, **760px** e **560px**.
+
+- ≤1000px: grades de várias colunas caem para 2 (ex.: `.grid-week`).
+- ≤760px: a sidebar fica recolhida só com ícones (72px), sem submenus, e `.portal-main` usa `padding:18px 14px`. Não há gaveta nem menu hambúrguer.
+- Telas sem nenhum `@media` hoje (não pensadas para celular): `admin-users`, `intelligence-center`, `monitoramento`, `visual-editor`, `post-editor.html`, `login`.
+
+## 16. Padrões menores recorrentes
+
+- **Scrollbar** fina (Gerador de Cartazes): `scrollbar-width:thin`, trilho transparente, 8px com polegar arredondado em 4px e hover em `--accent` (`cartaz-generator.css`). A sidebar esconde a barra.
+- **Barra lateral do card do calendário** (`.event-bar`, decidido em 23/10/2026): a cor diz o tipo da publicação, não a editoria. Vídeo = `--type-video` (laranja), estático = `--type-static` (verde médio); card com várias redes fica laranja se alguma for vídeo. A editoria continua colorida no texto acima do título. A visão Lista (`.list-row-bar`) ainda usa a cor da editoria.
+- **Chips de rede:** `.chip-net`. Não há `.badge` único nem cores semânticas de status; ao criar um, use `--success*`, `--danger*` e o amarelo/âmbar da marca.
+- **Tabelas:** não existe padrão; listas são grades ou `flex`.
+- **Hover de cartão do calendário:** `.event` usa `.15s` e `translateY(-2px)` (`styles.css`), exceção ao `.12s` da §9.
+- **Sugestões de uma tela** (decidido em 23/10/2026, piloto na vista do galpão do Calendário no mapa da Início, `.hm-visit`/`.hm-sug` em `index.css`): cada sugestão tem **um dado real, um verbo e um destino**: chip de urgência (`Urgente` = `.hm-chip.is-bad`, `Atenção` = `.is-warn`, `Ideia` = `.is-ok`), frase curta, linha de contexto em `--muted` e um link de ação (`Criar post →`) que já abre a tela no ponto certo (`?post=`, `?date=…&commemorative=1`). Ordem: urgentes, depois atenção, depois ideias; no máximo 5 visíveis e o resto em "Mostrar mais N" (sanfona da §1). Carregando = skeleton (§11); vazio = bloco tracejado "Nenhuma pendência…". Sempre fecha com a nota "Sugestões automáticas por regras fixas… Confira antes de usar." (política de IA, 5.1). Escala de texto do painel: 12px (antetítulo/seção em caixa alta 800, chips, nota), 13px (contexto), 14px (descrição, ações), 15px/700 (frase da sugestão), 20px/800 (título); espaços de 24px nas bordas, 16px entre blocos, 12px entre cards. Cabeçalho e ação principal ficam fixos e só a lista rola. Painel lateral não modal (`role="dialog"` sem `aria-modal`, Esc fecha, foco no botão principal ao abrir): a cena continua utilizável ao lado. Ao levar as sugestões para dentro das telas, reaproveite este formato.
+
+- **Referencial da loja** (Avaliações do Google, `.ag-ref` em `avaliacoes-google.css`; decidido em 05/11/2026): clicar num pin do mapa troca o painel "Lojas" ao lado pelo referencial daquela loja, na ordem da página de avaliações do Google: nome (20px/600), endereço em 12px `--muted`, nota grande com estrelas e quantidade, campo de busca (`.ag-busca`, procura no comentário, no nome e na resposta, sem acento nem caixa), com o botão **Filtrar** ao lado (`.ag-filtrar`), que é o filtro único da tela (a barra de filtros do topo foi removida) e vale para cartões, mapa, Visão geral e Fila. Ele abre por baixo, com animação de altura, um painel (`.ag-filtro`) com Período (Hoje, Ontem, Últimos 7 dias, Últimos 30 dias, Este mês, Mês passado, Últimos 90 dias, Últimos 12 meses, Este ano, Tudo e Personalizado; os de calendário contam da meia-noite local), "De" e "Até" com calendário próprio (só aparecem em Personalizado, abrindo e fechando com a animação de altura), selects de Nota, Prioridade e Resposta e, no fim, os botões Cancelar, Limpar e Aplicar (três colunas iguais, na largura toda). Tudo fica dentro de uma caixa de cantos arredondados (`.ag-filtro-caixa`, fundo `--surface-muted`). O calendário é próprio (`.ag-cal`) porque o nativo do navegador não abre o seguinte sem gesto do usuário: escolher o "De" leva direto ao "Até", no mês do dia escolhido, com os dias anteriores bloqueados; a caixa (`.ag-cal-caixa`) tem a largura e a posição do campo em escolha e desliza (`transform`, .25s) do "De" para o "Até". As escolhas ficam num rascunho: a tela só muda em **Aplicar** (desativado sem mudança ou em Personalizado sem data); **Cancelar**, ou fechar o painel, descarta o rascunho; **Limpar** volta o rascunho ao padrão (90 dias). Escolher um atalho de Período apaga "De" e "Até". O botão Filtrar fica marcado (fundo de destaque e ponto) com qualquer filtro em vigor fora do padrão. Há uma instância só do filtro: o cartão da aba ativa a encaixa no seu lugar (card Lojas, painel da loja ou, na Fila, um cartão com o resumo do filtro) e a tela se refaz ao Aplicar, mantendo a busca, a palavra-chave e a ordem do painel. "Resultados de busca" (ou "Avaliações filtradas", só com filtro) com a contagem e, abaixo, uma etiqueta por critério aplicado, no formato rótulo + valor (Busca, Palavra-chave, Período, Nota, Prioridade, Resposta; todos valem ao mesmo tempo), cada uma com um x (`.ag-crit-x`) que tira só aquele critério e refaz a busca sem ele (o período padrão, 90 dias, não tem x), só com busca, palavra-chave ou filtro fora do padrão e acima de "Ordenar por", palavras-chave (pílulas com contagem, só as citadas em 2+ avaliações, clique filtra), "Ordenar por" (Mais relevantes, Mais recentes, Maior e Menor classificação) e as avaliações com avatar (inicial, sem foto), nome, estrelas, data relativa ("2 anos atrás"), comentário e resposta da loja com barra à esquerda; 10 por vez + "Mostrar mais". Tudo por regra fixa (sem IA); o texto não é traduzido e o painel leva `translate="no"`. Os números seguem os filtros da tela (período, nota, resposta), não o total do Google. Ao lado da quantidade de avaliações, na linha da nota (`.ag-ref-nota`), vem o período entre parênteses e em itálico — "193 avaliações *(Últimos 90 dias)*" (`.ag-ref-periodo`), e o card principal, no lugar do título "Lojas", abre com o mesmo desenho para a Ferramentas Gerais inteira (nome, a linha "Avaliações de todas as lojas e centros de distribuição da FG no Google Meu Negócio" no lugar do endereço, nota geral, estrelas e o total de avaliações de todas as fichas, com o período) —, que diz de quando são a nota e a quantidade, inclusive no padrão; por isso o período padrão não vira etiqueta de critério (só um período diferente do padrão vira, com o x). O cabeçalho da página traz só "Atualizado em …". Com uma loja aberta no painel, o mapa centraliza nela (parte livre à esquerda do cartão, zoom de cidade, animado) e o pin dela fica maior e escuro (fundo na cor do texto, número invertido), com os outros pins a 60% de opacidade; voltar à lista reenquadra todas as lojas. A cidade-UF de cada ficha vai numa pílula (`.ag-local`, amarelo suave) ao lado do nome, na lista e no título do painel da loja. Passar o mouse (ou o foco) numa linha da lista "Lojas" anima o pin da loja no mapa (`.is-hover`: sobe 8px e cresce 18%, `.2s`; o mesmo vale para o mouse direto no pin), e o inverso também: mouse no pin deixa a linha da loja com o cinza do hover (`.is-realce`) e a traz para a vista. A lista "Lojas" (com busca e filtro de datas) tem "Ordenar por" em pílulas: Mais avaliações (padrão), Maior nota, Menor nota e Sem resposta (empate pelo volume; em Sem resposta a linha mostra a contagem). Ela segue o resultado de busca do Google (nome, nota com estrelas e (contagem) · categoria, endereço · telefone); clicar numa linha abre o mesmo referencial, inclusive de ficha sem pin no mapa, e o painel tem, no canto, um botão de reticências (menu com "Exportar relatório", que abre o modal de configuração, e "Ver no Google", que abre a ficha no Google Maps) ao lado de um botão só com seta (`.ag-voltar`, cor primária da marca, `aria-label` "Ver todas as fichas") para voltar. Voltar à lista (por esse botão ou clicando de novo no pin) zera os filtros aplicados; abrir uma loja a partir da lista os mantém.
+- **Mapa de lojas** (Avaliações do Google, `.ag-cena`/`.ag-mapa`; decidido em 05/11/2026): mapa Leaflet com tiles do OpenStreetMap (tema escuro por filtro de CSS), em largura total por trás da Visão geral, com altura até o fim da janela (mínimo de 560px; `ajustarAlturaCena`). O painel "Lojas"/referencial fica à frente, à direita, com altura máxima da cena e rolagem própria; o enquadramento inicial deixa os pings à esquerda dele. Rolagem comum rola a página e o zoom é Ctrl/⌘ + rolagem (ver §5). Abaixo de 900px o mapa vira um bloco de 360px e o painel desce para baixo dele. Na aba Vendedores o mesmo mapa fica dentro do cartão, com 440px.
+
+## 17. Divergências conhecidas (ainda não corrigidas)
+
+Levantadas em 21/10/2026. Documentadas para não virarem referência por engano.
+
+- **Estilo inline** pesado em `visual-editor.html` (~88), `followers-dashboard.html` (~18), `templates.html` (~11).
+- Raios fora do token `--radius-*`: 7, 9, 10, 14, 15 e 18px em componentes pontuais (o `<dialog class="cg-dialog">` já usa `--radius-lg` e `--backdrop`).
+
+Corrigidas em 21/10/2026, para referência: `.btn:disabled` sem `pointer-events:none` (e hovers só fora de `:disabled`); foco visível global em botões e itens de menu (§14); `cursor:not-allowed` em `.cs-use:disabled` e `.sched-day-chip`; os 5 modais montados em `portal-shell.js` ganharam `aria-labelledby`, Esc, foco preso e retorno de foco (`wireModalA11y`, com teste em `tests/portal-shell-modal.test.html`); `prefers-reduced-motion` em `business-card-generator.css` (`bcStepFlash`), `monitoramento.html`, `intelligence-center.html` e `.portal-notice` (`auth.css`, `admin-users`, `login`, `usage-dashboard` e `visual-editor` não têm animação nem transição, então nada a fazer).
 
 ### Adequações pendentes ao item 1 (levantadas, ainda não feitas)
 
 - Submenu do **Gerador** no menu lateral (`.portal-nav-sub` em `styles.css`): abre com `display: none` ↔ `flex`, sem animação.
 - Demais `<details>`, menus e sanfonas das outras telas: auditar um a um.
+
+## 18. Tour guiado ("Como usar")
+
+Decidido em 27/10/2026 com a gestão; piloto no Calendário. Motor em `portal-tour.js`, textos em `portal-tour-<tela>.js`, estilo na seção "Tour guiado" de `styles.css`.
+
+- **Entrada:** botão `.btn.ghost` "Como usar" (ícone de interrogação) no começo de `.page-header-actions`; tela sem esse bloco marca o lugar com `data-tour-slot`. Abre a lista de passeios da tela (menu flutuante do §1, camada 1500). Na primeira visita a cada tela a lista abre sozinha uma vez, com uma frase de apresentação e "Agora não".
+- **Passeio:** a página escurece (`--backdrop`) e um "buraco" com contorno `--accent` destaca o elemento real; ele desliza de um alvo para o outro (`.25s ease`). Balão (`--card`, `--radius-lg`, 340px) com antetítulo = nome do passeio, título, texto, barra de progresso e Voltar / Próximo (Concluir no último). Esc ou × sai a qualquer momento.
+- **Tipos de passo:** explicação (Próximo); **clique** (o passeio espera a pessoa clicar no botão destacado, que pulsa, e segue sozinho; com `done`, só segue se a tela reagiu); **uso livre** (`interact`: a pessoa pode digitar/marcar no alvo); **perigo** (`danger`: Excluir, Resetar, Salvar ficam só na explicação, com aviso vermelho `--danger*`).
+- **Esperar a tela:** passo `interact` com `done` só libera o Próximo quando a tela já reagiu (ex.: o Editor de Posts só segue depois que o produto foi escolhido e o editor abriu); antes disso o balão balança.
+- **Proteção:** enquanto o passeio roda, cliques e arrastos fora do balão e do alvo liberado são barrados (o balão balança para avisar). Voltar não atravessa um passo de clique (o que o clique abriu continua aberto).
+- **Robustez:** alvo que não aparece (perfil, marca, lista vazia) faz o passo ser pulado; prefira `id` estável como alvo. `tests/portal-tour.test.html` falha quando um alvo some.
+- **Texto:** português direto, para quem nunca viu a tela; uma ação por passo; diga o que o botão faz e quando usar. Passos de 1 a 3 frases. Passeio por tarefa (curto), não um passeio único longo.
+- **Movimento reduzido:** sem deslize, pulso nem balanço.

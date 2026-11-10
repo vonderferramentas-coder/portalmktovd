@@ -202,8 +202,8 @@
   // a prévia usa o Worker; o código que vai pro WordPress continua com a URL pública oficial da foto
   const photoCheck = Cf.assemble(['A'], [{ ...p1, at: 1 }], 260);
   eq(photoCheck.wp.includes('https://app.ovd.com.br/fotos/produto?codigo=11111') && !photoCheck.wp.includes('workers.dev'), true, 'código do WordPress usa a foto oficial de app.ovd.com.br');
-  eq(photoCheck.view.includes('https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code=11111') && !photoCheck.view.includes('app.ovd.com.br'), true, 'prévia carrega a foto pelo Worker, nunca direto de app.ovd.com.br');
-  eq(Cf.previewPhotoUrl('1193696'), 'https://ecommerce-fg.vonderferramentas.workers.dev/product-image?code=1193696', 'miniatura da tela usa o Worker');
+  eq(photoCheck.view.includes('https://portalmktovd.pages.dev/api/product-image?code=11111') && !photoCheck.view.includes('app.ovd.com.br'), true, 'prévia carrega a foto pelas rotas do portal, nunca direto de app.ovd.com.br');
+  eq(Cf.previewPhotoUrl('1193696'), 'https://portalmktovd.pages.dev/api/product-image?code=1193696', 'miniatura da tela usa as rotas do portal');
   document.body.dataset.result = 'pass';
   document.body.textContent = 'PASS: slug igual ao da loja FG; .docx lido de ponta a ponta (zip/deflate → HTML) nos padrões de produto e de texto; posição dos produtos; código WordPress no formato dos posts publicados.';
 })().catch(error => {

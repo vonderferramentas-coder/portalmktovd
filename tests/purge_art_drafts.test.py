@@ -26,13 +26,13 @@ def photo(h, age_days=5):
 assert purge.date_to_ms('2026-10-12') == purge.date_to_ms('2026-10-12T10:00:00')
 assert purge.date_to_ms('lixo') is None and purge.date_to_ms(None) is None
 
-# prazo: última edição + 30 dias; card publicado conta a partir da data de publicação, se for mais recente
+# prazo: última edição + 30 dias; a data do card conta, se for mais recente
 d = {'updatedAt': NOW - 40 * DAY}
-assert purge.expires_at_ms(d, None) == NOW - 10 * DAY
-assert purge.expires_at_ms(d, {'status': 'Rascunho', 'date': '2026-11-14'}) == NOW - 10 * DAY, 'card não publicado não conta'
-assert purge.expires_at_ms(d, {'status': 'Publicado', 'date': '2026-11-14'}) == purge.date_to_ms('2026-11-14') + 30 * DAY, 'publicação mais recente que a edição'
-assert purge.expires_at_ms(d, {'status': 'Publicado', 'date': '2020-01-01'}) == NOW - 10 * DAY, 'publicação antiga não encurta o prazo'
-assert purge.expires_at_ms(d, {'status': 'Publicado', 'date': 'sem data'}) == NOW - 10 * DAY, 'data inválida é ignorada'
+assert purge.expires_at_ms(d, None, NOW) == NOW - 10 * DAY
+assert purge.expires_at_ms(d, {'date': '2026-11-14'}, NOW) == purge.date_to_ms('2026-11-14') + 30 * DAY, 'data do card mais recente que a edição'
+assert purge.expires_at_ms(d, {'date': '2020-01-01'}, NOW) == NOW - 10 * DAY, 'data antiga do card não encurta o prazo'
+assert purge.expires_at_ms(d, {'date': 'sem data'}, NOW) == NOW - 10 * DAY, 'data inválida é ignorada'
+assert purge.expires_at_ms(d, {'date': '2062-10-23'}, NOW) == NOW - 10 * DAY, 'data futura do card não segura as fotos'
 
 # plano
 arts = [
@@ -44,10 +44,10 @@ arts = [
     art('muito-antiga', 100, ['ggg']),
     art('publicada-antiga', 100, ['hhh'], card_id='card2'),
 ]
-cards = {'card1': {'status': 'Publicado', 'date': '2026-11-10'}, 'card2': {'status': 'Publicado', 'date': '2026-11-14'}}
+cards = {'card1': {'date': '2026-11-10'}, 'card2': {'date': '2026-11-14'}}
 photos = [photo('aaa'), photo('bbb'), photo('ccc'), photo('ddd'), photo('eee'), photo('fff'), photo('ggg'), photo('hhh'), photo('orfa'), photo('nova', age_days=0)]
 result = purge.plan(arts, cards, photos, NOW)
-# lixeira há mais de 7 dias e arte sem edição há mais de 90 dias saem de vez; arte antiga mas com card publicado há pouco fica
+# lixeira há mais de 7 dias e arte sem edição há mais de 90 dias saem de vez; arte antiga mas com card de data recente fica
 assert sorted(result['delete_arts']) == ['lixeira-velha', 'muito-antiga'], result['delete_arts']
 assert result['keep_hashes'] == {'aaa', 'bbb', 'fff', 'hhh'}, result['keep_hashes']
 # ccc (arte vencida), ddd (lixeira), eee (lixeira apagada) e orfa (ninguém usa) saem; nova (menos de 1 dia) fica

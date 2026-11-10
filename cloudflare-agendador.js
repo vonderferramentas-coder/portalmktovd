@@ -28,10 +28,15 @@ export function agendaDoMomento(agora) {
   // Fechamento diário: 23:50 (YouTube) e 23:55 (Meta) em São Paulo.
   if (hora === 2 && minuto === 50) fila.push({ workflow: 'sync-youtube-followers.yml', rotina: false });
   if (hora === 2 && minuto === 55) fila.push({ workflow: 'sync-meta-followers.yml', rotina: false });
+  // LinkedIn (Grupo OVD): o total muda devagar e a API da camada Development tem cota baixa, então só de 6 em 6 horas
+  // (:45 de 00, 06, 12 e 18 UTC) e o fechamento diário às 23:45 SP (02:45 UTC).
+  if (hora % 6 === 0 && minuto === 45) fila.push({ workflow: 'sync-linkedin-followers.yml', rotina: true });
+  if (hora === 2 && minuto === 45) fila.push({ workflow: 'sync-linkedin-followers.yml', rotina: false });
   // Posts e vídeos de 12 em 12 horas (00 e 12 UTC), minutos diferentes entre si.
   if (hora % 12 === 0 && minuto === 10) fila.push({ workflow: 'sync-meta-posts.yml' });
   if (hora % 12 === 0 && minuto === 20) fila.push({ workflow: 'sync-meta-facebook-posts.yml' });
   if (hora % 12 === 0 && minuto === 25) fila.push({ workflow: 'sync-youtube-videos.yml' });
+  if (hora % 12 === 0 && minuto === 30) fila.push({ workflow: 'sync-linkedin-posts.yml' });
   // Rotinas diárias (UTC), no mesmo horário do cron de cada workflow, no múltiplo de 5 min mais
   // próximo. As tendências (4 a 15 min) saem às 06:15 para terminar antes das coletas de :35/:40; os
 // fechamentos (02:50/02:55) saem antes das reconstruções e do resto.
@@ -41,6 +46,7 @@ export function agendaDoMomento(agora) {
     '6:15': 'sync-google-trends.yml',
     '7:0': 'backup-portalstore.yml',
     '7:30': 'limpar-artes-salvas.yml',
+    '8:0': 'verificar-credenciais.yml',
     '11:40': 'reconstruir-historico.yml',
     '12:40': 'reconstruir-historico-facebook.yml'
   };

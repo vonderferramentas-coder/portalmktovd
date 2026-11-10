@@ -1,0 +1,59 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste da importação de planilha e do Planejamento do calendário</title>
+<body data-result="running">RUNNING</body>
+<script>
+// Roda em Chrome headless (precisa de --allow-file-access-from-files para ler ../app.js):
+// chrome --headless=new --allow-file-access-from-files --dump-dom file:///.../tests/import-sheet.test.html
+// app.js depende da página inteira, então o teste copia dele só as funções puras que usa.
+(async () => {
+  const src = await (await fetch('../app.js')).text();
+  const fn = name => { const m = src.match(new RegExp('\\n    function ' + name + '\\([\\s\\S]*?\\n    }\\n')); if (!m) throw new Error('função ' + name + ' não achada em app.js'); return m[0]; };
+  const cst = name => { const m = src.match(new RegExp('\\n    const ' + name + ' = [\\s\\S]*?;\\n')); if (!m) throw new Error('const ' + name + ' não achada em app.js'); return m[0]; };
+  const code = ['normalizeStr', 'normalizeCode', 'ymd', 'shortenProductName', 'joinProductNames', 'generateId', 'fixCodeOnlyProduct', 'postChannelEntries', 'missingPlanningFields', 'parseSheetDate', 'parseImportSheet'].map(fn).join('')
+    + cst('IMPORT_MAX_POSTS') + src.match(/\n    const IMPORT_HEADERS = \{[\s\S]*?\n    \};\n/)[0];
+  const APP_SETTINGS = { networks: [{ name: 'Instagram', formats: [{ name: 'Feed' }, { name: 'Story' }] }, { name: 'Blog' }], editorias: [{ name: 'Lançamentos' }, { name: 'Destaques' }] };
+  const api = new Function('APP_SETTINGS', code + '\nreturn { parseSheetDate, parseImportSheet, missingPlanningFields, IMPORT_MAX_POSTS };')(APP_SETTINGS);
+  const eq = (a, b, label) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(label + '\n  esperado: ' + JSON.stringify(b) + '\n  obtido:   ' + JSON.stringify(a)); };
+
+  // datas: dd/mm brasileiro, aaaa-mm-dd, serial do Excel; inválidas viram ''
+  eq(api.parseSheetDate('07/11/2026'), '2026-11-07', 'dd/mm/aaaa');
+  eq(api.parseSheetDate('7/11/26'), '2026-11-07', 'd/mm/aa');
+  eq(api.parseSheetDate('2026-11-07'), '2026-11-07', 'aaaa-mm-dd');
+  eq(api.parseSheetDate(46346), '2026-11-20', 'serial do Excel');
+  eq([api.parseSheetDate('32/11/2026'), api.parseSheetDate('31/02/2026'), api.parseSheetDate('')], ['', '', ''], 'datas inválidas');
+
+  const catalog = new Map([['6001120000', { code: '60.01.120.000', name: 'Máquina para assentar piso MAP 120 VONDER' }]]);
+  const ctx = { networks: APP_SETTINGS.networks, editorias: APP_SETTINGS.editorias, catalogByCode: catalog, existingIds: new Set(['p-old']), existingKeys: new Set(['2026-11-10\u0001ja existe']) };
+  const r = api.parseImportSheet([
+    ['Data', 'Título', 'Redes', 'Formatos', 'Tipo', 'Editorias', 'Código', 'Produto'],
+    ['07/11/2026', 'Post A', 'instagram', 'story', 'Vídeo', 'lançamentos', '6001120000', ''],
+    ['08/11/2026', '', '', '', '', '', '|60.01', 'Lixadeira|Furadeira'],   // formato do "Exportar CSV"
+    ['09/11/2026', 'Repetido', '', '', '', '', '', ''],
+    ['09/11/2026', 'Repetido', '', '', '', '', '', ''],
+    ['10/11/2026', 'Já existe', '', '', '', '', '', ''],
+    ['11/11/2026', 'Rede errada', 'TikTok', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+  ], ctx);
+  eq(r.posts.map(p => p.title), ['Post A', 'Lixadeira e Furadeira', 'Repetido'], 'cards criados');
+  eq([r.posts[0].type, r.posts[0].place, r.posts[0].editoria, r.posts[0].products], ['Video', ['Story'], ['Lançamentos'], [{ code: '60.01.120.000', name: 'Máquina para assentar piso MAP 120 VONDER' }]], 'campos do post A');
+  eq(r.posts[1].products, [{ code: '', name: 'Lixadeira' }, { code: '60.01', name: 'Furadeira' }], 'código vazio mantém a posição');
+  eq(r.skipped.map(s => s.line + ':' + s.reason), ['5:linha repetida na planilha', '6:já existe um card com esse título nessa data', '7:rede "TikTok" não existe nas Configurações'], 'linhas fora');
+  eq(!!api.parseImportSheet([['a', 'b']], ctx).error, true, 'sem coluna Data');
+  const many = [['Data', 'Título']].concat(Array.from({ length: api.IMPORT_MAX_POSTS + 1 }, (_, i) => ['07/11/2026', 'Card ' + i]));
+  eq(/limite/.test(api.parseImportSheet(many, ctx).error || ''), true, 'teto de cards por importação');
+
+  // Planejamento: Título, Editoria, Redes e Formato; rede sem formato cadastrado não exige Formato
+  const ch = (channel, places) => [{ channel, types: ['Static'], places }];
+  eq(api.missingPlanningFields({ title: 'X', editoria: ['Destaques'], channels: ch('Instagram', ['Feed']) }), [], 'completo');
+  eq(api.missingPlanningFields({ title: '', editoria: [], channels: [] }), ['Título', 'Editoria', 'Redes'], 'vazio');
+  eq(api.missingPlanningFields({ title: 'X', editoria: ['Destaques'], channels: ch('Instagram', []) }), ['Formato'], 'falta formato');
+  eq(api.missingPlanningFields({ title: 'X', editoria: ['Destaques'], channels: ch('Blog', []) }), [], 'rede sem formatos não trava');
+
+  document.body.dataset.result = 'pass';
+  document.body.textContent = 'PASS: datas, colunas, produtos por posição, repetidas, teto, Planejamento';
+})().catch(error => {
+  document.body.dataset.result = 'fail';
+  document.body.textContent = 'FAIL: ' + error.message;
+});
+</script>

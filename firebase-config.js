@@ -29,6 +29,12 @@
   window.PORTAL_FIREBASE_CONFIG = PROD_HOSTNAMES.indexOf(window.location.hostname) !== -1
     ? PROD_CONFIG
     : HML_CONFIG;
+
+  // Rotas de foto/oferta/busca (functions/api/). No Cloudflare Pages (produção e previews como o HML) vêm do próprio
+  // domínio; GitHub Pages e teste local não rodam Functions e usam as de produção. Quem lê usa produção se isto faltar.
+  window.PORTAL_API = /(^|\.)portalmktovd\.pages\.dev$/.test(window.location.hostname)
+    ? window.location.origin + '/api'
+    : 'https://portalmktovd.pages.dev/api';
 })();
 
 // Deixe vazio até a TI informar os domínios corporativos liberados, por exemplo ['@empresa.com.br'].

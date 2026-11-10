@@ -92,10 +92,13 @@
     <div class="portal-shell">
         <aside class="portal-sidebar" id="portalSidebar"></aside>
         <main class="portal-main bc">
-            <header>
-                <span class="page-kicker">Produção gráfica</span>
-                <h1>Gerador de Código de Barras</h1>
-                <p class="page-subtitle">Envie uma planilha ou digite os números. As imagens saem em PNG de alta resolução ou em WMF (vetorial).</p>
+            <header class="page-header">
+                <div>
+                    <span class="page-kicker">Produção gráfica</span>
+                    <h1>Gerador de Código de Barras</h1>
+                    <p class="page-subtitle">Envie uma planilha ou digite os números. As imagens saem em PNG de alta resolução ou em WMF (vetorial).</p>
+                </div>
+                <div class="page-header-actions"></div>
             </header>
 
             <section class="bc-in">
@@ -231,6 +234,8 @@
     <script src="vendor/xlsx.full.min.js"></script>
     <script src="vendor/jszip.min.js"></script>
     <script src="barcode-generator.js"></script>
+    <script src="portal-tour.js"></script>
+    <script src="portal-tour-gerador-codigo-barras.js"></script>
     <script>
         const $ = id => document.getElementById(id), B = window.BarcodeGen;
         const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

@@ -1,0 +1,62 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Contador de leituras do Firestore</title>
+<body data-result="running"><pre id="result">Executando…</pre>
+<script>
+// Extrai o contador de leituras de firebase-client.js e o roda com um Firestore falso: confere o que cada chamada conta e o que fica no localStorage.
+// Precisa de --allow-file-access-from-files (como os outros testes que leem arquivos do projeto).
+(async () => {
+  try {
+    const request = new XMLHttpRequest();
+    request.open('GET', '../firebase-client.js', false);
+    request.send();
+    const source = request.responseText;
+    const a = source.indexOf('// ---- Contador de leituras'), b = source.indexOf('export { getDoc, getDocs };');
+    if (a < 0 || b < 0) throw new Error('marcadores do contador não achados');
+    const block = source.slice(a, b).replace(/export function/g, 'function');
+    localStorage.removeItem('portal_fs_reads_v1');
+    const ref = (collectionId, id) => ({ id, parent: { id: collectionId } });
+    const docs = (collectionId, ids) => ids.map(id => ({ ref: ref(collectionId, id) }));
+    const listeners = [];
+    const build = new Function('raw', `
+      const rawGetDoc = raw.getDoc, rawGetDocs = raw.getDocs, rawGetCount = raw.getCount, rawRunTransaction = raw.runTransaction, rawOnSnapshot = raw.onSnapshot;
+      ${block}
+      return { getDoc, getDocs, getCountFromServer, runTransaction, onSnapshot, readReadStats, clearReadStats };
+    `);
+    const m = build({
+      getDoc: async () => ({}),
+      getDocs: async source => ({ docs: source }),
+      getCount: async () => ({ data: () => ({ count: 2500 }) }),
+      runTransaction: async (db, update) => update({ get: async () => ({}) }),
+      onSnapshot: (source, onNext) => { listeners.push(onNext); }
+    });
+    const assert = (condition, message) => { if (!condition) throw new Error(message); };
+    const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const page = location.pathname.split('/').pop();
+
+    await m.getDoc(ref('users', 'u1'));
+    await m.getDoc(ref('portalStore', 'calendar-meta-vonder'));
+    await m.getDocs(docs('portalStore', ['calendar-post-vonder-1', 'calendar-post-vonder-2', 'art-draft-x-1']));
+    await m.getDocs([]); // consulta vazia cobra 1
+    await m.getCountFromServer({}); // 2.500 acessos = 3 leituras
+    await m.runTransaction(null, async tx => { await tx.get(ref('portalStore', 'art-lock-x')); });
+    const change = (type, collectionId, id, pending) => ({ type, doc: { ref: ref(collectionId, id), metadata: { hasPendingWrites: !!pending } } });
+    m.onSnapshot({}, () => {});
+    listeners[0]({ metadata: { fromCache: false }, docChanges: () => [change('added', 'portalStore', 'calendar-post-vonder-1'), change('removed', 'portalStore', 'calendar-post-vonder-2'), change('modified', 'portalStore', 'calendar-post-vonder-3', true)] });
+    listeners[0]({ metadata: { fromCache: true }, docChanges: () => [change('added', 'portalStore', 'calendar-post-vonder-9')] });
+
+    const stats = m.readReadStats();
+    const day = stats.days[today()];
+    const get = label => day[page + '|' + label] || 0;
+    assert(get('users') === 1, 'getDoc conta 1 na coleção users');
+    assert(get('portalStore: calendar-meta') === 1, 'portalStore separa o tipo pelo prefixo do id');
+    assert(get('portalStore: calendar-post') === 3, 'calendar-post: 2 do getDocs + 1 do onSnapshot (removido, em cache e gravação local não contam)');
+    assert(get('portalStore: art-draft') === 1, 'art-draft contado');
+    assert(get('portalStore: art-lock') === 1, 'transaction.get conta 1');
+    assert(get('consulta sem resultado') === 1, 'consulta vazia conta 1');
+    assert(get('contagem de acessos de QR') === 3, 'contagem de 2.500 itens = 3 leituras');
+    assert(stats.since === today(), 'guarda a data de início');
+    m.clearReadStats();
+    assert(localStorage.getItem('portal_fs_reads_v1') === null, 'zerar limpa o armazenamento');
+    document.body.dataset.result = 'pass'; document.getElementById('result').textContent = 'OK - contador de leituras do Firestore validado.';
+  } catch (error) { document.body.dataset.result = 'fail'; document.getElementById('result').textContent = 'FAIL: ' + error.message; }
+})();
+</script></body></html>

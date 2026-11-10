@@ -1,0 +1,50 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Calendário - aviso "Falta:" do Planejamento</title>
+<body data-result="running"><pre id="result">Executando…</pre>
+<div id="fx" hidden>
+  <div class="form-group"><h3 class="fg-label">Publicação</h3><input id="mTitle" value=""></div>
+  <div class="form-group"><h3 class="fg-label">Tipo da publicação</h3><div id="editoriasContainer"><input type="checkbox" class="mEditoria" value="Lançamentos"></div></div>
+  <div class="form-group"><h3 class="fg-label">Redes sociais</h3><div id="netsContainer"><input type="checkbox" class="mNet" value="Instagram"></div></div>
+  <div class="form-group"><h3 class="fg-label">Produção</h3><div id="mPlacesContainer"><input type="checkbox" name="mPlace" value="Feed"></div></div>
+</div>
+<span id="guidedPostHint" hidden></span>
+<script>
+// Extrai do app.js a regra do que falta no Planejamento e o aviso do rodapé, e roda no DOM real com um formulário de teste.
+// Precisa de --allow-file-access-from-files (como os outros testes que leem arquivos do projeto).
+(() => {
+  try {
+    const request = new XMLHttpRequest();
+    request.open('GET', '../app.js', false);
+    request.send();
+    const source = request.responseText;
+    const cut = (from, to) => { const a = source.indexOf(from), b = source.indexOf(to, a); if (a < 0 || b < 0) throw new Error('marcador não achado: ' + from); return source.slice(a, b); };
+    const block = cut('    function postChannelEntries', '    // texto legível com o detalhe')
+      + cut('    // campos da etapa 1 (Planejamento)', '    function renderSelectedProducts')
+      + cut('    function joinPt', '    // texto puro (sem HTML)')
+      + cut('    // campos do Planejamento que faltam no formulário aberto', '    function setGuidedPostStep');
+    const build = new Function(`
+      const $ = id => document.getElementById(id);
+      const APP_SETTINGS = { networks: [{ name: 'Instagram', formats: ['Feed'] }] };
+      let guidedPostStep = 1;
+      ${block}
+      return { currentPlanningMissing, updateGuidedHint, setStep: s => { guidedPostStep = s; } };
+    `);
+    const m = build();
+    const assert = (condition, message) => { if (!condition) throw new Error(message); };
+    const hint = document.getElementById('guidedPostHint'), set = (sel, on) => { document.querySelector(sel).checked = on; };
+
+    m.updateGuidedHint();
+    assert(!hint.hidden && hint.textContent === 'Falta: Título, Editoria e Redes', 'formulário vazio lista o que falta: ' + hint.textContent);
+    document.getElementById('mTitle').value = 'Dia do Marceneiro'; m.updateGuidedHint();
+    assert(hint.textContent === 'Falta: Editoria e Redes', 'preencher o título tira ele da lista');
+    set('.mEditoria', true); set('.mNet', true); m.updateGuidedHint();
+    assert(hint.textContent === 'Falta: Formato', 'com a rede marcada falta o formato');
+    set('input[name="mPlace"]', true); m.updateGuidedHint();
+    assert(hint.hidden && hint.textContent === '', 'Planejamento completo esconde o aviso');
+    document.getElementById('mTitle').value = '   '; m.setStep(2); m.updateGuidedHint();
+    assert(hint.hidden, 'o aviso só aparece na etapa 1');
+    m.setStep(1); m.updateGuidedHint();
+    assert(!hint.hidden && hint.textContent === 'Falta: Título', 'título só com espaços conta como faltando');
+    document.body.dataset.result = 'pass'; document.getElementById('result').textContent = 'OK - aviso do que falta no Planejamento validado.';
+  } catch (error) { document.body.dataset.result = 'fail'; document.getElementById('result').textContent = 'FAIL: ' + error.message; }
+})();
+</script></body></html>
