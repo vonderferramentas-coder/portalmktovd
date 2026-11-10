@@ -1,5 +1,5 @@
-import { db } from './firebase-client.js';
-import { collection, doc, getDoc, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
+import { db, getDoc, getDocs, readReadStats, clearReadStats } from './firebase-client.js';
+import { collection, doc, query, where } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
 
 const $ = id => document.getElementById(id);
 const toolNames = {
@@ -177,7 +177,7 @@ function renderCredentials(status) {
 }
 
 // auth-guard.js libera a página e grava o papel do usuário em body.dataset.userRole; o card só é lido e mostrado para admin.
-async function initCredentials() {
+async function authReady() {
   if (document.documentElement.classList.contains('auth-pending')) {
     await new Promise(resolve => {
       const observer = new MutationObserver(() => {
@@ -188,8 +188,11 @@ async function initCredentials() {
       observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     });
   }
+}
+async function initCredentials() {
+  await authReady();
   if (document.body.dataset.userRole !== 'admin') return;
-  $('credSection').hidden = false;
+  $('usageTabs').hidden = false;
   try {
     const snapshot = await getDoc(doc(db, 'portalStore', 'posts-credenciais-status-v1'));
     renderCredentials(snapshot.exists() ? snapshot.data().v : null);
@@ -199,3 +202,68 @@ async function initCredentials() {
   }
 }
 initCredentials();
+
+// ---------------------------------------------------------------- leituras do Firestore (só admin)
+// Contadas por firebase-client.js neste navegador (localStorage), por página e coleção; nada vem do servidor.
+const FREE_READS_PER_DAY = 50000; // limite gratuito diário do Firestore (plano Spark)
+const PAGE_NAMES = {
+  'index.html': 'Início', 'visual-editor.html': 'Calendário de Postagens', 'post-editor.html': 'Editor de Posts',
+  'qr-code-generator.html': 'Gerador de QR Code', 'usage-dashboard.html': 'Métricas de performance', 'admin-users.html': 'Usuários e acessos',
+  'cartaz-generator.html': 'Gerador de Cartazes', 'business-card-generator.html': 'Gerador de Cartões', 'conecta-fg.html': 'Conecta FG',
+  'followers-dashboard.html': 'Redes sociais', 'intelligence-center.html': 'Central de Inteligência', 'avaliacoes-google.html': 'Avaliações do Google',
+  'marcas.html': 'Marcas', 'templates.html': 'Templates', 'gerador.html': 'Gerador', 'consolidado-generator.html': 'Consolidado'
+};
+const dayKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+const number = value => value.toLocaleString('pt-BR');
+
+function renderReads() {
+  const stats = readReadStats(), days = (stats && stats.days) || {};
+  const today = dayKey(new Date()), week = [...Array(7)].map((_, i) => dayKey(new Date(Date.now() - i * 86400000)));
+  const rows = {}; // 'página|coleção' -> { today, week }
+  for (const day of week) for (const key in (days[day] || {})) {
+    const row = rows[key] = rows[key] || { today: 0, week: 0 };
+    row.week += days[day][key]; if (day === today) row.today += days[day][key];
+  }
+  const list = Object.entries(rows).sort((a, b) => b[1].week - a[1].week);
+  const totalToday = list.reduce((sum, [, row]) => sum + row.today, 0), totalWeek = list.reduce((sum, [, row]) => sum + row.week, 0);
+  $('readsSub').textContent = stats
+    ? `Contadas só neste navegador, desde ${new Date(stats.since + 'T00:00:00').toLocaleDateString('pt-BR')}, nos últimos 7 dias. Abra uma ferramenta e volte aqui para ver quanto ela leu. O limite gratuito do Firestore é de ${number(FREE_READS_PER_DAY)} leituras por dia, somando todos os usuários.`
+    : 'Ainda não há leituras contadas neste navegador. Abra uma ferramenta e volte aqui.';
+  $('readsTiles').innerHTML = [[totalToday, 'Hoje, neste navegador'], [totalWeek, 'Últimos 7 dias, neste navegador'], [`${(totalToday / FREE_READS_PER_DAY * 100).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`, 'Do limite gratuito diário']]
+    .map(([value, label]) => `<div class="cred-tile"><strong>${typeof value === 'number' ? number(value) : value}</strong><span>${label}</span></div>`).join('');
+  $('readsList').innerHTML = list.length
+    ? `<table class="reads-table"><thead><tr><th>Ferramenta</th><th>O que foi lido</th><th>Hoje</th><th>7 dias</th></tr></thead><tbody>${list.map(([key, row]) => {
+        const [page, label] = key.split('|');
+        return `<tr><td>${escapeHtml(PAGE_NAMES[page] || page)}</td><td>${escapeHtml(label)}</td><td>${number(row.today)}</td><td>${number(row.week)}</td></tr>`;
+      }).join('')}</tbody></table>`
+    : '';
+}
+
+async function initReads() {
+  await authReady();
+  if (document.body.dataset.userRole !== 'admin') return;
+  $('usageTabs').hidden = false;
+  renderReads();
+  $('readsClear').addEventListener('click', () => { clearReadStats(); renderReads(); });
+}
+initReads();
+
+// ---------------------------------------------------------------- abas: Uso (todos), Credenciais e Leituras (só admin)
+// A barra só aparece para admin (initCredentials/initReads a liberam); os outros perfis veem só o Uso, como antes.
+const TAB_PANELS = { uso: 'tabUso', credenciais: 'credSection', leituras: 'readsSection' };
+function selectTab(name) {
+  for (const [key, id] of Object.entries(TAB_PANELS)) $(id).hidden = key !== name;
+  $('usageFilters').hidden = name !== 'uso'; // período, ferramenta e marca só filtram o Uso
+  document.querySelectorAll('.usage-tab').forEach(tab => {
+    const on = tab.dataset.tab === name;
+    tab.setAttribute('aria-selected', String(on));
+    tab.tabIndex = on ? 0 : -1; // só a aba ativa entra na ordem do Tab; as outras, pelas setas
+  });
+}
+document.querySelectorAll('.usage-tab').forEach(tab => tab.addEventListener('click', () => selectTab(tab.dataset.tab)));
+$('usageTabs').addEventListener('keydown', event => {
+  const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key]; if (!step) return;
+  const tabs = [...document.querySelectorAll('.usage-tab')], next = tabs[(tabs.indexOf(document.activeElement) + step + tabs.length) % tabs.length];
+  event.preventDefault(); next.focus(); selectTab(next.dataset.tab);
+});
+selectTab('uso');

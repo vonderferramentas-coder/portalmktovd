@@ -195,6 +195,7 @@ graph TB
 | `post-editor.html` / `.css` | Shell e estilos do editor |
 | `post-editor-fg-ecommerce.js` | Preset "Post E-commerce" (FG) - caixa De/Por/Desconto |
 | `post-editor-fg-lancamentos.js` | Preset "Lançamentos" (FG) |
+| `post-editor-fg-destaques.js` | (oculto: o `<script>` está comentado em `post-editor.html` até os ajustes) Preset "Destaques" (FG): mesma montagem da Lançamentos, selo "DESTAQUES", título em 2 linhas e "Cód." sob a régua (assets em `post-editor-assets/fg-destaques/`) |
 | `post-editor-vonder-uso-recomendo.js` | Preset "Uso e Recomendo VONDER": faixas preta/amarela, esquerda ou direita, arrastáveis na vertical |
 | `post-editor-vonder-datas-comemorativas.js` | Preset "Datas comemorativas" (VONDER): grade de 1/2/4 fotos com enquadramento e zoom por foto, losango + faixa preta com a data, forma amarela de pontas e forma branca opcional; textos editáveis por duplo clique; painel próprio (`#vcPanel`) e fonte Montserrat |
 | `post-editor-saved-arts.js` | Artes salvas: receita no `portalStore` (`art-draft-*`), fotos originais no IndexedDB (hash) e cópia comprimida em `artPhotos`, bloqueio "fulano está editando", lixeira, lista e reabertura; usa `serialize()`/`restore()` do preset ou o adaptador genérico `SAVED_ADAPTER` |
