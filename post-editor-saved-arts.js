@@ -128,7 +128,9 @@
   }
   function currentThumb(){
     // com a caixa de edição de texto aberta, o texto em edição não é desenhado no canvas: nesse caso fica a miniatura da versão anterior
-    var t=document.querySelector('.pe-vc-edit')?cur.thumb:makeThumb();cur.thumb=t||cur.thumb;cur.thumbTried=true;return cur.thumb
+    // na etapa de tradução o canvas é a versão em espanhol: a miniatura continua a do português, se já existir
+    var editing=!!document.querySelector('.pe-vc-edit'),es=E().inTranslate&&E().inTranslate();
+    var t=editing||es?cur.thumb:makeThumb();cur.thumb=t||cur.thumb;cur.thumbTried=!es||!!cur.thumb;return cur.thumb
   }
   // o valor vem do banco: só aceita imagem JPEG em data URL (nunca um endereço externo)
   function thumbEl(draft){
