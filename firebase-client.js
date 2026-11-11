@@ -6,7 +6,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js';
 import {
   getFirestore, doc, getDoc as rawGetDoc, setDoc, Bytes, addDoc, collection, serverTimestamp, updateDoc,
-  runTransaction as rawRunTransaction, onSnapshot as rawOnSnapshot, writeBatch, query, where, deleteDoc, getCountFromServer as rawGetCount, getDocs as rawGetDocs, limit, orderBy
+  runTransaction as rawRunTransaction, onSnapshot as rawOnSnapshot, writeBatch, query, where, deleteDoc, getCountFromServer as rawGetCount, getDocs as rawGetDocs, limit, orderBy, startAfter
 } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
 
 const config = window.PORTAL_FIREBASE_CONFIG;
@@ -450,15 +450,26 @@ export async function readArtStats() {
   return snapshot.exists() && snapshot.data().v ? snapshot.data().v : { photoBytes: 0, photoCount: 0 };
 }
 
-// ponytail: pede as mais recentes (índice composto artStoreKey + updatedAt); sem o índice cai na consulta sem ordem, até `max` artes da marca (quem chama ordena), e acima disso a lista fica incompleta. Criar o índice resolve.
-export async function listArtDrafts(key, max = 100) {
+// ponytail: sem o índice composto a lista vem sem ordem, até 300 artes, e fica incompleta acima disso; criar o índice resolve (ver dentro da função).
+export async function listArtDrafts(key, max = 100, cursor = null) {
   await currentContext();
-  const base = [collection(db, 'portalStore'), where('artStoreKey', '==', String(key))], size = limit(Math.max(1, Math.min(300, max)));
-  // com o índice composto (artStoreKey + updatedAt) vêm as mais recentes; sem ele (erro failed-precondition, que traz o link para criá-lo) cai na consulta sem ordem
-  let snapshot;
-  try { snapshot = await getDocs(query(...base, orderBy('updatedAt', 'desc'), size)); }
-  catch (error) { console.warn('[artes salvas] lista sem ordenação no servidor (falta o índice artStoreKey + updatedAt):', error && error.message); snapshot = await getDocs(query(...base, size)); }
-  return snapshot.docs.map(entry => ({ id: String(entry.data().artId || ''), draft: entry.data().v === undefined ? null : entry.data().v, revision: Number(entry.data().revision || 0), lock: entry.data().lock || null }));
+  const base = [collection(db, 'portalStore'), where('artStoreKey', '==', String(key))], n = Math.max(1, Math.min(300, max));
+  const rows = docs => docs.map(entry => ({ id: String(entry.data().artId || ''), draft: entry.data().v === undefined ? null : entry.data().v, revision: Number(entry.data().revision || 0), lock: entry.data().lock || null }));
+  // com o índice composto (artStoreKey + updatedAt) vêm as mais recentes, em páginas: o resultado é um array com `cursor` (último documento) e `more`
+  // (pode haver mais) para pedir a página seguinte. Sem o índice (erro failed-precondition, que traz o link para criá-lo) cai na consulta sem ordem, sem páginas.
+  try {
+    const snapshot = await getDocs(query(...base, orderBy('updatedAt', 'desc'), ...(cursor ? [startAfter(cursor)] : []), limit(n)));
+    const out = rows(snapshot.docs);
+    out.cursor = snapshot.docs[snapshot.docs.length - 1] || null;
+    out.more = snapshot.docs.length === n;
+    return out;
+  } catch (error) {
+    if (cursor || (error && error.code !== 'failed-precondition')) throw error;
+    console.warn('[artes salvas] lista sem ordenação no servidor (falta o índice artStoreKey + updatedAt):', error && error.message);
+    const out = rows((await getDocs(query(...base, limit(n)))).docs);
+    out.cursor = null; out.more = false;
+    return out;
+  }
 }
 
 export async function subscribeToPosts(key, onChange, onError) {

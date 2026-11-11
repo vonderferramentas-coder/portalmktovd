@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Editor de Posts</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="portal-filtros.css">
   <link rel="stylesheet" href="post-editor.css">
   <link rel="stylesheet" href="auth.css">
   <script>document.documentElement.classList.add('auth-pending');</script>
@@ -50,9 +51,19 @@
           <div class="pe-saved" id="savedArts">
             <div class="pe-saved-head"><h3>Artes salvas</h3><button type="button" class="pe-info" id="savedArtsInfo" aria-expanded="false" aria-controls="savedArtsInfoText" aria-label="Como funcionam as artes salvas">i</button>
               <div class="pe-info-pop" id="savedArtsInfoText" role="note" hidden>Continue de onde parou ou ajuste uma arte depois da revisão. A arte é salva sozinha enquanto você edita.<br><br>As fotos ficam guardadas por 30 dias; depois disso é preciso enviá-las de novo. Quem abre a arte em outro computador recebe as fotos em qualidade reduzida e pode reenviar as originais.<br><br>A arte inteira é apagada depois de 365 dias sem uso.</div></div>
-            <div class="pe-catalog-search"><input id="savedArtsSearch" type="search" autocomplete="off" placeholder="Buscar pelo título ou editoria" aria-label="Buscar arte salva por título ou editoria"><span aria-hidden="true">⌕</span></div>
-            <div class="pe-saved-filters" id="savedArtsFilters" hidden></div>
+            <div class="ag-busca-linha pe-saved-bar">
+              <div class="pe-catalog-search"><input id="savedArtsSearch" type="search" autocomplete="off" placeholder="Buscar por título, editoria ou autor" aria-label="Buscar arte salva por título, editoria ou autor"><span aria-hidden="true">⌕</span></div>
+              <button type="button" class="btn ag-filtrar" id="savedArtsFilterBtn" aria-expanded="false" aria-controls="savedArtsFilters" hidden><span class="ag-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></span>Filtrar</button>
+            </div>
+            <div class="ag-filtro is-closed" id="savedArtsFilters" inert><div class="ag-filtro-corpo"><div class="ag-filtro-caixa">
+              <div class="ag-filtro-selecoes" id="savedArtsFilterFields"></div>
+              <div class="ag-datas-colapso is-closed" id="savedArtsDates" inert><div class="ag-datas-miolo"><div class="ag-datas-par"><label class="ag-data"><span>De</span><input type="date" class="ag-data-btn" id="savedArtsFrom" aria-label="Data inicial"></label><label class="ag-data"><span>Até</span><input type="date" class="ag-data-btn" id="savedArtsTo" aria-label="Data final"></label></div></div></div>
+              <div class="ag-filtro-acoes"><button type="button" class="btn ghost" id="savedArtsFilterCancel">Cancelar</button><button type="button" class="btn ghost" id="savedArtsFilterClear">Limpar</button><button type="button" class="btn" id="savedArtsFilterApply" disabled>Aplicar</button></div>
+            </div></div></div>
+            <div class="pe-saved-meta"><ul class="ag-criterios" id="savedArtsCriteria" aria-label="Filtros aplicados" hidden></ul><span class="pe-saved-count" id="savedArtsCount" role="status" aria-live="polite"></span></div>
             <div class="pe-saved-list" id="savedArtsList"></div>
+            <nav class="pe-saved-pager" id="savedArtsPager" aria-label="Páginas das artes salvas" hidden></nav>
+            <div class="pe-saved-older"><button type="button" class="pe-saved-chip" id="savedArtsOlder" hidden></button></div>
             <button type="button" class="pe-saved-trash" id="savedArtsTrash" hidden></button>
           </div>
         </div>
