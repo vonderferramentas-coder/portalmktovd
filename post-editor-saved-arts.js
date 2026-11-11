@@ -4,7 +4,7 @@
 // Datas comemorativas da VONDER) ou, nas demais editorias, o adaptador genérico do post-editor.js. Também cuida do bloqueio "fulano está editando" e da lixeira de 7 dias.
 (function(global){
   'use strict';
-  var AUTOSAVE_MS=8000,MIN_GAP_MS=30000,RETRY_MS=30000,LIST_TTL_MS=120000,PHOTO_KEEP_MS=30*24*3600*1000,MAX_LIST=100;
+  var AUTOSAVE_MS=8000,MIN_GAP_MS=30000,RETRY_MS=30000,LIST_TTL_MS=120000,PHOTO_KEEP_MS=30*24*3600*1000,MAX_LIST=300;
   var LOCK_BEAT_MS=5*60*1000,UPLOAD_TIMEOUT_MS=20000,STATS_TTL_MS=10*60*1000,PHOTO_BUDGET=400*1024*1024,CLOUD_MAX_BYTES=350000,TRASH_DAYS=7;
   var BRAND=(global.PortalBrand&&global.PortalBrand.suffix)||'',KEY='art-drafts-v1'+BRAND;
   var cur=fresh(-1),localOnly=false,timer=0,listCache=null,conflictBox=null,myCtx=null,statsCache=null,showTrash=false;
@@ -23,8 +23,10 @@
   // quem está usando: { uid, name } (guardado depois da primeira vez)
   function me(){
     if(myCtx)return Promise.resolve(myCtx);
-    return gateway().then(function(g){return g.currentContext()}).then(function(ctx){var p=ctx.profile||{};return myCtx={uid:ctx.user.uid,name:p.name||p.displayName||ctx.user.email||'Alguém'}})
+    return gateway().then(function(g){return g.currentContext()}).then(function(ctx){var p=ctx.profile||{};return myCtx={uid:ctx.user.uid,name:p.name||p.displayName||ctx.user.email||'Alguém',role:p.role||''}})
   }
+  // só admin e gestão podem tirar a edição de quem está com a arte aberta; os demais abrem uma cópia
+  function canTake(){return!!(myCtx&&/^(admin|gestao)$/.test(myCtx.role))}
 
   // caixa de diálogo no padrão do editor (no lugar de confirm/alert do navegador), centralizada. buttons: [{id,label,cls}]; resolve com o id do botão
   // clicado, ou null se fechar no X, no Esc ou clicando fora. O foco vai para o primeiro botão que não é de perigo (o mais seguro).
@@ -163,6 +165,8 @@
       var json=JSON.stringify([s.recipe,s.photos]);
       // arte já salva e sem mudanças só grava de novo se ainda não tem miniatura (artes salvas antes da miniatura existir); thumbTried evita insistir se ela falhar
       if(session!==e.session()||(json===cur.lastJson&&(cur.thumb||cur.thumbTried))||(!cur.id&&!force&&json===cur.baseline))return true;
+      // arte de outra pessoa aberta "a mesma": nada é gravado por cima dela até a escolha em confirmSave (salvar por cima ou como cópia)
+      if(cur.foreign&&!cur.decided){setState('Alterações ainda não salvas: use Salvar arte para escolher entre substituir a arte de '+cur.foreign+' e salvar uma cópia');return false}
       setState('Salvando…');
       cur.saving=gateway().then(function(g){
         return Promise.all(s.blobs.map(function(b){return putPhoto(b.hash,b.blob)})).then(function(){return me()}).then(function(user){
@@ -184,6 +188,16 @@
   }
   // botão "Salvar arte" e "Salvar e voltar": salva na hora, sem esperar o relógio do salvamento automático
   function saveNow(){clearTimeout(timer);return save(true)}
+  // salvar pedido pelo usuário (botão, "Salvar e voltar"): numa arte de outra pessoa pergunta antes. Devolve true/false como save, ou null se ele cancelou
+  function confirmSave(){
+    if(!cur.foreign||cur.decided)return saveNow();
+    var who=cur.foreign;
+    return ask({title:'Salvar por cima da arte de '+who+'?',text:'Por cima: a arte de '+who+' é substituída pela sua e a versão anterior não dá para recuperar. Cópia: a arte de '+who+' continua como está e a sua é salva como uma arte nova.',buttons:[{id:'copy',label:'Salvar como cópia',cls:'pe-modal-primary'},{id:'over',label:'Salvar por cima',cls:'pe-modal-danger'},{id:'no',label:'Cancelar'}]}).then(function(c){
+      if(c==='over'){cur.decided=true;return saveNow()}
+      if(c==='copy'){release(cur.id);cur.id=null;cur.revision=0;cur.lastJson=null;cur.createdAt=0;cur.cardId='';cur.customTitle=('Cópia de '+(cur.origTitle||'arte')).slice(0,80);cur.foreign='';cur.conflict=false;hideConflict();return saveNow()}
+      return null
+    })
+  }
   function available(){return!!preset()}
 
   // ===== bloqueio "fulano está editando" =====
@@ -213,7 +227,7 @@
     conflictBox.querySelector('[data-msg]').textContent=kind==='lock'
       ?(name||'Outra pessoa')+' está editando esta arte agora. O salvamento automático está pausado para não sobrescrever o trabalho dela.'
       :'Outra pessoa alterou esta arte depois que você a abriu. O salvamento automático está pausado.';
-    conflictBox.querySelector('[data-act=take]').hidden=kind!=='lock';
+    conflictBox.querySelector('[data-act=take]').hidden=kind!=='lock'||!canTake();
     conflictBox.hidden=false
   }
   function hideConflict(){if(conflictBox)conflictBox.hidden=true}
@@ -229,24 +243,37 @@
       var d=r.draft,e=E(),recipe;
       if(!d){e.status('Esta arte não existe mais',false);return}
       try{recipe=JSON.parse(d.recipe)}catch(_){e.status('Não foi possível ler esta arte salva',false);return}
+      // arte salva por outra pessoa: a escolha vem antes de qualquer coisa (e antes de pegar o bloqueio), com o que acontece em cada caso
+      var foreign=!skipLock&&!d.deletedAt&&d.updatedBy&&d.updatedBy.uid&&d.updatedBy.uid!==user.uid?(d.updatedBy.name||'outra pessoa'):'';
+      var pre=foreign?ask({title:'Esta arte é de '+foreign,text:'Salva por '+foreign+' em '+new Date(d.updatedAt||0).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'. Abrir uma cópia: você edita à parte e a arte dela não muda. Abrir a mesma: ao salvar, você escolhe entre substituir a arte dela ou salvar uma cópia.',buttons:[{id:'copy',label:'Abrir uma cópia',cls:'pe-modal-primary'},{id:'same',label:'Abrir a mesma'},{id:'no',label:'Cancelar'}]}):Promise.resolve('same');
+      return pre.then(function(c){
+      if(c==='copy'){r.asCopy=true;return r}
+      if(c!=='same')return null;
       var locking=skipLock?Promise.resolve({locked:null}):g.lockArtDraft(KEY,id,user,false);
       return locking.then(function(lk){
         if(lk.locked){
-          return ask({title:lk.locked.name+' está editando esta arte',text:'O bloqueio vale até '+hhmm(lk.locked.until)+'. Se você assumir a edição, a outra pessoa será avisada quando for salvar.',buttons:[{id:'take',label:'Assumir a edição',cls:'pe-modal-primary'},{id:'no',label:'Cancelar'}]}).then(function(c){
-            if(c!=='take')return;
+          // padrão: abrir uma cópia, que não mexe no trabalho de quem está editando; assumir a edição só para admin e gestão
+          var take=canTake();
+          return ask({title:lk.locked.name+' está editando esta arte',text:'O bloqueio vale até '+hhmm(lk.locked.until)+'. Para não sobrescrever o trabalho dela, abra uma cópia e salve à parte.'+(take?' Assumir a edição tira a arte dela, que só será avisada quando for salvar.':''),buttons:[{id:'copy',label:'Abrir uma cópia',cls:'pe-modal-primary'}].concat(take?[{id:'take',label:'Assumir a edição',cls:'pe-modal-danger'}]:[],[{id:'no',label:'Cancelar'}])}).then(function(c){
+            if(c==='copy'){r.asCopy=true;return r}
+            if(c!=='take'||!take)return;
             return g.lockArtDraft(KEY,id,user,true).then(function(){return r})
           })
         }
         return r
+      })
       }).then(function(ok){
         if(!ok)return;
         if(!e.chooseEditoria(d.editoria,true)){e.status('A editoria desta arte não está disponível',false);return}
         var p=adapter();if(!p){e.status('Esta editoria não suporta artes salvas',false);return}
-        cur=fresh(e.session());cur.id=d.id;cur.revision=r.revision;cur.createdAt=d.createdAt||0;cur.cardId=d.cardId||'';cur.customTitle=d.customTitle||'';cur.thumb=d.thumb||'';cur.thumbTried=!!d.thumb;cur.savedAt=Date.now();
+        cur=fresh(e.session());cur.id=d.id;cur.revision=r.revision;cur.createdAt=d.createdAt||0;cur.cardId=d.cardId||'';cur.customTitle=d.customTitle||'';cur.thumb=d.thumb||'';cur.savedAt=Date.now();
+        // abrir não grava nada: arte antiga sem miniatura só ganha a miniatura no próximo salvamento de verdade (senão "salvo por" e a data mudariam sem ninguém ter alterado)
+        cur.thumbTried=true;
+        var copy=!!ok.asCopy;cur.origTitle=d.title||'';cur.foreign=copy?'':foreign;
+        // cópia: arte nova (id próprio, sem vínculo com o card nem com o bloqueio da original); só é gravada quando houver alteração ou "Salvar arte"
+        if(copy){cur.id=null;cur.revision=0;cur.createdAt=0;cur.cardId='';cur.customTitle=('Cópia de '+(d.title||'arte')).slice(0,80)}
         return p.restore({recipe:recipe,photos:d.photos||[]},getPhoto).then(function(){
-          var s=p.serialize();return s.ready.then(function(){cur.baseline=cur.lastJson=JSON.stringify([s.recipe,s.photos]);setState('Arte salva aberta');e.status('Arte salva aberta',false);
-          // arte salva antes da miniatura existir: gera a miniatura sozinha, uma vez, depois que as fotos já estão na tela
-          if(!cur.thumb)setTimeout(function(){save()},1500)})
+          var s=p.serialize();return s.ready.then(function(){cur.baseline=cur.lastJson=JSON.stringify([s.recipe,s.photos]);if(copy)cur.lastJson=null;setState(copy?'Cópia aberta; a original não foi alterada':'Arte salva aberta');e.status(copy?'Aberta como cópia; a original não foi alterada':'Arte salva aberta',false)})
         })
       })
     }).catch(function(){E().status('Não foi possível abrir a arte salva',false)})
@@ -365,8 +392,9 @@
     function flash(text,cls){clearTimeout(saveReset);saveBtn.textContent=text;saveBtn.classList.remove('is-saved','is-failed');if(cls)saveBtn.classList.add(cls);if(cls)saveReset=setTimeout(function(){saveBtn.textContent=saveLabel;saveBtn.classList.remove('is-saved','is-failed')},3500)}
     saveBtn.addEventListener('click',function(){
       saveBtn.disabled=true;flash('Salvando…');
-      saveNow().then(function(ok){
+      confirmSave().then(function(ok){
         saveBtn.disabled=false;
+        if(ok===null){clearTimeout(saveReset);saveBtn.textContent=saveLabel;saveBtn.classList.remove('is-saved','is-failed');return}
         if(ok&&!cur.conflict){flash('✓ Arte salva às '+hhmm(cur.savedAt),'is-saved');E().status('Arte salva às '+hhmm(cur.savedAt),false)}
         else flash('Não foi possível salvar','is-failed')
       })
@@ -390,6 +418,6 @@
       return ask({title:'Este card já tem uma arte salva',text:'“'+(d.title||'Arte sem título')+'” foi salva em '+when+(d.updatedBy&&d.updatedBy.name?' por '+d.updatedBy.name:'')+'. Quer continuar nela ou começar uma arte nova?',buttons:[{id:'new',label:'Começar uma nova'},{id:'open',label:'Abrir a arte salva',cls:'pe-modal-primary'}]}).then(function(c){if(c==='open')open(art.id)})
     }).catch(function(){})
   }
-  global.PostEditorSaved={touch:touch,save:save,saveNow:saveNow,available:available,open:open,current:function(){return cur},test:{fitSize:fitSize}};
+  global.PostEditorSaved={touch:touch,save:save,saveNow:saveNow,confirmSave:confirmSave,available:available,open:open,current:function(){return cur},test:{fitSize:fitSize}};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(init,0)});else setTimeout(init,0);
 })(window);

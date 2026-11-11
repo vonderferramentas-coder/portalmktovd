@@ -16,7 +16,7 @@ import sys
 DAY_MS = 86400000
 PHOTO_RETENTION_DAYS = 30  # ponytail: um prazo só para todas as marcas; se uma marca precisar de outro, vira parâmetro por marca
 TRASH_DAYS = 7
-ART_RETENTION_DAYS = 90  # a arte inteira (receita) some depois disso; as fotos e a miniatura já saem aos PHOTO_RETENTION_DAYS
+ART_RETENTION_DAYS = 365  # a arte inteira (receita) some depois disso; as fotos e a miniatura já saem aos PHOTO_RETENTION_DAYS
 GRACE_MS = DAY_MS  # foto criada há menos de 1 dia fica: o upload vem antes do documento da arte e a arte pode ainda não ter sido gravada
 
 
