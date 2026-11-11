@@ -186,6 +186,7 @@ var currentFlowMode='editoria',currentFlowModePrev='editoria',maxFlowOrder=0,pen
 var TRANSLATE_HINT=$('#translateHint').textContent,ptSnap=null,esSnap=null,esEnterSig='',imgIds=new Map();
 function imgId(o){if(!o)return 0;if(!imgIds.has(o))imgIds.set(o,imgIds.size+1);return imgIds.get(o)}
 // selo do preset; na etapa de tradução usa o selo em espanhol, quando o preset tem um (mesmas dimensões, mesma caixa de desenho)
+var ES_FEED_PRODUCT_SHIFT=28; // px da arte (1080 de largura)
 function badgeFor(format){var es=state.lang==='es'?(format==='feed'?state.badgeFeedEs:state.badgeStoryEs):null;return es||(format==='feed'?state.badgeFeed:state.badgeStory)}
 function langSnap(){
  var fields={};$$('#editorWorkspace input[id],#editorWorkspace select[id],#editorWorkspace textarea[id]').forEach(function(el){if(el.type==='file'||SAVE_SKIP.test(el.id))return;fields[el.id]=el.type==='checkbox'?el.checked:el.value});
@@ -237,7 +238,8 @@ function setFlow(mode){
 function goToStep(mode){
  if(mode===currentFlowMode)return;
  // saindo do espanhol para qualquer etapa que não seja a edição: volta primeiro ao português, que é a arte salva e a que as demais etapas conhecem
- if(currentFlowMode==='translate'&&mode!=='edit')setFlow('edit');
+ // (para editoria/produto com alteração sem salvar, o modal abre ainda no espanhol: "continuar editando" não tira o usuário da etapa)
+ if(currentFlowMode==='translate'&&mode!=='edit'){if(editDirty&&mode!=='banner'){pendingLeaveEditTarget=mode;showLeaveConfirm();return}setFlow('edit')}
  // entre editar a arte (passo 2) e desdobrar para o banner (passo 3) a troca é livre: salva e segue, sem pedir confirmação
  // (a arte salva é sempre a em português: salva antes de ir ao espanhol e depois de voltar dele)
  var late=function(m){return m==='banner'||m==='translate'},fromTr=currentFlowMode==='translate',canSave=function(){return window.PostEditorSaved&&window.PostEditorSaved.available()};
@@ -257,11 +259,20 @@ function showLeaveConfirm(){
 }
 $('#confirmLeaveEditSave').addEventListener('click',function(){
  var button=this;button.disabled=true;
- window.PostEditorSaved.saveNow().then(function(ok){button.disabled=false;if(!ok)return;editDirty=false;var target=pendingLeaveEditTarget;closeConfirmLeaveEdit();if(target)setFlow(target)})
+ window.PostEditorSaved.saveNow().then(function(ok){button.disabled=false;if(!ok)return;proceedLeave()})
 });
-function closeConfirmLeaveEdit(){$('#confirmLeaveEdit').hidden=true;pendingLeaveEditTarget=null}
+// sair para outra tela (link do menu lateral) usa o mesmo modal das etapas; pendingLeaveUrl guarda o destino
+var pendingLeaveUrl='';
+function closeConfirmLeaveEdit(){$('#confirmLeaveEdit').hidden=true;pendingLeaveEditTarget=null;pendingLeaveUrl=''}
+function proceedLeave(){var target=pendingLeaveEditTarget,url=pendingLeaveUrl;editDirty=false;closeConfirmLeaveEdit();if(url)location.href=url;else if(target)setFlow(target)}
+document.addEventListener('click',function(ev){
+ var a=ev.target.closest&&ev.target.closest('a.portal-nav-item[href]');
+ if(!a||ev.defaultPrevented||ev.button||ev.ctrlKey||ev.metaKey||ev.shiftKey||!editDirty||$('#editorWorkspace').hidden)return;
+ ev.preventDefault();ev.stopPropagation();pendingLeaveUrl=a.href;showLeaveConfirm()
+},true);
+window.addEventListener('beforeunload',function(ev){if(editDirty&&!$('#editorWorkspace').hidden){ev.preventDefault();ev.returnValue=''}});
 $('#confirmLeaveEditCancel').addEventListener('click',closeConfirmLeaveEdit);$('#confirmLeaveEditClose').addEventListener('click',closeConfirmLeaveEdit);
-$('#confirmLeaveEditOk').addEventListener('click',function(){var target=pendingLeaveEditTarget;closeConfirmLeaveEdit();if(target)setFlow(target)});
+$('#confirmLeaveEditOk').addEventListener('click',proceedLeave);
 $('#confirmLeaveEdit').addEventListener('click',function(ev){if(ev.target===ev.currentTarget)closeConfirmLeaveEdit()});
 document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&!$('#confirmLeaveEdit').hidden)closeConfirmLeaveEdit()});
 $$('[data-flow-step]').forEach(function(el){el.addEventListener('click',function(){if(el.classList.contains('is-clickable'))goToStep(el.dataset.flowStep)})});
@@ -810,7 +821,10 @@ function drawArt(format){
  }
  if(state.background)drawCover(ctx,state.background,t,format);else drawPlaceholder(ctx,t);
  var group=unionBox(pos.product,pos.badge),anchor=[group[0]+group[2]/2,group[1]+group[3]/2];
- var productBox=scaled(pos.product,format,anchor),badgeBox=scaled(pos.badge,format,anchor);lastProductBox[format]=productBox;lastBadgeBox[format]=badgeBox;
+ var productBox=scaled(pos.product,format,anchor),badgeBox=scaled(pos.badge,format,anchor);
+ // espanhol/feed: "DESTACADOS" é mais longo que "DESTAQUES" e o início do selo ficava sob o círculo do produto; só o produto (com o círculo) recua, o selo não muda
+ if(state.lang==='es'&&format==='feed'&&state.badgeFeedEs)productBox[0]=clampBoxPos(productBox[0]-ES_FEED_PRODUCT_SHIFT*state.ov.feed.scale,productBox[2],templates.feed.w);
+ lastProductBox[format]=productBox;lastBadgeBox[format]=badgeBox;
  // mesmo clipping do frame aplicado na imagem de fundo (drawCover), agora também no selo e no
  // produto recortado: mesmo com a posição já limitada por clampBoxPos, sombra/blur desses
  // desenhos poderiam sujar pixels perto da borda do frame - o clip garante que nada deles
@@ -1090,17 +1104,26 @@ if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawAll);else 
 var SAVE_SKIP=/^(vc|catalogSearch|brandLogoSearch|moveTarget|layoutMode|circleLayer|overlayScale|productScale|circleStyle|overlayFormat)/;
 function r1(n){return Math.round((+n||0)*10)/10}
 function nm(v,lo,hi,def){v=+v;return isFinite(v)?Math.max(lo,Math.min(hi,v)):def}
+// receita de uma versão da arte a partir de um langSnap() (o português e o espanhol têm cada um o seu)
+function savedRecipe(s){
+ var st=JSON.parse(s.st),ov={},fm={};
+ ['feed','story'].forEach(function(f){var a=st.ov[f],p=st.format[f]||{};ov[f]={scale:Math.round(a.scale*100)/100,photo:Math.round(a.photo*100)/100,layout:String(a.layout),circleFront:!!a.circleFront,circleStyle:String(a.circleStyle)};fm[f]={bgDx:r1(p.bgDx),bgDy:r1(p.bgDy),overlayDx:r1(p.overlayDx),overlayDy:r1(p.overlayDy)}});
+ var item=null;if(s.item){try{var js=JSON.stringify(s.item);if(js.length<=6000)item=JSON.parse(js)}catch(e){}}
+ return{v:1,fields:s.fields,item:item,st:{titleScale:st.titleScale,titleHtml:st.titleHtml||'',originalTitle:st.originalTitle||'',autoLayout:String(st.autoLayout),brandLogoName:st.brandLogoName||'',brandBadgeColor:st.brandBadgeColor,bgZoom:{feed:Math.round(st.bgZoom.feed*100)/100,story:Math.round(st.bgZoom.story*100)/100},ov:ov,fm:fm}}
+}
 function savedSerialize(){
- var fields={};$$('#editorWorkspace input[id],#editorWorkspace select[id],#editorWorkspace textarea[id]').forEach(function(el){if(el.type==='file'||SAVE_SKIP.test(el.id))return;fields[el.id]=el.type==='checkbox'?el.checked:el.value});
- var ov={},fm={};
- ['feed','story'].forEach(function(f){var a=state.ov[f],p=state.format[f]||{};ov[f]={scale:Math.round(a.scale*100)/100,photo:Math.round(a.photo*100)/100,layout:String(a.layout),circleFront:!!a.circleFront,circleStyle:String(a.circleStyle)};fm[f]={bgDx:r1(p.bgDx),bgDy:r1(p.bgDy),overlayDx:r1(p.overlayDx),overlayDy:r1(p.overlayDy)}});
- var item=null;if(selectedProduct){try{var js=JSON.stringify(selectedProduct);if(js.length<=6000)item=JSON.parse(js)}catch(e){}}
- var photos=[],blobs=[],waits=['bg','product'].map(function(k){return state.srcFile[k]&&state.srcFile[k].p}).filter(Boolean);
- function fill(){photos.length=0;blobs.length=0;['bg','product'].forEach(function(k){var m=state.srcFile[k];if(!m)return;photos.push({slot:k,name:m.name,size:m.size,hash:m.hash});if(m.file&&m.hash&&!m.reduced)blobs.push({hash:m.hash,blob:m.file})})}
+ // a arte em tela é a em português, exceto na etapa de tradução (aí ela é a em espanhol e a em português está em ptSnap).
+ // O espanhol só entra na arte salva depois de alterado (touched), com as fotos em slots "es-bg"/"es-product".
+ var tr=currentFlowMode==='translate',live=langSnap(),pt=tr?ptSnap:live,
+  es=tr?((esSnap&&esSnap.touched)||langSig(live)!==esEnterSig?live:null):(esSnap&&esSnap.session===editSession&&esSnap.touched?esSnap.s:null);
+ var photos=[],blobs=[],versions=[['',pt]].concat(es?[['es-',es]]:[]),waits=[];
+ versions.forEach(function(v){['bg','product'].forEach(function(k){var m=v[1].srcFile[k];if(m&&m.p)waits.push(m.p)})});
+ function fill(){photos.length=0;blobs.length=0;versions.forEach(function(v){['bg','product'].forEach(function(k){var m=v[1].srcFile[k];if(!m)return;photos.push({slot:v[0]+k,name:m.name,size:m.size,hash:m.hash});if(m.file&&m.hash&&!m.reduced&&!blobs.some(function(b){return b.hash===m.hash}))blobs.push({hash:m.hash,blob:m.file})})})}
  fill();
+ var recipe=savedRecipe(pt);if(es)recipe.es=savedRecipe(es);
  return{
-  title:(String($('#productName').value||'').split('\n')[0]||'').trim().slice(0,80)||'Arte sem título',
-  recipe:{v:1,fields:fields,item:item,st:{titleScale:state.titleScale,titleHtml:state.titleHtml||'',originalTitle:state.originalTitle||'',autoLayout:String(state.autoLayout),brandLogoName:state.brandLogoName||'',brandBadgeColor:state.brandBadgeColor,bgZoom:{feed:Math.round(state.bgZoom.feed*100)/100,story:Math.round(state.bgZoom.story*100)/100},ov:ov,fm:fm}},
+  title:(String(pt.fields.productName||'').split('\n')[0]||'').trim().slice(0,80)||'Arte sem título',
+  recipe:recipe,
   photos:photos,blobs:blobs,maxSide:1600,ready:Promise.all(waits).then(fill)
  }
 }
@@ -1113,7 +1136,14 @@ function savedRestore(d,getBlob){
   if(r.item&&typeof r.item==='object'){var c=catalogCodes(r.item)[0],code=c&&c.code;item=(code&&catalog.filter(function(i){var k=catalogCodes(i)[0];return k&&k.code===code})[0])||r.item}
   if(currentFlowMode==='edit'||currentFlowMode==='banner'||currentFlowMode==='translate')return;
   return item?chooseCatalogProduct(item):chooseManualProduct()
- }).then(function(){
+ }).then(function(){return applyRecipe(r,'')}).then(function(){
+  // versão em espanhol salva: aplica por cima, guarda como o espanhol em memória (esSnap) e volta ao português
+  // ponytail: o espanhol herda do português a foto que ele não substituiu; se o português trocou uma foto do catálogo por upload e o espanhol manteve a do catálogo, abre com a do upload
+  if(!r.es||r.es.v!==1)return;
+  var pt=langSnap();
+  return applyRecipe(r.es,'es-').then(function(){var es=langSnap();applyLang(pt);esSnap={s:es,session:editSession,touched:true}})
+ }).then(done,function(e){done();throw e});
+ function applyRecipe(r,prefix){
   var f=r.fields||{};
   Object.keys(f).forEach(function(id){var el=document.getElementById(id);if(!el||el.type==='file'||SAVE_SKIP.test(id)||!$('#editorWorkspace').contains(el))return;if(el.type==='checkbox')el.checked=!!f[id];else if(typeof f[id]==='string')el.value=f[id].slice(0,2000)});
   var st=r.st||{};
@@ -1125,7 +1155,7 @@ function savedRestore(d,getBlob){
   ['Feed','Story'].forEach(function(n){var i=$('#eventTitleSize'+n);if(i)i.dispatchEvent(new Event('input'))});
   var photos=d.photos||[];
   return Promise.all(['bg','product'].map(function(slot){
-   var ph=photos.filter(function(x){return x.slot===slot})[0];if(!ph||!ph.hash)return;
+   var ph=photos.filter(function(x){return x.slot===prefix+slot})[0];if(!ph||!ph.hash)return;
    var nameEl=$(slot==='bg'?'#backgroundFileName':'#productFileName');
    return getBlob(ph.hash).then(function(got){
     if(!got){state.srcFile[slot]={file:null,name:String(ph.name||''),size:+ph.size||0,hash:String(ph.hash),reduced:false,p:null};nameEl.textContent='Reenviar a foto: '+String(ph.name||'');return}
@@ -1142,10 +1172,10 @@ function savedRestore(d,getBlob){
    if(/^#[0-9a-fA-F]{6}$/.test(st.brandBadgeColor||'')){state.brandBadgeColor=st.brandBadgeColor;var bc=$('#brandBadgeColor');if(bc)bc.value=st.brandBadgeColor}
    syncOverlayControls();undoStack=[];updateUndoButton();editDirty=false;drawAll()
   })
- }).then(done,function(e){done();throw e})
+ }
 }
-var SAVED_ADAPTER={active:function(){return(currentFlowMode==='edit'||currentFlowMode==='banner')&&!!state.editoriaName},serialize:savedSerialize,restore:savedRestore};
-window.PostEditor={goToStep:goToStep,markSaved:function(){editDirty=false},redraw:drawAll,state:state,status:status,incoming:function(){return INCOMING_COMM},session:function(){return editSession},preset:function(){var p=EDITORIA_PRESETS[state.editoriaName];return p&&!p.serialize?SAVED_ADAPTER:p},editoriaName:function(){return state.editoriaName},chooseEditoria:function(name,keepFlow){var e=EDITORIAS.filter(function(x){return x.name===name})[0];if(!e||!EDITORIA_PRESETS[e.name])return false;chooseEditoria(e,keepFlow);return true},chooseProduct:chooseCatalogProduct,getCatalog:function(){return catalog.slice()},makeZip:makeZip,exportBaseName:exportBaseName};
+var SAVED_ADAPTER={active:function(){return(currentFlowMode==='edit'||currentFlowMode==='banner'||currentFlowMode==='translate')&&!!state.editoriaName},serialize:savedSerialize,restore:savedRestore};
+window.PostEditor={goToStep:goToStep,markSaved:function(){editDirty=false},redraw:drawAll,state:state,status:status,incoming:function(){return INCOMING_COMM},session:function(){return editSession},inTranslate:function(){return currentFlowMode==='translate'},preset:function(){var p=EDITORIA_PRESETS[state.editoriaName];return p&&!p.serialize?SAVED_ADAPTER:p},editoriaName:function(){return state.editoriaName},chooseEditoria:function(name,keepFlow){var e=EDITORIAS.filter(function(x){return x.name===name})[0];if(!e||!EDITORIA_PRESETS[e.name])return false;chooseEditoria(e,keepFlow);return true},chooseProduct:chooseCatalogProduct,getCatalog:function(){return catalog.slice()},makeZip:makeZip,exportBaseName:exportBaseName};
 
 
 

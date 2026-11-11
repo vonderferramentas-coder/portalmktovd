@@ -218,8 +218,8 @@ body.is-vcomm .pe-core-section,body.is-vcomm #moveModeControls,body.is-vcomm #ne
 .pe-modal input{width:100%;margin:0 0 20px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text);font:13px var(--font-ui);outline:none}.pe-modal input:focus{border-color:var(--accent-ink);box-shadow:0 0 0 3px var(--accent-weak)}
 /* etapa "Desdobrar para banner" (Datas comemorativas da VONDER): some o que é do post e aparece o que é do banner */
 body.is-banner-step .pe-panel>.pe-section:not(.pe-bn),body.is-banner-step #vcPanel,body.is-banner-step .pe-downloads:not(.pe-bn),body.is-banner-step #postPreviews,body.is-banner-step #positionControls,body.is-banner-step #moveModeControls{display:none!important}
-/* etapa "Tradução automática": o editor inteiro, com uma cópia própria da arte; sem salvar arte nem trocar de produto aqui */
-body.is-translate-step #saveArt,body.is-translate-step #nextProduct{display:none!important}
+/* etapa "Tradução automática": o editor inteiro, com uma cópia própria da arte; sem trocar de produto aqui (salvar arte vale: grava português e espanhol) */
+body.is-translate-step #nextProduct{display:none!important}
 .pe-section.pe-tr[hidden]{display:none!important}
 .pe-banner-previews{grid-template-columns:minmax(0,1fr)}.pe-banner-previews canvas{display:block;width:100%;max-width:900px;margin:0 auto;height:auto;border-radius:6px;cursor:grab;touch-action:none}.pe-banner-previews canvas:active{cursor:grabbing}
 #bnOrder{display:grid;gap:8px;margin-bottom:6px}#bnOrder label{margin:0}#bnOrder select{margin-top:4px}
