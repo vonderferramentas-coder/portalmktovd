@@ -29,3 +29,10 @@ data/instagram-*-20*/
 
 # Cache do Python
 __pycache__/
+
+# Material de trabalho local (artes, textos e planilhas da equipe), fora do portal
+downloads/Destaques/
+outputs/
+*.psd
+*.ai
+*.docx
