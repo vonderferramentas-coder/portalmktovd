@@ -40,10 +40,6 @@ def descrever(erro):
         return f'HTTP {erro.code}'
 
 
-class TokenVencido(RuntimeError):
-    """Todas as redes da marca recusaram o token por vencimento (erro 190 da Meta)."""
-
-
 def ler_tokens(texto):
     try:
         paginas = json.loads(texto).get('data') or []
@@ -80,8 +76,6 @@ def coletar(marca, token):
     for erro in erros:
         print(f"::warning::{marca['marca']} - {erro}")
     if not redes:
-        if erros and all('(código 190)' in erro for erro in erros):
-            raise TokenVencido('token da Página vencido ou revogado (erro 190): gerar de novo o META_PAGE_TOKENS')
         raise RuntimeError('nenhuma rede respondeu')
     return redes, erros
 
@@ -121,7 +115,7 @@ def main():
         novo = aplicar(atual, redes, fechar, datetime.now(timezone.utc))
         transacao.set(referencia, {'v': novo, 'updated_at': int(time.time() * 1000), 'updatedAt': firestore.SERVER_TIMESTAMP})
 
-    falhas, vencidas = [], []
+    falhas = []
     for marca in marcas:
         try:
             token = tokens.get(marca['facebookPageId'])
@@ -132,16 +126,9 @@ def main():
             print(f"{marca['marca']}: " + ', '.join(f"{nome} {dado['followers']}" for nome, dado in redes.items()))
             if erros:  # grava o que funcionou, mas deixa o job vermelho: a outra rede ficou com número antigo
                 falhas.append(f"{marca['marca']} (parcial)")
-        except TokenVencido as erro:
-            # Credencial vencida não é falha de código: o job fica verde (para o GitHub não mandar e-mail a cada hora) e o aviso
-            # vem de verificar-credenciais.yml, que acompanha a validade do META_PAGE_TOKENS.
-            vencidas.append(marca['marca'])
-            print(f"::warning::{marca['marca']} sem coleta - {erro}")
         except Exception as erro:  # uma marca com problema não pode impedir as demais
             falhas.append(marca['marca'])
             print(f"::error::{marca['marca']} falhou - {erro}")
-    if vencidas:
-        print(f"Marcas sem coleta por token vencido: {', '.join(vencidas)}")
     if falhas:
         sys.exit(f"Marcas com falha: {', '.join(falhas)}")
 

@@ -92,24 +92,4 @@ coletor.consultar = falso({'ig1': {'followers_count': 10}, 'fb1': {'followers_co
 redes, erros = coletor.coletar(MARCA, 'token')
 assert sorted(redes) == ['Facebook', 'Instagram'] and erros == []
 
-# 7) token vencido (190) nas duas redes: erro próprio, que o job trata como aviso e não como falha; outro erro continua sendo falha
-def vencido(caminho, campos, token):
-    raise urllib.error.HTTPError('u', 401, 'x', {}, io.BytesIO(b'{"error":{"message":"Session has expired","code":190}}'))
-
-
-coletor.consultar = vencido
-try:
-    coletor.coletar(MARCA, 'token')
-    raise SystemExit('deveria ter levantado erro')
-except coletor.TokenVencido:
-    pass
-coletor.consultar = falso({'ig1': ValueError('x'), 'fb1': ValueError('y')})
-try:
-    coletor.coletar(MARCA, 'token')
-    raise SystemExit('deveria ter levantado erro')
-except coletor.TokenVencido:
-    raise SystemExit('erro comum não pode virar token vencido')
-except RuntimeError:
-    pass
-
 print('ok')
