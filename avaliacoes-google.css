@@ -132,17 +132,6 @@
 .ag-resultado-topo{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .ag-resultado p{margin:0;min-width:0;font-weight:600;color:var(--text)}
 .ag-resultado-n{flex:0 0 auto;font-variant-numeric:tabular-nums}
-/* Etiquetas dos critérios aplicados: rótulo apagado + valor, na grade de 4px */
-.ag-criterios{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
-.ag-criterios li{display:inline-flex;align-items:center;gap:6px;max-width:100%;height:24px;padding:0 10px;border:1px solid var(--border);border-radius:12px;background:var(--surface-muted);font-size:12px;line-height:16px}
-.ag-criterios li.tem-x{padding-right:4px}
-.ag-criterios span{flex:0 0 auto}
-.ag-crit-x{flex:0 0 auto;width:16px;height:16px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background-color .12s,color .12s}
-.ag-crit-x:hover{background:var(--border-strong);color:var(--text)}
-.ag-crit-x:focus-visible{outline:2px solid var(--accent-ink);outline-offset:1px}
-.ag-crit-x .ag-ico{display:flex}
-@media (prefers-reduced-motion:reduce){.ag-crit-x{transition:none}}
-.ag-criterios b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--text)}
 .ag-ordem-lojas{margin:0 0 8px}
 .ag-ref-rotulo{margin:0 0 8px;font-size:13px;color:var(--muted)}
 .ag-revs{border-bottom:1px solid var(--border)}
@@ -236,30 +225,7 @@
 .ag-sugestoes .ag-pills{padding:16px 0 4px}
 @media (prefers-reduced-motion:reduce){.ag-sugestoes{transition:none}}
 
-/* Busca + botão Filtrar na mesma linha; o painel de datas abre por baixo (grade 0fr/1fr, DESIGN.md §1).
-   No .ag-ref (gap 16px) a margem de -16px cancela o gap, como nas sugestões; no painel Lojas a margem é -12px, ver .ag-panel>.ag-filtro */
-.ag-busca-linha{display:flex;gap:8px}
-.ag-busca-linha .ag-busca{flex:1;min-width:0}
-.ag-filtrar{flex:0 0 auto;box-sizing:border-box;width:96px;height:var(--control-h);padding:0;gap:8px;font-size:13px;font-weight:600;position:relative}
-.ag-filtrar.is-ativo{border-color:var(--accent-ink);background:var(--accent-weak)}
-.ag-filtrar.is-ativo::after{content:"";position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--accent-ink)}
-.ag-filtro{display:grid;grid-template-rows:1fr;transition:grid-template-rows .25s ease}
-.ag-filtro.is-closed{grid-template-rows:0fr}
 .ag-ref>.ag-filtro{margin-top:-16px}
-.ag-filtro-corpo{min-height:0;overflow:hidden;margin:0 -4px;padding:0 4px}
-/* Todos os filtros e botões ficam numa caixa de fundo levemente diferente do cartão (raio 12 = controles de 8 + padding 4 de folga) */
-.ag-filtro-caixa{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface-muted)}
-.ag-filtro-campos{display:flex;align-items:flex-end;gap:8px}
-.ag-datas{flex:1;min-width:0}
-.ag-datas-colapso{display:grid;grid-template-rows:1fr;transition:grid-template-rows .25s ease}
-.ag-datas-colapso.is-closed{grid-template-rows:0fr}
-.ag-datas-miolo{min-height:0;overflow:hidden;margin:0 -4px;padding:0 4px}
-.ag-datas-par{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 0 4px} /* as duas datas somam a largura da busca; o Limpar fica sob o Filtrar, com o mesmo tamanho */
-.ag-data{margin:0;display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;font-size:12px;color:var(--muted)}
-.ag-data-btn{box-sizing:border-box;width:100%;height:var(--control-h);padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:600 13px var(--font-ui);text-align:left;cursor:pointer;transition:border-color .12s,box-shadow .12s}
-.ag-data-btn.is-vazio{color:var(--muted);font-weight:500}
-.ag-data-btn:hover{border-color:var(--border-strong)}
-.ag-data-btn.is-ativo,.ag-data-btn:focus-visible{border-color:var(--accent-ink);outline:none;box-shadow:0 0 0 3px var(--accent-weak)}
 /* Calendário de intervalo: abre por baixo dos campos (grade 0fr/1fr, DESIGN.md §1); dias de 36px, grade de 4px */
 .ag-cal{display:grid;grid-template-rows:1fr;transition:grid-template-rows .25s ease}
 .ag-cal.is-closed{grid-template-rows:0fr}
@@ -278,20 +244,6 @@
 .ag-cal-dia:disabled{color:var(--muted);opacity:.4;cursor:not-allowed}
 .ag-cal-dia:focus-visible{outline:2px solid var(--accent-ink);outline-offset:-2px}
 @media (prefers-reduced-motion:reduce){.ag-filtro,.ag-cal,.ag-datas-colapso,.ag-cal-caixa,.ag-data-btn,.ag-cal-dia{transition:none}}
-.ag-filtro-selecoes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding-top:12px}
-.ag-sel{margin:0;display:flex;flex-direction:column;gap:4px;min-width:0;font-size:12px;color:var(--muted)}
-.ag-sel select{box-sizing:border-box;width:100%;height:var(--control-h);padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--card);color:var(--text);font:600 13px var(--font-ui);cursor:pointer;transition:border-color .12s}
-.ag-sel select:hover{border-color:var(--border-strong)}
-.ag-sel select:focus-visible{border-color:var(--accent-ink);outline:none;box-shadow:0 0 0 3px var(--accent-weak)}
-@media (prefers-reduced-motion:reduce){.ag-sel select{transition:none}}
-/* Seta dos selects da página (filtros do topo e do botão Filtrar): a nativa ignora o padding e cola na borda. Aqui ela é um chevron de traço (DESIGN.md §1),
-   a 12px da borda como o texto à esquerda, e o padding direito reserva o espaço dela. A cor vale o --muted de cada tema. */
-.ag-sel select{-webkit-appearance:none;appearance:none;padding-right:36px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2368686a' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:14px}
-:root[data-theme="dark"] .ag-sel select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa1ac' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")}
 .ag-fila-filtro{margin-bottom:12px}
 .ag-solo{align-items:center;justify-content:space-between}
 .ag-resumo{flex:1;min-width:0;margin:0;font-size:13px;color:var(--muted)}
-.ag-data-btn:disabled{opacity:.5;cursor:not-allowed}
-.ag-data-btn:disabled:hover{border-color:var(--border)}
-.ag-filtro-acoes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)} /* três botões iguais, ocupando toda a largura */
-.ag-filtro-acoes .btn{box-sizing:border-box;width:100%;height:var(--control-h);padding:0;font-size:13px;font-weight:600}

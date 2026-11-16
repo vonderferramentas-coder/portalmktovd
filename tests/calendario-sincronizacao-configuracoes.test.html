@@ -1,0 +1,94 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Calendário - conflito das configurações consigo mesmo</title>
+<body data-result="running" style="padding:24px">
+<pre id="result">Executando…</pre>
+<script>
+// Extrai do app.js o envio e a consulta das configurações e roda contra um servidor falso (lento, com versão, que devolve as chaves
+// em outra ordem, como o Firestore). Cada caso é um jeito de a pessoa conflitar CONSIGO MESMA, sem ninguém mais editando.
+// Precisa de --allow-file-access-from-files (como os outros testes que leem arquivos do projeto).
+(async () => {
+  const out = document.getElementById('result');
+  try {
+    const request = new XMLHttpRequest();
+    request.open('GET', '../app.js', false);
+    request.send();
+    const source = request.responseText;
+    const a = source.indexOf('    async function syncFetch(key){'), b = source.indexOf('    // CENTRAL DE INTELIGÊNCIA', a);
+    if (a < 0 || b < 0) throw new Error('marcador não achado no app.js');
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const assert = (condition, message) => { if (!condition) throw new Error(message); };
+    const reorder = v => Object.keys(v).reverse().reduce((o, k) => (o[k] = v[k], o), {});
+
+    // cenário novo a cada caso: servidor falso + o trecho do app.js ligado a ele
+    const scenario = (server, { pulled, version, putMs = 0, getMs = 0 }) => {
+      const env = { modal: 0, loads: 0, S: { n: 0 }, server, puts: 0 };
+      const KEY = 'settings';
+      const m = new Function('env', 'KEY', `
+        const API_SETTINGS_KEY = KEY, API_POSTS_KEY = 'posts', LS_SETTINGS_KEY = 'test-sync-settings', LS_POSTS_KEY = 'test-sync-posts', SYNC_ENABLED = true;
+        let settingsPulled = ${pulled};
+        const syncVersions = { settings: ${version}, posts: 0 }, syncPushTimers = {};
+        const SyncBackend = {
+          async get() { const snap = JSON.parse(JSON.stringify(env.server)); await new Promise(r => setTimeout(r, ${getMs})); return snap; },
+          async put(k, value, expected) {
+            env.puts++; await new Promise(r => setTimeout(r, ${putMs}));
+            if (expected !== env.server.updated_at) return { conflict: true, server: JSON.parse(JSON.stringify(env.server)) };
+            env.server = { v: JSON.parse(JSON.stringify(value)), updated_at: env.server.updated_at + 1 };
+            return { conflict: false, updated_at: env.server.updated_at };
+          }
+        };
+        const $ = () => ({ textContent: '', className: '' });
+        const setSyncStatus = () => {}, anyModalOpen = () => false, renderAllDynamicUI = () => {}, buildCalendar = () => {}, render = () => {}, loadState = () => {}, openRequestedPostWhenReady = () => {};
+        const loadSettings = () => { env.loads++; env.S = JSON.parse(localStorage.getItem(LS_SETTINGS_KEY)); };
+        const PortalSyncConflict = { show: () => { env.modal++; } };
+        window.PortalSyncConflict = PortalSyncConflict;
+        ${source.slice(a, b)}
+        return { scheduleSyncPush, syncPull, syncVersions, isPulled: () => settingsPulled };
+      `)(env, KEY);
+      return { env, m, push: () => m.scheduleSyncPush(KEY, () => env.S) };
+    };
+
+    // 1) dois salvamentos seguidos em rede lenta: o segundo parte do mesmo estado do primeiro e era recusado como "outra pessoa"
+    let t = scenario({ v: { n: 0 }, updated_at: 1 }, { pulled: true, version: 1, putMs: 1500 });
+    t.env.S = { n: 1 }; t.push();
+    await sleep(800); t.env.S = { n: 2 }; t.push();            // o primeiro envio (começou em 700 ms) ainda está no ar
+    await sleep(4500);
+    assert(t.env.modal === 0, '1: não podia avisar conflito consigo mesmo');
+    assert(t.env.server.v.n === 2 && t.env.server.updated_at === 3, '1: o servidor tem de ficar com o último salvamento, em dois envios em sequência');
+
+    // 2) o servidor já tem o mesmo conteúdo (ajuste automático feito por outra aba), em outra ordem de chaves: não é conflito
+    t = scenario({ v: reorder({ a: 1, b: { x: 1, y: 2 } }), updated_at: 5 }, { pulled: true, version: 3 });
+    t.env.S = { a: 1, b: { x: 1, y: 2 } }; t.push();
+    await sleep(1200);
+    assert(t.env.modal === 0, '2: conteúdo igual não pode gerar aviso');
+    assert(t.m.syncVersions.settings === 5, '2: deveria adotar a versão do servidor');
+
+    // 3) conteúdo diferente (outra pessoa de fato salvou): continua avisando e adotando o servidor
+    t = scenario({ v: { a: 9 }, updated_at: 5 }, { pulled: true, version: 3 });
+    t.env.S = { a: 1 }; t.push();
+    await sleep(1200);
+    assert(t.env.modal === 1 && t.env.S.a === 9 && t.m.syncVersions.settings === 5, '3: conflito real tem de continuar sendo avisado');
+
+    // 4) ajuste automático ao abrir (antes da primeira consulta, versão desconhecida): espera a consulta em vez de conflitar
+    t = scenario({ v: { a: 7 }, updated_at: 7 }, { pulled: false, version: 0, getMs: 1500 });
+    t.env.S = { a: 0 }; t.push();
+    const pulling = t.m.syncPull();
+    await pulling; await sleep(1500);
+    assert(t.m.isPulled() && t.env.modal === 0, '4: não podia avisar conflito ao abrir');
+    assert(t.env.puts === 1 && t.env.server.v.a === 7, '4: o envio tem de sair depois da consulta, com a versão certa');
+
+    // 5) consulta que começa antes de um envio e termina depois: não pode desfazer a alteração local
+    t = scenario({ v: { a: 'servidor' }, updated_at: 8 }, { pulled: true, version: 8, getMs: 600 });
+    t.env.S = { a: 'minha alteração' };
+    const pull = t.m.syncPull();
+    t.m.scheduleSyncPush('settings', () => t.env.S);              // alteração local ainda por enviar quando a consulta volta
+    await pull;
+    assert(t.env.loads === 0 && t.env.S.a === 'minha alteração', '5: a consulta velha não pode sobrescrever a alteração local');
+
+    out.textContent = 'ok - 5 casos';
+    document.body.dataset.result = 'ok';
+  } catch (error) {
+    out.textContent = 'FALHOU: ' + (error && error.message || error);
+    document.body.dataset.result = 'fail';
+  }
+})();
+</script>
+</body></html>

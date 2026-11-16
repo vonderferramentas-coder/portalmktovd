@@ -2935,14 +2935,29 @@
     // getValue pendente de cada chave, guardado à parte do timer pra poder ser disparado na
     // hora (flushPendingSyncPushes) sem depender do setTimeout original - ver mais abaixo
     const pendingSyncGetters = {};
+    const pushInFlight = {};
+    // conta envios iniciados e terminados: uma consulta que começou antes de um envio não pode aplicar, depois dele, um resultado já velho
+    let syncWrites = 0;
+    // JSON com as chaves em ordem fixa: o Firestore devolve os mapas em outra ordem da local, e comparar o texto cru acusaria diferença que não existe
+    function canonicalJson(v){
+      return JSON.stringify(v, (k, x)=> x && typeof x==='object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o,i)=>(o[i]=x[i], o), {}) : x);
+    }
     async function runScheduledPush(key){
       syncPushTimers[key] = null;
+      // Dois envios da mesma chave ao mesmo tempo partem da mesma versão: o segundo era recusado como se outra pessoa tivesse salvo (quem
+      // tinha salvo era o primeiro, da própria pessoa; em rede lenta isso acontece sozinho). O envio no ar chama este de novo ao terminar.
+      if(pushInFlight[key]) return;
       const getValue = pendingSyncGetters[key];
-      pendingSyncGetters[key] = null;
       if(!getValue) return;
+      // Antes da primeira consulta não se conhece a versão do servidor: enviar agora (ex.: o ajuste automático de configurações feito ao
+      // abrir) era recusado como conflito com a cópia que a própria pessoa estava prestes a receber.
+      if(key===API_SETTINGS_KEY && !settingsPulled){ syncPushTimers[key] = setTimeout(()=> runScheduledPush(key), 500); return; }
+      pendingSyncGetters[key] = null;
+      pushInFlight[key] = true; if(key===API_SETTINGS_KEY) syncWrites++;
       setSyncStatus('Salvando no servidor…');
       try{
-        const result = await syncPush(key, getValue());
+        const value = getValue(), sent = canonicalJson(value);
+        const result = await syncPush(key, value);
         if(result.conflict){
           // outra pessoa salvou primeiro: adota a versão do servidor em vez de sobrescrever.
           // server.v===null significa "nada salvo no servidor ainda" (chave vazia/nunca
@@ -2952,6 +2967,11 @@
           if(result.server.v === null){
             syncVersions[key] = result.server.updated_at;
             scheduleSyncPush(key, getValue);
+          } else if(canonicalJson(result.server.v) === sent){
+            // o servidor já tem exatamente o que se ia gravar (o mesmo ajuste automático feito por outra aba ou pessoa ao abrir o calendário):
+            // não há o que descartar nem o que avisar, só adota a versão
+            syncVersions[key] = result.server.updated_at;
+            setSyncStatus('Sincronizado com o servidor', 'ok');
           } else {
             const storageKey = key===API_POSTS_KEY ? LS_POSTS_KEY : LS_SETTINGS_KEY;
             localStorage.setItem(storageKey, JSON.stringify(result.server.v));
@@ -2968,6 +2988,9 @@
       }catch(e){
         console.error('[sync] falha ao salvar no servidor', key, e);
         setSyncStatus('Falha ao salvar no servidor (ficou salvo só neste navegador)', 'warn');
+      }finally{
+        pushInFlight[key] = false; if(key===API_SETTINGS_KEY) syncWrites++;
+        if(pendingSyncGetters[key] && !syncPushTimers[key]) runScheduledPush(key); // houve outra alteração durante o envio
       }
     }
     // agenda o envio pro servidor com um pequeno atraso, pra juntar várias chamadas
@@ -2993,14 +3016,20 @@
         }
       });
     }
-    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') flushPendingSyncPushes(); });
+    // ao voltar para a aba, atualiza na hora: o navegador espaça as consultas de abas escondidas, e quem edita numa aba velha salvava com versão antiga
+    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') flushPendingSyncPushes(); else syncPull(); });
     window.addEventListener('pagehide', flushPendingSyncPushes);
     // busca a versão mais recente do servidor e aplica localmente, reaproveitando
     // loadState()/loadSettings() (grava no localStorage e roda as mesmas migrações de sempre)
+    const PULL_FAIL_TEXT = 'Sem conexão com o servidor - usando cópia local';
     async function syncPull(showIdleStatus){
       if(!SYNC_ENABLED) return;
       try{
+        const writesBefore = syncWrites;
         const settingsRes = await syncFetch(API_SETTINGS_KEY);
+        // Houve envio (ou há alteração ainda por enviar) desde que a consulta começou: o que ela trouxe pode ser anterior à gravação e desfaria
+        // a alteração da pessoa. A próxima consulta (20 s) refaz. Na primeira consulta não vale: é ela que dá a versão para os envios.
+        if(settingsPulled && (writesBefore!==syncWrites || pushInFlight[API_SETTINGS_KEY] || syncPushTimers[API_SETTINGS_KEY] || pendingSyncGetters[API_SETTINGS_KEY])) return;
         let changed = false;
         if(settingsRes.v!==null && settingsRes.updated_at!==syncVersions[API_SETTINGS_KEY]){
           localStorage.setItem(LS_SETTINGS_KEY, JSON.stringify(settingsRes.v));
@@ -3008,9 +3037,11 @@
         }
         syncVersions[API_SETTINGS_KEY] = settingsRes.updated_at;
         if(changed && !anyModalOpen()){ renderAllDynamicUI(); buildCalendar(); render(); }
-        if(changed || showIdleStatus) setSyncStatus('Sincronizado em tempo real', 'ok');
+        // o aviso de falha sai na primeira consulta que der certo; sem isto, uma única falha passageira deixava "Sem conexão" na tela até recarregar
+        if(changed || showIdleStatus || $('syncStatus').textContent === PULL_FAIL_TEXT) setSyncStatus('Sincronizado em tempo real', 'ok');
       }catch(e){
-        setSyncStatus('Sem conexão com o servidor - usando cópia local', 'warn');
+        console.error('[sync] falha ao consultar o servidor', e && e.code, e);
+        setSyncStatus(PULL_FAIL_TEXT, 'warn');
       }
       if(!settingsPulled){ settingsPulled = true; openRequestedPostWhenReady(); } // sem conexão, segue com a cópia local
     }
@@ -4224,6 +4255,7 @@
       $('mImageNotes').value = post.imageNotes || '';
       editingReferenceImages = Array.isArray(post.referenceImages) ? post.referenceImages.slice() : [];
       renderReferenceImages();
+      fitOpenedReferenceImages();
       if($('mNoProduct')) $('mNoProduct').checked = !!post.noProduct;
       const entries = postChannelEntries(post);
       const heterogeneous = isHeterogeneousChannels(entries);
@@ -4754,26 +4786,57 @@
     // As miniaturas refletem na pré-visualização do briefing (bpImagesRow) e são embutidas de
     // verdade no .docx exportado (docxEmbedImage).
     // ============================================================
+    // Redesenha uma imagem (data URL) em JPEG com largura máxima e qualidade dadas; fundo branco para PNG transparente não sair preto.
+    function shrinkImage(src, maxW, quality){
+      return new Promise((resolve, reject)=>{
+        const img = new Image();
+        img.onerror = ()=> reject(new Error('Não foi possível ler a imagem'));
+        img.onload = ()=>{
+          const scale = Math.min(1, maxW / img.naturalWidth);
+          const w = Math.max(1, Math.round(img.naturalWidth * scale));
+          const h = Math.max(1, Math.round(img.naturalHeight * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve({ width: w, height: h, dataUrl: canvas.toDataURL('image/jpeg', quality) });
+        };
+        img.src = src;
+      });
+    }
     function readImageFileCompressed(file){
       return new Promise((resolve, reject)=>{
         const reader = new FileReader();
         reader.onerror = ()=> reject(reader.error);
-        reader.onload = ()=>{
-          const img = new Image();
-          img.onerror = ()=> reject(new Error('Não foi possível ler a imagem'));
-          img.onload = ()=>{
-            const MAX_W = 1000;
-            const scale = Math.min(1, MAX_W / img.naturalWidth);
-            const w = Math.max(1, Math.round(img.naturalWidth * scale));
-            const h = Math.max(1, Math.round(img.naturalHeight * scale));
-            const canvas = document.createElement('canvas');
-            canvas.width = w; canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            resolve({ id: generateId(), name: file.name, width: w, height: h, dataUrl: canvas.toDataURL('image/jpeg', 0.82) });
-          };
-          img.src = reader.result;
-        };
+        reader.onload = ()=> shrinkImage(reader.result, 1000, 0.82).then(out=> resolve(Object.assign({ id: generateId(), name: file.name }, out)), reject);
         reader.readAsDataURL(file);
+      });
+    }
+    // O card inteiro é um documento do Firestore, que recusa mais de 1 MB (a gravação falhava e o card ficava só no navegador).
+    // As imagens de referência ficam dentro do card, então a soma delas tem um teto: passou, todas são reduzidas juntas, um degrau
+    // por vez, até caber. Imagem que não diminuir num degrau fica como estava.
+    const REF_IMAGES_BUDGET = 700000; // caracteres de data URL somados (ASCII: 1 caractere = 1 byte); sobra folga para os textos do card
+    function referenceImagesSize(list){ return list.reduce((sum, img)=> sum + String(img.dataUrl||'').length, 0); }
+    async function fitReferenceImages(list){
+      const LEVELS = [[800,0.72],[640,0.62],[480,0.55],[360,0.5]];
+      for(let i=0; i<LEVELS.length && referenceImagesSize(list) > REF_IMAGES_BUDGET; i++){
+        list = await Promise.all(list.map(async img=>{
+          try{
+            const out = await shrinkImage(img.dataUrl, LEVELS[i][0], LEVELS[i][1]);
+            return out.dataUrl.length < String(img.dataUrl).length ? Object.assign({}, img, out) : img;
+          }catch(e){ return img; }
+        }));
+      }
+      return list;
+    }
+    // Card antigo que já passou do teto: reduz ao abrir, para o próximo salvamento caber. Não aplica se a lista mudou no meio do caminho.
+    function fitOpenedReferenceImages(){
+      const before = editingReferenceImages, count = before.length;
+      if(referenceImagesSize(before) <= REF_IMAGES_BUDGET) return;
+      fitReferenceImages(before).then(list=>{
+        if(editingReferenceImages !== before || before.length !== count) return;
+        editingReferenceImages = list; renderReferenceImages(); refreshModalDynamic();
       });
     }
     function renderReferenceImages(){
@@ -4786,10 +4849,18 @@
       $('mReferenceImagesBtn').addEventListener('click', ()=> $('mReferenceImagesInput').click());
       $('mReferenceImagesInput').addEventListener('change', async (ev)=>{
         const files = Array.from(ev.target.files||[]).filter(f=> f.type.startsWith('image/'));
+        const added = [], base = editingReferenceImages; // se o card trocar durante a leitura, o resultado é descartado
         for(const file of files){
-          try{ editingReferenceImages.push(await readImageFileCompressed(file)); }
+          try{ added.push(await readImageFileCompressed(file)); }
           catch(e){ /* arquivo ilegível como imagem - ignora e segue com os demais */ }
         }
+        let list = await fitReferenceImages(base.concat(added));
+        if(editingReferenceImages !== base){ ev.target.value = ''; return; }
+        // nem no menor degrau coube (dezenas de imagens): as últimas enviadas ficam de fora, e a pessoa é avisada
+        let dropped = 0;
+        while(added.length > dropped && referenceImagesSize(list) > REF_IMAGES_BUDGET){ list.pop(); dropped++; }
+        editingReferenceImages = list;
+        if(dropped) alert((dropped===1 ? 'Uma imagem não foi adicionada' : dropped+' imagens não foram adicionadas')+': o card chegou ao limite de imagens de referência. Guarde as demais na pasta de referências e informe o link.');
         ev.target.value = '';
         renderReferenceImages();
         refreshModalDynamic();

@@ -64,8 +64,8 @@ PortalTour.register('editor-posts', {
         { when: () => !shown('editoriaChooser'), title: 'Volte à primeira etapa', text: 'As artes salvas ficam na etapa de editorias. Clique em "Escolher editoria" no topo (ou em "Trocar") e refaça este passeio.' },
         { target: '#editoriaChooser', when: () => shown('editoriaChooser'), title: 'Etapa de editorias', text: 'As artes salvas ficam na primeira etapa, embaixo da escolha da editoria.' },
         { target: '#savedArtsInfo', interact: true, title: 'Como funcionam', text: 'Clique no "i" para ler quanto tempo as fotos ficam guardadas e como a arte é salva sozinha. Clique de novo para fechar.' },
-        { target: '#savedArtsSearch', interact: true, title: 'Buscar', text: 'Procure uma arte pelo título ou pela editoria.' },
-        { target: '#savedArtsFilters', title: 'Filtros', text: 'Quando há artes de mais de uma editoria, os botões filtram a lista.' },
+        { target: '#savedArtsSearch', interact: true, title: 'Buscar', text: 'Procure uma arte pelo título, pela editoria ou pelo nome de quem salvou.' },
+        { target: '#savedArtsFilterBtn', title: 'Filtrar', text: 'Abre os filtros por editoria, autor (Minhas, De outros ou uma pessoa específica) e período, inclusive datas personalizadas. Escolha e clique em Aplicar; Limpar zera as escolhas e Cancelar descarta. Os filtros aplicados aparecem como etiquetas, cada uma com um x para tirar só aquele filtro.' },
         { target: '#savedArtsList', title: 'A lista', text: 'Clique numa arte para abrir e continuar editando. No menu de três pontinhos de cada arte ficam Duplicar e Excluir.', danger: 'Excluir manda a arte para a lixeira.' },
         { target: '#savedArtsTrash', title: 'Lixeira', text: 'As artes excluídas ficam aqui por alguns dias e podem ser restauradas nesse prazo.' },
         { title: 'Pronto!', text: 'Agora você sabe continuar uma arte de onde parou.' }

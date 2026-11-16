@@ -1,0 +1,55 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Calendário - teto de peso das imagens de referência</title>
+<body data-result="running" style="padding:24px">
+<pre id="result">Executando…</pre>
+<script>
+// Extrai do app.js a compressão das imagens de referência e confere que a soma cabe no teto do card (documento do Firestore, 1 MB).
+// Precisa de --allow-file-access-from-files (como os outros testes que leem arquivos do projeto).
+(async () => {
+  const out = document.getElementById('result');
+  try {
+    const request = new XMLHttpRequest();
+    request.open('GET', '../app.js', false);
+    request.send();
+    const source = request.responseText;
+    const a = source.indexOf('    // Redesenha uma imagem (data URL)'), b = source.indexOf('    // Card antigo que já passou do teto', a);
+    if (a < 0 || b < 0) throw new Error('marcador não achado no app.js');
+    const m = new Function(`const generateId = () => 'id' + Math.random();${source.slice(a, b)}
+      return { shrinkImage, fitReferenceImages, referenceImagesSize, REF_IMAGES_BUDGET };`)();
+    const assert = (condition, message) => { if (!condition) throw new Error(message); };
+
+    // ruído colorido: o pior caso para JPEG (quase não comprime)
+    const noise = (w, h) => {
+      const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d'), data = ctx.createImageData(w, h);
+      for (let i = 0; i < data.data.length; i++) data.data[i] = i % 4 === 3 ? 255 : Math.random() * 256;
+      ctx.putImageData(data, 0, 0);
+      return canvas.toDataURL('image/png');
+    };
+    const upload = async (w, h) => Object.assign({ id: 'x' + Math.random(), name: 'ref.png' }, await m.shrinkImage(noise(w, h), 1000, 0.82));
+
+    // 1) lista leve: nada muda (mesmos objetos)
+    const light = [await upload(200, 150)];
+    const kept = await m.fitReferenceImages(light);
+    assert(kept[0] === light[0], 'lista dentro do teto não deveria ser recomprimida');
+
+    // 2) 8 imagens pesadas: passa do teto antes, cabe depois, sem perder nenhuma
+    const heavy = [];
+    for (let i = 0; i < 8; i++) heavy.push(await upload(1600, 1200));
+    const before = m.referenceImagesSize(heavy);
+    assert(before > m.REF_IMAGES_BUDGET, 'o cenário de teste deveria passar do teto (' + before + ')');
+    const fitted = await m.fitReferenceImages(heavy);
+    const after = m.referenceImagesSize(fitted);
+    assert(fitted.length === 8, 'nenhuma imagem pode sumir');
+    assert(after <= m.REF_IMAGES_BUDGET, 'depois de reduzir tem de caber no teto: ' + after);
+    assert(fitted.every((img, i) => img.id === heavy[i].id && img.name === 'ref.png'), 'id e nome preservados, na mesma ordem');
+    assert(fitted.every(img => img.width < 1000 && img.dataUrl.indexOf('data:image/jpeg') === 0 && Math.abs(img.width / img.height - 4 / 3) < 0.02), 'largura, formato e proporção');
+
+    out.textContent = 'ok - ' + Math.round(before / 1024) + ' KB -> ' + Math.round(after / 1024) + ' KB em 8 imagens (' + fitted[0].width + ' px)';
+    document.body.dataset.result = 'ok';
+  } catch (error) {
+    out.textContent = 'FALHOU: ' + (error && error.message || error);
+    document.body.dataset.result = 'fail';
+  }
+})();
+</script>
+</body></html>

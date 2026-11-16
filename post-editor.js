@@ -259,7 +259,7 @@ function showLeaveConfirm(){
 }
 $('#confirmLeaveEditSave').addEventListener('click',function(){
  var button=this;button.disabled=true;
- window.PostEditorSaved.saveNow().then(function(ok){button.disabled=false;if(!ok)return;proceedLeave()})
+ window.PostEditorSaved.confirmSave().then(function(ok){button.disabled=false;if(!ok)return;proceedLeave()})
 });
 // sair para outra tela (link do menu lateral) usa o mesmo modal das etapas; pendingLeaveUrl guarda o destino
 var pendingLeaveUrl='';
@@ -1158,7 +1158,7 @@ function savedRestore(d,getBlob){
    var ph=photos.filter(function(x){return x.slot===prefix+slot})[0];if(!ph||!ph.hash)return;
    var nameEl=$(slot==='bg'?'#backgroundFileName':'#productFileName');
    return getBlob(ph.hash).then(function(got){
-    if(!got){state.srcFile[slot]={file:null,name:String(ph.name||''),size:+ph.size||0,hash:String(ph.hash),reduced:false,p:null};nameEl.textContent='Reenviar a foto: '+String(ph.name||'');return}
+    if(!got){state.srcFile[slot]={file:null,name:String(ph.name||''),size:+ph.size||0,hash:String(ph.hash),reduced:false,p:null};nameEl.textContent='Foto não encontrada (as fotos ficam guardadas por 30 dias); reenvie: '+String(ph.name||'');return}
     return fileImage(got.blob).then(function(im){trackSrc(slot,got.blob,{name:String(ph.name||''),hash:String(ph.hash),reduced:got.reduced});if(slot==='bg')state.background=im;else state.product=im;nameEl.textContent=String(ph.name||'')+(got.reduced?' · qualidade reduzida (envie a original para melhorar)':'')})
    })
   })).then(function(){return state.product?updateProduct():null}).then(function(){
