@@ -1,4 +1,4 @@
-import { signInWithEmail, signInWithGoogle, requestPasswordReset } from './firebase-client.js';
+import { signInWithEmail, signInWithGoogle, requestPasswordReset } from '../firebase-client.js';
 const $ = id => document.getElementById(id);
 const form = $('loginForm'), email = $('email'), password = $('password'), message = $('authMessage');
 const params = new URLSearchParams(location.search);

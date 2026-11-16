@@ -1089,7 +1089,7 @@
 :where(input[type=checkbox]:not(:is(.chip-net,.sched-day-chip,.sched-net-choice)>input)):disabled{opacity:.5;cursor:not-allowed}
 @media (prefers-reduced-motion:reduce){:where(input[type=checkbox]),:where(input[type=checkbox])::before,.portal-notice{transition:none!important}}
 
-/* Barra flutuante Negrito/Itálico/Sublinhado (cartaz-title-format.js) - compartilhada pelo Gerador de Cartazes e pelo Gerador de Consolidado */
+/* Barra flutuante Negrito/Itálico/Sublinhado (comum/title-format.js) - compartilhada pelo Gerador de Cartazes e pelo Gerador de Consolidado */
 .cg-fmt {
     position: fixed;
     z-index: 1000;

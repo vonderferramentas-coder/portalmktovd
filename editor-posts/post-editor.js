@@ -710,7 +710,7 @@ $('#productNameRich').addEventListener('input',function(){applyRichInput(this)})
 // Duplo clique no texto do rodapé (nome ou código) abre uma caixa de edição em cima dele. Só Destaques da VONDER.
 var footerEdit=null;
 function closeFooterEdit(){if(footerEdit){var el=footerEdit;footerEdit=null;if(el.parentNode)el.parentNode.removeChild(el);if(el.onClose)el.onClose();
- // a barra flutuante B/I/U (cartaz-title-format.js) só se esconde quando a seleção muda; ao remover a caixa ela ficava na tela
+ // a barra flutuante B/I/U (comum/title-format.js) só se esconde quando a seleção muda; ao remover a caixa ela ficava na tela
  getSelection().removeAllRanges();document.dispatchEvent(new Event('selectionchange'))}}
 // Uso e Recomendo: o texto da faixa amarela é um parágrafo que quebra sozinho, então a caixa de edição mostra o próprio texto (não é transparente
 // como a do rodapé do Destaques) e a arte deixa de desenhá-lo enquanto ela está aberta (state.usoEditing); a faixa segue crescendo com as linhas.
@@ -760,7 +760,7 @@ function openFooterEdit(format,c,px,py){
 // reposiciona a caixa de edição quando a prévia muda de tamanho
 if(window.ResizeObserver){var feReso=new ResizeObserver(function(){if(footerEdit&&footerEdit.place)footerEdit.place()});Object.keys(canvases).forEach(function(f){feReso.observe(canvases[f])})}
 
-// Revisor de texto (cartaz-validator.js, o mesmo do Gerador de Cartazes: regras locais, sem IA). Itálico é ignorado: a base da arte já é itálica.
+// Revisor de texto (comum/validator.js, o mesmo do Gerador de Cartazes: regras locais, sem IA). Itálico é ignorado: a base da arte já é itálica.
 // vocabulário do catálogo da marca (palavras dos nomes dos produtos), montado uma vez por catálogo; marca sem catálogo = sem verificação de grafia.
 // Código sem pontos só é formatado na VONDER (10 dígitos viram 00.00.000.000); os 7 dígitos da FG e os códigos das outras marcas nunca são mexidos.
 var vocabMemo={catalog:null,vocab:null};

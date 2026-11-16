@@ -594,7 +594,7 @@ button:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: repeat(3, minmax(0, 1fr));
     gap: 13.12px 13.78px;
-    background: #003e55 url("cartaz-template-base.png") center/100% 100% no-repeat;
+    background: #003e55 url("template-base.png") center/100% 100% no-repeat;
     overflow: hidden;
 }
 .sheet::before,
@@ -607,18 +607,18 @@ button:disabled {
 }
 @font-face {
     font-family: Swiss721;
-    src: url("business-card-assets/fonts/Swis721 Cn BT Bold.ttf") format("truetype");
+    src: url("../comum/fontes/Swis721 Cn BT Bold.ttf") format("truetype");
     font-weight: 700;
     font-display: swap
 }
 @font-face {
     font-family: Swiss721Roman;
-    src: url("business-card-assets/fonts/Swis721 Cn BT Roman.ttf") format("truetype");
+    src: url("../comum/fontes/Swis721 Cn BT Roman.ttf") format("truetype");
     font-weight: 400;
     font-display: swap
 }
 @font-face {
-    font-family: Swiss721Italic; src: url("business-card-assets/fonts/Swis721 Cn BT Bold Italic.ttf") format("truetype"); font-weight:700; font-display:swap;
+    font-family: Swiss721Italic; src: url("../comum/fontes/Swis721 Cn BT Bold Italic.ttf") format("truetype"); font-weight:700; font-display:swap;
 }
 @media print {
     @page {
@@ -653,7 +653,7 @@ button:disabled {
     padding: 0;
     font-size: 0;
     text-shadow: none;
-    background: url("cartaz-logo-feira.png") center/contain no-repeat;
+    background: url("logo-feira.png") center/contain no-repeat;
 }
 @media print {
     /* precisa vir DEPOIS da regra ".ean-missing{display:flex}" acima (mesma especificidade - quem vem por ultimo no arquivo vence, ver o mesmo padrao em ".cutwarn"/".sheet" mais acima) - colocar esse display:none junto do outro bloco @media print (que fica antes dessa regra) perdia a briga e o botao "+ Código de barras" vazava pra impressao real */
@@ -1197,12 +1197,13 @@ button:disabled {
     align-items: center;
     min-width: 0;
 }
+/* Prévias pequenas (lista de templates, logo) usam miniaturas leves: o template-final.jpg (A3 300 DPI, 12 MB) e a logo original ficam só na .sheet, que é o que vai para a exportação */
 .cg-template-thumb {
     flex: 0 0 74px;
     aspect-ratio: 1 / 1.414;
     border: 1px solid var(--cg-line);
     border-radius: 6px;
-    background: #003e55 url("cartaz-template-final.jpg") center / 100% 100% no-repeat;
+    background: #003e55 url("template-final-thumb.jpg") center / 100% 100% no-repeat;
 }
 .cg-template-info {
     min-width: 0;
@@ -1564,7 +1565,7 @@ button:disabled {
 .cg-template-mini-cover {
     position: relative;
     aspect-ratio: 1 / 1.414;
-    background: #003e55 url("cartaz-template-final.jpg") center / cover no-repeat;
+    background: #003e55 url("template-final-thumb.jpg") center / cover no-repeat;
 }
 .cg-template-mini-logo {
     position: absolute;
@@ -1708,7 +1709,7 @@ button:disabled {
     height: 60px;
     border: 1px solid var(--cg-line);
     border-radius: 6px;
-    background: #003e55 url("cartaz-logo-feira.png") center / contain no-repeat;
+    background: #003e55 url("logo-feira-thumb.png") center / contain no-repeat;
 }
 .cg-header-fields {
     display: grid;
@@ -1995,7 +1996,7 @@ button:disabled {
 }
 .sheet.a3,
 .sheet.a4 {
-    background: #003e55 url("cartaz-template-final.jpg") center / 100% 100% no-repeat;
+    background: #003e55 url("template-final.jpg") center / 100% 100% no-repeat;
 }
 .sheet-footer {
     position: absolute;
@@ -2100,14 +2101,14 @@ button:disabled {
     cursor: wait;
 }
 
-/* Formatação de palavras no título do card (cartaz-title-format.js). A fonte Swiss721 só existe em Bold,
+/* Formatação de palavras no título do card (comum/title-format.js). A fonte Swiss721 só existe em Bold,
    então o negrito é um reforço de traço; o itálico usa a face Bold Italic já carregada. */
 .card h3 b { -webkit-text-stroke: .6px currentColor; }
 .card h3 i { font-family: Swiss721Italic, "Arial Narrow", Arial, sans-serif; font-style: italic; }
 .card h3 u { text-decoration: underline; text-underline-offset: 2px; }
 
 
-/* Validador de textos (cartaz-validator.js) */
+/* Validador de textos (comum/validator.js) */
 .cg-dialog.cg-validator { width: min(860px, calc(100vw - 32px)); }
 .cg-dialog.cg-validator form { padding: 36px; }
 .cg-validator-filters { display: flex; gap: 8px; margin: 0 0 12px; flex-wrap: wrap; }

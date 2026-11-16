@@ -1,7 +1,7 @@
 // Negrito, itálico e sublinhado nas palavras do título (h3) dos cards do Gerador de Cartazes.
 // Ao selecionar palavras dentro de um título, aparece uma barra flutuante com três botões
 // (visual do Toggle Group do animate-ui). A formatação vira <b>/<i>/<u> no próprio título e é
-// guardada em item.titleHtml (ver updateTitle em cartaz-generator.js); só essas 3 tags são aceitas.
+// guardada em item.titleHtml (ver updateTitle em cartaz/generator.js); só essas 3 tags são aceitas.
 (function () {
   const TAGS = { B: 'b', STRONG: 'b', I: 'i', EM: 'i', U: 'u' };
   const TITLE_SEL = '.card h3[contenteditable], .consolidado-page [contenteditable], .pe-rich-title, .pe-uso-edit'; // Gerador de Cartazes, Gerador de Consolidado e Editor de artes (Destaques)

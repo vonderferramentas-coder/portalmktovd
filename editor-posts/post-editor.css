@@ -1,14 +1,14 @@
-@font-face{font-family:'Korolev Bold';src:url('post-editor-assets/fonts/korolev-bold.otf') format('opentype');font-style:normal;font-weight:700;font-display:block}
-@font-face{font-family:'Korolev Medium';src:url('post-editor-assets/fonts/korolev-medium.otf') format('opentype');font-style:normal;font-weight:500;font-display:block}
-@font-face{font-family:'Korolev Light';src:url('post-editor-assets/fonts/korolev-light.otf') format('opentype');font-style:normal;font-weight:300;font-display:block}
-@font-face{font-family:'Korolev Offer';src:url('post-editor-assets/fonts/korolev-heavy-condensed.otf') format('opentype');font-style:normal;font-weight:700;font-display:block}
-@font-face{font-family:'Korolev Price';src:url('post-editor-assets/fonts/korolev-heavy-condensed.otf') format('opentype');font-style:normal;font-weight:700;font-display:block}
-@font-face{font-family:'Korolev Label';src:url('post-editor-assets/fonts/korolev-bold-italic.otf') format('opentype');font-style:italic;font-weight:700;font-display:block}
-@font-face{font-family:'MontserratEditor';src:url('post-editor-assets/fonts/montserrat-variable.ttf') format('truetype');font-style:normal;font-weight:100 900;font-display:block}
-@font-face{font-family:'Swiss721Editor';src:url('post-editor-assets/swiss721-condensed-regular.ttf') format('truetype');font-style:normal;font-weight:400;font-display:block}
-@font-face{font-family:'Swiss721Editor';src:url('post-editor-assets/swiss721-condensed-italic.ttf') format('truetype');font-style:italic;font-weight:400;font-display:block}
-@font-face{font-family:'Swiss721Editor';src:url('post-editor-assets/swiss721-condensed-bold.ttf') format('truetype');font-style:normal;font-weight:700;font-display:block}
-@font-face{font-family:'Swiss721Editor';src:url('post-editor-assets/swiss721-condensed-bold-italic.ttf') format('truetype');font-style:italic;font-weight:700;font-display:block}
+@font-face{font-family:'Korolev Bold';src:url('../post-editor-assets/fonts/korolev-bold.otf') format('opentype');font-style:normal;font-weight:700;font-display:block}
+@font-face{font-family:'Korolev Medium';src:url('../post-editor-assets/fonts/korolev-medium.otf') format('opentype');font-style:normal;font-weight:500;font-display:block}
+@font-face{font-family:'Korolev Light';src:url('../post-editor-assets/fonts/korolev-light.otf') format('opentype');font-style:normal;font-weight:300;font-display:block}
+@font-face{font-family:'Korolev Offer';src:url('../post-editor-assets/fonts/korolev-heavy-condensed.otf') format('opentype');font-style:normal;font-weight:700;font-display:block}
+@font-face{font-family:'Korolev Price';src:url('../post-editor-assets/fonts/korolev-heavy-condensed.otf') format('opentype');font-style:normal;font-weight:700;font-display:block}
+@font-face{font-family:'Korolev Label';src:url('../post-editor-assets/fonts/korolev-bold-italic.otf') format('opentype');font-style:italic;font-weight:700;font-display:block}
+@font-face{font-family:'MontserratEditor';src:url('../post-editor-assets/fonts/montserrat-variable.ttf') format('truetype');font-style:normal;font-weight:100 900;font-display:block}
+@font-face{font-family:'Swiss721Editor';src:url('../post-editor-assets/swiss721-condensed-regular.ttf') format('truetype');font-style:normal;font-weight:400;font-display:block}
+@font-face{font-family:'Swiss721Editor';src:url('../post-editor-assets/swiss721-condensed-italic.ttf') format('truetype');font-style:italic;font-weight:400;font-display:block}
+@font-face{font-family:'Swiss721Editor';src:url('../post-editor-assets/swiss721-condensed-bold.ttf') format('truetype');font-style:normal;font-weight:700;font-display:block}
+@font-face{font-family:'Swiss721Editor';src:url('../post-editor-assets/swiss721-condensed-bold-italic.ttf') format('truetype');font-style:italic;font-weight:700;font-display:block}
 :root{--pe-yellow:var(--accent);--pe-ink:var(--text);--pe-muted:var(--muted);--pe-line:var(--border);--pe-panel:var(--card);--pe-bg:var(--bg)}
 *{box-sizing:border-box}.pe-page{min-width:0;background:var(--pe-bg);min-height:100vh;padding:28px 28px 44px;color:var(--pe-ink);font-family:var(--font-body)}
 .pe-header{max-width:1600px;margin:0 auto 24px;display:flex;align-items:center;justify-content:space-between;gap:24px}.pe-header-actions{display:flex;align-items:center;gap:12px}.pe-back{color:var(--text);text-decoration:none;border:1px solid var(--border);border-radius:9px;padding:10px 14px;background:var(--card);font-size:13px;font-weight:700}.pe-back:hover{border-color:var(--accent-ink);background:var(--accent-weak)}

@@ -167,5 +167,8 @@
     return null;
   }
 
-  window.BarcodeGen = { check, normalize, layout, svg, png, wmf, fromRows };
+  // referência da célula (A1, B7, AA1) igual a XLSX.utils.encode_cell, sem precisar do XLSX: a lista salva no navegador é redesenhada ao abrir
+  const cellRef = (r, c) => { let s = ''; for (c++; c > 0; c = Math.floor((c - 1) / 26)) s = String.fromCharCode(65 + (c - 1) % 26) + s; return s + (r + 1) };
+
+  window.BarcodeGen = { check, normalize, layout, svg, png, wmf, fromRows, cellRef };
 })();

@@ -4611,15 +4611,7 @@
 
     let importSheetResult = null, importReadSeq = 0;
     // a biblioteca de planilhas (~1 MB) só é baixada na primeira importação
-    let xlsxLoading = null;
-    function loadXlsxLib(){
-      if(window.XLSX) return Promise.resolve();
-      return xlsxLoading = xlsxLoading || new Promise((resolve, reject)=>{
-        const s = document.createElement('script'); s.src = 'vendor/xlsx.full.min.js';
-        s.onload = resolve; s.onerror = ()=>{ xlsxLoading = null; reject(new Error('xlsx')); };
-        document.head.appendChild(s);
-      });
-    }
+    const loadXlsxLib = ()=> PortalShell.loadScript('vendor/xlsx.full.min.js');
     function openImportSheetModal(){
       importSheetResult = null;
       $('importSheetSummary').innerHTML = '';

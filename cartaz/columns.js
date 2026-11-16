@@ -24,7 +24,7 @@
     cols.price = pick(k => /preco|valor/.test(k));
     // colunas do layout Live Shop: modelo de cada linha da tabela, link do QR/botão e quantidade mínima
     cols.desc = pick(k => /modelo|descri/.test(k) && !/cod/.test(k), k => /modelo/.test(k)); if (cols.desc === cols.title) cols.desc = undefined;
-    // uma coluna de link por divisão ("LINK OSTEN", "LINK DISMATAL"...); a sem divisão no nome é o link genérico. ponytail: divisões fixas, igual a DIVISIONS em cartaz-generator.js
+    // uma coluna de link por divisão ("LINK OSTEN", "LINK DISMATAL"...); a sem divisão no nome é o link genérico. ponytail: divisões fixas, igual a DIVISIONS em cartaz/generator.js
     cols.links = {}; heads.filter(x => /link|url/.test(x.k)).forEach(x => ['osten', 'dismatal', 'vonder'].forEach(id => { if (x.k.includes(id)) cols.links[id] = x.h; }));
     cols.link = pick(k => /link|url/.test(k) && !/osten|dismatal|vonder/.test(k));
     cols.minQty = pick(k => /minim|qtd|quant/.test(k));

@@ -1194,7 +1194,7 @@
 /* MULTIMARCAS: Swis721 Cn BT Bold 46,7 pt (1 px = 1 pt), cinza #b3b3b3 e mais respiro em cima e embaixo */
 @font-face {
     font-family: "Swis721 Cn BT";
-    src: local("Swis721 Cn BT Bold"), url("business-card-assets/fonts/Swis721 Cn BT Bold.ttf") format("truetype");
+    src: local("Swis721 Cn BT Bold"), url("../comum/fontes/Swis721 Cn BT Bold.ttf") format("truetype");
     font-style: normal;
     font-weight: 700
 }

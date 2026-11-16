@@ -894,10 +894,8 @@
 
   async function handleFile(file) {
     if (!file) return;
-    if (!window.XLSX) {
-      toast("Leitor de Excel indisponível.");
-      return;
-    }
+    // o leitor de Excel (~1 MB) só baixa na primeira importação
+    try { await PortalShell.loadScript("vendor/xlsx.full.min.js"); } catch (error) { toast(error.message); return; }
     try {
       var data = await file.arrayBuffer();
       var workbook = XLSX.read(data, { type: "array", cellDates: false });
@@ -1082,7 +1080,7 @@
   }
 
   // posição (px), tamanho de fonte (px) e cor abaixo replicam exatamente o arquivo de impressão
-  // (business-card-assets/source/fg-business-card.ai / .pdf, card 94×54mm a 20px/mm): Nome 11.5pt,
+  // (cartao/assets/source/fg-business-card.ai / .pdf, card 94×54mm a 20px/mm): Nome 11.5pt,
   // Cargo 8.5pt e Endereço/Celular/E-mail·Site 7pt, todos na cor #4d4d4d (CMYK 0/0/0/70). Esses
   // valores são fixos - não usam fitText/auto-encolhe - porque esse é o padrão gráfico aprovado
   // para impressão e não pode variar conforme o texto digitado.
@@ -1102,13 +1100,13 @@
   var FG_INLINE_SEPARATOR = "\u2009|\u2009"; // espaço fino: compacto e legível
 
   // Variação de logotipo por cartão: "fg" é o padrão institucional já usado; "fg-ico" acrescenta o
-  // selo ICO ao lado do logotipo (business-card-assets/source, arquivo cedido por Lucas). A escolha
+  // selo ICO ao lado do logotipo (cartao/assets/source, arquivo cedido por Lucas). A escolha
   // fica salva em cada registro (r.logoVariant), afetando somente o cartão selecionado. As duas
   // imagens vêm embutidas em base64 (business-card-assets.js) - carregar por caminho relativo
   // sob file:// "contamina" o canvas e impede a releitura de pixels (getImageData) na recolorização.
   var FG_LOGO_VARIANTS = {
-    "fg": "business-card-assets/fg-template-600.png",
-    "fg-ico": "business-card-assets/fg-ico-template-600.png"
+    "fg": "cartao/assets/fg-template-600.png",
+    "fg-ico": "cartao/assets/fg-ico-template-600.png"
   };
   var fgAlignedTemplates = {};
 
@@ -1332,8 +1330,8 @@
   }
 
   async function drawOvd(r, token) {
-    var logo = await loadImage(embeddedAssets.ovdLogo || "business-card-assets/ovd-logo.png");
-    var tools = await loadImage(embeddedAssets.ovdTools || "business-card-assets/ovd-tools.png");
+    var logo = await loadImage(embeddedAssets.ovdLogo || "cartao/assets/ovd-logo.png");
+    var tools = await loadImage(embeddedAssets.ovdTools || "cartao/assets/ovd-tools.png");
     if (token !== renderToken) return;
 
     ctx.fillStyle = "#fff";
@@ -1743,7 +1741,7 @@
 
     var logoSource = (window.OVD_BRAND_LOGOS || {})["Pilar_Tecnologia_Horizontal"];
     var logo = logoSource ? await loadImage(logoSource) : null;
-    var qrDiagram = await loadImage("business-card-assets/pilar-qr-diagram.png");
+    var qrDiagram = await loadImage("cartao/assets/pilar-qr-diagram.png");
     if (token !== renderToken) return;
     if (qrDiagram) {
       var diagramHeight = (151.653 - 56.693) * PILAR_PT_TO_PX;

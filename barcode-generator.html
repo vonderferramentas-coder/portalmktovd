@@ -231,11 +231,9 @@
         </div>
     </div>
     <script src="portal-shell.js"></script>
-    <script src="vendor/xlsx.full.min.js"></script>
-    <script src="vendor/jszip.min.js"></script>
-    <script src="barcode-generator.js"></script>
-    <script src="portal-tour.js"></script>
-    <script src="portal-tour-gerador-codigo-barras.js"></script>
+    <script src="codigo-barras/barcode-generator.js"></script>
+    <script src="tour/portal-tour.js"></script>
+    <script src="tour/portal-tour-gerador-codigo-barras.js"></script>
     <script>
         const $ = id => document.getElementById(id), B = window.BarcodeGen;
         const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -267,6 +265,7 @@
         async function download(i, fmt) {
             const name = baseName(i);
             if (fmt !== 'both') return save(await make(i.code, fmt), name + '.' + fmt);
+            try { await PortalShell.loadScript('vendor/jszip.min.js') } catch (err) { say(err.message, true); return }
             const z = new JSZip();
             z.file(name + '.png', await make(i.code, 'png')); z.file(name + '.wmf', await make(i.code, 'wmf'));
             save(await z.generateAsync({ type: 'blob' }), name + '.zip');
@@ -351,7 +350,7 @@
 
         // origem na planilha (linha em destaque, célula e aba); itens digitados não têm
         const where = i => i.row
-            ? '<div class="bc-row"><b>Linha ' + i.row + '</b>' + XLSX.utils.encode_cell({ r: i.row - 1, c: i.col }) + (i.sheet ? '<em title="Aba">' + esc(i.sheet) + '</em>' : '') + '</div>'
+            ? '<div class="bc-row"><b>Linha ' + i.row + '</b>' + B.cellRef(i.row - 1, i.col) + (i.sheet ? '<em title="Aba">' + esc(i.sheet) + '</em>' : '') + '</div>'
             : '<div class="bc-row">Digitado</div>';
         const editForm = (i, n) => '<form class="bc-edit" data-edit="' + n + '"><input value="' + esc(i.raw) + '" inputmode="numeric" autocomplete="off" aria-label="Corrigir código de barras"><button class="btn small" type="submit">Aplicar</button>' +
             (i.fix ? '<button class="btn ghost small" data-fix="' + n + '" type="button">Usar ' + i.fix + '</button>' : '') + (!isBad(i) ? '<button class="btn ghost small" data-cancel="' + n + '" type="button">Cancelar</button>' : '') + '</form>';
@@ -493,6 +492,7 @@
 
         // ZIP só com os aprovados (repetidos e pendentes ficam de fora); nomes iguais ganham o código no fim
         async function zip(fmt) {
+            try { await PortalShell.loadScript('vendor/jszip.min.js') } catch (err) { say(err.message, true); return }
             const z = new JSZip(), used = new Set();
             for (const i of items.filter(i => !isBad(i))) {
                 let name = baseName(i);
@@ -505,11 +505,12 @@
         $('allPng').onclick = () => zip('png'); $('allWmf').onclick = () => zip('wmf');
 
         // relatório da correção, para devolver à fonte: o que estava na célula, o problema e o valor final
-        $('report').onclick = () => {
+        $('report').onclick = async () => {
+            try { await PortalShell.loadScript('vendor/xlsx.full.min.js') } catch (err) { say(err.message, true); return }
             const status = i => !i.code ? 'Com problema' : i.dup ? 'Repetido' : i.pending ? 'Corrigido, aguardando aprovação' : i.prob ? 'Corrigido e aprovado' : 'Válido';
             const problem = i => !i.code ? i.error : i.dup ? dupText(i) : i.prob;
             const rows = [['Arquivo', 'Aba', 'Linha', 'Célula', 'Código do produto', 'Descrição', 'Valor original', 'Problema', 'Valor corrigido', 'Status']]
-                .concat(items.map(i => [i.file || '', i.sheet || '', i.row || '', i.row ? XLSX.utils.encode_cell({ r: i.row - 1, c: i.col }) : '', i.pcode || '', i.desc || '', i.orig, problem(i), i.code && i.code !== i.orig ? i.code : '', status(i)]));
+                .concat(items.map(i => [i.file || '', i.sheet || '', i.row || '', i.row ? B.cellRef(i.row - 1, i.col) : '', i.pcode || '', i.desc || '', i.orig, problem(i), i.code && i.code !== i.orig ? i.code : '', status(i)]));
             const ws = XLSX.utils.aoa_to_sheet(rows), wb = XLSX.utils.book_new();
             ws['!cols'] = [28, 14, 7, 8, 18, 34, 18, 52, 18, 30].map(wch => ({ wch }));
             XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
@@ -529,6 +530,7 @@
             const file = e.target.files[0]; e.target.value = '';
             if (!file) return;
             try {
+                await PortalShell.loadScript('vendor/xlsx.full.min.js'); /* só baixa na primeira importação */
                 const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
                 let found = false, list = [], cols = [];
                 for (const name of wb.SheetNames) {

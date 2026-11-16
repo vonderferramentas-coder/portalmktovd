@@ -1,4 +1,4 @@
-import { audit, readPortalStore, writePortalStore } from './firebase-client.js';
+import { audit, readPortalStore, writePortalStore } from '../firebase-client.js';
 
 const STORE_KEY = 'followers-vonder-v1';
 const summary = document.getElementById('migrationSummary');

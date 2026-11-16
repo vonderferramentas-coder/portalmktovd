@@ -97,9 +97,9 @@
     copy: svg('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
     trash: svg('<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>')
   };
-  // Textos editáveis com Negrito/Itálico/Sublinhado (cartaz-title-format.js); o HTML editado fica em item.*Html / state.texts
+  // Textos editáveis com Negrito/Itálico/Sublinhado (comum/title-format.js); o HTML editado fica em item.*Html / state.texts
   const EDIT = ' contenteditable="true" spellcheck="false"', FMT = { always: true, keepBr: true, keepStrong: true };
-  const HEAD_ART = '<svg class="consolidado-head-art" viewBox="0 0 800 184" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="hg" x1="0" x2="1"><stop offset="0" stop-color="#1c2326"/><stop offset=".45" stop-color="#4b5a60"/><stop offset="1" stop-color="#1c2326"/></linearGradient></defs><rect width="800" height="184" fill="#fcbc00"/><rect y="13" width="800" height="57" fill="url(#hg)"/><rect y="80" width="800" height="104" fill="#e4e4e4"/></svg><img class="consolidado-head-plate" src="consolidado-assets/faixa-intro.png" alt="">';
+  const HEAD_ART = '<svg class="consolidado-head-art" viewBox="0 0 800 184" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="hg" x1="0" x2="1"><stop offset="0" stop-color="#1c2326"/><stop offset=".45" stop-color="#4b5a60"/><stop offset="1" stop-color="#1c2326"/></linearGradient></defs><rect width="800" height="184" fill="#fcbc00"/><rect y="13" width="800" height="57" fill="url(#hg)"/><rect y="80" width="800" height="104" fill="#e4e4e4"/></svg><img class="consolidado-head-plate" src="consolidado/assets/faixa-intro.png" alt="">';
   const rich = (html, fallback) => html ? CartazTitleFormat.clean(html, FMT) : fallback;
   // Ordem e largura dos produtos de um bloco: os marcados como destaque ocupam a linha toda e os demais se reorganizam em pares.
   // Se não houver outro pequeno para fazer par, o produto fica sozinho com o espaço ao lado vazio. ponytail: puxa o próximo pequeno para a vaga, sem outras otimizações.
@@ -120,7 +120,7 @@
     const codeText = item.rows.length > 1 ? 'Consulte códigos' : (firstCode ? M.formatCode(firstCode) : '');
     const photo = item.photo || M.photoUrl(firstCode);
     const link = validLink(item.link);
-    return '<article class="consolidado-card' + (wide ? ' wide' : '') + '" data-item-id="' + esc(item.id) + '" data-link="' + esc(link) + '"><h3 class="consolidado-card-title"' + EDIT + ' data-fmt="titleHtml">' + rich(item.titleHtml, esc(item.title)) + '</h3><span class="consolidado-code"' + EDIT + ' data-fmt="codeHtml">' + rich(item.codeHtml, esc(codeText)) + '</span><div class="consolidado-photo" style="transform:' + photoTransform(item) + '"><img crossorigin="anonymous" src="' + esc(photo) + '" alt=""><span class="photo-fallback">Foto indisponível</span></div><div class="consolidado-link' + (link ? '' : ' missing') + '"><img class="link-icon" src="consolidado-assets/icone-link.png" alt=""><span' + EDIT + ' data-fmt="ctaHtml">' + rich(item.ctaHtml, 'CLIQUE AQUI PARA VISUALIZAR<br>O INFORMATIVO COMPLETO') + '</span></div></article>';
+    return '<article class="consolidado-card' + (wide ? ' wide' : '') + '" data-item-id="' + esc(item.id) + '" data-link="' + esc(link) + '"><h3 class="consolidado-card-title"' + EDIT + ' data-fmt="titleHtml">' + rich(item.titleHtml, esc(item.title)) + '</h3><span class="consolidado-code"' + EDIT + ' data-fmt="codeHtml">' + rich(item.codeHtml, esc(codeText)) + '</span><div class="consolidado-photo" style="transform:' + photoTransform(item) + '"><img crossorigin="anonymous" src="' + esc(photo) + '" alt=""><span class="photo-fallback">Foto indisponível</span></div><div class="consolidado-link' + (link ? '' : ' missing') + '"><img class="link-icon" src="consolidado/assets/icone-link.png" alt=""><span' + EDIT + ' data-fmt="ctaHtml">' + rich(item.ctaHtml, 'CLIQUE AQUI PARA VISUALIZAR<br>O INFORMATIVO COMPLETO') + '</span></div></article>';
   }
 
   function pageHtml(items) {
@@ -331,6 +331,7 @@
 
   async function readWorkbook(file) {
     try {
+      await PortalShell.loadScript('vendor/xlsx.full.min.js'); /* só baixa na primeira importação */
       state.sourceName = file.name; $('fileName').textContent = file.name; state.workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
       $('sheetSelect').innerHTML = state.workbook.SheetNames.map(name => '<option>' + esc(name) + '</option>').join(''); $('sheetField').hidden = false;
       const wanted = +monthValue().split('-')[1]; const match = state.workbook.SheetNames.find(name => M.monthNumber(name) === wanted); $('sheetSelect').value = match || state.workbook.SheetNames[state.workbook.SheetNames.length - 1]; chooseSheet();
@@ -416,6 +417,7 @@
   async function exportPdf() {
     const button = $('exportPdf'), label = button.innerHTML; button.disabled = true; button.textContent = 'Gerando…';
     try {
+      await Promise.all(['vendor/html2canvas.min.js', 'vendor/jspdf.umd.min.js'].map(PortalShell.loadScript)); /* só baixam no primeiro PDF */
       const pages = [...$('pagesPreview').querySelectorAll('.consolidado-page')]; const { jsPDF } = window.jspdf; let pdf; await waitForImages(pages[0]); if (!(await exportWarnings(pages[0]))) return;
       for (let index = 0; index < pages.length; index++) {
         const page = pages[index]; await waitForImages(page); const height = page.offsetHeight, scale = Math.max(1, Math.min(3, 16000 / height)); /* 3x = 2400 px de largura; limita a altura do canvas (máx. do navegador ~16000 px) em informativos muito longos */ const canvas = await html2canvas(page, { scale, useCORS: true, backgroundColor: '#f6be00', logging: false, onclone: clonedDoc => ConsolidadoExport.bakeImages(page, clonedDoc.querySelector('.consolidado-page'), scale) });

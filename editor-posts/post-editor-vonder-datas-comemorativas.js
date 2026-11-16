@@ -713,7 +713,7 @@
       var el=$(FIELDS[key].id);
       el.addEventListener('input',function(){if(isTitle(key)){syncName();autoWhite()}if(key==='white')V.whiteAuto=false;postEdited(key);API&&API.redraw()});
       if(SINGLE_LINE[key])el.addEventListener('keydown',function(ev){if(ev.key==='Enter')ev.preventDefault()});
-      // A↑/A↓ da barra flutuante (cartaz-title-format.js): mexem só no tamanho deste texto
+      // A↑/A↓ da barra flutuante (comum/title-format.js): mexem só no tamanho deste texto
       el.addEventListener('titlesize',function(ev){ev.stopPropagation();bump(key,ev.detail);API&&API.redraw()})
     });
     // com 1 foto a forma amarela nasce embaixo (arte do Agricultor); só acompanha se ainda estiver na posição inicial

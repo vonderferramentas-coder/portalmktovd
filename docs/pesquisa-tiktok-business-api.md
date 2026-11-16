@@ -41,7 +41,7 @@ Data da pesquisa: 17/09/2026. Contexto: `docs/ARQUITETURA-E-INTEGRACOES.md`, se�
 **Trade-offs práticos dessa rota (não uma questão de viabilidade técnica, e sim de produto/segurança/custo):**
 1. **Custo:** Supermetrics e Metricool são produtos pagos por assinatura (não há tier gratuito para conectores de API/exportação); adicionaria uma despesa recorrente só para preencher um card do painel.
 2. **Compartilhamento de credencial:** o login "com as mesmas credenciais do app mobile" significa autenticar a conta oficial `@vonderferramentas` (ou equivalente) dentro de uma ferramenta terceira - implica avaliar quem passa a ter esse acesso e como revogar se necessário.
-3. **Integração de dados:** mesmo aprovando o uso de um agregador, ainda seria preciso um passo de engenharia para puxar os dados da Supermetrics/Metricool (API própria delas, ou exportação agendada para planilha/BigQuery) e alimentar `followers-dashboard.js`/`data/social-followers-live.json` - não é um substituto direto "plug-and-play" do workflow GitHub Actions que já existe para Instagram/Facebook/YouTube.
+3. **Integração de dados:** mesmo aprovando o uso de um agregador, ainda seria preciso um passo de engenharia para puxar os dados da Supermetrics/Metricool (API própria delas, ou exportação agendada para planilha/BigQuery) e alimentar `redes-sociais/followers-dashboard.js`/`data/social-followers-live.json` - não é um substituto direto "plug-and-play" do workflow GitHub Actions que já existe para Instagram/Facebook/YouTube.
 
 ## Recomendação final
 

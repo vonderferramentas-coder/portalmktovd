@@ -1,4 +1,4 @@
-import { db, getDoc, getDocs, readReadStats, clearReadStats } from './firebase-client.js';
+import { db, getDoc, getDocs, readReadStats, clearReadStats } from '../firebase-client.js';
 import { collection, doc, query, where } from 'https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js';
 
 const $ = id => document.getElementById(id);
