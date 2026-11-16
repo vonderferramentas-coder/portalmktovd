@@ -35,6 +35,7 @@ PortalTour.register('gerador-cartazes', {
       steps: [
         { target: '.cg-tip-btn[aria-label="Como preparar a planilha"]', interact: true, title: 'Como preparar a planilha', text: 'Passe o mouse ou clique no "i" para ler quais colunas o Excel precisa ter. Uma linha por produto.' },
         { target: 'label.upload', title: 'Selecionar planilha', text: 'Clique aqui e escolha o arquivo .xlsx ou .xls. Ele precisa estar tratado, no formato descrito no "i" ao lado. Neste tutorial nada é importado.' },
+        { target: '#groupBy', title: 'Agrupar por', text: 'Aparece depois de ler a planilha. Escolha a coluna que define o card: linhas seguidas com o mesmo valor (ou com a célula vazia, como numa mesclagem) entram no mesmo card. Em Automático vale o código de barras ou o título.' },
         { target: '#manualItemBtn', title: 'Adicionar item na mão', text: 'Falta um produto na planilha? Adicione aqui, sem precisar mexer no Excel.' },
         { target: '.cg-metrics', title: 'Resumo da importação', text: 'Conta marcas, produtos, páginas A4 e A3, produtos sem código de barras e códigos ocultos. Confira se os números batem com a planilha.' },
         { target: '#metricIssuesBox', interact: true, title: 'Observações nos textos', text: 'Mostra quantos textos têm problemas, como erro de grafia ou formato fora do padrão. Clique para abrir a revisão e corrigir um a um.' },

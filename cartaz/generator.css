@@ -2234,6 +2234,7 @@ button:disabled {
 .cfg-pv-head strong { display: block; margin-left: -10px; padding: 3px 10px; background: #fdc300; color: #00445c; font-size: 15px; }
 .cfg-pv-head span { padding: 4px 0 0 4px; font-size: 11px; }
 .cfg-pv-head img { max-width: 90px; max-height: 60px; object-fit: contain; }
+.cfg-pv-img { margin: -26px -10px 0; } .cfg-pv-img img { display: block; width: 100%; height: auto; } .cfg-pv-img em { display: grid; place-items: center; height: 74px; color: #fff; opacity: .6; font: 700 11px Arial, sans-serif; }
 .cfg-pv-head em { color: #fff; opacity: .6; font: 700 11px Arial, sans-serif; }
 .cfg-colors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .cfg-fld { border: 1px solid var(--cg-line); border-radius: 10px; background: var(--cg-btn-bg); interpolate-size: allow-keywords; }
@@ -2319,6 +2320,11 @@ button:disabled {
 .sheet.lb-sheet:not(.lb-header-full)::after, .sheet.lb-sheet:not(.lb-header-full) .sheet-heading { display: none; }
 .sheet.lb-sheet.lb-header-full { padding-top: 165px; }
 .sheet.lb-sheet.a3.lb-header-full { padding-top: 245px; }
+.sheet.no-logo::after { display: none; } /* logo desligada no template */
+/* header personalizado: imagem única de ponta a ponta no topo (largura da folha: A4 794 px, A3 1123 px); --hr = altura/largura da imagem */
+.sheet.lb-sheet.lb-header-img { padding-top: calc(794px * var(--hr, .2) + 12px); }
+.sheet.lb-sheet.a3.lb-header-img { padding-top: calc(1123px * var(--hr, .2) + 16px); }
+.lb-hdr-img { position: absolute; z-index: 6; top: 0; left: 0; width: 100%; height: auto; display: block; pointer-events: none; }
 /* altura das linhas definida por fitLiveRows (cards largos): linhas fixas, conjunto centralizado */
 .sheet.lb-sheet.cfg-grid { grid-template-rows: repeat(var(--rows), var(--rowh, minmax(0, 1fr))); align-content: center; }
 .sheet.lb-sheet.cfg-grid { grid-template-columns: repeat(var(--cols), var(--colw, minmax(0, 1fr))); justify-content: center; } /* --colw: ver fitLiveRows */
@@ -2370,7 +2376,7 @@ button:disabled {
 .sheet-label { margin: 14px 0 4px; color: #52636c; font: 700 12px/1 Arial, sans-serif; letter-spacing: .04em; text-transform: uppercase; }
 .lb-strip { position: absolute; z-index: 5; left: 0; right: 0; top: 0; height: calc(14px * var(--u)); }
 .card.lb h3 { font-size: calc(11.5px * var(--u)); }
-.card.lb .lb-table { font-size: calc(7px * var(--u)); line-height: 1.15; }
+.card.lb .lb-table { font-size: calc(var(--tb, 7px) * var(--u)); line-height: 1.15; } /* --tb: fonte base da tabela (config tableSize) */
 .card.lb .lb-qty { font-size: calc(6.6px * var(--u)); }
 .card.lb .lb-qr { width: calc(54px * var(--u) * var(--qk, 1)); aspect-ratio: 1; flex: none; cursor: pointer; }
 .card.lb .lb-qr .qr-svg { display: block; width: 100%; height: 100%; }
@@ -2395,6 +2401,11 @@ button:disabled {
 
 /* ===== Live Shop: destaque (2 colunas) e lista de cards da marca ===== */
 /* destaque: QR+botão e foto formam um conjunto centralizado e próximo, em vez de cada um colado numa ponta */
+/* contorno do card: elemento próprio (borda real), porque o html2canvas desenha sombra interna errada na exportação */
+.card.lb .lb-outline { position: absolute; top: 0; left: 0; right: 0; bottom: 0; box-sizing: border-box; border-radius: inherit; pointer-events: none; z-index: 4; }
+/* card sozinho na linha, centralizado: ocupa a linha toda mas mantém a largura de uma coluna (--colw quando as colunas encolhem; --cc = nº de colunas) */
+.card.lb.centered { justify-self: center; width: var(--cw, calc((100% - (var(--cc) - 1) * 8px) / var(--cc))); }
+.sheet.a3 .card.lb.centered { width: var(--cw, calc((100% - (var(--cc) - 1) * 10px) / var(--cc))); }
 .card.lb.wide .lb-body { display: flex; justify-content: center; align-items: stretch; gap: 4px; }
 .card.lb.wide .lb-left { flex: 0 0 22.4%; } /* QR+botão e foto do destaque têm o tamanho de um card comum (a foto pode ganhar zoom pelo editor) */
 .card.lb.wide .lb-right { flex: 0 0 22.4%; }
@@ -2537,3 +2548,6 @@ button:disabled {
 .card.lb .lb-foot.stack .lb-table, .card.lb .lb-foot.stack .lb-tables { flex: none; width: 100%; }
 .card.lb .lb-foot.stack .ean { align-self: flex-end; }
 .card.lb .lb-foot .lb-qr-missing { width: 42%; aspect-ratio: auto; min-height: 28px; }
+.cg-groupby { display: grid; gap: 4px; margin-top: 12px; font-size: 13px; }
+.cg-groupby[hidden] { display: none; }
+.cg-groupby select { min-height: 36px; padding: 0 8px; border: 1px solid var(--cg-line); border-radius: 8px; background: var(--cg-btn-bg); color: inherit; font: inherit; }
