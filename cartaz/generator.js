@@ -302,18 +302,20 @@
     function bindCardDrag(root) {
         let panel = root.closest('.pages');
         root.querySelectorAll('.brand-card-row').forEach(card => {
-            /* segurar (350ms, ou Shift na hora) em qualquer ponto do cabeçalho do cardzinho arrasta; só a seta continua abrindo/fechando o cardzinho */
+            /* clicar e mover 6 px (mouse; ou segurar 350ms em toque, ou Shift na hora) em qualquer ponto do cabeçalho do cardzinho arrasta; só a seta continua abrindo/fechando o cardzinho */
+            card.ondragstart = ev => { if (ev.target.closest?.('.bc-head')) ev.preventDefault(); }; /* o arrasto nativo da miniatura do cabeçalho cancelaria o nosso (pointercancel); o corpo editável fica de fora */
             card.onpointerdown = down => {
                 if (down.button || !down.target.closest('.bc-head') || down.target.closest('.bc-kebab, .bc-cut')) return;
                 let x = down.clientX, y = down.clientY, hold = 0, stop = () => { clearTimeout(hold); document.removeEventListener('pointermove', watch); document.removeEventListener('pointerup', stop); document.removeEventListener('pointercancel', stop); },
-                    watch = move => { if (Math.hypot(move.clientX - down.clientX, move.clientY - down.clientY) > 6) stop(); else { x = move.clientX; y = move.clientY; } };
+                    /* com o mouse o arrasto começa assim que o ponteiro anda 6 px (sem esperar os 350 ms); em toque/caneta continua valendo segurar, para não competir com a rolagem */
+                    watch = move => { if (Math.hypot(move.clientX - down.clientX, move.clientY - down.clientY) > 6) { stop(); if (down.pointerType === 'mouse') startDrag(down.clientX, down.clientY, move); } else { x = move.clientX; y = move.clientY; } };
                 if (down.shiftKey) { down.preventDefault(); return startDrag(down.clientX, down.clientY); }
                 hold = setTimeout(() => { stop(); startDrag(x, y); }, 350); document.addEventListener('pointermove', watch); document.addEventListener('pointerup', stop); document.addEventListener('pointercancel', stop);
             };
-            let startDrag = (startX, startY) => {
+            let startDrag = (startX, startY, firstMove) => {
                 card.querySelector('.bc-body')?.remove();
                 let box = card.getBoundingClientRect(), grabX = startX - box.left, grabY = startY - box.top, ghost = card.cloneNode(true);
-                ghost.classList.add('drag-ghost'); ghost.style.cssText = 'left:' + box.left + 'px;top:' + box.top + 'px;width:' + box.width + 'px'; document.body.style.cursor = 'grabbing'; panel.appendChild(ghost); /* dentro de .pages: os estilos dos controles do cardzinho são escopados nele */ card.classList.add('drag-placeholder');
+                ghost.classList.add('drag-ghost'); ghost.style.cssText = 'left:' + box.left + 'px;top:' + box.top + 'px;width:' + box.width + 'px'; document.body.style.cursor = 'grabbing'; document.body.style.userSelect = 'none'; getSelection().removeAllRanges(); panel.appendChild(ghost); /* dentro de .pages: os estilos dos controles do cardzinho são escopados nele */ card.classList.add('drag-placeholder');
                 let pointerY = startY, scrollSpeed = 0, frame = 0, ended = false, rowsOf = () => [...root.querySelectorAll('.brand-card-row')];
                 let place = () => {
                     let before = rowsOf().filter(entry => entry !== card).find(entry => { let r = entry.getBoundingClientRect(); return pointerY < r.top + r.height / 2; }) || null;
@@ -325,7 +327,7 @@
                 let tick = () => { if (ended) return; if (scrollSpeed) { panel.scrollTop += scrollSpeed; place(); } frame = requestAnimationFrame(tick); };
                 let onMove = move => { pointerY = move.clientY; ghost.style.transform = 'translate(' + (move.clientX - grabX - box.left) + 'px,' + (pointerY - grabY - box.top) + 'px) scale(1.02)'; let area = panel.getBoundingClientRect(); scrollSpeed = pointerY < area.top + 48 ? -8 : pointerY > area.bottom - 48 ? 8 : 0; place(); };
                 let finish = commit => {
-                    if (ended) return; ended = true; document.body.style.cursor = ''; cancelAnimationFrame(frame); document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('pointercancel', onCancel);
+                    if (ended) return; ended = true; document.body.style.cursor = ''; document.body.style.userSelect = ''; cancelAnimationFrame(frame); document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('pointercancel', onCancel);
                     swallowNextClick(400); /* o soltar não deve abrir/fechar o cardzinho */
                     let slot = card.getBoundingClientRect(); ghost.style.transition = 'transform .16s ease, opacity .16s ease'; ghost.style.transform = 'translate(' + (slot.left - box.left) + 'px,' + (slot.top - box.top) + 'px)'; ghost.style.opacity = '.6';
                     setTimeout(() => {
@@ -336,7 +338,7 @@
                     }, 170);
                 };
                 let onUp = () => finish(true), onCancel = () => finish(false);
-                document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp); document.addEventListener('pointercancel', onCancel); tick();
+                document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp); document.addEventListener('pointercancel', onCancel); tick(); if (firstMove) onMove(firstMove); /* o fantasma já nasce sob o cursor, sem esperar o próximo movimento */
             };
         });
     }
@@ -604,7 +606,7 @@
             cardsMenu = brand => { if (!openBrand(brand)) return '';
                 return '<div class="bc-collapse' + (S.animBrand ? ' is-closed' : '') + '"><div class="bc-collapse-inner"><div class="brand-cards">' + S.pages.flatMap((page, pi) => page.brand === brand ? page.items.map((item, ii) => ({ item, pi, ii, cols: page.cols })) : []).map(({ item, pi, ii, cols }, n) => {
                     let id = pi + ':' + ii, open = (S.openCard || []).includes(item), plain = plainTitle(item);
-                    return '<div class="brand-card-row' + (item.wide ? ' is-wide' : '') + '"><div class="bc-head"><button type="button" class="bc-open" data-open-card="' + id + '" title="' + e(plain) + ' — segure e arraste para reordenar; Alt+↑ / Alt+↓ move" aria-expanded="' + open + '"><span class="n">' + (n + 1) + '</span>' + thumb(item) + '<span class="t">' + e(plain).replace(/\//g, '/\u200b') + '</span></button>' + (item.hiddenCodes ? '<button type="button" class="bc-cut" data-cut="' + id + '" title="' + item.hiddenCodes + ' linha(s) fora do cartão - clique para ver as opções" aria-label="Linhas fora do cartão">!</button>' : '') + (item.consult ? '<button type="button" class="bc-cut bc-undo" data-cut-undo="' + id + '" title="Voltar a tabela original (desfaz &quot;Consulte códigos&quot;)" aria-label="Desfazer Consulte códigos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>' : '') + '<button type="button" class="bc-kebab" data-card-menu="' + id + '" aria-label="Opções do produto" aria-haspopup="menu">' + KEBAB + '</button></div>'
+                    return '<div class="brand-card-row' + (item.wide ? ' is-wide' : '') + '"><div class="bc-head"><button type="button" class="bc-open" data-open-card="' + id + '" title="' + e(plain) + ' — arraste para reordenar (em toque ou caneta, segure e arraste); Alt+↑ / Alt+↓ move" aria-expanded="' + open + '"><span class="n">' + (n + 1) + '</span>' + thumb(item) + '<span class="t">' + e(plain).replace(/\//g, '/\u200b') + '</span></button>' + (item.hiddenCodes ? '<button type="button" class="bc-cut" data-cut="' + id + '" title="' + item.hiddenCodes + ' linha(s) fora do cartão - clique para ver as opções" aria-label="Linhas fora do cartão">!</button>' : '') + (item.consult ? '<button type="button" class="bc-cut bc-undo" data-cut-undo="' + id + '" title="Voltar a tabela original (desfaz &quot;Consulte códigos&quot;)" aria-label="Desfazer Consulte códigos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>' : '') + '<button type="button" class="bc-kebab" data-card-menu="' + id + '" aria-label="Opções do produto" aria-haspopup="menu">' + KEBAB + '</button></div>'
                         + (open ? '<div class="bc-collapse' + (S.animCard === item ? ' is-closed' : '') + '"><div class="bc-collapse-inner"><div class="bc-body">'+ field('t:' + id, 'Título', plain) + field('q:' + id, 'Quantidade mínima', CartazCards.minQty(item)) + CartazCards.lines(item).map((r, ri, all) => '<div class="bc-pair">' + field('d:' + id + ':' + ri, 'Descrição', r.desc) + field('c:' + id + ':' + ri, 'Código', r.code) + '<button type="button" class="bc-row-del" data-row-del="' + id + ':' + ri + '" aria-label="Remover linha" title="Remover linha"' + (all.length < 2 ? ' disabled' : '') + '>' + CLOSE + '</button></div>').join('') + '<button type="button" class="bc-row-add" data-row-add="' + id + '">+ Adicionar linha</button></div></div></div>' : '') + '</div>'; }).join('') + '</div></div></div>'; };
         let hintsHtml = brand => { if (!live || brand !== S.brand || S.linking) return ''; let brandPages = S.pages.filter(page => page.brand === brand); return brandPages.map((page, i) => { let pi = S.pages.indexOf(page), note = emptyNote(page, pi, i, brandPages.length); return note ? note.replace(' data-html2canvas-ignore', '').replace('empty-note', 'empty-note in-panel') : ''; }).join(''); };
         let countText = cards => '<small class="brand-count">(' + cards + (cards === 1 ? ' item' : ' itens') + ')</small>';

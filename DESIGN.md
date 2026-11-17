@@ -57,9 +57,11 @@ O cursor mostra a função da área:
 
 ## 4. Reordenar por arrastar
 
-Padrão do Gerador de Consolidado, reaproveitado no Gerador de Cartazes, em Datas comemorativas e nos cards do Calendário de Postagens (grade e lista; ali o card também pode cair em outro dia; `bindPostDrag` em `calendario/app.js`; ali só com mouse e sem espera: o arrasto começa ao mover 6 px, porque o card não tem outro gesto de arrastar):
+Padrão do Gerador de Consolidado, reaproveitado no Gerador de Cartazes, em Datas comemorativas e nos cards do Calendário de Postagens (grade e lista; ali o card também pode cair em outro dia; `bindPostDrag` em `calendario/app.js`).
 
-- Segurar ~350 ms (ou **Shift**, na hora) e arrastar; mover mais de 6 px antes disso cancela e vale o gesto normal da área.
+- **Começar, com mouse no Calendário de Postagens e no Gerador de Cartazes:** clicar e mover 6 px já arrasta, sem espera; um clique parado continua sendo clique. O Calendário é só mouse.
+- **Começar, nos demais casos** (toque e caneta no Gerador de Cartazes, e as outras telas): segurar ~350 ms (ou **Shift**, na hora) e arrastar; mover mais de 6 px antes disso cancela e vale o gesto normal da área.
+- Se o elemento tiver imagem, bloqueie o `dragstart` nativo dela, senão o navegador cancela o arrasto (`pointercancel`).
 - Um **cartão fantasma** (sombra, leve zoom) segue o ponteiro; o lugar de origem fica **tracejado**; os vizinhos **deslizam** (FLIP, `.18s`); ao soltar, o fantasma assenta em `.16s`.
 - Soltar não pode disparar o clique do elemento (engolir o próximo clique).
 - Todo arrastar tem alternativa por teclado: **Alt+↑/↓** e itens no menu ⋮.
