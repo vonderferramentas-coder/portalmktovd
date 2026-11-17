@@ -547,7 +547,7 @@
        como "atenção" mesmo se o usuário escolher um tema de cor amarelo/dourado */
     .day-status-icon{width:14px;height:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:help}
     .day-status-icon.is-pending svg{width:100%;height:100%}
-    .posts{margin-top:8px;flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column}
+    .posts{margin-top:6px;padding-top:2px;flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column}
     .more-badge{position:absolute;right:8px;bottom:8px;background:var(--card);border-radius:var(--radius-sm);padding:3px 9px;border:1px solid var(--border);font-size:11px;font-weight:700;color:var(--accent-ink);box-shadow:var(--shadow-sm);cursor:pointer}
     .more-badge:hover{background:var(--accent-weak)}
 
@@ -568,11 +568,18 @@
     @media (max-width:1000px){.grid-week{grid-template-columns:repeat(2,1fr)}}
 
     /* Cartão de postagem (evento) dentro de uma célula do calendário */
-    .event{position:relative;display:flex;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:6px 8px 6px 10px;margin-bottom:5px;box-shadow:var(--event-shadow);cursor:grab;overflow:hidden;transition:box-shadow .15s,border-color .15s,transform .15s}
-    .event:hover{box-shadow:var(--event-shadow-hover);border-color:var(--border-strong);transform:translateY(-2px)}
-    .event[draggable="true"]{transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .18s,box-shadow .15s,border-color .15s}
-    .event.dragging{opacity:0.5;transform:scale(.98)}
-    .event.moving{transition:transform .36s cubic-bezier(.2,.9,.2,1)}
+    .event{position:relative;display:flex;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:6px 8px 6px 10px;margin-bottom:5px;box-shadow:var(--event-shadow);cursor:grab;overflow:hidden;transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .25s ease,box-shadow .15s,border-color .15s,background-color .25s ease,filter .25s ease}
+    .event:hover,.event.menu-open{box-shadow:var(--event-shadow-hover);border-color:var(--border-strong);transform:translateY(-2px)}
+    /* com o menu aberto o card não levita: assim nada se mexe no card ao clicar em uma opção do menu */
+    .event.menu-open{transform:none}
+    .event.is-published,.list-row.is-published{background:var(--surface-muted);filter:grayscale(1);opacity:.55}
+    /* arrastar para reordenar (DESIGN §4): origem tracejada que anda até onde o card vai cair + cartão fantasma */
+    .event.drag-placeholder,.list-row.drag-placeholder{border:1.5px dashed var(--accent);background:var(--accent-weak);box-shadow:none;transform:none;filter:none;opacity:1}
+    .event.drag-placeholder > *,.list-row.drag-placeholder > *{visibility:hidden}
+    .event.drag-ghost,.list-row.drag-ghost{position:fixed;z-index:2000;margin:0;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.25);will-change:transform;transition:none;cursor:grabbing;filter:none;opacity:.94}
+    .event{user-select:none}
+    @media (prefers-reduced-motion: reduce){.event,.list-row{transition:none!important}}
+    .event.is-published:hover,.list-row.is-published:hover,.event.is-published.menu-open,.list-row.is-published.menu-open{opacity:.8}
     .event-bar{position:absolute;left:0;top:0;bottom:0;width:3px}
     /* cor da barra = tipo da publicação (vídeo laranja, estático verde) */
     .event-bar.is-video{background:var(--type-video)}
@@ -597,13 +604,6 @@
     .event-menu button:hover{background:var(--surface-muted)}
     .event-menu button.danger{color:var(--danger)}
 
-    /* Destaque visual da célula quando um card está sendo arrastado sobre ela */
-    .day.drag-over{outline:2px dashed var(--accent);outline-offset:-2px;border-radius:var(--radius-md)}
-
-    /* Indicador de posição ao arrastar um card/linha para reordenar dentro do mesmo dia */
-    .event.drop-before,.list-row.drop-before{box-shadow:inset 0 2px 0 0 var(--accent)}
-    .event.drop-after,.list-row.drop-after{box-shadow:inset 0 -2px 0 0 var(--accent)}
-
     /* Layout responsivo: grade de 7 colunas vira 2 colunas em telas estreitas */
     @media (max-width:1000px){.grid-month,.weekday-header{grid-template-columns:repeat(2,1fr)}}
 
@@ -615,10 +615,9 @@
     .list-date-dow{font-size:12px;color:var(--muted);text-transform:capitalize}
     .list-date.today .list-date-num{color:var(--accent-ink)}
     .today-badge{margin-left:auto;background:var(--accent);color:var(--on-accent);font-size:10px;font-weight:700;padding:2px 9px;border-radius:var(--radius-sm)}
-    .list-row{position:relative;display:flex;align-items:flex-start;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
+    .list-row{position:relative;display:flex;align-items:flex-start;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background-color .25s ease,filter .25s ease,opacity .25s ease}
     .list-row:last-child{border-bottom:none}
-    .list-row:hover{background:var(--surface-muted)}
-    .list-row.dragging{opacity:0.5}
+    .list-row:hover,.list-row.menu-open{background:var(--surface-muted)}
     .list-row-bar{width:4px;align-self:stretch;border-radius:4px;flex-shrink:0}
     .drag-handle{cursor:grab;color:var(--text-faint);font-size:14px;flex-shrink:0;line-height:1;display:inline-flex;align-items:center;margin-top:2px}
     .list-row-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}

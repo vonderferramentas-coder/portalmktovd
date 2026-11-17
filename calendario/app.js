@@ -1456,6 +1456,25 @@
         }
       });
     }
+    // FLIP (DESIGN §4): guarda a posição de cada card, roda `change` (que redesenha o calendário) e faz
+    // os cards deslizarem .18s da posição antiga para a nova; sem movimento em prefers-reduced-motion
+    function flipAfter(change, skipEl){
+      const sel = '.event[data-id],.list-row[data-id]';
+      const first = new Map(Array.from(document.querySelectorAll(sel), el=> [el.dataset.id, el.getBoundingClientRect()]));
+      change();
+      if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      // tira o deslize ainda em andamento de um FLIP anterior, senão a posição final sai medida errada
+      document.querySelectorAll(sel).forEach(el=>{ el.style.transition = 'none'; el.style.transform = ''; });
+      document.querySelectorAll(sel).forEach(el=>{
+        const a = first.get(el.dataset.id); if(!a || el===skipEl) return;
+        const b = el.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top;
+        if(!dx && !dy) return;
+        el.style.transition = 'none'; el.style.transform = `translate(${dx}px,${dy}px)`;
+        el.offsetWidth; // força o layout para a transição partir da posição antiga
+        el.style.transition = 'transform .18s ease'; el.style.transform = '';
+        clearTimeout(el._flipT); el._flipT = setTimeout(()=>{ el.style.transition = ''; }, 200);
+      });
+    }
     // move `draggedPost` para o dia/posição de `targetPost` (antes ou depois dele)
     // e reindexa o `order` dos dias afetados; registra a ação no histórico de desfazer
     function reorderPost(draggedPost, targetPost, insertBefore){
@@ -1476,9 +1495,85 @@
         srcList.forEach((p,i)=> p.order = i);
       }
       saveState();
-      buildCalendar(); render();
+      flipAfter(()=>{ buildCalendar(); render(); });
       pushUndo({ type:'reorder', changes: beforeStates });
       redoStack = [];
+    }
+    // ARRASTAR PARA REORDENAR (DESIGN §4), mesmo visual do Gerador de Cartazes: clicar e arrastar (o arrasto
+    // começa ao mover 6 px, então um clique normal continua abrindo o card); um cartão fantasma segue o mouse,
+    // o lugar de origem vira o espaço tracejado que anda até onde o card vai cair (também em outro dia) e os
+    // vizinhos deslizam. Ao soltar, grava via reorderPost (Ctrl+Z).
+    // ponytail: só mouse (o arrasto nativo antigo também não funcionava em toque); sem rolagem automática da
+    // página durante o arrasto nem alternativa por teclado (Alt+↑/↓); a posição ao soltar considera só os cards
+    // visíveis, então num dia com "+N" ou filtro ativo o card cai antes dos cards ocultos que vêm depois do vizinho.
+    function bindPostDrag(el, p){
+      // sem isto o navegador inicia o arrasto nativo de um ícone/texto do card e cancela o nosso (pointercancel)
+      el.addEventListener('dragstart', ev=> ev.preventDefault());
+      el.addEventListener('pointerdown', down=>{
+        if(down.button || down.pointerType!=='mouse' || down.target.closest('.event-menu-btn,.list-row-menu-btn')) return;
+        const stop = ()=>{ document.removeEventListener('pointermove', watch); document.removeEventListener('pointerup', stop); document.removeEventListener('pointercancel', stop); };
+        const watch = mv=>{
+          if(Math.hypot(mv.clientX-down.clientX, mv.clientY-down.clientY) <= 6) return;
+          stop(); startDrag(down.clientX, down.clientY, mv);
+        };
+        document.addEventListener('pointermove', watch); document.addEventListener('pointerup', stop); document.addEventListener('pointercancel', stop);
+      });
+      function startDrag(startX, startY, firstMove){
+        closeAllCardMenus();
+        const isGrid = el.classList.contains('event');
+        const box = el.getBoundingClientRect(), grabX = startX - box.left, grabY = startY - box.top;
+        const home = el.parentElement, homeNext = el.nextElementSibling;
+        const ghost = el.cloneNode(true); ghost.removeAttribute('data-id'); ghost.classList.remove('menu-open'); ghost.classList.add('drag-ghost');
+        ghost.style.cssText = `left:${box.left}px;top:${box.top}px;width:${box.width}px`;
+        document.body.appendChild(ghost); document.body.style.cursor = 'grabbing'; document.body.style.userSelect = 'none';
+        el.classList.add('drag-placeholder');
+        let ended = false;
+        const place = (cx, cy)=>{
+          const t = document.elementFromPoint(cx, cy); if(!t || !el.isConnected) return;
+          const zone = isGrid ? (t.closest('.day[data-date]') || document.createElement('i')).querySelector('.posts') : t.closest('.list-group');
+          if(!zone) return;
+          const before = Array.from(zone.querySelectorAll(':scope > .event,:scope > .list-row')).filter(i=> i!==el)
+            .find(i=>{ const r = i.getBoundingClientRect(); return cy < r.top + r.height/2; }) || null;
+          if(el.parentElement===zone && el.nextElementSibling===before) return;
+          flipAfter(()=> zone.insertBefore(el, before), el);
+        };
+        const onMove = mv=>{
+          ghost.style.transform = `translate(${mv.clientX-grabX-box.left}px,${mv.clientY-grabY-box.top}px) scale(1.02)`;
+          place(mv.clientX, mv.clientY);
+        };
+        const onKey = k=>{ if(k.key==='Escape') finish(false); };
+        const onUp = ()=> finish(true), onCancel = ()=> finish(false);
+        const finish = commit=>{
+          if(ended) return; ended = true;
+          document.body.style.cursor = ''; document.body.style.userSelect = '';
+          document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('pointercancel', onCancel); document.removeEventListener('keydown', onKey);
+          if(!commit){ if(el.isConnected) flipAfter(()=> home.insertBefore(el, homeNext), el); ghost.remove(); el.classList.remove('drag-placeholder'); return; }
+          // o soltar não deve abrir o card: engole o clique que o navegador dispara em seguida
+          const eat = ev=>{ ev.stopPropagation(); ev.preventDefault(); };
+          document.addEventListener('click', eat, { capture:true, once:true }); setTimeout(()=> document.removeEventListener('click', eat, true), 400);
+          const slot = el.getBoundingClientRect();
+          ghost.style.transition = 'transform .16s ease, opacity .16s ease';
+          ghost.style.transform = `translate(${slot.left-box.left}px,${slot.top-box.top}px)`; ghost.style.opacity = '.6';
+          setTimeout(()=>{ ghost.remove(); el.classList.remove('drag-placeholder'); commitPostDrop(p, el, home, homeNext); }, 170);
+        };
+        document.addEventListener('pointermove', onMove); document.addEventListener('pointerup', onUp); document.addEventListener('pointercancel', onCancel); document.addEventListener('keydown', onKey);
+        if(firstMove) onMove(firstMove);
+      }
+    }
+    // grava no estado o lugar onde o card foi solto: antes/depois do vizinho de DOM, ou fim de um dia vazio
+    function commitPostDrop(p, el, home, homeNext){
+      if(!el.isConnected) return; // o calendário foi redesenhado (sincronização, filtro) durante o arrasto
+      if(el.parentElement===home && el.nextElementSibling===homeNext) return;
+      const item = n=> (n && n.matches('.event,.list-row')) ? state.posts.find(x=>x.id===n.dataset.id) : null;
+      const next = item(el.nextElementSibling), prev = item(el.previousElementSibling);
+      if(next) return reorderPost(p, next, true);
+      if(prev) return reorderPost(p, prev, false);
+      const date = el.closest('[data-date]').dataset.date;
+      if(p.date===date) return;
+      const beforeState = [{ id:p.id, date:p.date, order:p.order }];
+      p.date = date; p.order = nextOrderForDate(date, p.id);
+      saveState(); flipAfter(()=>{ buildCalendar(); render(); });
+      pushUndo({ type:'reorder', changes: beforeState }); redoStack = [];
     }
     // aplica um conjunto de estados {id,date,order} salvos, retornando os estados anteriores (para desfazer/refazer)
     function applyOrderStates(changes){
@@ -1704,48 +1799,6 @@
       // próprios cliques, então não disparam este handler também.
       cell.style.cursor = 'pointer';
       cell.addEventListener('click', ()=> openDayPosts(dateStr));
-      // permite soltar uma postagem arrastada nesta célula
-      cell.addEventListener('dragover', ev=>{ ev.preventDefault(); cell.classList.add('drag-over'); });
-      cell.addEventListener('dragleave', ev=>{ cell.classList.remove('drag-over'); });
-      cell.addEventListener('drop', ev=>{
-        ev.preventDefault(); cell.classList.remove('drag-over');
-        const id = ev.dataTransfer.getData('text/plain');
-        if(!id) return;
-        const post = state.posts.find(x=>x.id===id);
-        if(!post) return;
-        const from = post.date;
-        const to = cell.dataset.date;
-        if(from===to) return;
-        // animação FLIP: captura a posição do card antes de mover
-        const srcEl = document.querySelector(`.event[data-id="${post.id}"]`) || document.querySelector(`.event[data-id='${post.id}']`);
-        const oldRect = srcEl ? srcEl.getBoundingClientRect() : null;
-        // efetiva a mudança de data (soltar na célula, fora de um card específico, envia a postagem para o fim do dia)
-        const beforeState = [{ id: post.id, date: post.date, order: post.order }];
-        post.date = to;
-        post.order = nextOrderForDate(to, post.id);
-        saveState();
-        buildCalendar();
-        render();
-        // anima da posição antiga até a nova
-        if(oldRect){
-          const newEl = document.querySelector(`.event[data-id="${post.id}"]`) || document.querySelector(`.event[data-id='${post.id}']`);
-          if(newEl){
-            const newRect = newEl.getBoundingClientRect();
-            const dx = oldRect.left - newRect.left;
-            const dy = oldRect.top - newRect.top;
-            newEl.style.transform = `translate(${dx}px, ${dy}px)`;
-            requestAnimationFrame(()=>{
-              newEl.classList.add('moving');
-              newEl.style.transform = '';
-              setTimeout(()=>{ newEl.classList.remove('moving'); }, 380);
-            });
-          }
-        }
-        // registra a ação no histórico de desfazer
-        pushUndo({ type:'reorder', changes: beforeState });
-        // uma nova ação invalida o histórico de refazer
-        redoStack = [];
-      });
     }
 
     function buildCalendar(){
@@ -1976,13 +2029,27 @@
       if(cardMenuEl) return cardMenuEl;
       cardMenuEl = document.createElement('div');
       cardMenuEl.className = 'event-menu';
-      cardMenuEl.innerHTML = `<button type="button" class="menu-duplicate">Duplicar</button><button type="button" class="menu-delete danger">Excluir</button>`;
+      cardMenuEl.innerHTML = `<button type="button" class="menu-published"></button><button type="button" class="menu-duplicate">Duplicar</button><button type="button" class="menu-delete danger">Excluir</button>`;
       cardMenuEl.addEventListener('click', ev=> ev.stopPropagation());
       document.body.appendChild(cardMenuEl);
       return cardMenuEl;
     }
     // fecha o menu "⋮" aberto - chamado ao abrir outro menu, ao clicar fora ou ao rolar a página
-    function closeAllCardMenus(){ if(cardMenuEl) cardMenuEl.classList.remove('open'); }
+    // enquanto o menu está aberto o card dono dele fica com a aparência de hover (.menu-open), senão o
+    // card "pula" ao mover o mouse do card para o menu e de volta
+    // ao fechar, o .menu-open só sai no próximo movimento do mouse: o navegador só recalcula o :hover
+    // nesse momento, e tirar a classe antes faz o card descer e subir de novo
+    let menuReleasePending = false; // um único ouvinte de mousemove por vez (o scroll chama closeAllCardMenus várias vezes)
+    function closeAllCardMenus(){
+      if(cardMenuEl) cardMenuEl.classList.remove('open');
+      if(menuReleasePending || !document.querySelector('.event.menu-open,.list-row.menu-open')) return;
+      menuReleasePending = true;
+      document.addEventListener('mousemove', ()=>{
+        menuReleasePending = false;
+        if(cardMenuEl && cardMenuEl.classList.contains('open')) return;
+        document.querySelectorAll('.event.menu-open,.list-row.menu-open').forEach(el=> el.classList.remove('menu-open'));
+      }, { once:true });
+    }
     document.addEventListener('click', closeAllCardMenus);
     window.addEventListener('scroll', closeAllCardMenus, true);
 
@@ -2000,12 +2067,18 @@
         closeAllCardMenus();
         if(wasOpenForThisCard) return;
         menu.dataset.forId = id;
+        const publishedBtn = menu.querySelector('.menu-published');
+        const isPublished = !!(state.posts.find(p=>p.id===id) || {}).published;
+        publishedBtn.textContent = isPublished ? 'Desmarcar publicado' : 'Marcar como publicado';
+        publishedBtn.onclick = (e)=>{ e.stopPropagation(); closeAllCardMenus(); togglePublished(id); };
         menu.querySelector('.menu-duplicate').onclick = (e)=>{ e.stopPropagation(); closeAllCardMenus(); duplicatePost(id); };
         menu.querySelector('.menu-delete').onclick = (e)=>{ e.stopPropagation(); closeAllCardMenus(); deletePost(id); };
         const rect = btn.getBoundingClientRect();
         menu.style.top = `${rect.bottom + 4}px`;
         menu.style.left = `${Math.max(4, rect.right - 136)}px`;
         menu.classList.add('open');
+        document.querySelectorAll('.event.menu-open,.list-row.menu-open').forEach(el=> el.classList.remove('menu-open'));
+        const owner = btn.closest('.event,.list-row'); if(owner) owner.classList.add('menu-open');
       });
     }
 
@@ -2043,10 +2116,20 @@
       $('cardActionConfirmCancel').addEventListener('click',closeCardActionConfirm);
       $('cardActionConfirmOk').addEventListener('click',confirmCardAction);
     }
+    // alterna o status "Publicado" do card (fica acinzentado); reversível, entra no Ctrl+Z
+    function togglePublished(id){
+      const post = state.posts.find(p=>p.id===id); if(!post) return;
+      const before = { published: !!post.published }; // só o campo alterado: o Ctrl+Z não sobrescreve edições posteriores (e, sem a chave, não desmarcaria)
+      post.published = !post.published;
+      // troca a classe nos elementos já na tela (sem redesenhar) para a cor animar via transição CSS
+      document.querySelectorAll(`.event[data-id="${CSS.escape(id)}"],.list-row[data-id="${CSS.escape(id)}"]`).forEach(el=> el.classList.toggle('is-published', post.published));
+      saveState();
+      pushUndo({ type:'edit', id, before }); redoStack = [];
+    }
     function duplicatePost(id){ openCardActionConfirm('duplicate',id); }
     function performDuplicatePost(id){
       const post = state.posts.find(p=>p.id===id); if(!post) return;
-      const copy = Object.assign({}, post, { id: generateId(), order: nextOrderForDate(post.date) });
+      const copy = Object.assign({}, post, { id: generateId(), order: nextOrderForDate(post.date), published: false });
       if(Array.isArray(post.channels)) copy.channels = post.channels.map(c=>({ channel:c.channel, types:(c.types||[]).slice(), places:(c.places||[]).slice() }));
       if(Array.isArray(post.place)) copy.place = post.place.slice();
       if(Array.isArray(post.editoria)) copy.editoria = post.editoria.slice();
@@ -2089,7 +2172,7 @@
     // ============================================================
     // cria o elemento do card de postagem (evento) usado na grade do calendário
     function createEventElement(p){
-      const div = document.createElement('div'); div.className='event'; div.setAttribute('draggable','true'); div.dataset.id = p.id;
+      const div = document.createElement('div'); div.className='event'; div.classList.toggle('is-published', !!p.published); div.dataset.id = p.id;
       const entries = postChannelEntries(p);
       const eds = Array.isArray(p.editoria)?p.editoria:[p.editoria].filter(Boolean);
       const eyebrowText = eds.length ? joinPt(eds) : 'Sem editoria';
@@ -2099,27 +2182,7 @@
       const productNames = prods.map(x=>x.name).filter(Boolean).join(', ');
       div.title = [postChannelsDetailText(p), productNames].filter(Boolean).join(' · ');
       div.innerHTML = `<div class="event-bar ${entries.some(c=>(c.types||[]).some(t=>(t||'').toLowerCase()==='video')) ? 'is-video' : 'is-static'}"></div><div class="event-body"><div class="event-head"><div class="event-nets">${netsIconsHtml}</div><div class="event-eyebrow" style="color:${eyebrowColor}">${escapeHtml(eyebrowText)}</div></div><div class="event-title">${escapeHtml(p.title)}</div></div>`;
-      div.addEventListener('dragstart', (ev)=>{ ev.dataTransfer.setData('text/plain', p.id); div.classList.add('dragging'); ev.dataTransfer.effectAllowed='move'; });
-      div.addEventListener('dragend', ()=>{ div.classList.remove('dragging'); });
-      // soltar sobre um card específico reordena/insere a postagem arrastada antes ou depois dele
-      div.addEventListener('dragover', (ev)=>{
-        ev.preventDefault(); ev.stopPropagation();
-        const rect = div.getBoundingClientRect();
-        const before = (ev.clientY - rect.top) < rect.height/2;
-        div.classList.toggle('drop-before', before);
-        div.classList.toggle('drop-after', !before);
-      });
-      div.addEventListener('dragleave', ()=> div.classList.remove('drop-before','drop-after'));
-      div.addEventListener('drop', (ev)=>{
-        ev.preventDefault(); ev.stopPropagation();
-        const before = div.classList.contains('drop-before');
-        div.classList.remove('drop-before','drop-after');
-        const draggedId = ev.dataTransfer.getData('text/plain');
-        if(!draggedId || draggedId===p.id) return;
-        const draggedPost = state.posts.find(x=>x.id===draggedId);
-        if(!draggedPost) return;
-        reorderPost(draggedPost, p, before);
-      });
+      bindPostDrag(div, p);
       div.addEventListener('click', (ev)=>{ ev.stopPropagation(); openEditModal(p.id); });
       div.appendChild(buildCardMenu(p, 'event-menu-btn').btn);
       return div;
@@ -2127,7 +2190,7 @@
 
     // cria a linha de postagem usada na visão em lista
     function createListRow(p){
-      const row = document.createElement('div'); row.className='list-row'; row.dataset.id = p.id; row.setAttribute('draggable','true');
+      const row = document.createElement('div'); row.className='list-row'; row.classList.toggle('is-published', !!p.published); row.dataset.id = p.id;
       const entries = postChannelEntries(p);
       const eds = Array.isArray(p.editoria)?p.editoria:[p.editoria].filter(Boolean);
       const eyebrowText = eds.length ? joinPt(eds) : 'Sem editoria';
@@ -2141,26 +2204,7 @@
       row.addEventListener('click', ()=> openEditModal(p.id));
       // arrastar uma linha e soltar sobre outra reordena as postagens dentro do mesmo dia
       // (soltar em um dia diferente move a postagem para lá, ao fim daquele dia)
-      row.addEventListener('dragstart', (ev)=>{ ev.dataTransfer.setData('text/plain', p.id); row.classList.add('dragging'); ev.dataTransfer.effectAllowed='move'; });
-      row.addEventListener('dragend', ()=> row.classList.remove('dragging'));
-      row.addEventListener('dragover', (ev)=>{
-        ev.preventDefault(); ev.stopPropagation();
-        const rect = row.getBoundingClientRect();
-        const before = (ev.clientY - rect.top) < rect.height/2;
-        row.classList.toggle('drop-before', before);
-        row.classList.toggle('drop-after', !before);
-      });
-      row.addEventListener('dragleave', ()=> row.classList.remove('drop-before','drop-after'));
-      row.addEventListener('drop', (ev)=>{
-        ev.preventDefault(); ev.stopPropagation();
-        const before = row.classList.contains('drop-before');
-        row.classList.remove('drop-before','drop-after');
-        const draggedId = ev.dataTransfer.getData('text/plain');
-        if(!draggedId || draggedId===p.id) return;
-        const draggedPost = state.posts.find(x=>x.id===draggedId);
-        if(!draggedPost) return;
-        reorderPost(draggedPost, p, before);
-      });
+      bindPostDrag(row, p);
       return row;
     }
 
@@ -2183,7 +2227,7 @@
         any = true;
         const dow = new Date(YEAR,MONTH,d).toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','');
         const isToday = dateStr===tStr;
-        const group = document.createElement('div'); group.className = 'list-group';
+        const group = document.createElement('div'); group.className = 'list-group'; group.dataset.date = dateStr;
         const dateEl = document.createElement('div'); dateEl.className = `list-date ${isToday?'today':''}`;
         dateEl.innerHTML = `<span class="list-date-num">${d}</span><span class="list-date-dow">${dow}</span>${isToday?'<span class="today-badge">Hoje</span>':''}`;
         group.appendChild(dateEl);
@@ -4354,7 +4398,7 @@
         // restaura data/ordem de todas as postagens afetadas pela reordenação
         const afterChanges = applyOrderStates(action.changes);
         inverse = { type:'reorder', changes: afterChanges };
-        saveState(); buildCalendar(); render();
+        saveState(); flipAfter(()=>{ buildCalendar(); render(); });
       } else if(action.type==='create'){
         // desfazer uma criação = apagar as postagens criadas
         const ids = action.posts; // array de ids
@@ -4400,7 +4444,7 @@
       } else if(action.type==='reorder'){
         const afterChanges = applyOrderStates(action.changes);
         pushUndo({ type:'reorder', changes: afterChanges });
-        saveState(); buildCalendar(); render();
+        saveState(); flipAfter(()=>{ buildCalendar(); render(); });
       } else if(action.type==='create'){
         // recria as postagens (action.posts contém os objetos completos)
         action.posts.forEach(p=> state.posts.push(p));
