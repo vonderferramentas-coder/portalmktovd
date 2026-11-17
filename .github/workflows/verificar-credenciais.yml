@@ -37,8 +37,6 @@ jobs:
           LINKEDIN_CLIENT_ID: ${{ secrets.LINKEDIN_CLIENT_ID }}
           LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
           LINKEDIN_REFRESH_TOKEN: ${{ secrets.LINKEDIN_REFRESH_TOKEN }}
-          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
-          META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS: ${{ secrets.META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS }}
           META_PAGE_TOKENS: ${{ secrets.META_PAGE_TOKENS }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
@@ -64,7 +62,7 @@ jobs:
           results = {}
 
           # Nenhum trecho de segredo pode ir para o log nem para o Firestore (o detalhe pode vir de mensagem de erro de API).
-          secret_values = [env(name) for name in ('LINKEDIN_CLIENT_SECRET', 'LINKEDIN_REFRESH_TOKEN', 'META_PAGE_ACCESS_TOKEN', 'META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS', 'META_PAGE_TOKENS',
+          secret_values = [env(name) for name in ('LINKEDIN_CLIENT_SECRET', 'LINKEDIN_REFRESH_TOKEN', 'META_PAGE_TOKENS',
                                                   'YOUTUBE_API_KEY', 'YOUTUBE_OAUTH_CLIENT_SECRET', 'YOUTUBE_OAUTH_REFRESH_TOKEN', 'BACKUP_REPO_TOKEN')]
           def scrub(text):
               for value in secret_values:
@@ -123,10 +121,16 @@ jobs:
                       broken('linkedin', status, f'O LinkedIn recusou a renovação (HTTP {status}): {body.get("error", "")} {body.get("error_description", "")}'.strip())
 
               # Meta: debug_token informa a validade; se recusar, ao menos confirma que o token ainda funciona.
-              for key, name in (('meta-vonder', 'META_PAGE_ACCESS_TOKEN'), ('meta-fg', 'META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS')):
-                  token = env(name)
+              # VONDER e Ferramentas Gerais usam o token da própria Página, lido do mesmo segredo META_PAGE_TOKENS das marcas novas.
+              try:
+                  por_pagina = {item.get('id'): str(item.get('access_token') or '').strip() for item in (json.loads(env('META_PAGE_TOKENS') or '{}').get('data') or []) if isinstance(item, dict)}
+              except (ValueError, AttributeError):
+                  por_pagina = {}
+              secret_values.extend(por_pagina.values())
+              for key, page_id, name in (('meta-vonder', '262406600508752', 'VONDER'), ('meta-fg', '219931821407833', 'Ferramentas Gerais')):
+                  token = por_pagina.get(page_id)
                   if not token:
-                      record(key, False, detail=f'Segredo {name} não configurado.')
+                      record(key, False, detail=f'A Página {name} não está no segredo META_PAGE_TOKENS (cole a resposta inteira de me/accounts).')
                       continue
                   query = urllib.parse.urlencode({'input_token': token, 'access_token': token})
                   status, _, body = http(f'https://graph.facebook.com/v26.0/debug_token?{query}')

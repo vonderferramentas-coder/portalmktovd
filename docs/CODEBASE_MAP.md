@@ -314,7 +314,7 @@ graph TB
 
 Nenhum coletor tem cron próprio: todos são `workflow_dispatch` disparados pelo agendador (exceto `testes`, `validar-documentacao-arquitetura` e `copiar-dados-prd-para-hml`). Quem faz `git push` compartilha `concurrency: portal-dados-git-push` e repete o push com retry. Horários em UTC (São Paulo = UTC-3).
 
-**Segredos (só nomes)**: `META_PAGE_ACCESS_TOKEN`, `META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS`, `YOUTUBE_API_KEY`, `YOUTUBE_OAUTH_CLIENT_ID`, `YOUTUBE_OAUTH_CLIENT_SECRET`, `YOUTUBE_OAUTH_REFRESH_TOKEN`, `FIREBASE_SERVICE_ACCOUNT_KEY`, `FIREBASE_SERVICE_ACCOUNT_KEY_HML`, `BACKUP_REPO_TOKEN`, `MONITORAMENTO_WEBHOOK_URL` (opcional); no Worker, `GITHUB_DISPATCH_TOKEN`.
+**Segredos (só nomes)**: `META_PAGE_TOKENS`, `YOUTUBE_API_KEY`, `YOUTUBE_OAUTH_CLIENT_ID`, `YOUTUBE_OAUTH_CLIENT_SECRET`, `YOUTUBE_OAUTH_REFRESH_TOKEN`, `FIREBASE_SERVICE_ACCOUNT_KEY`, `FIREBASE_SERVICE_ACCOUNT_KEY_HML`, `BACKUP_REPO_TOKEN`, `MONITORAMENTO_WEBHOOK_URL` (opcional); no Worker, `GITHUB_DISPATCH_TOKEN`.
 
 | Workflow | Gatilho | Grava | Notas |
 |---|---|---|---|
