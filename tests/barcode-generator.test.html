@@ -2,7 +2,7 @@
 <meta charset="utf-8">
 <title>Teste do Gerador de Código de Barras</title>
 <body data-result="running">RUNNING</body>
-<script src="../barcode-generator.js"></script>
+<script src="../codigo-barras/barcode-generator.js"></script>
 <script>
 // Roda em Chrome headless: abrir o arquivo e ler document.body.dataset.result (ok | FALHA: ...).
 (async function () {
@@ -19,6 +19,8 @@
     eq(B.normalize('9638507').code, '96385074', 'EAN-8 sem verificador');
     eq(!!B.normalize('123').error, true, 'tamanho inválido');
     eq(!!B.normalize('  ').empty, true, 'vazio');
+    // referência da célula igual à do XLSX (A1, B7, Z1, AA1, ZZ1, AAA1)
+    [[0, 0, 'A1'], [6, 1, 'B7'], [0, 25, 'Z1'], [0, 26, 'AA1'], [0, 701, 'ZZ1'], [9, 702, 'AAA10']].forEach(([r, c, x]) => eq(B.cellRef(r, c), x, 'cellRef ' + x));
     // planilha: "CÓDIGO" sozinho não é código de barras; título acima do cabeçalho é ignorado
     const rows = [['Lista'], ['CÓDIGO', 'DESCRIÇÃO', 'CÓD. DE BARRAS'], [11, 'Martelo', 4006381333931], [12, 'Serra', '']];
     const got = B.fromRows(rows);

@@ -18,7 +18,11 @@ Skill instalada em `.claude/skills/unslop` (autor Damir Sokolovsky, licença CC 
 
 ## Tutoriais por tela (tour guiado)
 
-Toda tela com `portal-tour-<tela>.js` tem passeio guiado ("Como usar"). Mudou um botão, texto ou fluxo dessa tela: atualize o passeio na mesma mudança e rode `tests/portal-tour.test.html`, que acusa alvo sumido. Tela nova com passeio entra em `SCREENS` desse teste. Formato dos passos e regras de interface: [DESIGN.md](DESIGN.md) §18.
+Toda tela com `tour/portal-tour-<tela>.js` tem passeio guiado ("Como usar"). Mudou um botão, texto ou fluxo dessa tela: atualize o passeio na mesma mudança e rode `tests/portal-tour.test.html`, que acusa alvo sumido. Tela nova com passeio entra em `SCREENS` desse teste. Formato dos passos e regras de interface: [DESIGN.md](DESIGN.md) §18.
+
+## Organização de pastas
+
+O `.html` de cada tela fica na raiz (URL, menu e histórico de uso dependem do nome). O código e os arquivos da tela ficam na pasta dela (`cartaz/`, `calendario/`, `editor-posts/`…); o que mais de uma tela usa vai para `comum/`; os passeios ficam em `tour/`. Na raiz só ficam as páginas, o núcleo (`portal-shell.js`, `firebase-*.js`, `auth-guard.js`, `styles.css`…) e a infraestrutura. Ao mover arquivo: `url()` de CSS, `import ... from './x'` e `import('./x')` (inclusive em script comum) são relativos ao **próprio arquivo** (viram `../`); `src`/`href` do HTML, `fetch`, `new URL(x, location.href)` e caminhos de imagem ou script montados em JS são relativos à **página**. Bibliotecas pesadas de `vendor/` (xlsx, jszip, html2canvas, jspdf) carregam no primeiro uso com `PortalShell.loadScript`, não no `<script>` da página.
 
 ## Documentação de arquitetura
 

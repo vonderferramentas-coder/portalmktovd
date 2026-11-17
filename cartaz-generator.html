@@ -10,7 +10,7 @@
     <script>document.documentElement.classList.add('auth-pending')</script>
     <script src="firebase-config.js"></script>
     <script type="module" src="auth-guard.js"></script>
-    <link rel="stylesheet" href="cartaz-generator.css">
+    <link rel="stylesheet" href="cartaz/generator.css">
 </head>
 
 <body>
@@ -32,6 +32,7 @@
                     </div>
                     <label
                         class="upload">Selecionar planilha<input id="sheet" type="file" accept=".xlsx,.xls"></label>
+                    <label class="cg-groupby" id="groupByBox" hidden>Agrupar por <select id="groupBy" aria-label="Agrupar cards por coluna da planilha"></select></label>
                     <button type="button" id="manualItemBtn" class="secondary cg-manual-item-btn">+ Adicionar item manualmente</button>
                 </div>
                 <section class="box cg-dashboard" aria-label="Resumo da importação">
@@ -104,22 +105,18 @@
     </div>
     <script src="portal-shell.js"></script>
     <script src="usage-analytics.js"></script>
-    <script src="vendor/xlsx.full.min.js"></script>
-    <script src="vendor/html2canvas.min.js"></script>
-    <script src="vendor/jszip.min.js"></script>
-    <script src="vendor/jspdf.umd.min.js"></script>
     <script src="sync-backend.js"></script>
-    <script src="brand-library-model.js"></script>
-    <script src="brand-library.js"></script>
+    <script src="marcas/brand-library-model.js"></script>
+    <script src="marcas/brand-library.js"></script>
     <script src="vendor/qrcode-generator.js"></script>
-    <script src="cartaz-columns.js"></script>
-    <script src="cartaz-pagination.js"></script>
-    <script src="cartaz-cards.js"></script>
-    <script src="cartaz-title-format.js"></script>
-    <script src="cartaz-validator.js"></script>
-    <script src="cartaz-generator.js"></script>
-    <script src="portal-tour.js"></script>
-    <script src="portal-tour-gerador-cartazes.js"></script>
+    <script src="cartaz/columns.js"></script>
+    <script src="cartaz/pagination.js"></script>
+    <script src="cartaz/cards.js"></script>
+    <script src="comum/title-format.js"></script>
+    <script src="comum/validator.js"></script>
+    <script src="cartaz/generator.js"></script>
+    <script src="tour/portal-tour.js"></script>
+    <script src="tour/portal-tour-gerador-cartazes.js"></script>
 </body>
 
 </html>

@@ -8,7 +8,7 @@
   const out = document.getElementById('result');
   try {
     const request = new XMLHttpRequest();
-    request.open('GET', '../app.js', false);
+    request.open('GET', '../calendario/app.js', false);
     request.send();
     const source = request.responseText;
     const a = source.indexOf('    // Redesenha uma imagem (data URL)'), b = source.indexOf('    // Card antigo que já passou do teto', a);

@@ -2,7 +2,7 @@
 <meta charset="utf-8">
 <title>Teste da paginação do Gerador de Cartazes</title>
 <body data-result="running">RUNNING</body>
-<script src="../cartaz-pagination.js"></script>
+<script src="../cartaz/pagination.js"></script>
 <script>
 // Roda em Chrome headless: chrome --headless=new --dump-dom file:///.../tests/cartaz-pagination.test.html
 try {
@@ -119,6 +119,9 @@ try {
   CartazPagination.setConfig({ capA4: 16, colsA4: 4, layout: 'liveshop', logoBox: true, headerMode: 'full' });
   let fp = paginate('X', groups(16))[0];
   eq([fp.rows, fp.header, fp.logoBox, fp.items[0].col, fp.items[0].gridRow], [4, 'full', false, 0, 0], 'header completo: 4 linhas, produtos desde a célula 0');
+  CartazPagination.setConfig({ capA4: 16, colsA4: 4, layout: 'liveshop', logoBox: true, headerMode: 'custom' });
+  let xp = paginate('X', groups(16))[0];
+  eq([xp.rows, xp.header, xp.logoBox, xp.items[0].col, xp.items[0].gridRow], [4, 'custom', false, 0, 0], 'header personalizado: imagem acima da grade, produtos desde a célula 0');
   for (const [corner, cell] of [['tl', 0], ['tr', 3], ['bl', 16], ['br', 19]]) {
     CartazPagination.setConfig({ capA4: 19, colsA4: 4, layout: 'liveshop', logoBox: true, headerMode: 'compact', headerCorner: corner });
     let cp = paginate('X', groups(19))[0], used = new Set(cp.items.map(i => i.gridRow * 4 + i.col));
@@ -133,6 +136,9 @@ try {
   lw.items[1].wide = false; lw.items[2].wide = true; lw.items.forEach(i => delete i.wide); lw.items[2].wide = true; CartazPagination.placeLive(lw);
   eq([lw.items[2].col, lw.items[2].gridRow, lw.items[2].span], [0, 1, 2], 'destaque sem espaço na linha vai para a próxima, com vaga preenchida');
   eq(new Set(lw.items.map(i => i.gridRow + ':' + i.col)).size, 19, 'nenhuma célula repetida');
+  CartazPagination.setConfig({ capA4: 19, colsA4: 4, layout: 'liveshop', logoBox: false });
+  let ca = paginate('X', groups(5))[0]; eq([ca.items[4].alone, ca.items[3].alone], [true, false], 'Centralizar: só o box sozinho na linha pode ser centralizado');
+  CartazPagination.setConfig({ capA4: 19, colsA4: 4, layout: 'liveshop', logoBox: true });
   lw.items.forEach(i => delete i.wide); CartazPagination.placeLive(lw);
   eq(lw.rows, rows0, 'sem destaque, a folha volta ao nº de linhas original');
   CartazPagination.setConfig(CartazPagination.DEFAULT_CONFIG);

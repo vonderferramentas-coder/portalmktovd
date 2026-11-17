@@ -4,7 +4,7 @@
 // Extrai do app.js as funções puras da busca de produto (não dá para carregar o arquivo inteiro: ele monta o calendário e pede login)
 const eq = (actual, expected, label) => { if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(label + ': esperado ' + JSON.stringify(expected) + ', veio ' + JSON.stringify(actual)); };
 try {
-  const xhr = new XMLHttpRequest(); xhr.open('GET', '../app.js', false); xhr.send();
+  const xhr = new XMLHttpRequest(); xhr.open('GET', '../calendario/app.js', false); xhr.send();
   const take = name => { const m = xhr.responseText.match(new RegExp('function ' + name + '\\([^)]*\\)\\{[\\s\\S]*?\\n    \\}')); if (!m) throw new Error(name + ' não encontrada em app.js'); return m[0]; };
   const fns = ['normalizeStr', 'normalizeCode', 'exactProductMatch', 'productMatchRank'].map(take).join('\n');
   const { normalizeStr, normalizeCode, exactProductMatch, productMatchRank } = new Function(fns + '\nreturn { normalizeStr, normalizeCode, exactProductMatch, productMatchRank };')();

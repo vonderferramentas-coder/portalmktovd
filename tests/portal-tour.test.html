@@ -4,7 +4,7 @@
 <body data-result="running">
 <div class="page-header-actions" style="margin:40px"><button id="a" type="button">A</button><button id="b" type="button">B</button><button id="c" type="button">C</button><div id="area"><input id="field"></div></div>
 <p id="status">Executando…</p>
-<script src="../portal-tour.js"></script>
+<script src="../tour/portal-tour.js"></script>
 <script>
 const eq = (actual, expected, label) => { if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(label + ': esperado ' + JSON.stringify(expected) + ', veio ' + JSON.stringify(actual)); };
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -15,20 +15,20 @@ const press = sel => document.querySelector(sel).click();
 
 // Cada tela com passeio: arquivo de textos + arquivos onde os alvos precisam existir.
 const SCREENS = [
-  { data: '../portal-tour-calendario.js', sources: ['../visual-editor.html', '../app.js', '../portal-tour.js'] },
-  { data: '../portal-tour-editor-posts.js', sources: ['../post-editor.html', '../post-editor.js', '../post-editor-saved-arts.js', '../post-editor-fg-ecommerce.js', '../portal-tour.js'] },
-  { data: '../portal-tour-redes-sociais.js', sources: ['../followers-dashboard.html', '../followers-dashboard.js', '../portal-tour.js'] },
-  { data: '../portal-tour-conecta-fg.js', sources: ['../conecta-fg.html', '../conecta-fg.js', '../portal-tour.js'] },
-  { data: '../portal-tour-central-inteligencia.js', sources: ['../intelligence-center.html', '../intelligence-center.js', '../portal-tour.js'] },
-  { data: '../portal-tour-templates.js', sources: ['../templates.html', '../templates.js', '../portal-tour.js'] },
-  { data: '../portal-tour-gerador.js', sources: ['../gerador.html', '../portal-tour.js'] },
-  { data: '../portal-tour-gerador-cartazes.js', sources: ['../cartaz-generator.html', '../cartaz-generator.js', '../portal-tour.js'] },
-  { data: '../portal-tour-gerador-consolidado.js', sources: ['../consolidado-generator.html', '../consolidado-generator.js', '../portal-tour.js'] },
-  { data: '../portal-tour-gerador-codigo-barras.js', sources: ['../barcode-generator.html', '../barcode-generator.js', '../portal-tour.js'] },
-  { data: '../portal-tour-gerador-qr.js', sources: ['../qr-code-generator.html', '../qr-code-generator.js', '../portal-tour.js'] },
-  { data: '../portal-tour-gerador-cartoes.js', sources: ['../business-card-generator.html', '../business-card-generator.js', '../portal-tour.js'] },
-  { data: '../portal-tour-photoshop.js', sources: ['../photoshop-actions.html', '../portal-tour.js'] },
-  { data: '../portal-tour-photoshop-espanhol.js', sources: ['../photoshop-action-prepare-spanish.html', '../portal-tour.js'] }
+  { data: '../tour/portal-tour-calendario.js', sources: ['../visual-editor.html', '../calendario/app.js', '../tour/portal-tour.js'] },
+  { data: '../tour/portal-tour-editor-posts.js', sources: ['../post-editor.html', '../editor-posts/post-editor.js', '../editor-posts/post-editor-saved-arts.js', '../editor-posts/post-editor-fg-ecommerce.js', '../tour/portal-tour.js'] },
+  { data: '../tour/portal-tour-redes-sociais.js', sources: ['../followers-dashboard.html', '../redes-sociais/followers-dashboard.js', '../tour/portal-tour.js'] },
+  { data: '../tour/portal-tour-conecta-fg.js', sources: ['../conecta-fg.html', '../conecta-fg/conecta-fg.js', '../tour/portal-tour.js'] },
+  { data: '../tour/portal-tour-central-inteligencia.js', sources: ['../intelligence-center.html', '../inteligencia/intelligence-center.js', '../tour/portal-tour.js'] },
+  { data: '../tour/portal-tour-templates.js', sources: ['../templates.html', '../templates/templates.js', '../tour/portal-tour.js'] },
+  { data: '../tour/portal-tour-gerador.js', sources: ['../gerador.html', '../tour/portal-tour.js'] },
+  { data: '../tour/portal-tour-gerador-cartazes.js', sources: ['../cartaz-generator.html', '../cartaz/generator.js', '../tour/portal-tour.js'] },
+  { data: '../tour/portal-tour-gerador-consolidado.js', sources: ['../consolidado-generator.html', '../consolidado/consolidado-generator.js', '../tour/portal-tour.js'] },
+  { data: '../tour/portal-tour-gerador-codigo-barras.js', sources: ['../barcode-generator.html', '../codigo-barras/barcode-generator.js', '../tour/portal-tour.js'] },
+  { data: '../tour/portal-tour-gerador-qr.js', sources: ['../qr-code-generator.html', '../qrcode/qr-code-generator.js', '../tour/portal-tour.js'] },
+  { data: '../tour/portal-tour-gerador-cartoes.js', sources: ['../business-card-generator.html', '../cartao/business-card-generator.js', '../tour/portal-tour.js'] },
+  { data: '../tour/portal-tour-photoshop.js', sources: ['../photoshop-actions.html', '../tour/portal-tour.js'] },
+  { data: '../tour/portal-tour-photoshop-espanhol.js', sources: ['../photoshop-action-prepare-spanish.html', '../tour/portal-tour.js'] }
 ];
 
 // Um alvo "existe" quando cada id/classe do seletor aparece no HTML (id="x", class="... x ...") ou como texto entre aspas

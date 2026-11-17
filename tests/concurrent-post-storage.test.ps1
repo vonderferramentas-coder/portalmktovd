@@ -1,9 +1,9 @@
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$appSource = Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'app.js')
+$appSource = Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'calendario/app.js')
 $firebaseSource = Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'firebase-client.js')
-$syncSource = Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'calendar-post-sync.js')
+$syncSource = Get-Content -Raw -LiteralPath (Join-Path $projectRoot 'calendario/calendar-post-sync.js')
 
 $expectations = @(
     @{ Name = 'API de gravacao individual'; Source = $firebaseSource; Pattern = '\bwritePost\b' },

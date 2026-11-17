@@ -204,9 +204,21 @@
       cb(canvas.toDataURL('image/jpeg', 0.85));
     });
   }
-  // Exposto para admin-users.js (script clássico, roda antes dele) reaproveitar o mesmo
+  // readBrandPhoto também serve à tela de usuários (usuarios/admin-users.js), que reaproveita o mesmo
   // recorte quadrado + compressão ao editar a foto de outro usuário pela tela de admin.
-  window.PortalShell = { readBrandPhoto, svgIcon, wireModalA11y };
+  // Bibliotecas pesadas (vendor/xlsx, jszip, html2canvas, jspdf) baixadas só no primeiro uso, uma vez por página:
+  // a tela abre sem elas. Falha de rede libera nova tentativa no próximo clique.
+  // global de cada biblioteca: se a página já a carregou (por <script> próprio), não injeta outra cópia
+  const scriptLoads = {}, LIB_GLOBALS = { 'xlsx.full.min.js':'XLSX', 'jszip.min.js':'JSZip', 'html2canvas.min.js':'html2canvas', 'jspdf.umd.min.js':'jspdf' };
+  function loadScript(src){
+    if(window[LIB_GLOBALS[src.replace(/^.*\//, '')]]) return Promise.resolve();
+    return scriptLoads[src] = scriptLoads[src] || new Promise((resolve, reject)=>{
+      const s = document.createElement('script'); s.src = src; s.onload = resolve;
+      s.onerror = ()=>{ delete scriptLoads[src]; reject(new Error('Não foi possível carregar ' + src.replace(/^.*\//, '') + '. Verifique a conexão e tente de novo')); };
+      document.head.appendChild(s);
+    });
+  }
+  window.PortalShell = { readBrandPhoto, svgIcon, wireModalA11y, loadScript };
 
   function loadBrands(){
     try{

@@ -163,6 +163,13 @@ jobs:
           cat /tmp/portal-shell-modal-dump.html
           grep -q 'data-result="pass"' /tmp/portal-shell-modal-dump.html
 
+      - name: Carregador sob demanda do portal-shell (Chrome headless)
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"
+          "$CHROME" --headless=new --disable-gpu --no-sandbox --no-first-run --disable-extensions --allow-file-access-from-files --user-data-dir="$(mktemp -d)" --virtual-time-budget=5000 --dump-dom "file://$(pwd)/tests/portal-shell-load-script.test.html" > /tmp/portal-shell-load-script-dump.html
+          cat /tmp/portal-shell-load-script-dump.html
+          grep -q 'data-result="pass"' /tmp/portal-shell-load-script-dump.html
+
       - name: Biblioteca de marcas - agrupamento e ajustes (Chrome headless)
         run: |
           CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium)"

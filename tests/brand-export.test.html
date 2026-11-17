@@ -1,7 +1,7 @@
 <!doctype html><meta charset="utf-8"><title>Teste do download de logos (EPS/PNG)</title>
 <body data-result="running">Executando…</body>
 <script src="../post-editor-assets/brands-manifest.js"></script>
-<script src="../brand-export.js"></script>
+<script src="../marcas/brand-export.js"></script>
 <script>
 const eq = (actual, expected, label) => { if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(label + ': esperado ' + JSON.stringify(expected) + ', veio ' + JSON.stringify(actual)); };
 const svgUri = text => 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(text)));

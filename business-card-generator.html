@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Gerador de Cartão de Visitas</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="business-card-generator.css">
+  <link rel="stylesheet" href="cartao/business-card-generator.css">
   <link rel="stylesheet" href="auth.css">
   <script>document.documentElement.classList.add('auth-pending');</script>
   <script src="firebase-config.js"></script>
@@ -50,7 +50,7 @@
             </button><label class="bc-upload" for="spreadsheetFile"><input id="spreadsheetFile" type="file"
                 accept=".xlsx,.xls,.csv"><span>↑</span>
               <div><strong>Selecionar planilha</strong><small>.xlsx, .xls ou .csv</small></div>
-            </label><a class="bc-template-link" href="business-card-assets/planilha-base.xlsx" download>↓ Baixar
+            </label><a class="bc-template-link" href="cartao/assets/planilha-base.xlsx" download>↓ Baixar
               planilha-base</a></div><button class="bc-back-link" id="backToWorkspace" type="button" hidden>← Voltar aos
             cartões cadastrados</button>
         </div>
@@ -187,20 +187,19 @@
   <script src="sync-backend.js"></script>
   <script src="portal-shell.js"></script>
   <script src="usage-analytics.js"></script>
-  <script src="vendor/xlsx.full.min.js"></script>
   <script src="vendor/qrcode-generator.js"></script>
-  <script src="business-card-assets.js"></script>
-  <script src="business-card-digital-assets.js"></script>
-  <script src="business-card-print-profile.js"></script>
-  <script src="business-card-vonder-assets.js"></script>
-  <script src="business-card-osten-assets.js"></script>
+  <script src="cartao/business-card-assets.js"></script>
+  <script src="cartao/business-card-digital-assets.js"></script>
+  <script src="cartao/business-card-print-profile.js"></script>
+  <script src="cartao/business-card-vonder-assets.js"></script>
+  <script src="cartao/business-card-osten-assets.js"></script>
   <script src="post-editor-assets/brands-js/VONDER.js"></script>
   <script src="post-editor-assets/brands-js/Osten_fundo_claro.js"></script>
   <script src="post-editor-assets/brands-js/OVD - Grupo.js"></script>
   <script src="post-editor-assets/brands-js/Pilar_Tecnologia_Horizontal.js"></script>
-  <script src="business-card-generator.js"></script>
-  <script src="portal-tour.js"></script>
-  <script src="portal-tour-gerador-cartoes.js"></script>
+  <script src="cartao/business-card-generator.js"></script>
+  <script src="tour/portal-tour.js"></script>
+  <script src="tour/portal-tour-gerador-cartoes.js"></script>
 </body>
 
 </html>

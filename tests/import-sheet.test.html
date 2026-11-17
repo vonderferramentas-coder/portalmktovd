@@ -7,7 +7,7 @@
 // chrome --headless=new --allow-file-access-from-files --dump-dom file:///.../tests/import-sheet.test.html
 // app.js depende da página inteira, então o teste copia dele só as funções puras que usa.
 (async () => {
-  const src = await (await fetch('../app.js')).text();
+  const src = await (await fetch('../calendario/app.js')).text();
   const fn = name => { const m = src.match(new RegExp('\\n    function ' + name + '\\([\\s\\S]*?\\n    }\\n')); if (!m) throw new Error('função ' + name + ' não achada em app.js'); return m[0]; };
   const cst = name => { const m = src.match(new RegExp('\\n    const ' + name + ' = [\\s\\S]*?;\\n')); if (!m) throw new Error('const ' + name + ' não achada em app.js'); return m[0]; };
   const code = ['normalizeStr', 'normalizeCode', 'ymd', 'shortenProductName', 'joinProductNames', 'generateId', 'fixCodeOnlyProduct', 'postChannelEntries', 'missingPlanningFields', 'parseSheetDate', 'parseImportSheet'].map(fn).join('')

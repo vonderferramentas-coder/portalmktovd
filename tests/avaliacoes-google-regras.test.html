@@ -3,7 +3,7 @@
 <body data-result="running">RUNNING
 <script type="module">
 // Exige --allow-file-access-from-files no Chrome (import de módulo via file://).
-import { classificar, porPrioridade, tempoRelativo, palavrasChave, citaPalavra, ordenarAvaliacoes, textoOriginal, abreviar, buscaAvaliacao, limitesDoPeriodo } from '../avaliacoes-google-regras.js';
+import { classificar, porPrioridade, tempoRelativo, palavrasChave, citaPalavra, ordenarAvaliacoes, textoOriginal, abreviar, buscaAvaliacao, limitesDoPeriodo } from '../avaliacoes/avaliacoes-google-regras.js';
 
 const agora = Date.parse('2026-10-28T12:00:00Z');
 const rec = (s, t, c, r = '') => ({ s, t, c, r });

@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8"><title>Teste do carregador sob demanda do portal-shell</title>
+<body data-result="running">Executando…</body>
+<script>
+// Extrai PortalShell.loadScript do próprio portal-shell.js (o arquivo inteiro monta a sidebar e pede login).
+// Roda em Chrome headless com --allow-file-access-from-files; resultado em document.body.dataset.result.
+const eq = (actual, expected, label) => { if (actual !== expected) throw new Error(label + ': esperado ' + expected + ', veio ' + actual); };
+const tags = () => document.querySelectorAll('script[src]').length;
+(async () => {
+  try {
+    const xhr = new XMLHttpRequest(); xhr.open('GET', '../portal-shell.js', false); xhr.send();
+    const match = xhr.responseText.match(/const scriptLoads[\s\S]*?\n  function loadScript[\s\S]*?\n  }\n/);
+    if (!match) throw new Error('loadScript não encontrado em portal-shell.js');
+    const loadScript = new Function(match[0] + '\nreturn loadScript;')();
+
+    eq(!!window.JSZip, false, 'JSZip ausente antes');
+    const a = loadScript('../vendor/jszip.min.js'), b = loadScript('../vendor/jszip.min.js');
+    eq(a, b, 'duas chamadas seguidas usam o mesmo download');
+    await a;
+    eq(!!window.JSZip, true, 'biblioteca carregada');
+
+    const before = tags();
+    await loadScript('outro/caminho/jszip.min.js');
+    eq(tags(), before, 'biblioteca já presente na página não injeta outra cópia');
+
+    let failed = false;
+    try { await loadScript('../vendor/nao-existe.js'); } catch (e) { failed = /nao-existe\.js/.test(e.message); }
+    eq(failed, true, 'falha de download rejeita com o nome do arquivo');
+    const retry = loadScript('../vendor/nao-existe.js');
+    eq(tags(), before + 2, 'depois da falha, clicar de novo tenta baixar de novo');
+    retry.catch(() => {});
+
+    document.body.dataset.result = 'pass'; document.body.textContent = 'pass';
+  } catch (e) { document.body.dataset.result = 'fail'; document.body.textContent = 'FALHA: ' + e.message; }
+})();
+</script>

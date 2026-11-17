@@ -8,7 +8,7 @@ total_tokens: não recalculado nesta atualização
 
 > Atualizado pelo Cartographer em 21/10/2026 (mapa anterior: 09/09/2026). Esta atualização releu o código por módulo; o que não foi lido linha a linha está indicado no texto. Linhas citadas são aproximadas.
 >
-> **Nota sobre o volume:** dos 7.911 arquivos versionados, a maioria é dado gerado, não lógica: `post-editor-assets/brands-js/*.js` (logos em data:URI), `data/social-posts-thumbnails/` (~650 MB de miniaturas de posts) e os `business-card-*-assets.js` / `business-card-print-profile.js`. O código-fonte real do portal está em ~265 arquivos. Pasta `.claude/worktrees/` contém cópias do projeto e deve ser ignorada em buscas.
+> **Nota sobre o volume:** dos 7.911 arquivos versionados, a maioria é dado gerado, não lógica: `post-editor-assets/brands-js/*.js` (logos em data:URI), `data/social-posts-thumbnails/` (~650 MB de miniaturas de posts) e os `business-card-*-assets.js` / `cartao/business-card-print-profile.js`. O código-fonte real do portal está em ~265 arquivos. Pasta `.claude/worktrees/` contém cópias do projeto e deve ser ignorada em buscas.
 
 ## System Overview
 
@@ -82,32 +82,31 @@ graph TB
 ## Directory Structure
 
 ```
-/ (raiz - páginas e módulos do portal, tudo estático)
-├── index.html / .js / .css / home-map.js / home-auth.js   Início (cards de ferramentas, seletor de marca, busca; mapa 3D só admin)
-├── login.html / .js, auth-guard.js, auth.css              Login, gate de permissão, estilos de auth
-├── portal-shell.js                                        Sidebar, marca ativa, tema, menu da conta (1º script de toda página)
-├── portal-tour.js, portal-tour-<tela>.js                  Tour guiado "Como usar" (motor + textos por tela, depois do script da tela); DESIGN.md §18
-├── firebase-client.js / firebase-config.js / firestore.rules   Camada Firebase, config PRD/HML, regras
-├── sync-backend.js (14 linhas) / api.php                  Wrapper get/put/remove sobre PortalFirebase; api.php é resquício
-├── calendar-post-sync.js                                  Sincronizador do calendário por card
-├── visual-editor.html + app.js                            Calendário de Postagens
-├── post-editor.html / .js / .css, post-editor-*.js        Editor de Artes e presets por marca
-├── post-editor-assets/                                    Logos e presets por marca (gerado, enorme)
-├── gerador.html                                           Hub do menu Gerador
-├── cartaz-*.js/.css/.html, consolidado-*, barcode-generator.*, qr-code-generator.*   Geradores
-├── business-card-generator.* + business-card-*-assets.js  Cartão de visita (dados só em localStorage)
-├── conecta-fg.html / .js                                  Conversor .docx → código WordPress (blog Conecta FG)
-├── templates.html / .js                                   Templates de marketplaces por marca
-├── marcas.html / .js / .css, brand-library*.js, brand-export.js   Biblioteca de marcas (logos)
-├── followers-dashboard.*, monitoramento.*                 Redes sociais e menções do YouTube
-├── intelligence-center.*, intelligence-data.js            Google Trends (tela) e DNA de editoria (motor usado pelo calendário)
-├── admin-users.*, usage-analytics.js, usage-dashboard.*   Administração, métricas
-├── migrate-followers.*, import-legacy-calendar.html       Ferramentas pontuais
-├── photoshop-actions.html, photoshop-action-prepare-spanish.html   Ações do Photoshop
-├── politica-de-privacidade.html, termos-de-uso.html       Páginas legais
+/ (raiz: as páginas .html, o núcleo compartilhado e a infraestrutura; o código de cada tela fica na pasta dela)
+├── *.html                                                 Todas as telas ficam na raiz: as URLs, o menu e o histórico de uso (usage-dashboard) dependem do nome
+├── portal-shell.js                                        Sidebar, marca ativa, tema, menu da conta (1º script de toda página); PortalShell.loadScript baixa vendor/ sob demanda
+├── auth-guard.js, auth.css, styles.css, portal-filtros.css   Gate de permissão, estilos globais e de filtros
+├── firebase-client.js / firebase-config.js / firestore.rules   Camada Firebase, config PRD/HML, regras (módulos nas pastas importam com '../firebase-client.js')
+├── sync-backend.js (14 linhas) / api.php, usage-analytics.js   Wrapper get/put/remove sobre PortalFirebase; api.php é resquício; métricas de uso
 ├── cloudflare-worker.js, cloudflare-agendador.js          Workers (republicados manualmente no Cloudflare)
 ├── _headers                                               CSP/nosniff/Referrer-Policy (só Cloudflare Pages)
-├── styles.css, DESIGN.md                                  Design system e padrões de interface
+├── inicio/                                                Início (index.html): busca, cards, mapa 3D só admin, sugestões
+├── login/                                                 login.html
+├── calendario/                                            visual-editor.html: app.js e calendar-post-sync.js (sincronizador por card)
+├── editor-posts/                                          post-editor.html: post-editor.js/.css, presets post-editor-*.js, artes salvas
+├── post-editor-assets/                                    Logos, manifesto e presets por marca (gerado, enorme; usado por várias telas)
+├── cartaz/                                                cartaz-generator.html: generator.js/.css, columns/pagination/cards, imagens do template (+ miniaturas leves para as prévias)
+├── consolidado/                                           consolidado-generator.html: gerador, modelo, exportação e assets/
+├── cartao/                                                business-card-generator.html: gerador, assets por marca, perfil de impressão e assets/ (templates, planilha-base, arquivos-fonte .ai/.pdf)
+├── qrcode/, codigo-barras/                                qr-code-generator.html e barcode-generator.html (a lógica do código de barras é inline no HTML)
+├── conecta-fg/, templates/, marcas/                       Conecta FG, templates de marketplaces, biblioteca de marcas (brand-library*.js, brand-export.js)
+├── redes-sociais/, monitoramento/, inteligencia/          followers-dashboard, menções do YouTube, Google Trends e DNA de editoria (intelligence-data.js, usado pelo calendário)
+├── avaliacoes/                                            avaliacoes-google.html (módulos: regras, vendedores, mapa)
+├── usuarios/, metricas/, migracoes/                       admin-users, usage-dashboard, migrate-followers
+├── comum/                                                 Usado por mais de uma tela: title-format, validator, catalog-provider, commemorative-dates, mouse-light, fontes/ (Swiss 721)
+├── tour/                                                  Tour guiado "Como usar": motor portal-tour.js + portal-tour-<tela>.js; DESIGN.md §18
+├── gerador.html, photoshop-*.html, import-legacy-calendar.html, politica-de-privacidade.html, termos-de-uso.html   Páginas só com HTML
+├── DESIGN.md                                              Padrões de interface
 ├── vendor/                                                xlsx, jszip, html2canvas, jspdf, qrcode-generator
 ├── data/                                                  Snapshots de CI e catálogos (ver Módulo de dados)
 ├── scripts/                                               6 scripts Python usados pelos workflows
@@ -131,23 +130,23 @@ graph TB
 | `firebase-config.js` | `PROD_CONFIG` (projeto `mkt-ovd`) e `HML_CONFIG` (`mkt-ovd-hml`), escolhidos por hostname; `PORTAL_AUTH_POLICY` | 36 |
 | `firestore.rules` | Regras server-side | 129 |
 | `sync-backend.js` | `window.SyncBackend = {get, put, remove}` sobre `PortalFirebase`; sem fallback para `api.php` | 14 |
-| `calendar-post-sync.js` | Sincronizador do calendário por card (ver abaixo) | 234 |
-| `login.html` / `login.js` | E-mail/senha, Google, reset; `?next=` só aceita `.html` local; `?reason=pending\|access` | 48 / 24 |
+| `calendario/calendar-post-sync.js` | Sincronizador do calendário por card (ver abaixo) | 234 |
+| `login.html` / `login/login.js` | E-mail/senha, Google, reset; `?next=` só aceita `.html` local; `?reason=pending\|access` | 48 / 24 |
 | `admin-users.html` / `.js` | Usuários, perfis (CRUD), permissões por perfil | 116 / 732 |
 | `usage-analytics.js` | `PortalUsage.track(tool, action, {quantity, dedupeKey, brandId})`: só entregas concluídas | 17 |
 | `usage-dashboard.html` / `.js` | Métricas de uso: lê `usageDaily` | min. / 80 |
 | `avaliacoes-google.html` | Avaliações do Google das fichas da Ferramentas Gerais (menu Mídias Sociais; só `ferramentas-gerais`, `defaultHidden`, liberada a Social Media e Gestão em Permissões por perfil). Três abas (Visão geral, Fila de atenção e Vendedores: cadastro editável só por Admin, os demais perfis só leem). Visão geral (totais, notas, mês, ficha) e Fila de atenção (cartões por prioridade); filtros de período, região (UF da ficha), ficha, nota, prioridade e resposta. Lê `avaliacoesGoogle` por `PortalFirebase.readAvaliacoesGoogle` (só os meses do período) | 31 |
-| `avaliacoes-google.js` / `avaliacoes-google.css` | Lógica e estilo da tela acima (DOM por `textContent`: o texto das avaliações nunca entra como HTML) | |
+| `avaliacoes/avaliacoes-google.js` / `avaliacoes/avaliacoes-google.css` | Lógica e estilo da tela acima (DOM por `textContent`: o texto das avaliações nunca entra como HTML) | |
 | `portal-filtros.css` | Estilo compartilhado dos filtros de lista (busca + botão Filtrar, painel, selects, datas e etiquetas): usado pelas Avaliações do Google e pelas Artes salvas do Editor de Posts; carregar antes do CSS da página |
-| `avaliacoes-google-vendedores.js` | Cadastro de vendedores da campanha (lógica pura): ler o que o Excel copia, juntar sem duplicar (loja + nome, sem acento/caixa), apelidos, aviso de primeiro nome repetido na loja. Teste: `tests/avaliacoes-google-vendedores.test.html`. Os nomes ficam só no Firestore (`avaliacoesGoogle/vendedores`), nunca no repositório (público) | |
-| `avaliacoes-google-mapa.js` | Mapa Leaflet (`vendor/leaflet/`, script comum carregado antes do módulo) com tiles do OpenStreetMap e pings por latitude/longitude (SVG dentro de `divIcon`). `LOJAS` guarda as coordenadas das cidades (loja nova = uma linha); `lojaDaFicha` liga a ficha do Google à loja pelo título/cidade. O mapa guarda a última posição por tela e só enquadra os pings na primeira vez; o Leaflet crava `position:relative` no elemento (o código limpa isso para o CSS posicionar). Teste: `tests/avaliacoes-google-mapa.test.html` | |
-| `avaliacoes-google-regras.js` | Prioridade por regras fixas, sem IA: nota 1-2 e palavras de alerta = Crítica; 3 estrelas ou palavra negativa = Atenção; resto = Elogio; sem resposta há +48 h = Atrasada. Cada classificação devolve os motivos. Teste: `tests/avaliacoes-google-regras.test.html` | |
+| `avaliacoes/avaliacoes-google-vendedores.js` | Cadastro de vendedores da campanha (lógica pura): ler o que o Excel copia, juntar sem duplicar (loja + nome, sem acento/caixa), apelidos, aviso de primeiro nome repetido na loja. Teste: `tests/avaliacoes-google-vendedores.test.html`. Os nomes ficam só no Firestore (`avaliacoesGoogle/vendedores`), nunca no repositório (público) | |
+| `avaliacoes/avaliacoes-google-mapa.js` | Mapa Leaflet (`vendor/leaflet/`, script comum carregado antes do módulo) com tiles do OpenStreetMap e pings por latitude/longitude (SVG dentro de `divIcon`). `LOJAS` guarda as coordenadas das cidades (loja nova = uma linha); `lojaDaFicha` liga a ficha do Google à loja pelo título/cidade. O mapa guarda a última posição por tela e só enquadra os pings na primeira vez; o Leaflet crava `position:relative` no elemento (o código limpa isso para o CSS posicionar). Teste: `tests/avaliacoes-google-mapa.test.html` | |
+| `avaliacoes/avaliacoes-google-regras.js` | Prioridade por regras fixas, sem IA: nota 1-2 e palavras de alerta = Crítica; 3 estrelas ou palavra negativa = Atenção; resto = Elogio; sem resposta há +48 h = Atrasada. Cada classificação devolve os motivos. Teste: `tests/avaliacoes-google-regras.test.html` | |
 | `_headers` | CSP só com `script-src` (gstatic, jsdelivr), `object-src 'none'`, `frame-ancestors 'self'`; sem `connect-src`/`img-src` de propósito (primeiro CSP Report-Only em HML) | 10 |
-| `mouse-light.js`, `catalog-provider.js` | Brilho de fundo; `CatalogProvider.load(slug)` lê `data/catalog-<slug>.json` com timeout de 8 s e cache `catalog_cache_v1__<slug>`, nunca rejeita | 10 / 20 |
+| `comum/mouse-light.js`, `comum/catalog-provider.js` | Brilho de fundo; `CatalogProvider.load(slug)` lê `data/catalog-<slug>.json` com timeout de 8 s e cache `catalog_cache_v1__<slug>`, nunca rejeita | 10 / 20 |
 
 **Ambiente**: só `vonderferramentas-coder.github.io` e `portalmktovd.pages.dev` usam produção. Qualquer outro host (localhost, preview, `file://`) cai em HML, de propósito.
 
-**`firebase-client.js`**: exports de módulo ES incluem `signInWithEmail`, `signInWithGoogle`, `requestPasswordReset`, `logout`, `currentContext`, `waitForAuthState`, `hasRole`, `readPortalStore`, `writePortalStore`, `deletePortalStore`, cards do calendário (`ensurePostsStore`, `writePost`, `deletePost`, `subscribeToPosts`), artes salvas (`readArtDraft`, `writeArtDraft`, `lockArtDraft`, `releaseArtDraftLock`, `setArtDraftDeleted`, `renameArtDraft`, `listArtDrafts`, `writeArtPhoto`, `readArtPhoto`, `readArtStats`), logos (`readBrandLogo`, `writeBrandLogo`, `deleteBrandLogo`), `updateOwnProfile`, `recordUsageEvent`, QR (`listQrCodes`, `writeQrCode`, `deleteQrCode`, `countQrHits`, `readQrHits`), `audit`. `window.PortalFirebase` (script clássico) expõe só um subconjunto, **sem** `signIn*`, `waitForAuthState` nem as funções de QR; dispara o evento `portal-firebase-ready`, que `sync-backend.js` e `calendar-post-sync.js` aguardam. SDK Firebase 12.18.0 via gstatic.
+**`firebase-client.js`**: exports de módulo ES incluem `signInWithEmail`, `signInWithGoogle`, `requestPasswordReset`, `logout`, `currentContext`, `waitForAuthState`, `hasRole`, `readPortalStore`, `writePortalStore`, `deletePortalStore`, cards do calendário (`ensurePostsStore`, `writePost`, `deletePost`, `subscribeToPosts`), artes salvas (`readArtDraft`, `writeArtDraft`, `lockArtDraft`, `releaseArtDraftLock`, `setArtDraftDeleted`, `renameArtDraft`, `listArtDrafts`, `writeArtPhoto`, `readArtPhoto`, `readArtStats`), logos (`readBrandLogo`, `writeBrandLogo`, `deleteBrandLogo`), `updateOwnProfile`, `recordUsageEvent`, QR (`listQrCodes`, `writeQrCode`, `deleteQrCode`, `countQrHits`, `readQrHits`), `audit`. `window.PortalFirebase` (script clássico) expõe só um subconjunto, **sem** `signIn*`, `waitForAuthState` nem as funções de QR; dispara o evento `portal-firebase-ready`, que `sync-backend.js` e `calendario/calendar-post-sync.js` aguardam. SDK Firebase 12.18.0 via gstatic.
 
 **Coleções e documentos**:
 
@@ -167,15 +166,15 @@ graph TB
 
 **`portal-shell.js`**: `window.PortalShell = {readBrandPhoto, svgIcon, wireModalA11y, setActiveBrand}` e `window.PortalSyncConflict = {show, hide}` (contextos `posts`, `settings`, `intelligence`). Menu em grupos; o hub **Gerador** (`gerador.html`) tem filhos Cartazes, Consolidado, Código de Barras e QR Codes; o estado aberto fica em `portal-nav-group-open:<href>`. `DEFAULT_BRANDS` tem 9 marcas com ids fixos (`default`, `ferramentas-gerais`, `osten-ferragens`, `dismatal`, `toolmix`, `dwt`, `nove54`, `grupo-ovd`, `pilar-tecnologia`), cores em `themeColor`/`themeColorInk`/`onAccent` (ver DESIGN.md §7). A lista é sincronizada com `SyncBackend` na chave `brands` (poll de 20 s, push com debounce de 700 ms). `?brand=<id>` na URL define a marca ativa (usado pelos links da Início, junto com `?post=` e `?date=`). Chaves de `localStorage`: `portal_brands_v1`, `portal_active_brand_v1`, `portal_sidebar_collapsed_v1`, `calendar_theme_v1`, `calendar_color_theme_v1`, `calendar_color_theme_custom_v1`, `calendar_theme_source_v1`, `portal-nav-group-open:<href>`. A Início troca de marca sem recarregar; as demais páginas fazem `location.reload()`.
 
-**`calendar-post-sync.js`** (calendário por card): `CalendarPostSync.create({storeKey, localKey, outboxKey, getPosts, applyPosts, readLegacy, onRemoteChange, onStatus, onConflict})` devolve `{start, save, flush, beginEdit, endEdit, destroy}`. `start()` chama `ensurePostsStore` (migra o array legado em lotes de 400 com lease de 60 s) e `subscribeToPosts` (`onSnapshot` filtrado por `calendarStoreKey`). `save()` calcula o diff contra o último estado do servidor, grava no outbox (`localStorage`) e chama `writePost`/`deletePost` com `expectedRevision`; falha repete a cada 5 s e reconcilia ao voltar `online` e em `pagehide`. Em conflito **o servidor vence** e o modal de conflito aparece. `beginEdit`/`endEdit` fixam a revisão do card aberto e adiam alterações remotas dele. `flush()` só resolve depois de gravar (o atalho "Abrir editor direto" depende disso). As **configurações** continuam no caminho antigo (`SyncBackend.get/put` com versão da chave inteira). A busca e a exportação carregam todos os cards da marca, sem paginação (`ponytail` no código: partições se passar de dezenas de milhares).
+**`calendario/calendar-post-sync.js`** (calendário por card): `CalendarPostSync.create({storeKey, localKey, outboxKey, getPosts, applyPosts, readLegacy, onRemoteChange, onStatus, onConflict})` devolve `{start, save, flush, beginEdit, endEdit, destroy}`. `start()` chama `ensurePostsStore` (migra o array legado em lotes de 400 com lease de 60 s) e `subscribeToPosts` (`onSnapshot` filtrado por `calendarStoreKey`). `save()` calcula o diff contra o último estado do servidor, grava no outbox (`localStorage`) e chama `writePost`/`deletePost` com `expectedRevision`; falha repete a cada 5 s e reconcilia ao voltar `online` e em `pagehide`. Em conflito **o servidor vence** e o modal de conflito aparece. `beginEdit`/`endEdit` fixam a revisão do card aberto e adiam alterações remotas dele. `flush()` só resolve depois de gravar (o atalho "Abrir editor direto" depende disso). As **configurações** continuam no caminho antigo (`SyncBackend.get/put` com versão da chave inteira). A busca e a exportação carregam todos os cards da marca, sem paginação (`ponytail` no código: partições se passar de dezenas de milhares).
 
 **Status e notificações**: removidos em 23/10/2026. Os cards não têm mais status de publicação e não existe mais aviso de "pronto para postar"; dados antigos (`status` nos cards, `notificationBrands`, `social-media-notification-routes-v1`, `post-ready-notification-*`) ficaram no Firestore sem uso.
 
-**`admin-users.js`**: perfis padrão `admin` (travado), `user`, `gestao`, `criacao`, `social-media` em `user-profiles-v1`; permissões em `page-permissions-v1`. Criar usuário usa um app Firebase secundário (`provision-<ts>`), senha aleatória, grava `users/{uid}` com `status:'active'` e envia e-mail de redefinição. Excluir perfil **não migra** usuários (caem no padrão). Auditoria em `securityAudit` (`login`, `logout`, `user_created`, `user_updated`, `user_status_changed`, `password_reset_requested`, `followers_migrated`); o card do log está oculto. `admin-users.html` ainda linka `migrate-followers.html`.
+**`usuarios/admin-users.js`**: perfis padrão `admin` (travado), `user`, `gestao`, `criacao`, `social-media` em `user-profiles-v1`; permissões em `page-permissions-v1`. Criar usuário usa um app Firebase secundário (`provision-<ts>`), senha aleatória, grava `users/{uid}` com `status:'active'` e envia e-mail de redefinição. Excluir perfil **não migra** usuários (caem no padrão). Auditoria em `securityAudit` (`login`, `logout`, `user_created`, `user_updated`, `user_status_changed`, `password_reset_requested`, `followers_migrated`); o card do log está oculto. `admin-users.html` ainda linka `migrate-followers.html`.
 
-**Métricas de uso**: `PortalUsage.track` (carregado por cartão de visita, cartazes, Conecta FG, consolidado, marcas, ação do Photoshop em espanhol e editor de posts) grava em `usageEvents`; `aggregate-usage-metrics.yml` agrega em `usageDaily` e apaga eventos com mais de 90 dias; `usage-dashboard.js` lê os últimos 90 dias e filtra no cliente. Os mapas `toolNames`/`brandNames` do dashboard são fixos no código (ferramenta ou marca nova aparece com o id cru). Só os eventos `pdf_export` (cartão), `export` (cartaz, editor) foram vistos; não achei `track` em Conecta FG nem Photoshop.
+**Métricas de uso**: `PortalUsage.track` (carregado por cartão de visita, cartazes, Conecta FG, consolidado, marcas, ação do Photoshop em espanhol e editor de posts) grava em `usageEvents`; `aggregate-usage-metrics.yml` agrega em `usageDaily` e apaga eventos com mais de 90 dias; `metricas/usage-dashboard.js` lê os últimos 90 dias e filtra no cliente. Os mapas `toolNames`/`brandNames` do dashboard são fixos no código (ferramenta ou marca nova aparece com o id cru). Só os eventos `pdf_export` (cartão), `export` (cartaz, editor) foram vistos; não achei `track` em Conecta FG nem Photoshop.
 
-**Início**: `index.html` tem 13 cards de ferramenta; `index.js` faz busca sem acento (tecla `/` foca, Enter abre o primeiro) e troca de marca por `PortalShell.setActiveBrand` + `PortalAccess.refresh`. `home-map.js` é um mapa 3D (Three.js r149 via jsdelivr, carregado só ao abrir) que só aparece para `role=admin`; os dados de pauta e usuários são **simulados**, com nomes fictícios; sem WebGL volta para a lista. Cada galpão tem um recebimento decorativo no pátio (`crew`/`moveCrew`, rotinas em passos `goTo`/`raise`/`until`...): a empilhadeira leva paletes da pilha de recebimento (rua) à conferência (fachada), o conferente confere e o carregador leva os conferidos pela porta; recebimento vazio recebe nova entrega. Ferramentas listadas em `SUGGESTERS` (hoje só o Calendário) não abrem ao estacionar: entram na **vista do galpão** (`openVisit`/`closeVisit`), com a câmera baixa e de frente para o prédio (os galpões da quadra da frente somem durante a visita) e o painel `.hm-visit` com as sugestões de `home-suggestions.js` (regras puras em `HomeSuggestions.calendar`, sem IA, testadas em `tests/home-suggestions.test.html`; `loadCalendar(sufixo)` lê os cards, `settings<sufixo>`, o Instagram da marca e, na VONDER, o `trends-v1`). As datas comemorativas ficam em `commemorative-dates.js` (`CommemorativeDates.names/FIXED/movable`), usado também pelo `app.js`.
+**Início**: `index.html` tem 13 cards de ferramenta; `inicio/index.js` faz busca sem acento (tecla `/` foca, Enter abre o primeiro) e troca de marca por `PortalShell.setActiveBrand` + `PortalAccess.refresh`. `inicio/home-map.js` é um mapa 3D (Three.js r149 via jsdelivr, carregado só ao abrir) que só aparece para `role=admin`; os dados de pauta e usuários são **simulados**, com nomes fictícios; sem WebGL volta para a lista. Cada galpão tem um recebimento decorativo no pátio (`crew`/`moveCrew`, rotinas em passos `goTo`/`raise`/`until`...): a empilhadeira leva paletes da pilha de recebimento (rua) à conferência (fachada), o conferente confere e o carregador leva os conferidos pela porta; recebimento vazio recebe nova entrega. Ferramentas listadas em `SUGGESTERS` (hoje só o Calendário) não abrem ao estacionar: entram na **vista do galpão** (`openVisit`/`closeVisit`), com a câmera baixa e de frente para o prédio (os galpões da quadra da frente somem durante a visita) e o painel `.hm-visit` com as sugestões de `inicio/home-suggestions.js` (regras puras em `HomeSuggestions.calendar`, sem IA, testadas em `tests/home-suggestions.test.html`; `loadCalendar(sufixo)` lê os cards, `settings<sufixo>`, o Instagram da marca e, na VONDER, o `trends-v1`). As datas comemorativas ficam em `comum/commemorative-dates.js` (`CommemorativeDates.names/FIXED/movable`), usado também pelo `calendario/app.js`.
 
 **Gotchas críticos**:
 - `firebase-config.js`: `allowedEmailDomains` está **vazio** e `sessionHours` não é lido por `firebase-client.js`. Todo acesso novo depende de aprovação do admin (`users/{uid}.status == 'active'`). A sessão usa `browserSessionPersistence`.
@@ -183,7 +182,7 @@ graph TB
 - `apiKey` do Firebase Web é pública por natureza; segredos de conta de serviço ficam só em GitHub Actions Secrets.
 - Ids de documentos `calendar-meta-*`, `calendar-post-*` e `art-draft-*` usam `encodeURIComponent` no id da marca/post; backup e limpeza (`scripts/`) precisam respeitar isso.
 - `.gitignore` exclui `.env*`, `*.key`, `*.pem`, `*.sqlite*`.
-- Comentários antigos em `portal-shell.js`, `app.js` e `intelligence-data.js` ainda falam de `api.php`/SQLite/409; o backend ativo é só o Firestore. `api.php` ficou como resquício.
+- Comentários antigos em `portal-shell.js`, `calendario/app.js` e `inteligencia/intelligence-data.js` ainda falam de `api.php`/SQLite/409; o backend ativo é só o Firestore. `api.php` ficou como resquício.
 - Qualquer script novo de outro host (CDN) quebra no Cloudflare Pages por causa do CSP de `_headers`.
 
 ### Editor de Posts / Calendário (produção de arte)
@@ -192,32 +191,32 @@ graph TB
 
 | Arquivo | Papel |
 |---|---|
-| `post-editor.js` | Motor de desenho em canvas (~1125 linhas, 134 KB), fluxo de 4 etapas (+ "Tradução automática" em presets com `translate`, ex.: Uso e Recomendo VONDER; `state.lang==="es"` lido pelo renderer do preset, arquivos com sufixo `_ES`; o preset pode trazer `badgeFeedEs`/`badgeStoryEs` para trocar o selo e `translateHint`; `keepCompositionOnLoad` impede que subir foto recomponha/mova selo ou faixas; a roda do mouse só dá zoom depois de duplo clique no fundo ou no destaque), exportação JPG/ZIP; `SAFE_MARGINS` e `setMoveBox` (guias de margem, ver DESIGN.md §6); consome `OVD_BRAND_MANIFEST` (biblioteca de marcas) |
+| `editor-posts/post-editor.js` | Motor de desenho em canvas (~1125 linhas, 134 KB), fluxo de 4 etapas (+ "Tradução automática" em presets com `translate`, ex.: Uso e Recomendo VONDER; `state.lang==="es"` lido pelo renderer do preset, arquivos com sufixo `_ES`; o preset pode trazer `badgeFeedEs`/`badgeStoryEs` para trocar o selo e `translateHint`; `keepCompositionOnLoad` impede que subir foto recomponha/mova selo ou faixas; a roda do mouse só dá zoom depois de duplo clique no fundo ou no destaque), exportação JPG/ZIP; `SAFE_MARGINS` e `setMoveBox` (guias de margem, ver DESIGN.md §6); consome `OVD_BRAND_MANIFEST` (biblioteca de marcas) |
 | `post-editor.html` / `.css` | Shell e estilos do editor |
-| `post-editor-fg-ecommerce.js` | Preset "Post E-commerce" (FG) - caixa De/Por/Desconto |
-| `post-editor-fg-lancamentos.js` | Preset "Lançamentos" (FG) |
-| `post-editor-fg-destaques.js` | (oculto: o `<script>` está comentado em `post-editor.html` até os ajustes) Preset "Destaques" (FG): mesma montagem da Lançamentos, selo "DESTAQUES", título em 2 linhas e "Cód." sob a régua (assets em `post-editor-assets/fg-destaques/`) |
-| `post-editor-vonder-uso-recomendo.js` | Preset "Uso e Recomendo VONDER": faixas preta/amarela, esquerda ou direita, arrastáveis na vertical |
-| `post-editor-vonder-datas-comemorativas.js` | Preset "Datas comemorativas" (VONDER): grade de 1/2/4 fotos com enquadramento e zoom por foto, losango + faixa preta com a data, forma amarela de pontas e forma branca opcional; textos editáveis por duplo clique; painel próprio (`#vcPanel`) e fonte Montserrat |
-| `post-editor-saved-arts.js` | Artes salvas: receita no `portalStore` (`art-draft-*`), fotos originais no IndexedDB (hash) e cópia comprimida em `artPhotos`, bloqueio "fulano está editando", lixeira, lista e reabertura; usa `serialize()`/`restore()` do preset ou o adaptador genérico `SAVED_ADAPTER` |
+| `editor-posts/post-editor-fg-ecommerce.js` | Preset "Post E-commerce" (FG) - caixa De/Por/Desconto |
+| `editor-posts/post-editor-fg-lancamentos.js` | Preset "Lançamentos" (FG) |
+| `editor-posts/post-editor-fg-destaques.js` | (oculto: o `<script>` está comentado em `post-editor.html` até os ajustes) Preset "Destaques" (FG): mesma montagem da Lançamentos, selo "DESTAQUES", título em 2 linhas e "Cód." sob a régua (assets em `post-editor-assets/fg-destaques/`) |
+| `editor-posts/post-editor-vonder-uso-recomendo.js` | Preset "Uso e Recomendo VONDER": faixas preta/amarela, esquerda ou direita, arrastáveis na vertical |
+| `editor-posts/post-editor-vonder-datas-comemorativas.js` | Preset "Datas comemorativas" (VONDER): grade de 1/2/4 fotos com enquadramento e zoom por foto, losango + faixa preta com a data, forma amarela de pontas e forma branca opcional; textos editáveis por duplo clique; painel próprio (`#vcPanel`) e fonte Montserrat |
+| `editor-posts/post-editor-saved-arts.js` | Artes salvas: receita no `portalStore` (`art-draft-*`), fotos originais no IndexedDB (hash) e cópia comprimida em `artPhotos`, bloqueio "fulano está editando", lixeira, lista e reabertura; usa `serialize()`/`restore()` do preset ou o adaptador genérico `SAVED_ADAPTER` |
 | `post-editor-osten-/dismatal-/dwt-datas-comemorativas.js` | Presets "Datas comemorativas" das demais marcas |
 | `scripts/purge_art_drafts.py` + `limpar-artes-salvas.yml` | Limpeza diária (lixeira de 7 dias, artes velhas de 90 dias, fotos órfãs de 30 dias, grava `art-stats-v1`) |
 | `import-legacy-calendar.html` | Importação one-off de planilha para o calendário VONDER |
 | `tests/_pilar-*.html` | Harnesses de QA visual do cartão PILAR (estão em `tests/`, não mais na raiz) |
 
-**Registro**: cada preset faz `POST_EDITOR_CUSTOM_PRESETS[sufixoMarca][editoria] = {...}`; `post-editor.js` copia para `EDITORIA_PRESETS_BY_BRAND`. Sufixos: `''` (VONDER), `'__ferramentas-gerais'`, `'__osten-ferragens'`, `'__dismatal'`, `'__dwt'`. Só aparece habilitada (sem "Em breve") a editoria que tem preset; "Uso e Recomendo VONDER" é injetada por `withUso()` mesmo que o calendário não a tenha. Cada preset de marca é um clone deliberadamente isolado.
+**Registro**: cada preset faz `POST_EDITOR_CUSTOM_PRESETS[sufixoMarca][editoria] = {...}`; `editor-posts/post-editor.js` copia para `EDITORIA_PRESETS_BY_BRAND`. Sufixos: `''` (VONDER), `'__ferramentas-gerais'`, `'__osten-ferragens'`, `'__dismatal'`, `'__dwt'`. Só aparece habilitada (sem "Em breve") a editoria que tem preset; "Uso e Recomendo VONDER" é injetada por `withUso()` mesmo que o calendário não a tenha. Cada preset de marca é um clone deliberadamente isolado.
 
 **Assinatura do renderer**: `renderer({format, canvas, ctx, t, state, item, productName, helpers})`, com `helpers = {drawCover, drawPlaceholder, contain, roundRect, font, fitFont, setMoveBox, rich}`.
 
 **Chaves do preset além de `renderer`**: visuais e de fluxo (`footerColor`, `badgeFeed`, `badgeStory`, `brandBadgeColor`, `assetSources`, `commemorative`, `skipProductChooser`, `singleCommemorativeText`, `titleSizeControl`); controles do painel (`supportsCodes`, `supportsProductCutout`, `supportsBrandVariant`, `supportsBrandBadgeColor`, `supportsCompositionSuggestions`, `supportsOverlayScale`, `hideCircleControls`, `layoutOptions`, `moveLabel`, `moveHint`, `nameLabel`); `ecommerce` (FG), `banner:true` (cria o passo 4), `verticalOnly`, `noBackground`, `panel` (mostra `#vcPanel`); ganchos `setup(api)`, `pickTarget`/`onDrag`/`onDragEnd`, `wheel`, `dblclick` (pode devolver `{hit,box,label}`), `serialize`/`restore` (artes salvas) e `test`. Só o preset VONDER de Datas comemorativas usa `verticalOnly` (o "Uso e Recomendo" usa `usoOn()`, pelo nome da editoria). Testes em `tests/vonder-datas-comemorativas.test.html`.
 
-**Margens de segurança**: `SAFE_MARGINS` (`post-editor.js`, ~linha 759) = feed 135/66/190 e story 190/66/190; `drawGuides` desenha as guias ciano (`#00E5FF`) só nas bordas tocadas e só durante o arraste; `guideResist` segura o elemento e empurrar `GUIDE_PUSH=40` px o solta. `setMoveBox(box)` grava `lastProductBox[format]` (`[x, y, w, h]`) e vira o alvo do duplo clique e do arraste. **Preset com `renderer` que não chama `setMoveBox` fica sem destaque selecionável.** Chamam hoje: Uso e Recomendo, Datas comemorativas VONDER e FG E-commerce.
+**Margens de segurança**: `SAFE_MARGINS` (`editor-posts/post-editor.js`, ~linha 759) = feed 135/66/190 e story 190/66/190; `drawGuides` desenha as guias ciano (`#00E5FF`) só nas bordas tocadas e só durante o arraste; `guideResist` segura o elemento e empurrar `GUIDE_PUSH=40` px o solta. `setMoveBox(box)` grava `lastProductBox[format]` (`[x, y, w, h]`) e vira o alvo do duplo clique e do arraste. **Preset com `renderer` que não chama `setMoveBox` fica sem destaque selecionável.** Chamam hoje: Uso e Recomendo, Datas comemorativas VONDER e FG E-commerce.
 
 **Fluxo**: 4 etapas (`FLOW_STEP_ORDER = editoria, choose, edit, banner`). `skipProductChooser` esconde a etapa 2; `preset.banner` mostra "Desdobrar para banner". Sair de `edit` ou `banner` com alteração abre o modal (com "Salvar antes de sair" quando há artes salvas).
 
-**Ordem de `<script>` em `post-editor.html`** (crítica): `sync-backend`, `portal-shell`, `usage-analytics` → `brands-manifest.js` → `brand-library-model`, `brand-library` → 3 logos estáticos → presets (uso-recomendo, vonder-datas, **saved-arts**, fg-lancamentos, fg-ecommerce, osten, dismatal, dwt) → `cartaz-title-format`, `cartaz-validator`, `catalog-provider` → `post-editor.js`. `saved-arts` precisa vir antes porque `drawAll()` chama `PostEditorSaved.touch()`.
+**Ordem de `<script>` em `post-editor.html`** (crítica): `sync-backend`, `portal-shell`, `usage-analytics` → `brands-manifest.js` → `brand-library-model`, `brand-library` → 3 logos estáticos → presets (uso-recomendo, vonder-datas, **saved-arts**, fg-lancamentos, fg-ecommerce, osten, dismatal, dwt) → `cartaz-title-format`, `cartaz-validator`, `catalog-provider` → `editor-posts/post-editor.js`. `saved-arts` precisa vir antes porque `drawAll()` chama `PostEditorSaved.touch()`.
 
-**Recursos do `post-editor.js` que o mapa anterior não tinha**:
+**Recursos do `editor-posts/post-editor.js` que o mapa anterior não tinha**:
 - **Busca no site (só VONDER)**: com 3+ caracteres chama `/product-search`, `/product-catalog` e `/product-thumbs` do Worker, com retry em 5xx (`&_=Date.now()` fura o cache de borda) e registra lacunas do catálogo via `PortalUsage`.
 - **Importar oferta FG** (preset `ecommerce`): `/product-offer?url=` abre o modal de SKU; o código impresso é `codeFG` (7 dígitos) e a foto vem do código VONDER (`CATALOG_PHOTO_SLUG` fg→vonder).
 - **Biblioteca de logos de marca**: `OVD_BRAND_MANIFEST` + ajustes do `BrandLibrary`; `loadBrandLogoImage` injeta `<script src="post-editor-assets/brands-js/<nome>.js">` (evita CORS sob `file://`); sem o redraw assíncrono do `selectBrandLogo` a logo não aparece.
@@ -228,7 +227,7 @@ graph TB
 
 **Preset VONDER "Datas comemorativas"**: painel `#vcPanel` (campos `vc*`); fontes Montserrat e Swiss721; pontas das formas sorteadas por semente (`shapeFor`; sementes 0 e 1 são as artes de referência); layout `single|two|four`. **Banner da intranet** 900×258 (`BN`, barra `#FDC300`, logo "OVD - Grupo_amarelo"): textos `bnLine1`, `bnLine2`, `bnMsg` (`null` = acompanha a arte; editar a arte limpa o campo do banner, nunca o inverso), ordem das fotos em `V.bnOrder` (permutação validada), fotos próprias nos slots `bn0..bn3`; exporta `<base>_BANNER.jpg|png` desenhando em 2x. `serialize`/`restore` salvam texto saneado, porque o Firestore não aceita lista dentro de lista.
 
-**Artes salvas** (`post-editor-saved-arts.js`, expõe `PostEditorSaved`): documento `art-draft-{marca}-{id}` no `portalStore` (a "marca" do id é `art-drafts-v1<suffixo>`); fotos originais no IndexedDB `portal-artes` (store `photos`, chave `hash`; cópia da nuvem em `c:<hash>`) e cópia comprimida em `artPhotos` (até 350 KB por foto, orçamento de 400 MB lido de `readArtStats`). Autosave a cada 8 s (mínimo de 30 s entre gravações, retry de 30 s); heartbeat do lock a cada 5 min; lista em cache por 2 min e estatísticas por 10 min; lixeira de 7 dias. `serialize()` devolve `ready` (Promise do hash) e só salva depois de todos os hashes prontos; foto de qualidade reduzida não sobe como original; `locked`/`conflict` abre o aviso e nada é sobrescrito sem escolha do usuário.
+**Artes salvas** (`editor-posts/post-editor-saved-arts.js`, expõe `PostEditorSaved`): documento `art-draft-{marca}-{id}` no `portalStore` (a "marca" do id é `art-drafts-v1<suffixo>`); fotos originais no IndexedDB `portal-artes` (store `photos`, chave `hash`; cópia da nuvem em `c:<hash>`) e cópia comprimida em `artPhotos` (até 350 KB por foto, orçamento de 400 MB lido de `readArtStats`). Autosave a cada 8 s (mínimo de 30 s entre gravações, retry de 30 s); heartbeat do lock a cada 5 min; lista em cache por 2 min e estatísticas por 10 min; lixeira de 7 dias. `serialize()` devolve `ready` (Promise do hash) e só salva depois de todos os hashes prontos; foto de qualidade reduzida não sobe como original; `locked`/`conflict` abre o aviso e nada é sobrescrito sem escolha do usuário.
 
 **`post-editor-assets/`** (só estrutura): `brands/` (~845 `.svg` crus, fora do Git), `brands-js/` (~843 wrappers `.js` com data-URI, ~90 MB, que registram `window.OVD_BRAND_LOGOS[nome]`; nomes com espaço e acento preservados), `brands-manifest.js` (lista fixa de nomes, não gerada em tempo de execução; a busca mostra 20 itens sem texto e 40 com texto), `fg-ecommerce/`, `fg-lancamentos/`, `footers/`, `fonts/` (Korolev, Montserrat) e as Swiss721.
 
@@ -240,20 +239,20 @@ graph TB
 
 | Arquivo | Propósito | ~linhas |
 |---|---|---|
-| `cartaz-generator.html/.js/.css` | Gerador de Cartazes (Feira / Live Shop, A4/A3): importa planilha, monta cards, edita, exporta (html2canvas/jsPDF/JSZip). Só `grupo-ovd` | 124 / 1580 / 2538 |
-| `cartaz-columns.js` | Detecta colunas da planilha por cabeçalho e conteúdo | 65 |
-| `cartaz-pagination.js` | Paginação A4/A3, vincula/desvincula marcas, layout Live Shop (funções puras) | 112 |
-| `cartaz-cards.js` | Regras do painel "Cards da marca" (sem DOM) | 52 |
-| `cartaz-title-format.js` | Barra flutuante B/I/U e tamanho de texto; sanitiza `titleHtml`; **compartilhado** com Consolidado e Editor de Posts | 107 |
-| `cartaz-validator.js` | Revisor de títulos por regras e dicionário local, sem IA | 214 |
-| `consolidado-generator.*`, `consolidado-model.js`, `consolidado-export.js` | Informativo mensal em PDF a partir de planilha; `bakeImages` corrige fotos no html2canvas. Só `grupo-ovd` | 465 JS |
+| `cartaz-generator.html` + `cartaz/generator.js/.css` (e imagens do template em `cartaz/`) | Gerador de Cartazes (Feira / Live Shop, A4/A3): importa planilha, monta cards, edita, exporta (html2canvas/jsPDF/JSZip). Só `grupo-ovd` | 124 / 1580 / 2538 |
+| `cartaz/columns.js` | Detecta colunas da planilha por cabeçalho e conteúdo | 65 |
+| `cartaz/pagination.js` | Paginação A4/A3, vincula/desvincula marcas, layout Live Shop (funções puras) | 112 |
+| `cartaz/cards.js` | Regras do painel "Cards da marca" (sem DOM) | 52 |
+| `comum/title-format.js` | Barra flutuante B/I/U e tamanho de texto; sanitiza `titleHtml`; **compartilhado** com Consolidado e Editor de Posts | 107 |
+| `comum/validator.js` | Revisor de títulos por regras e dicionário local, sem IA | 214 |
+| `consolidado-generator.*`, `consolidado/consolidado-model.js`, `consolidado/consolidado-export.js` | Informativo mensal em PDF a partir de planilha; `bakeImages` corrige fotos no html2canvas. Só `grupo-ovd` | 465 JS |
 | `business-card-generator.*` | Cartão de visita (planilha ou manual → editar → revisar → PDF CMYK). Dados só em `localStorage` (`business_card_generator_v1__<marca>`); carrega Firebase só para login e métricas | ~34k tokens |
 | `barcode-generator.html/.js` | EAN-13/UPC-A/EAN-8/ITF-14 em SVG, PNG e WMF; lógica de tela dentro do HTML; dados em `localStorage` (`bc-session-v1`) | 543 / 171 |
 | `qr-code-generator.*` | QR Codes e links rastreáveis com métricas | 144 CSS |
 | `conecta-fg.html/.js` | Converte `.docx` do blog Conecta FG em código da aba "Texto" do WordPress, com cards de produto. Só `ferramentas-gerais` | 1376 / 348 |
 | `templates.html/.js` | Templates de marketplaces (Mercado Livre, Shopee...) por marca | 349 / 1038 |
 
-**APIs (globais `window.*`)**: `CartazColumns`, `CartazPagination`, `CartazCards`, `CartazTitleFormat`, `CartazValidator`, `ConsolidadoModel`, `ConsolidadoExport`, `BarcodeGen`, `ConectaFg`. `qr-code-generator.js` e `templates.js` são scripts de página sem exports.
+**APIs (globais `window.*`)**: `CartazColumns`, `CartazPagination`, `CartazCards`, `CartazTitleFormat`, `CartazValidator`, `ConsolidadoModel`, `ConsolidadoExport`, `BarcodeGen`, `ConectaFg`. `qrcode/qr-code-generator.js` e `templates/templates.js` são scripts de página sem exports.
 
 **Dados**:
 
@@ -268,7 +267,7 @@ graph TB
 | Templates | `portalStore` | `marketplace-templates-v1` (objeto único por marca) |
 
 **Armadilhas**:
-- **Cartaz**: padrão da Feira é 6 por A4 e 9 por A3 (`a3Auto` = A4×1,5). Cada template tem 6 registros no `portalStore`; fundo A4/A3 e logo chegam a ~0,9 MB (`SHARED_MAX = 900000`); só o template vigente carrega as partes pesadas; conflito é "a última edição vence". As divisões `osten`/`dismatal`/`vonder` estão duplicadas em `cartaz-columns.js` e `DIVISIONS` de `cartaz-generator.js` (marcado `ponytail`). A folha `.sheet` é arte de impressão e nunca muda com tema nem marca.
+- **Cartaz**: padrão da Feira é 6 por A4 e 9 por A3 (`a3Auto` = A4×1,5). Cada template tem 6 registros no `portalStore`; fundo A4/A3 e logo chegam a ~0,9 MB (`SHARED_MAX = 900000`); só o template vigente carrega as partes pesadas; conflito é "a última edição vence". As divisões `osten`/`dismatal`/`vonder` estão duplicadas em `cartaz/columns.js` e `DIVISIONS` de `cartaz/generator.js` (marcado `ponytail`). A folha `.sheet` é arte de impressão e nunca muda com tema nem marca.
 - **Consolidado**: código OVD formatado `NN.NN.NNN.NNN`; marca por título (VONDER/VD manda); itens antigos sem `brand` caem em `multi` ou `vonder`. O html2canvas 1.4.1 não implementa `object-fit`, por isso as fotos são "assadas" em canvas.
 - **Barcode**: 12 dígitos válidos ganham `0` na frente; o WMF depende de Arial no PC que abrir.
 - **QR**: mudar pasta ou nome do arquivo depois de impresso quebra a contagem; limite de 500 links por planilha (só a 1ª aba); `?t=1` é link de teste e não conta; o HTML publicado por FTP em `ovd.com.br/redir/...` embute `projectId` e `apiKey` do Firebase (pública) e grava `qrHits` por REST; `firestore.rules` valida `qrHits` com `hasOnly(['qr','t','os','lang','test'])`.
@@ -276,20 +275,20 @@ graph TB
 - **Templates**: um único documento com todas as marcas e controle de versão.
 - Fora do CI: `barcode-generator`, `consolidado-export`, `cartaz-export-photo`, `cartaz-export-progress`.
 
-**Cartão de visita (detalhes)**: `business-card-generator.js` (~2620 linhas, 128 KB) tem 9 entradas em `BRAND_TEMPLATES` (uma por marca do portal). Desenhistas: `drawFg`, `drawVonder`, `drawOsten`, `drawOvd`, `drawPilar` e `drawGeneric`/`drawDecor` (estilos institucionais: DISMATAL `stripe`, TOOLMIX `corner`, DWT `split`, NOVE54 `rail`; marca fora de `BRAND_TEMPLATES` cai em `corner`). **Cartão digital FG** (`renderDigital`, `exportDigital`, `exportBoth`): JPG 5×9 cm vertical, 1184×2128 (~600 dpi), só no estilo `fg`; "PDF + JPG" sai em ZIP; variante de logo `logoVariant` (`fg` ou `fg-ico`). **Exportação PDF CMYK**: `canvasToCmyk` (`BRAND_CMYK_RECIPES`), `composePrintSheet` (folha 90×50 mm + 3 mm de sangria + 4 mm de margem + marcas de corte), `buildCmykPdf` com o perfil `BusinessCardPrintProfile` (Coated FOGRA39, 600 dpi). Revisão de texto local (`ACCENT_FIXES`, `reviewRecord`, `applyIssueFix`), validação de telefone por DDD (`VALID_DDDS`), seletor de palavras em negrito no nome, QR vCard (`contactVCard`, com `vendor/qrcode-generator.js`) e planilha-modelo em `business-card-assets/planilha-base.xlsx`. API: `window.BusinessCardGenerator = {loadDemo, importRows, exportPdf, exportDigital, exportBoth, createPdf, buildVCard, formatPhone, validatePhone, deleteRecord, deleteSelected, goToStep, getState}`. O cartão PILAR omite o site e põe o e-mail logo após o cargo. As **referências de arte do FG (`.ai` e `.pdf`) estão no repositório**, em `business-card-assets/source/`; as de CorelDRAW das outras marcas ficam fora (ver memória do projeto).
+**Cartão de visita (detalhes)**: `cartao/business-card-generator.js` (~2620 linhas, 128 KB) tem 9 entradas em `BRAND_TEMPLATES` (uma por marca do portal). Desenhistas: `drawFg`, `drawVonder`, `drawOsten`, `drawOvd`, `drawPilar` e `drawGeneric`/`drawDecor` (estilos institucionais: DISMATAL `stripe`, TOOLMIX `corner`, DWT `split`, NOVE54 `rail`; marca fora de `BRAND_TEMPLATES` cai em `corner`). **Cartão digital FG** (`renderDigital`, `exportDigital`, `exportBoth`): JPG 5×9 cm vertical, 1184×2128 (~600 dpi), só no estilo `fg`; "PDF + JPG" sai em ZIP; variante de logo `logoVariant` (`fg` ou `fg-ico`). **Exportação PDF CMYK**: `canvasToCmyk` (`BRAND_CMYK_RECIPES`), `composePrintSheet` (folha 90×50 mm + 3 mm de sangria + 4 mm de margem + marcas de corte), `buildCmykPdf` com o perfil `BusinessCardPrintProfile` (Coated FOGRA39, 600 dpi). Revisão de texto local (`ACCENT_FIXES`, `reviewRecord`, `applyIssueFix`), validação de telefone por DDD (`VALID_DDDS`), seletor de palavras em negrito no nome, QR vCard (`contactVCard`, com `vendor/qrcode-generator.js`) e planilha-modelo em `cartao/assets/planilha-base.xlsx`. API: `window.BusinessCardGenerator = {loadDemo, importRows, exportPdf, exportDigital, exportBoth, createPdf, buildVCard, formatPhone, validatePhone, deleteRecord, deleteSelected, goToStep, getState}`. O cartão PILAR omite o site e põe o e-mail logo após o cargo. As **referências de arte do FG (`.ai` e `.pdf`) estão no repositório**, em `cartao/assets/source/`; as de CorelDRAW das outras marcas ficam fora (ver memória do projeto).
 
 ### Biblioteca de Marcas (`marcas.html`, Administração)
 
 | Arquivo | Propósito | ~linhas |
 |---|---|---|
 | `marcas.html/.js/.css` | Grid A-Z com busca, painel por marca, download PNG/EPS/SVG; upload de logos | 71 / 253 / 45 |
-| `brand-library-model.js` | `BrandLibraryModel`: agrupa os logos estáticos em marcas e aplica ajustes salvos (`merge`, `visibility`, `customName`) | 79 |
-| `brand-library.js` | `BrandLibrary`: aplica a biblioteca nas telas de uso (oculta logos, acrescenta os enviados, altera `OVD_BRAND_MANIFEST` no lugar) | 41 |
-| `brand-export.js` | `BrandExport`: PNG sem fundo, SVG e EPS vetorial | 170 |
+| `marcas/brand-library-model.js` | `BrandLibraryModel`: agrupa os logos estáticos em marcas e aplica ajustes salvos (`merge`, `visibility`, `customName`) | 79 |
+| `marcas/brand-library.js` | `BrandLibrary`: aplica a biblioteca nas telas de uso (oculta logos, acrescenta os enviados, altera `OVD_BRAND_MANIFEST` no lugar) | 41 |
+| `marcas/brand-export.js` | `BrandExport`: PNG sem fundo, SVG e EPS vetorial | 170 |
 
 **Dados**: `portalStore/brand-library-v1` (`{brands:[{id, name, logos:[{name,label,custom?,docId?,hidden?}]}]}`, com merge no conflito) e `brandLogos/<docId>` (data-URI do logo enviado). Escrita só para `admin` e `criacao`; os demais leem e baixam. Esta "biblioteca de marcas" é de folheto/post e **não** se confunde com as marcas do portal (`PortalBrand`).
 
-**Armadilhas**: o `name` do logo enviado é `customName(marca, versão)` e é por ele que Editor e Cartaz o procuram: renomear a marca não muda os logos já enviados. EPS é sempre RGB, sem transparência, e rejeita gradiente, máscara, filtro, texto, imagem embutida e curvas Q/S/A. Upload: SVG sem `<script>`/`<foreignObject>`, imagem reduzida a ≤800 px, ≤400.000 caracteres. `brand-library.js` carrega todos os logos enviados de uma vez (`ponytail`: acima de ~50, trocar por carga sob demanda).
+**Armadilhas**: o `name` do logo enviado é `customName(marca, versão)` e é por ele que Editor e Cartaz o procuram: renomear a marca não muda os logos já enviados. EPS é sempre RGB, sem transparência, e rejeita gradiente, máscara, filtro, texto, imagem embutida e curvas Q/S/A. Upload: SVG sem `<script>`/`<foreignObject>`, imagem reduzida a ≤800 px, ≤400.000 caracteres. `marcas/brand-library.js` carrega todos os logos enviados de uma vez (`ponytail`: acima de ~50, trocar por carga sob demanda).
 
 ### Redes sociais, monitoramento e Google Trends
 
@@ -297,8 +296,8 @@ graph TB
 |---|---|
 | `followers-dashboard.html/.js` | Painel multi-marca e multi-rede. `BRAND_INTEGRATIONS`: `default` (VONDER: Instagram, Facebook, YouTube) e `ferramentas-gerais` (Instagram, Facebook); marca fora do mapa mostra "não conectado". Atualiza a cada 60 s (`AUTO_REFRESH_MS`) |
 | `monitoramento.html/.js` | Menções à VONDER no YouTube; só renderiza para `brandId === 'default'`; coleta com mais de 6 h aparece como "parada"; triagem (Pendente, Acompanhando, Crise, Analisado, Ignorado) em `monitoramento-triagem-vonder-v1` |
-| `intelligence-center.html/.js` | **Painel do Google Trends** (7 categorias; 7d/30d/90d/12m; comparativo anual; paginação de 50). Lê só `portalStore/trends-v1`, com `matchedProducts` de `scripts/match_trends_catalog.py`. **Não usa** `intelligence-data.js` |
-| `intelligence-data.js` | Motor heurístico de "DNA de editoria" (sem IA/LLM), hoje carregado por `visual-editor.html`, `app.js` e `portal-shell.js`; chaves `calendar_intel_v1<suffix>` e `intel<suffix>` |
+| `intelligence-center.html/.js` | **Painel do Google Trends** (7 categorias; 7d/30d/90d/12m; comparativo anual; paginação de 50). Lê só `portalStore/trends-v1`, com `matchedProducts` de `scripts/match_trends_catalog.py`. **Não usa** `inteligencia/intelligence-data.js` |
+| `inteligencia/intelligence-data.js` | Motor heurístico de "DNA de editoria" (sem IA/LLM), hoje carregado por `visual-editor.html`, `calendario/app.js` e `portal-shell.js`; chaves `calendar_intel_v1<suffix>` e `intel<suffix>` |
 | `migrate-followers.html/.js` | Cópia manual JSON→Firestore; fallback deliberado, só admin |
 
 **Documentos lidos** do `portalStore`: `followers-<suf>-v1`, `posts-<suf>-v1` (em partes `__2`, `__3`, via `chunkCount`), `youtube-videos-<suf>-v1`, `facebook-posts-<suf>-v1`, `youtube-mentions-vonder-v1`, `trends-v1`; `<suf>` é `vonder` ou `ferramentas-gerais`. Metas em `social-goals-v1-<brandId>` (a meta padrão de 1M é só da VONDER). O dashboard tem painéis de melhores posts por rede, prévia de post, anel de meta, comparativos, insights e relatório por e-mail (`buildEmailReport`); importa CSV do TikTok (`initTikTokImport`), que não tem coleta automática.
@@ -307,7 +306,7 @@ graph TB
 
 ### Cloudflare Workers
 
-**`cloudflare-worker.js`** (`ecommerce-fg.vonderferramentas.workers.dev`, único proxy; PHP e PowerShell foram removidos em 06/10/2026): `/product-image?code=` (de `app.ovd.com.br/fotos/produto`, bufferizado inteiro, cache de 7 dias, CORS `*`), `/product-offer` (parse do `skuJson_0` do HTML de `fg.com.br`), `/product-link?code=|url=` (API VTEX do site FG, usado pelo Conecta FG), `/product-catalog` (busca por `alternateIds_RefId`), `/product-search` (até 12 itens; filtra marcas VONDER por IDs fixos `VONDER_BRAND_FQ` no código) e `/product-thumbs` (até 20 códigos). `/product-catalog`, `/product-search` e `/product-thumbs` exigem `Origin` na lista (GitHub Pages, Pages PRD e HML, `localhost:5500`) e têm cache de 10 min. Sem segredos. Precisa ser republicado manualmente no Cloudflare. Consumidores: `post-editor.js`, `conecta-fg.js`, `cartaz-generator.js`, `consolidado-model.js`.
+**`cloudflare-worker.js`** (`ecommerce-fg.vonderferramentas.workers.dev`, único proxy; PHP e PowerShell foram removidos em 06/10/2026): `/product-image?code=` (de `app.ovd.com.br/fotos/produto`, bufferizado inteiro, cache de 7 dias, CORS `*`), `/product-offer` (parse do `skuJson_0` do HTML de `fg.com.br`), `/product-link?code=|url=` (API VTEX do site FG, usado pelo Conecta FG), `/product-catalog` (busca por `alternateIds_RefId`), `/product-search` (até 12 itens; filtra marcas VONDER por IDs fixos `VONDER_BRAND_FQ` no código) e `/product-thumbs` (até 20 códigos). `/product-catalog`, `/product-search` e `/product-thumbs` exigem `Origin` na lista (GitHub Pages, Pages PRD e HML, `localhost:5500`) e têm cache de 10 min. Sem segredos. Precisa ser republicado manualmente no Cloudflare. Consumidores: `editor-posts/post-editor.js`, `conecta-fg/conecta-fg.js`, `cartaz/generator.js`, `consolidado/consolidado-model.js`.
 
 **`cloudflare-agendador.js`** (Cron Trigger `*/5 * * * *`, UTC): único disparo dos coletores, porque o `schedule` do GitHub atrasa horas. `agendaDoMomento(Date)` decide o que sai a cada minuto. Chama `workflow_dispatch` com `ref: main` usando o segredo `GITHUB_DISPATCH_TOKEN`, com até 3 tentativas em falha de rede, 5xx ou 429 (2 s e 4 s); erro 4xx só vai ao log. O input `rotina` só vai a workflows que o declaram (`sync-meta-followers`, `sync-youtube-followers`, `sync-youtube-mencoes`): `rotina: true` é coleta comum, `false` é o fechamento do dia. Testes em `tests/cloudflare-agendador.test.html`.
 
@@ -479,7 +478,7 @@ sequenceDiagram
 
 - **Segurança real está nas `firestore.rules`**, não no `auth-guard.js` (que só esconde páginas). Documentos de controle e de dados coletados exigem `admin()` para escrever.
 - **HML por padrão** em qualquer host fora dos dois de produção: dados de teste não aparecem em produção e o contrário também.
-- **`business-card-generator.js`** guarda os cartões só em `localStorage`: trocar de máquina ou navegador perde o que está em edição; não há backup.
+- **`cartao/business-card-generator.js`** guarda os cartões só em `localStorage`: trocar de máquina ou navegador perde o que está em edição; não há backup.
 - **Heurísticas, não IA**: DNA de editoria, cruzamento Trends × catálogo, validador de cartaz e prioridade das menções do YouTube usam regras locais.
 - **Um único proxy** (`cloudflare-worker.js`): mudança de parsing ou de foto exige republicar no Cloudflare.
 - **`data/social-posts-thumbnails/`** (~650 MB) pesa no clone do repositório.
@@ -489,7 +488,7 @@ sequenceDiagram
 
 ## Navigation Guide
 
-**Adicionar uma editoria/preset de arte**: criar `post-editor-<marca>-<editoria>.js` no padrão dos existentes (registrar em `window.POST_EDITOR_CUSTOM_PRESETS`), incluir o `<script>` em `post-editor.html` **antes** de `post-editor.js`, informar a caixa do elemento móvel via `setMoveBox` (guias de margem) e não reusar função de outra marca.
+**Adicionar uma editoria/preset de arte**: criar `post-editor-<marca>-<editoria>.js` no padrão dos existentes (registrar em `window.POST_EDITOR_CUSTOM_PRESETS`), incluir o `<script>` em `post-editor.html` **antes** de `editor-posts/post-editor.js`, informar a caixa do elemento móvel via `setMoveBox` (guias de margem) e não reusar função de outra marca.
 
 **Dashboard de seguidores não atualiza**: conferir `FIREBASE_SERVICE_ACCOUNT_KEY` no workflow do coletor (sem ele só há `::warning::`), se o Worker agendador está disparando e `BRAND_INTEGRATIONS` para a marca. `migrate-followers.html` é recuperação manual, não faz parte do fluxo.
 
@@ -499,7 +498,7 @@ sequenceDiagram
 
 **Adicionar uma ferramenta ao menu Gerador**: item filho do grupo em `NAV_ITEMS` e card em `gerador.html`; liberar por página em Permissões.
 
-**Adicionar uma marca**: `DEFAULT_BRANDS` em `portal-shell.js` (id fixo, `themeColor`, `themeColorInk`, `onAccent` se preciso), avatar em `icons/`, `BRAND_INTEGRATIONS` se tiver coleta, e `brandNames` em `usage-dashboard.js`.
+**Adicionar uma marca**: `DEFAULT_BRANDS` em `portal-shell.js` (id fixo, `themeColor`, `themeColorInk`, `onAccent` se preciso), avatar em `icons/`, `BRAND_INTEGRATIONS` se tiver coleta, e `brandNames` em `metricas/usage-dashboard.js`.
 
 **Mudar o proxy de foto/oferta**: só `cloudflare-worker.js`, republicar no Cloudflare. **Mudar horários de coleta**: `agendaDoMomento` em `cloudflare-agendador.js` (e republicar o Worker), com o teste de `tests/cloudflare-agendador.test.html`.
 
@@ -507,4 +506,4 @@ sequenceDiagram
 
 **Investigar segredos/integrações**: `docs/ARQUITETURA-E-INTEGRACOES.md` (fonte de verdade manual, reforçada por `validar-documentacao-arquitetura.yml`).
 
-**Cartão de visita**: `business-card-generator.html` → `.js` (import → editar → revisar → PDF CMYK ou JPG digital FG); referências do FG estão em `business-card-assets/source/`, as de CorelDRAW das outras marcas ficam fora do repositório (ver memória do projeto para o caminho de rede).
+**Cartão de visita**: `business-card-generator.html` → `.js` (import → editar → revisar → PDF CMYK ou JPG digital FG); referências do FG estão em `cartao/assets/source/`, as de CorelDRAW das outras marcas ficam fora do repositório (ver memória do projeto para o caminho de rede).

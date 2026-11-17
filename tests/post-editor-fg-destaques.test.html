@@ -1,5 +1,5 @@
 <!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Editor de Posts - Destaques da FG</title>
-<link rel="stylesheet" href="../post-editor.css">
+<link rel="stylesheet" href="../editor-posts/post-editor.css">
 <body data-result="running" style="margin:0;background:#888;font-family:sans-serif">
 <pre id="result" style="margin:8px">Executando…</pre>
 <input id="productCode" value="1130820"><input id="productCode2" value=""><select id="codeCount"><option value="1">1</option><option value="2">2</option></select>
@@ -10,11 +10,11 @@
 (async () => {
   try {
     const read = path => { const r = new XMLHttpRequest(); r.open('GET', path, false); r.send(); return r.responseText; };
-    const app = read('../post-editor.js');
+    const app = read('../editor-posts/post-editor.js');
     const a = app.indexOf('function splitName'), b = app.indexOf('function font(size)', a);
     if (a < 0 || b < 0) throw new Error('splitName não achado');
     (0, eval)(app.slice(a, b)); // splitName global, como na página do editor
-    (0, eval)(read('../post-editor-fg-destaques.js'));
+    (0, eval)(read('../editor-posts/post-editor-fg-destaques.js'));
     const preset = window.POST_EDITOR_CUSTOM_PRESETS['__ferramentas-gerais']['Destaques'];
     const assert = (condition, message) => { if (!condition) throw new Error(message); };
     assert(preset && typeof preset.renderer === 'function' && preset.supportsCodes === true, 'preset Destaques registrado com código');

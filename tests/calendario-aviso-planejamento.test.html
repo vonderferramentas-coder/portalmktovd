@@ -13,7 +13,7 @@
 (() => {
   try {
     const request = new XMLHttpRequest();
-    request.open('GET', '../app.js', false);
+    request.open('GET', '../calendario/app.js', false);
     request.send();
     const source = request.responseText;
     const cut = (from, to) => { const a = source.indexOf(from), b = source.indexOf(to, a); if (a < 0 || b < 0) throw new Error('marcador não achado: ' + from); return source.slice(a, b); };

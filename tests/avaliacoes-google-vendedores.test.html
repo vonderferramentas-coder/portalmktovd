@@ -3,7 +3,7 @@
 <body data-result="running">RUNNING
 <script type="module">
 // Exige --allow-file-access-from-files no Chrome (import de módulo via file://).
-import { lerColado, adicionar, nomesAmbiguos, apelidosDoTexto, ordenar, idDe, paraCsv, mencoes, trechos } from '../avaliacoes-google-vendedores.js';
+import { lerColado, adicionar, nomesAmbiguos, apelidosDoTexto, ordenar, idDe, paraCsv, mencoes, trechos } from '../avaliacoes/avaliacoes-google-vendedores.js';
 
 const eq = (a, b, msg) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${msg}: esperado ${JSON.stringify(b)}, veio ${JSON.stringify(a)}`); };
 
