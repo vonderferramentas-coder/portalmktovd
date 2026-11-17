@@ -93,8 +93,42 @@
   await syncA.flush();
   if(!server.has('card-direct')) throw new Error('flush() resolveu antes da gravação confirmar no servidor');
 
+  // Regressão (17/11/2026, perfil de social mídia na FG): imagens de referência em base64 estouram a cota
+  // do localStorage. Isso não pode impedir de salvar o card (o setItem lançava antes de chegar ao servidor)
+  // nem de receber cards de outras pessoas (o setItem lançava no meio do snapshot e a tela ficava com 1 card).
+  const realSetItem=Storage.prototype.setItem;
+  Storage.prototype.setItem=function(key,value){
+    if(String(value).length>50000){ const error=new Error('cota estourada'); error.name='QuotaExceededError'; throw error; }
+    return realSetItem.call(this,key,value);
+  };
+  try{
+    postsA.push({id:'card-big',title:'Com imagens',date:'2026-09-11',order:0,referenceImages:[{name:'a.png',dataUrl:'data:image/png;base64,'+'A'.repeat(100000)}]});
+    syncA.save();
+    await syncA.flush();
+    const sent=server.get('card-big');
+    if(!sent||sent.post.referenceImages.length!==1) throw new Error('com a cota cheia, o card com imagens não chegou inteiro ao servidor');
+    const cached=JSON.parse(localStorage.getItem('posts-test-a')).find(post=>post.id==='card-big');
+    if(!cached||cached.referenceImages.length!==0) throw new Error('com a cota cheia, o cache local devia guardar o card sem as imagens');
+    if(!postsB.some(post=>post.id==='card-big')) throw new Error('com a cota cheia, o card de outra pessoa não chegou à tela');
+    // Recarga com a cota cheia: o cache tem o card SEM imagens. Editar antes do 1º snapshot não pode apagar as
+    // imagens do servidor (a edição sai com revisão 0, o servidor recusa e a versão dele prevalece).
+    let postsC=JSON.parse(localStorage.getItem('posts-test-a')); // exatamente o que a recarga leria
+    const syncC=CalendarPostSync.create({
+      storeKey:'posts__test',localKey:'posts-test-c',outboxKey:'outbox-test-c',
+      getPosts:()=>postsC,applyPosts:value=>{postsC=value;},readLegacy:async()=>({v:[]}),
+      onRemoteChange:()=>{},onStatus:()=>{},onConflict:()=>{conflicts++;}
+    });
+    syncC.beginEdit('card-big');
+    postsC.find(post=>post.id==='card-big').title='Editado antes do 1º snapshot';
+    syncC.save();
+    await syncC.start();
+    await syncC.flush();
+    await new Promise(resolve=>setTimeout(resolve,100));
+    if(server.get('card-big').post.referenceImages.length!==1) throw new Error('editar antes do 1º snapshot, com cache sem imagens, apagou as imagens do servidor');
+  }finally{ Storage.prototype.setItem=realSetItem; }
+
   document.body.dataset.result='pass';
-  document.body.textContent='PASS: edição de card carregado chega ao servidor; criações simultâneas persistem; edição concorrente gera conflito isolado; flush() espera a gravação confirmar.';
+  document.body.textContent='PASS: edição de card carregado chega ao servidor; criações simultâneas persistem; edição concorrente gera conflito isolado; flush() espera a gravação confirmar; cota cheia do localStorage não bloqueia salvar nem receber cards.';
 })().catch(error=>{
   document.body.dataset.result='fail';
   document.body.textContent='FAIL: '+error.message;

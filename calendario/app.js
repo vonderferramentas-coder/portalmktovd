@@ -2674,8 +2674,8 @@
     // PERSISTÊNCIA DAS POSTAGENS (localStorage)
     // ============================================================
     function saveState(){
-      localStorage.setItem(LS_POSTS_KEY, JSON.stringify(state.posts));
-      if(postSync) postSync.save();
+      // o cache local pode estourar a cota (imagens de referência); a escrita segura nunca lança, e postSync.save() grava o cache e envia ao servidor
+      if(postSync) postSync.save(); else CalendarPostSync.writeLocalPosts(LS_POSTS_KEY, state.posts);
     }
 
     function migrateLegacyInstagramFeedPlaces(places){

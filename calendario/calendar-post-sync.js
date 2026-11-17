@@ -21,6 +21,29 @@
     return new Map((Array.isArray(posts)?posts:[]).filter(post=>post&&post.id).map(post=>[String(post.id),clone(post)]));
   }
 
+  // Cache local dos cards (localStorage, ~5 MB por site). As imagens de referência em base64 podem somar
+  // vários MB e estourar essa cota; o cache NUNCA pode derrubar o salvamento nem a renderização, porque o
+  // original está no Firestore. Se a cópia completa não cabe, guarda uma sem as imagens; se nem assim, apaga o
+  // cache (um cache velho faria cards apagados reaparecerem) e segue sem ele.
+  // Seguro com a cópia sem imagens: um card editado antes do primeiro snapshot sai com revisão 0, o servidor
+  // recusa (conflito) e a versão do servidor, com as imagens, prevalece (coberto em tests/concurrent-post-sync.html).
+  // ponytail: depois da 1ª falha, esta página só grava a cópia leve até recarregar (evita serializar vários MB à toa
+  // a cada save; efeito: uma recarga offline logo em seguida mostra os cards sem as imagens de referência).
+  const lightOnly=new Set();
+  function writeLocalPosts(key,posts){
+    if(!lightOnly.has(key)){
+      try{ localStorage.setItem(key,JSON.stringify(posts)); return true; }catch(_){ lightOnly.add(key); }
+    }
+    try{
+      const light=(Array.isArray(posts)?posts:[]).map(post=>post&&post.referenceImages&&post.referenceImages.length?Object.assign({},post,{referenceImages:[]}):post);
+      localStorage.setItem(key,JSON.stringify(light));
+    }catch(error){
+      try{ localStorage.removeItem(key); }catch(_){}
+      console.warn('[calendar-post-sync] cache local cheio, seguindo sem ele',error);
+    }
+    return false;
+  }
+
   async function firebaseGateway(){
     if(global.PortalFirebase) return global.PortalFirebase;
     await new Promise(resolve=>global.addEventListener('portal-firebase-ready',resolve,{once:true}));
@@ -38,6 +61,7 @@
     let ready = false;
     let running = false;
     let retryTimer = null;
+    let outboxUnsaved = false; // a fila offline não coube no localStorage: só existe em memória
     let unsubscribe = null;
     let editingId = null;
     let editingBaseRevision = 0;
@@ -54,14 +78,22 @@
 
     function persistOutbox(){
       const value = Array.from(outbox,([id,item])=>({id,post:item.post,expectedRevision:item.expectedRevision}));
-      if(value.length) localStorage.setItem(options.outboxKey,JSON.stringify(value));
-      else localStorage.removeItem(options.outboxKey);
+      try{
+        if(value.length) localStorage.setItem(options.outboxKey,JSON.stringify(value));
+        else localStorage.removeItem(options.outboxKey);
+        outboxUnsaved=false;
+      }catch(error){
+        // sem espaço para a cópia offline: a fila segue em memória e o envio ao servidor continua normalmente;
+        // se o envio falhar, o aviso de reconexão diz para não fechar a aba (reconcile)
+        outboxUnsaved=true;
+        console.warn('[calendar-post-sync] sem espaço para guardar a fila offline',error);
+      }
     }
 
     function commitLocal(map,notify){
       const posts = Array.from(map.values(),clone);
       options.applyPosts(posts);
-      localStorage.setItem(options.localKey,JSON.stringify(posts));
+      writeLocalPosts(options.localKey,posts);
       if(notify) options.onRemoteChange();
     }
 
@@ -106,7 +138,7 @@
     }
 
     function save(){
-      localStorage.setItem(options.localKey,JSON.stringify(options.getPosts()));
+      writeLocalPosts(options.localKey,options.getPosts());
       markChangesAgainst(ready?serverPosts:startupPosts,ready);
       if(ready) schedule(0);
     }
@@ -146,7 +178,7 @@
       persistOutbox();
       running=false;
       if(failed){
-        options.onStatus('Sem conexão - alteração guardada neste navegador','warn');
+        options.onStatus(outboxUnsaved?'Sem conexão e sem espaço no navegador - não feche esta aba até reconectar':'Sem conexão - alteração guardada neste navegador','warn');
         schedule(5000);
       }else if(outbox.size){
         schedule(0);
@@ -229,5 +261,5 @@
     return {start,save,flush,beginEdit,endEdit,destroy(){ if(unsubscribe) unsubscribe(); }};
   }
 
-  global.CalendarPostSync={create};
+  global.CalendarPostSync={create,writeLocalPosts};
 })(window);
