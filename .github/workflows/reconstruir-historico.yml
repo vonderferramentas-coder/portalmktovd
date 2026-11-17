@@ -39,9 +39,17 @@ jobs:
       - name: Baixar o site
         uses: actions/checkout@v4
 
+      - name: Ler o token da Página VONDER (segredo META_PAGE_TOKENS)
+        env:
+          META_PAGE_TOKENS: ${{ secrets.META_PAGE_TOKENS }}
+        run: |
+          token="$(printf '%s' "$META_PAGE_TOKENS" | jq -er --arg id 262406600508752 'first(.data[] | select(.id == $id)) | .access_token')" \
+            || { echo '::error::Página 262406600508752 (VONDER) não está em META_PAGE_TOKENS'; exit 1; }
+          echo "::add-mask::$token"
+          echo "META_PAGE_ACCESS_TOKEN=$token" >> "$GITHUB_ENV"
+
       - name: Coletar saldo diário na Meta
         env:
-          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
           META_INSTAGRAM_ID: '17841403154695997'
           DIAS_EXTRA_INPUT: ${{ inputs.dias_extra }}
         run: |
@@ -364,9 +372,18 @@ jobs:
       - name: Baixar o site
         uses: actions/checkout@v4
 
+      - name: Ler o token da Página Ferramentas Gerais (segredo META_PAGE_TOKENS)
+        continue-on-error: true
+        env:
+          META_PAGE_TOKENS: ${{ secrets.META_PAGE_TOKENS }}
+        run: |
+          token="$(printf '%s' "$META_PAGE_TOKENS" | jq -er --arg id 219931821407833 'first(.data[] | select(.id == $id)) | .access_token')" \
+            || { echo '::error::Página 219931821407833 (Ferramentas Gerais) não está em META_PAGE_TOKENS'; exit 1; }
+          echo "::add-mask::$token"
+          echo "META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS=$token" >> "$GITHUB_ENV"
+
       - name: Coletar saldo diário na Meta (Ferramentas Gerais)
         env:
-          META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS: ${{ secrets.META_PAGE_ACCESS_TOKEN_FERRAMENTAS_GERAIS }}
           META_INSTAGRAM_ID: '17841404085550539'
           DIAS_EXTRA_INPUT: ${{ inputs.dias_extra }}
         run: |

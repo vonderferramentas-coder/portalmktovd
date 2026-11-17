@@ -16,9 +16,17 @@ jobs:
   diagnostico:
     runs-on: ubuntu-latest
     steps:
+      - name: Ler o token da Página VONDER (segredo META_PAGE_TOKENS)
+        env:
+          META_PAGE_TOKENS: ${{ secrets.META_PAGE_TOKENS }}
+        run: |
+          token="$(printf '%s' "$META_PAGE_TOKENS" | jq -er --arg id 262406600508752 'first(.data[] | select(.id == $id)) | .access_token')" \
+            || { echo '::error::Página 262406600508752 (VONDER) não está em META_PAGE_TOKENS'; exit 1; }
+          echo "::add-mask::$token"
+          echo "META_PAGE_ACCESS_TOKEN=$token" >> "$GITHUB_ENV"
+
       - name: Consultar novos e saídas em dias de várias idades
         env:
-          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
           META_INSTAGRAM_ID: '17841403154695997'
         run: |
           set -uo pipefail
