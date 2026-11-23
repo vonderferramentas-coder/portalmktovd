@@ -77,22 +77,6 @@
        é admin (ver applyAdminVisibility em templates.js). */
     .tpl-card-menu-btn[hidden] { display: none }
 
-    /* Foto de fundo no modal de editar card (nome + foto) - mesma proporção 3:4 do card de
-       verdade, pra o admin já ver como vai ficar. Clique em qualquer parte abre o seletor de
-       arquivo (label envolvendo um input file escondido, mesmo padrão do "Editar marca" em
-       portal-shell.js). */
-    .tpl-channel-photo-picker {
-      display: block; position: relative; width: 140px; aspect-ratio: 3 / 4; margin: 0 auto 16px;
-      border-radius: var(--radius-md); overflow: hidden; cursor: pointer; background: var(--surface-muted);
-      border: 1px solid var(--border);
-    }
-    .tpl-channel-photo-picker-media { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-faint) }
-    .tpl-channel-photo-picker-media img { width: 100%; height: 100%; object-fit: cover; display: block }
-    .tpl-channel-photo-picker-hint {
-      position: absolute; left: 0; right: 0; bottom: 0; padding: 6px; text-align: center;
-      font-size: 10.5px; font-weight: 700; color: #fff; background: rgba(0,0,0,.55);
-    }
-
     /* Modal - reaproveita .modal-backdrop/.modal/.modal--wide de styles.css; só o cabeçalho ganha
        a cor de identidade do marketplace clicado (ver openModal em templates.js). --tpl-modal-ink
        é a cor de texto/ícone que contrasta com esse fundo - sem ela, "Voltar" e os botões de
@@ -312,11 +296,6 @@
       </div>
       <form id="tplChannelEditForm">
         <div class="modal-body">
-          <label class="tpl-channel-photo-picker" title="Clique para alterar a foto">
-            <span class="tpl-channel-photo-picker-media" id="tplChannelEditPhotoPreview"></span>
-            <input type="file" accept="image/*" id="tplChannelEditPhotoInput" style="display:none" />
-            <span class="tpl-channel-photo-picker-hint">Alterar foto</span>
-          </label>
           <div class="form-group" style="background:transparent;border:0;padding:0;margin:0">
             <label>Nome<input type="text" id="tplChannelEditName" required /></label>
           </div>

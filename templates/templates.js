@@ -641,36 +641,7 @@
     return list.find(c => c.id === channelId) || null;
   }
 
-  // ---------------------------------------------------------------- admin: modal de editar (nome + foto)
-  function readChannelPhoto(file, cb) {
-    if (!/^image\//.test(file.type)) { alert('Envie um arquivo de imagem.'); return; }
-    if (file.size > 6 * 1024 * 1024) { alert('Imagem muito grande (máx. 6MB).'); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        // recorta pro mesmo 3:4 do card (cover, sem distorcer) antes de comprimir - assim a foto
-        // usada em cardBackground já chega pronta pro enquadramento, sem depender do CSS pra cortar.
-        const targetRatio = 3 / 4;
-        const srcRatio = img.width / img.height;
-        let sx = 0, sy = 0, sw = img.width, sh = img.height;
-        if (srcRatio > targetRatio) { sw = img.height * targetRatio; sx = (img.width - sw) / 2; }
-        else { sh = img.width / targetRatio; sy = (img.height - sh) / 2; }
-        const outW = 480, outH = Math.round(outW / targetRatio);
-        const canvas = document.createElement('canvas');
-        canvas.width = outW; canvas.height = outH;
-        canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
-        cb(canvas.toDataURL('image/jpeg', 0.85));
-      };
-      img.src = String(reader.result || '');
-    };
-    reader.readAsDataURL(file);
-  }
-  function setChannelPhotoPreview(image) {
-    const preview = document.getElementById('tplChannelEditPhotoPreview');
-    preview.innerHTML = image ? `<img src="${image}" alt="" />` : svgIcon(IMAGE_PATH, 22);
-    preview.dataset.image = image || '';
-  }
+  // ---------------------------------------------------------------- admin: modal de editar (nome)
   let editingChannel = null;
   function openChannelEditModal(channelId, group) {
     const ch = findChannelInGroup(channelId, group);
@@ -678,7 +649,6 @@
     editingChannel = { id: channelId, group, isCustom: isCustomChannel(channelId), base: ch };
     document.getElementById('tplChannelEditTitle').textContent = 'Editar ' + ch.name;
     document.getElementById('tplChannelEditName').value = ch.name;
-    setChannelPhotoPreview(ch.image);
     document.getElementById('tplChannelEditBackdrop').style.display = 'flex';
     document.getElementById('tplChannelEditName').focus();
   }
@@ -686,24 +656,17 @@
     document.getElementById('tplChannelEditBackdrop').style.display = 'none';
     editingChannel = null;
   }
-  document.getElementById('tplChannelEditPhotoInput').addEventListener('change', ev => {
-    const file = ev.target.files && ev.target.files[0];
-    ev.target.value = '';
-    if (!file) return;
-    readChannelPhoto(file, dataUrl => setChannelPhotoPreview(dataUrl));
-  });
   document.getElementById('tplChannelEditForm').addEventListener('submit', ev => {
     ev.preventDefault();
     if (!editingChannel) return;
     const name = document.getElementById('tplChannelEditName').value.trim();
     if (!name) return;
-    const image = document.getElementById('tplChannelEditPhotoPreview').dataset.image || '';
     const saveBtn = ev.target.querySelector('[type=submit]');
     saveBtn.disabled = true;
     const { id, isCustom, base } = editingChannel;
     const request = isCustom
-      ? saveCustomChannel(id, Object.assign({}, base, { name, image }))
-      : saveChannelPatch(id, { name, image });
+      ? saveCustomChannel(id, Object.assign({}, base, { name }))
+      : saveChannelPatch(id, { name });
     request.then(() => {
       closeChannelEditModal();
       renderGalleries();
@@ -731,7 +694,7 @@
     document.getElementById('tplChannelConfirmTitle').textContent = isDelete ? 'Excluir card?' : 'Duplicar card?';
     document.getElementById('tplChannelConfirmMessage').textContent = isDelete
       ? `"${ch.name}" será removido desta lista. Essa ação não pode ser desfeita.`
-      : `Será criada uma cópia de "${ch.name}" com o mesmo nome e foto - fica pendente (com cadeado) até alguém cadastrar os formatos dela.`;
+      : `Será criada uma cópia de "${ch.name}" com o mesmo nome - fica pendente (com cadeado) até alguém cadastrar os formatos dela.`;
     const okBtn = document.getElementById('tplChannelConfirmOk');
     okBtn.textContent = isDelete ? 'Excluir' : 'Duplicar';
     okBtn.classList.toggle('ghost', isDelete);
