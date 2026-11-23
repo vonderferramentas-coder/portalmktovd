@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "updatedAt": "2026-11-23T02:40:31Z",
-  "searchedAt": "2026-11-23T02:40:31Z",
+  "updatedAt": "2026-11-23T04:40:29Z",
+  "searchedAt": "2026-11-23T04:40:29Z",
   "deepSearchedOn": "2026-11-22",
   "terms": [
     "vonder -leyen -ursula -eyewear",
@@ -9,6 +9,41 @@
     "vonder review|vonder reclamação|vonder defeito|vonder problema|vonder qualidade -leyen -ursula -eyewear"
   ],
   "mentions": [
+    {
+      "id": "o58owtGiLoY",
+      "firstSeenAt": "2026-11-23T04:40:29Z",
+      "title": "POLITRIZ DA VONDER",
+      "description": "",
+      "permalink": "https://www.youtube.com/watch?v=o58owtGiLoY",
+      "thumbnailUrl": "https://i.ytimg.com/vi/o58owtGiLoY/mqdefault.jpg",
+      "publishedAt": "2026-11-23T03:32:41Z",
+      "channelId": "UCXQlkoVL0EGodvr2Yox0UYQ",
+      "channelTitle": "MRO Soluções Inteligentes TV",
+      "channelUrl": "https://www.youtube.com/channel/UCXQlkoVL0EGodvr2Yox0UYQ",
+      "channelSubscribers": 124,
+      "views": 0,
+      "likes": 0,
+      "comments": 0,
+      "matchedIn": [
+        "título"
+      ],
+      "negative": [],
+      "unavailable": false,
+      "terms": [
+        "vonder -leyen -ursula -eyewear"
+      ],
+      "mediaProductType": "REELS",
+      "history": [
+        {
+          "h": 498724,
+          "v": 0
+        }
+      ],
+      "viewsDelta": null,
+      "viewsDeltaHours": null,
+      "priority": "baixa",
+      "priorityReasons": []
+    },
     {
       "id": "PGXzb8peKDI",
       "firstSeenAt": "2026-11-23T02:40:31Z",
@@ -39,10 +74,14 @@
         {
           "h": 498722,
           "v": 0
+        },
+        {
+          "h": 498724,
+          "v": 0
         }
       ],
-      "viewsDelta": null,
-      "viewsDeltaHours": null,
+      "viewsDelta": 0,
+      "viewsDeltaHours": 2,
       "priority": "baixa",
       "priorityReasons": []
     },
@@ -58,8 +97,8 @@
       "channelTitle": "Tudo de Oficina",
       "channelUrl": "https://www.youtube.com/channel/UCyfP3mbnHRmkP6mxfL47ZMw",
       "channelSubscribers": 11700,
-      "views": 414,
-      "likes": 6,
+      "views": 552,
+      "likes": 7,
       "comments": 0,
       "matchedIn": [
         "título"
@@ -79,10 +118,14 @@
         {
           "h": 498722,
           "v": 414
+        },
+        {
+          "h": 498724,
+          "v": 552
         }
       ],
-      "viewsDelta": 399,
-      "viewsDeltaHours": 2,
+      "viewsDelta": 537,
+      "viewsDeltaHours": 4,
       "priority": "media",
       "priorityReasons": [
         "canal com 11.700 inscritos"
@@ -121,10 +164,14 @@
         {
           "h": 498722,
           "v": 1
+        },
+        {
+          "h": 498724,
+          "v": 1
         }
       ],
       "viewsDelta": 0,
-      "viewsDeltaHours": 2,
+      "viewsDeltaHours": 4,
       "priority": "baixa",
       "priorityReasons": []
     },
@@ -140,7 +187,7 @@
       "channelTitle": "Lar Doce Achado",
       "channelUrl": "https://www.youtube.com/channel/UCJBgZkEP6Zu4HT7Iq3F4ECQ",
       "channelSubscribers": 1050,
-      "views": 846,
+      "views": 1036,
       "likes": 16,
       "comments": 0,
       "matchedIn": [
@@ -162,10 +209,14 @@
         {
           "h": 498722,
           "v": 846
+        },
+        {
+          "h": 498724,
+          "v": 1036
         }
       ],
-      "viewsDelta": 435,
-      "viewsDeltaHours": 2,
+      "viewsDelta": 625,
+      "viewsDeltaHours": 4,
       "priority": "baixa",
       "priorityReasons": []
     },
@@ -181,7 +232,7 @@
       "channelTitle": "Mami Brinquedos",
       "channelUrl": "https://www.youtube.com/channel/UClEekxwYOSjT-4EMq_i4uPg",
       "channelSubscribers": 2800,
-      "views": 90,
+      "views": 97,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -202,10 +253,14 @@
         {
           "h": 498722,
           "v": 90
+        },
+        {
+          "h": 498724,
+          "v": 97
         }
       ],
-      "viewsDelta": 15,
-      "viewsDeltaHours": 2,
+      "viewsDelta": 22,
+      "viewsDeltaHours": 4,
       "priority": "baixa",
       "priorityReasons": []
     },
@@ -221,7 +276,7 @@
       "channelTitle": "Lar Doce Achado",
       "channelUrl": "https://www.youtube.com/channel/UCJBgZkEP6Zu4HT7Iq3F4ECQ",
       "channelSubscribers": 1050,
-      "views": 1128,
+      "views": 1149,
       "likes": 6,
       "comments": 0,
       "matchedIn": [
@@ -247,10 +302,14 @@
         {
           "h": 498722,
           "v": 1128
+        },
+        {
+          "h": 498724,
+          "v": 1149
         }
       ],
-      "viewsDelta": 477,
-      "viewsDeltaHours": 4,
+      "viewsDelta": 498,
+      "viewsDeltaHours": 6,
       "priority": "baixa",
       "priorityReasons": []
     },
@@ -266,7 +325,7 @@
       "channelTitle": "Organiza Dica",
       "channelUrl": "https://www.youtube.com/channel/UCIwdbxRtjnkEg9bG26-DWFQ",
       "channelSubscribers": 2,
-      "views": 19,
+      "views": 21,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -296,10 +355,14 @@
         {
           "h": 498722,
           "v": 19
+        },
+        {
+          "h": 498724,
+          "v": 21
         }
       ],
-      "viewsDelta": 17,
-      "viewsDeltaHours": 6,
+      "viewsDelta": 19,
+      "viewsDeltaHours": 8,
       "priority": "baixa",
       "priorityReasons": []
     },
@@ -315,7 +378,7 @@
       "channelTitle": "Lar Doce Achado",
       "channelUrl": "https://www.youtube.com/channel/UCJBgZkEP6Zu4HT7Iq3F4ECQ",
       "channelSubscribers": 1050,
-      "views": 1043,
+      "views": 1058,
       "likes": 5,
       "comments": 0,
       "matchedIn": [
@@ -345,10 +408,14 @@
         {
           "h": 498722,
           "v": 1043
+        },
+        {
+          "h": 498724,
+          "v": 1058
         }
       ],
-      "viewsDelta": 836,
-      "viewsDeltaHours": 6,
+      "viewsDelta": 851,
+      "viewsDeltaHours": 8,
       "priority": "baixa",
       "priorityReasons": []
     },
@@ -364,8 +431,8 @@
       "channelTitle": "Raymes.Mendes.Marcenaria..",
       "channelUrl": "https://www.youtube.com/channel/UCfqFri0BUkgmzdlUsjXqd6w",
       "channelSubscribers": 25600,
-      "views": 372,
-      "likes": 6,
+      "views": 439,
+      "likes": 7,
       "comments": 6,
       "matchedIn": [
         "título"
@@ -393,10 +460,14 @@
         {
           "h": 498722,
           "v": 372
+        },
+        {
+          "h": 498724,
+          "v": 439
         }
       ],
-      "viewsDelta": 141,
-      "viewsDeltaHours": 6,
+      "viewsDelta": 208,
+      "viewsDeltaHours": 8,
       "priority": "media",
       "priorityReasons": [
         "canal com 25.600 inscritos"
@@ -414,7 +485,7 @@
       "channelTitle": "Lar Doce Achado",
       "channelUrl": "https://www.youtube.com/channel/UCJBgZkEP6Zu4HT7Iq3F4ECQ",
       "channelSubscribers": 1050,
-      "views": 20,
+      "views": 23,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -440,10 +511,14 @@
         {
           "h": 498722,
           "v": 20
+        },
+        {
+          "h": 498724,
+          "v": 23
         }
       ],
-      "viewsDelta": 9,
-      "viewsDeltaHours": 4,
+      "viewsDelta": 12,
+      "viewsDeltaHours": 6,
       "priority": "baixa",
       "priorityReasons": []
     },
@@ -459,7 +534,7 @@
       "channelTitle": "Arthur penzutt",
       "channelUrl": "https://www.youtube.com/channel/UCwgWMPqo2E-KNdm6Y6jpLqQ",
       "channelSubscribers": 43600,
-      "views": 49,
+      "views": 50,
       "likes": 1,
       "comments": 0,
       "matchedIn": [
@@ -491,10 +566,14 @@
         {
           "h": 498722,
           "v": 49
+        },
+        {
+          "h": 498724,
+          "v": 50
         }
       ],
-      "viewsDelta": 47,
-      "viewsDeltaHours": 8,
+      "viewsDelta": 48,
+      "viewsDeltaHours": 10,
       "priority": "media",
       "priorityReasons": [
         "canal com 43.600 inscritos"
@@ -511,8 +590,8 @@
       "channelId": "UCn-6evcYwcbuEQPb-vCRm8w",
       "channelTitle": "Oficina da Baixada",
       "channelUrl": "https://www.youtube.com/channel/UCn-6evcYwcbuEQPb-vCRm8w",
-      "channelSubscribers": 57,
-      "views": 110,
+      "channelSubscribers": 62,
+      "views": 123,
       "likes": 4,
       "comments": 0,
       "matchedIn": [
@@ -550,10 +629,14 @@
         {
           "h": 498722,
           "v": 110
+        },
+        {
+          "h": 498724,
+          "v": 123
         }
       ],
-      "viewsDelta": 102,
-      "viewsDeltaHours": 10,
+      "viewsDelta": 115,
+      "viewsDeltaHours": 12,
       "priority": "baixa",
       "priorityReasons": []
     },
@@ -606,10 +689,14 @@
         {
           "h": 498722,
           "v": 642
+        },
+        {
+          "h": 498724,
+          "v": 642
         }
       ],
       "viewsDelta": 384,
-      "viewsDeltaHours": 10,
+      "viewsDeltaHours": 12,
       "priority": "alta",
       "priorityReasons": [
         "canal com 146.000 inscritos"
@@ -626,8 +713,8 @@
       "channelId": "UC1oTElp-nlUWmKcihzj-mIA",
       "channelTitle": "Green House Jardinagem",
       "channelUrl": "https://www.youtube.com/channel/UC1oTElp-nlUWmKcihzj-mIA",
-      "channelSubscribers": 135,
-      "views": 1289,
+      "channelSubscribers": 136,
+      "views": 1305,
       "likes": 6,
       "comments": 4,
       "matchedIn": [
@@ -676,10 +763,14 @@
         {
           "h": 498722,
           "v": 1289
+        },
+        {
+          "h": 498724,
+          "v": 1305
         }
       ],
-      "viewsDelta": 731,
-      "viewsDeltaHours": 16,
+      "viewsDelta": 747,
+      "viewsDeltaHours": 18,
       "priority": "baixa",
       "priorityReasons": []
     },
@@ -764,6 +855,10 @@
         {
           "h": 498722,
           "v": 3
+        },
+        {
+          "h": 498724,
+          "v": 3
         }
       ],
       "viewsDelta": 0,
@@ -783,7 +878,7 @@
       "channelTitle": "Tudo sobre ferramentas",
       "channelUrl": "https://www.youtube.com/channel/UCJLPgHy2FrEzVS5j2TrUCNQ",
       "channelSubscribers": 1580,
-      "views": 727,
+      "views": 732,
       "likes": 9,
       "comments": 0,
       "matchedIn": [
@@ -852,9 +947,13 @@
         {
           "h": 498722,
           "v": 727
+        },
+        {
+          "h": 498724,
+          "v": 732
         }
       ],
-      "viewsDelta": 33,
+      "viewsDelta": 29,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -945,9 +1044,13 @@
         {
           "h": 498722,
           "v": 1166
+        },
+        {
+          "h": 498724,
+          "v": 1166
         }
       ],
-      "viewsDelta": 682,
+      "viewsDelta": 547,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -1036,9 +1139,13 @@
         {
           "h": 498722,
           "v": 103
+        },
+        {
+          "h": 498724,
+          "v": 103
         }
       ],
-      "viewsDelta": 86,
+      "viewsDelta": 85,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -1055,7 +1162,7 @@
       "channelTitle": "Organiza Dica",
       "channelUrl": "https://www.youtube.com/channel/UCIwdbxRtjnkEg9bG26-DWFQ",
       "channelSubscribers": 2,
-      "views": 17,
+      "views": 18,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -1133,6 +1240,10 @@
         {
           "h": 498722,
           "v": 17
+        },
+        {
+          "h": 498724,
+          "v": 18
         }
       ],
       "viewsDelta": 5,
@@ -1229,9 +1340,13 @@
         {
           "h": 498722,
           "v": 15
+        },
+        {
+          "h": 498724,
+          "v": 15
         }
       ],
-      "viewsDelta": 10,
+      "viewsDelta": 9,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -1328,6 +1443,10 @@
         },
         {
           "h": 498722,
+          "v": 8
+        },
+        {
+          "h": 498724,
           "v": 8
         }
       ],
@@ -1437,6 +1556,10 @@
         },
         {
           "h": 498722,
+          "v": 14
+        },
+        {
+          "h": 498724,
           "v": 14
         }
       ],
@@ -1548,9 +1671,13 @@
         {
           "h": 498722,
           "v": 58
+        },
+        {
+          "h": 498724,
+          "v": 58
         }
       ],
-      "viewsDelta": 11,
+      "viewsDelta": 10,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -1567,7 +1694,7 @@
       "channelTitle": "Dicas De Internet",
       "channelUrl": "https://www.youtube.com/channel/UC_LvWq78hiplVCSP9SlSGzg",
       "channelSubscribers": 3210,
-      "views": 1224,
+      "views": 1227,
       "likes": 5,
       "comments": 0,
       "matchedIn": [
@@ -1656,9 +1783,13 @@
         {
           "h": 498722,
           "v": 1224
+        },
+        {
+          "h": 498724,
+          "v": 1227
         }
       ],
-      "viewsDelta": 32,
+      "viewsDelta": 28,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -1769,6 +1900,10 @@
         {
           "h": 498722,
           "v": 2
+        },
+        {
+          "h": 498724,
+          "v": 2
         }
       ],
       "viewsDelta": 0,
@@ -1788,7 +1923,7 @@
       "channelTitle": "Shelfy Green",
       "channelUrl": "https://www.youtube.com/channel/UCBtQFLjf8kBZXghNoe8-1tw",
       "channelSubscribers": 6,
-      "views": 48,
+      "views": 50,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -1889,9 +2024,13 @@
         {
           "h": 498722,
           "v": 48
+        },
+        {
+          "h": 498724,
+          "v": 50
         }
       ],
-      "viewsDelta": 18,
+      "viewsDelta": 20,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -1908,7 +2047,7 @@
       "channelTitle": "Mix Shop | Casa & Construção",
       "channelUrl": "https://www.youtube.com/channel/UC2Q7sisAV2xlqyibdEq1eSQ",
       "channelSubscribers": 28,
-      "views": 1746,
+      "views": 1747,
       "likes": 11,
       "comments": 1,
       "matchedIn": [
@@ -2022,9 +2161,13 @@
         {
           "h": 498722,
           "v": 1746
+        },
+        {
+          "h": 498724,
+          "v": 1747
         }
       ],
-      "viewsDelta": 158,
+      "viewsDelta": 111,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -2159,6 +2302,10 @@
         {
           "h": 498722,
           "v": 8
+        },
+        {
+          "h": 498724,
+          "v": 8
         }
       ],
       "viewsDelta": 0,
@@ -2178,8 +2325,8 @@
       "channelTitle": "Tudo de Oficina",
       "channelUrl": "https://www.youtube.com/channel/UCyfP3mbnHRmkP6mxfL47ZMw",
       "channelSubscribers": 11700,
-      "views": 1286,
-      "likes": 11,
+      "views": 1301,
+      "likes": 12,
       "comments": 0,
       "matchedIn": [
         "título"
@@ -2295,9 +2442,13 @@
         {
           "h": 498722,
           "v": 1286
+        },
+        {
+          "h": 498724,
+          "v": 1301
         }
       ],
-      "viewsDelta": 139,
+      "viewsDelta": 154,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -2316,7 +2467,7 @@
       "channelTitle": "TubeSobre",
       "channelUrl": "https://www.youtube.com/channel/UCyj4tVEN-yEVMAve3FniV9g",
       "channelSubscribers": 66300,
-      "views": 285,
+      "views": 286,
       "likes": 3,
       "comments": 1,
       "matchedIn": [
@@ -2432,9 +2583,13 @@
         {
           "h": 498722,
           "v": 285
+        },
+        {
+          "h": 498724,
+          "v": 286
         }
       ],
-      "viewsDelta": 31,
+      "viewsDelta": 26,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -2453,7 +2608,7 @@
       "channelTitle": "TubeSobre",
       "channelUrl": "https://www.youtube.com/channel/UCyj4tVEN-yEVMAve3FniV9g",
       "channelSubscribers": 66300,
-      "views": 173,
+      "views": 175,
       "likes": 2,
       "comments": 3,
       "matchedIn": [
@@ -2569,9 +2724,13 @@
         {
           "h": 498722,
           "v": 173
+        },
+        {
+          "h": 498724,
+          "v": 175
         }
       ],
-      "viewsDelta": 24,
+      "viewsDelta": 26,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -2707,9 +2866,13 @@
         {
           "h": 498722,
           "v": 96
+        },
+        {
+          "h": 498724,
+          "v": 96
         }
       ],
-      "viewsDelta": 17,
+      "viewsDelta": 16,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -2728,8 +2891,8 @@
       "channelTitle": "Tudo de Oficina",
       "channelUrl": "https://www.youtube.com/channel/UCyfP3mbnHRmkP6mxfL47ZMw",
       "channelSubscribers": 11700,
-      "views": 2265,
-      "likes": 31,
+      "views": 2337,
+      "likes": 32,
       "comments": 1,
       "matchedIn": [
         "título"
@@ -2844,9 +3007,13 @@
         {
           "h": 498722,
           "v": 2265
+        },
+        {
+          "h": 498724,
+          "v": 2337
         }
       ],
-      "viewsDelta": 927,
+      "viewsDelta": 999,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -2987,9 +3154,13 @@
         {
           "h": 498722,
           "v": 15
+        },
+        {
+          "h": 498724,
+          "v": 15
         }
       ],
-      "viewsDelta": 4,
+      "viewsDelta": 2,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -3006,7 +3177,7 @@
       "channelTitle": "Comprou Economizou",
       "channelUrl": "https://www.youtube.com/channel/UC8IUm55TqKVP13hjyzWk1OQ",
       "channelSubscribers": 1630,
-      "views": 40,
+      "views": 41,
       "likes": 2,
       "comments": 2,
       "matchedIn": [
@@ -3130,9 +3301,13 @@
         {
           "h": 498722,
           "v": 40
+        },
+        {
+          "h": 498724,
+          "v": 41
         }
       ],
-      "viewsDelta": 10,
+      "viewsDelta": 11,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -3149,7 +3324,7 @@
       "channelTitle": "Simplicidade da Roça ",
       "channelUrl": "https://www.youtube.com/channel/UCyGW-_DnKpTseGZJZHAs8Lg",
       "channelSubscribers": 1250,
-      "views": 2790,
+      "views": 2822,
       "likes": 25,
       "comments": 0,
       "matchedIn": [
@@ -3274,9 +3449,13 @@
         {
           "h": 498722,
           "v": 2790
+        },
+        {
+          "h": 498724,
+          "v": 2822
         }
       ],
-      "viewsDelta": 274,
+      "viewsDelta": 277,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -3293,7 +3472,7 @@
       "channelTitle": "PIKOT SHOP - DLS Multimarcas",
       "channelUrl": "https://www.youtube.com/channel/UCWmOYVRxdwh37J1pqcsJgcQ",
       "channelSubscribers": 5,
-      "views": 14,
+      "views": 15,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -3419,6 +3598,10 @@
         {
           "h": 498722,
           "v": 14
+        },
+        {
+          "h": 498724,
+          "v": 15
         }
       ],
       "viewsDelta": 9,
@@ -3564,6 +3747,10 @@
         {
           "h": 498722,
           "v": 8
+        },
+        {
+          "h": 498724,
+          "v": 8
         }
       ],
       "viewsDelta": 5,
@@ -3583,7 +3770,7 @@
       "channelTitle": "canal fatos conhecidos ",
       "channelUrl": "https://www.youtube.com/channel/UCK7Fr5Fxv9DEmIuxgBnBkVg",
       "channelSubscribers": 30100,
-      "views": 62,
+      "views": 64,
       "likes": 6,
       "comments": 3,
       "matchedIn": [
@@ -3704,6 +3891,10 @@
         {
           "h": 498722,
           "v": 62
+        },
+        {
+          "h": 498724,
+          "v": 64
         }
       ],
       "viewsDelta": 13,
@@ -3725,7 +3916,7 @@
       "channelTitle": "canal fatos conhecidos ",
       "channelUrl": "https://www.youtube.com/channel/UCK7Fr5Fxv9DEmIuxgBnBkVg",
       "channelSubscribers": 30100,
-      "views": 1242,
+      "views": 1257,
       "likes": 19,
       "comments": 0,
       "matchedIn": [
@@ -3846,9 +4037,13 @@
         {
           "h": 498722,
           "v": 1242
+        },
+        {
+          "h": 498724,
+          "v": 1257
         }
       ],
-      "viewsDelta": 94,
+      "viewsDelta": 99,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -4002,6 +4197,10 @@
         },
         {
           "h": 498722,
+          "v": 20
+        },
+        {
+          "h": 498724,
           "v": 20
         }
       ],
@@ -4164,6 +4363,10 @@
         {
           "h": 498722,
           "v": 20
+        },
+        {
+          "h": 498724,
+          "v": 20
         }
       ],
       "viewsDelta": 7,
@@ -4322,6 +4525,10 @@
         },
         {
           "h": 498722,
+          "v": 18
+        },
+        {
+          "h": 498724,
           "v": 18
         }
       ],
@@ -4485,6 +4692,10 @@
         },
         {
           "h": 498722,
+          "v": 35
+        },
+        {
+          "h": 498724,
           "v": 35
         }
       ],
@@ -4658,9 +4869,13 @@
         {
           "h": 498722,
           "v": 26
+        },
+        {
+          "h": 498724,
+          "v": 26
         }
       ],
-      "viewsDelta": 7,
+      "viewsDelta": 6,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -4694,10 +4909,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 30
-        },
         {
           "h": 498654,
           "v": 61
@@ -4837,6 +5048,10 @@
         {
           "h": 498722,
           "v": 135
+        },
+        {
+          "h": 498724,
+          "v": 135
         }
       ],
       "viewsDelta": 9,
@@ -4858,8 +5073,8 @@
       "channelTitle": "Moto Filé",
       "channelUrl": "https://www.youtube.com/channel/UCOaRU6SoTPrFU_brgksbNaA",
       "channelSubscribers": 102000,
-      "views": 1459,
-      "likes": 75,
+      "views": 1469,
+      "likes": 76,
       "comments": 0,
       "matchedIn": [
         "descrição"
@@ -4871,10 +5086,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 654
-        },
         {
           "h": 498654,
           "v": 748
@@ -5014,9 +5225,13 @@
         {
           "h": 498722,
           "v": 1459
+        },
+        {
+          "h": 498724,
+          "v": 1469
         }
       ],
-      "viewsDelta": 120,
+      "viewsDelta": 122,
       "viewsDeltaHours": 24,
       "priority": "alta",
       "priorityReasons": [
@@ -5049,10 +5264,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 5
-        },
         {
           "h": 498654,
           "v": 5
@@ -5191,6 +5402,10 @@
         },
         {
           "h": 498722,
+          "v": 13
+        },
+        {
+          "h": 498724,
           "v": 13
         }
       ],
@@ -5226,10 +5441,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 1
-        },
-        {
           "h": 498654,
           "v": 1
         },
@@ -5368,6 +5579,10 @@
         {
           "h": 498722,
           "v": 2
+        },
+        {
+          "h": 498724,
+          "v": 2
         }
       ],
       "viewsDelta": 0,
@@ -5386,7 +5601,7 @@
       "channelId": "UCn-6evcYwcbuEQPb-vCRm8w",
       "channelTitle": "Oficina da Baixada",
       "channelUrl": "https://www.youtube.com/channel/UCn-6evcYwcbuEQPb-vCRm8w",
-      "channelSubscribers": 57,
+      "channelSubscribers": 62,
       "views": 46,
       "likes": 0,
       "comments": 0,
@@ -5402,10 +5617,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 0
-        },
         {
           "h": 498654,
           "v": 0
@@ -5545,9 +5756,13 @@
         {
           "h": 498722,
           "v": 46
+        },
+        {
+          "h": 498724,
+          "v": 46
         }
       ],
-      "viewsDelta": 7,
+      "viewsDelta": 6,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -5564,7 +5779,7 @@
       "channelTitle": "Pedro Augusto",
       "channelUrl": "https://www.youtube.com/channel/UCiMiaX963UjOWmzAQzTHO9Q",
       "channelSubscribers": 1120,
-      "views": 1365,
+      "views": 1375,
       "likes": 16,
       "comments": 0,
       "matchedIn": [
@@ -5580,10 +5795,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1045
-        },
         {
           "h": 498654,
           "v": 1059
@@ -5723,9 +5934,13 @@
         {
           "h": 498722,
           "v": 1365
+        },
+        {
+          "h": 498724,
+          "v": 1375
         }
       ],
-      "viewsDelta": 90,
+      "viewsDelta": 96,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -5742,7 +5957,7 @@
       "channelTitle": "House e Tech",
       "channelUrl": "https://www.youtube.com/channel/UC1P4hdvqlmZCyN2ZjA2c4eQ",
       "channelSubscribers": 15600,
-      "views": 132,
+      "views": 133,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -5760,10 +5975,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 35
-        },
         {
           "h": 498654,
           "v": 51
@@ -5903,9 +6114,13 @@
         {
           "h": 498722,
           "v": 132
+        },
+        {
+          "h": 498724,
+          "v": 133
         }
       ],
-      "viewsDelta": 19,
+      "viewsDelta": 20,
       "viewsDeltaHours": 24,
       "priority": "alta",
       "priorityReasons": [
@@ -5924,7 +6139,7 @@
       "channelTitle": "Caçador de Ofertas",
       "channelUrl": "https://www.youtube.com/channel/UC05iVFikUk9tO8CXsmzGuKw",
       "channelSubscribers": 1870,
-      "views": 160,
+      "views": 159,
       "likes": 4,
       "comments": 2,
       "matchedIn": [
@@ -5937,10 +6152,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 15
-        },
         {
           "h": 498654,
           "v": 15
@@ -6080,9 +6291,13 @@
         {
           "h": 498722,
           "v": 160
+        },
+        {
+          "h": 498724,
+          "v": 159
         }
       ],
-      "viewsDelta": 43,
+      "viewsDelta": 25,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -6112,10 +6327,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 202
-        },
         {
           "h": 498654,
           "v": 183
@@ -6255,6 +6466,10 @@
         {
           "h": 498722,
           "v": 321
+        },
+        {
+          "h": 498724,
+          "v": 321
         }
       ],
       "viewsDelta": 7,
@@ -6289,10 +6504,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 1
-        },
         {
           "h": 498654,
           "v": 1
@@ -6432,6 +6643,10 @@
         {
           "h": 498722,
           "v": 3
+        },
+        {
+          "h": 498724,
+          "v": 3
         }
       ],
       "viewsDelta": 0,
@@ -6465,10 +6680,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 97
-        },
         {
           "h": 498654,
           "v": 98
@@ -6608,6 +6819,10 @@
         {
           "h": 498722,
           "v": 189
+        },
+        {
+          "h": 498724,
+          "v": 189
         }
       ],
       "viewsDelta": 6,
@@ -6627,8 +6842,8 @@
       "channelTitle": "Lucas Rocha",
       "channelUrl": "https://www.youtube.com/channel/UCaeXKXxfXJHeD30ATYviHKQ",
       "channelSubscribers": 29800,
-      "views": 19683,
-      "likes": 772,
+      "views": 19968,
+      "likes": 777,
       "comments": 7,
       "matchedIn": [
         "título"
@@ -6641,10 +6856,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 3685
-        },
         {
           "h": 498654,
           "v": 4102
@@ -6784,15 +6995,19 @@
         {
           "h": 498722,
           "v": 19683
+        },
+        {
+          "h": 498724,
+          "v": 19968
         }
       ],
-      "viewsDelta": 2600,
+      "viewsDelta": 2489,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
-        "+2.600 views em 24h",
+        "+2.489 views em 24h",
         "canal com 29.800 inscritos",
-        "19.683 views"
+        "19.968 views"
       ]
     },
     {
@@ -6821,10 +7036,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 890
-        },
         {
           "h": 498654,
           "v": 1023
@@ -6964,9 +7175,13 @@
         {
           "h": 498722,
           "v": 1387
+        },
+        {
+          "h": 498724,
+          "v": 1387
         }
       ],
-      "viewsDelta": 115,
+      "viewsDelta": 99,
       "viewsDeltaHours": 24,
       "priority": "alta",
       "priorityReasons": [
@@ -6998,10 +7213,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 12
-        },
         {
           "h": 498654,
           "v": 12
@@ -7140,6 +7351,10 @@
         },
         {
           "h": 498722,
+          "v": 16
+        },
+        {
+          "h": 498724,
           "v": 16
         }
       ],
@@ -7175,10 +7390,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 8
-        },
-        {
           "h": 498654,
           "v": 8
         },
@@ -7317,6 +7528,10 @@
         {
           "h": 498722,
           "v": 9
+        },
+        {
+          "h": 498724,
+          "v": 9
         }
       ],
       "viewsDelta": 0,
@@ -7351,10 +7566,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 116
-        },
         {
           "h": 498654,
           "v": 115
@@ -7494,6 +7705,10 @@
         {
           "h": 498722,
           "v": 204
+        },
+        {
+          "h": 498724,
+          "v": 204
         }
       ],
       "viewsDelta": 0,
@@ -7513,8 +7728,8 @@
       "channelTitle": "Castor de Bancada",
       "channelUrl": "https://www.youtube.com/channel/UCR8aFpD8z26Xy_n3JPYGDpQ",
       "channelSubscribers": 11,
-      "views": 5402,
-      "likes": 60,
+      "views": 5577,
+      "likes": 63,
       "comments": 2,
       "matchedIn": [
         "título",
@@ -7530,10 +7745,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 285
-        },
         {
           "h": 498654,
           "v": 371
@@ -7673,13 +7884,17 @@
         {
           "h": 498722,
           "v": 5402
+        },
+        {
+          "h": 498724,
+          "v": 5577
         }
       ],
-      "viewsDelta": 1894,
+      "viewsDelta": 2069,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
-        "+1.894 views em 24h"
+        "+2.069 views em 24h"
       ]
     },
     {
@@ -7694,7 +7909,7 @@
       "channelTitle": "Samara Aprova",
       "channelUrl": "https://www.youtube.com/channel/UCZ7cuQ3K-VNStTKcEZlGvbw",
       "channelSubscribers": 21,
-      "views": 885,
+      "views": 887,
       "likes": 6,
       "comments": 1,
       "matchedIn": [
@@ -7708,10 +7923,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 625
-        },
         {
           "h": 498654,
           "v": 627
@@ -7851,9 +8062,13 @@
         {
           "h": 498722,
           "v": 885
+        },
+        {
+          "h": 498724,
+          "v": 887
         }
       ],
-      "viewsDelta": 48,
+      "viewsDelta": 50,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -7870,7 +8085,7 @@
       "channelTitle": "DescontosExpress",
       "channelUrl": "https://www.youtube.com/channel/UCOCy3D8jnwiES-dAn-OcNpg",
       "channelSubscribers": 3,
-      "views": 30,
+      "views": 31,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -7885,10 +8100,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 20
-        },
         {
           "h": 498654,
           "v": 20
@@ -8028,9 +8239,13 @@
         {
           "h": 498722,
           "v": 30
+        },
+        {
+          "h": 498724,
+          "v": 31
         }
       ],
-      "viewsDelta": 4,
+      "viewsDelta": 5,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -8060,10 +8275,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 76
-        },
         {
           "h": 498654,
           "v": 86
@@ -8203,6 +8414,10 @@
         {
           "h": 498722,
           "v": 130
+        },
+        {
+          "h": 498724,
+          "v": 130
         }
       ],
       "viewsDelta": 8,
@@ -8239,10 +8454,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 975
-        },
         {
           "h": 498654,
           "v": 989
@@ -8382,6 +8593,10 @@
         {
           "h": 498722,
           "v": 1199
+        },
+        {
+          "h": 498724,
+          "v": 1199
         }
       ],
       "viewsDelta": 21,
@@ -8416,10 +8631,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 11
-        },
         {
           "h": 498654,
           "v": 11
@@ -8559,6 +8770,10 @@
         {
           "h": 498722,
           "v": 15
+        },
+        {
+          "h": 498724,
+          "v": 15
         }
       ],
       "viewsDelta": 1,
@@ -8580,7 +8795,7 @@
       "channelTitle": "Enzomaquinas",
       "channelUrl": "https://www.youtube.com/channel/UCEnQc-HEUq86-6jagnrZaLw",
       "channelSubscribers": 2080,
-      "views": 57,
+      "views": 58,
       "likes": 2,
       "comments": 0,
       "matchedIn": [
@@ -8593,10 +8808,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 35
-        },
         {
           "h": 498654,
           "v": 39
@@ -8736,9 +8947,13 @@
         {
           "h": 498722,
           "v": 57
+        },
+        {
+          "h": 498724,
+          "v": 58
         }
       ],
-      "viewsDelta": 9,
+      "viewsDelta": 6,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -8755,7 +8970,7 @@
       "channelTitle": "Ta de Graça Ofertas",
       "channelUrl": "https://www.youtube.com/channel/UChhlKL_wrf8aQVh7jc3s9hw",
       "channelSubscribers": 109,
-      "views": 338,
+      "views": 339,
       "likes": 2,
       "comments": 1,
       "matchedIn": [
@@ -8771,10 +8986,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 301
-        },
         {
           "h": 498654,
           "v": 301
@@ -8914,9 +9125,13 @@
         {
           "h": 498722,
           "v": 338
+        },
+        {
+          "h": 498724,
+          "v": 339
         }
       ],
-      "viewsDelta": 10,
+      "viewsDelta": 11,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -8948,10 +9163,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 103
-        },
         {
           "h": 498654,
           "v": 103
@@ -9091,6 +9302,10 @@
         {
           "h": 498722,
           "v": 115
+        },
+        {
+          "h": 498724,
+          "v": 115
         }
       ],
       "viewsDelta": 1,
@@ -9124,10 +9339,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 25
-        },
         {
           "h": 498654,
           "v": 27
@@ -9267,6 +9478,10 @@
         {
           "h": 498722,
           "v": 40
+        },
+        {
+          "h": 498724,
+          "v": 40
         }
       ],
       "viewsDelta": 1,
@@ -9286,7 +9501,7 @@
       "channelTitle": "Guia Tech Review",
       "channelUrl": "https://www.youtube.com/channel/UCY5At_nj_gjWqsbIYF_vCew",
       "channelSubscribers": 16600,
-      "views": 101,
+      "views": 102,
       "likes": 0,
       "comments": 1,
       "matchedIn": [
@@ -9300,10 +9515,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 48
-        },
         {
           "h": 498654,
           "v": 48
@@ -9443,9 +9654,13 @@
         {
           "h": 498722,
           "v": 101
+        },
+        {
+          "h": 498724,
+          "v": 102
         }
       ],
-      "viewsDelta": 6,
+      "viewsDelta": 7,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -9479,10 +9694,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1
-        },
         {
           "h": 498654,
           "v": 1
@@ -9622,6 +9833,10 @@
         {
           "h": 498722,
           "v": 6
+        },
+        {
+          "h": 498724,
+          "v": 6
         }
       ],
       "viewsDelta": 3,
@@ -9654,10 +9869,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 29489
-        },
         {
           "h": 498654,
           "v": 29757
@@ -9797,13 +10008,17 @@
         {
           "h": 498722,
           "v": 35660
+        },
+        {
+          "h": 498724,
+          "v": 35660
         }
       ],
-      "viewsDelta": 1555,
+      "viewsDelta": 1434,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
-        "+1.555 views em 24h",
+        "+1.434 views em 24h",
         "canal com 16.000 inscritos",
         "35.660 views"
       ]
@@ -9833,10 +10048,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 257
-        },
         {
           "h": 498654,
           "v": 257
@@ -9976,6 +10187,10 @@
         {
           "h": 498722,
           "v": 259
+        },
+        {
+          "h": 498724,
+          "v": 259
         }
       ],
       "viewsDelta": 0,
@@ -9995,7 +10210,7 @@
       "channelTitle": "Salvador Comercial",
       "channelUrl": "https://www.youtube.com/channel/UCoGVgxUT7-xVlQq5bkPC-5Q",
       "channelSubscribers": 2970,
-      "views": 701,
+      "views": 699,
       "likes": 4,
       "comments": 0,
       "matchedIn": [
@@ -10010,10 +10225,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 667
-        },
         {
           "h": 498654,
           "v": 667
@@ -10153,9 +10364,13 @@
         {
           "h": 498722,
           "v": 701
+        },
+        {
+          "h": 498724,
+          "v": 699
         }
       ],
-      "viewsDelta": 15,
+      "viewsDelta": 12,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -10185,10 +10400,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 9
-        },
         {
           "h": 498654,
           "v": 9
@@ -10327,6 +10538,10 @@
         },
         {
           "h": 498722,
+          "v": 11
+        },
+        {
+          "h": 498724,
           "v": 11
         }
       ],
@@ -10363,10 +10578,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 3
-        },
-        {
           "h": 498654,
           "v": 3
         },
@@ -10505,6 +10716,10 @@
         {
           "h": 498722,
           "v": 5
+        },
+        {
+          "h": 498724,
+          "v": 5
         }
       ],
       "viewsDelta": 0,
@@ -10538,10 +10753,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 149
-        },
         {
           "h": 498654,
           "v": 149
@@ -10681,6 +10892,10 @@
         {
           "h": 498722,
           "v": 153
+        },
+        {
+          "h": 498724,
+          "v": 153
         }
       ],
       "viewsDelta": 1,
@@ -10713,10 +10928,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 11
-        },
         {
           "h": 498654,
           "v": 11
@@ -10855,6 +11066,10 @@
         },
         {
           "h": 498722,
+          "v": 15
+        },
+        {
+          "h": 498724,
           "v": 15
         }
       ],
@@ -10889,10 +11104,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 0
-        },
-        {
           "h": 498654,
           "v": 0
         },
@@ -11030,6 +11241,10 @@
         },
         {
           "h": 498722,
+          "v": 0
+        },
+        {
+          "h": 498724,
           "v": 0
         }
       ],
@@ -11067,10 +11282,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 2
-        },
-        {
           "h": 498654,
           "v": 2
         },
@@ -11209,6 +11420,10 @@
         {
           "h": 498722,
           "v": 2
+        },
+        {
+          "h": 498724,
+          "v": 2
         }
       ],
       "viewsDelta": 0,
@@ -11241,10 +11456,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 216
-        },
         {
           "h": 498654,
           "v": 216
@@ -11384,6 +11595,10 @@
         {
           "h": 498722,
           "v": 233
+        },
+        {
+          "h": 498724,
+          "v": 233
         }
       ],
       "viewsDelta": 7,
@@ -11403,7 +11618,7 @@
       "channelTitle": "CORREMOL",
       "channelUrl": "https://www.youtube.com/channel/UCvG4TAs6jOhxWN7FejcNmZw",
       "channelSubscribers": 1550,
-      "views": 12,
+      "views": 14,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -11416,10 +11631,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 5
-        },
         {
           "h": 498654,
           "v": 5
@@ -11559,9 +11770,13 @@
         {
           "h": 498722,
           "v": 12
+        },
+        {
+          "h": 498724,
+          "v": 14
         }
       ],
-      "viewsDelta": 3,
+      "viewsDelta": 5,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -11591,10 +11806,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 681
-        },
         {
           "h": 498654,
           "v": 688
@@ -11734,6 +11945,10 @@
         {
           "h": 498722,
           "v": 745
+        },
+        {
+          "h": 498724,
+          "v": 745
         }
       ],
       "viewsDelta": 0,
@@ -11768,10 +11983,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 27
-        },
         {
           "h": 498654,
           "v": 27
@@ -11911,6 +12122,10 @@
         {
           "h": 498722,
           "v": 31
+        },
+        {
+          "h": 498724,
+          "v": 31
         }
       ],
       "viewsDelta": 1,
@@ -11944,10 +12159,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 9
-        },
         {
           "h": 498654,
           "v": 10
@@ -12086,6 +12297,10 @@
         },
         {
           "h": 498722,
+          "v": 15
+        },
+        {
+          "h": 498724,
           "v": 15
         }
       ],
@@ -12244,10 +12459,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 17
-        },
-        {
           "h": 498654,
           "v": 17
         },
@@ -12386,6 +12597,10 @@
         {
           "h": 498722,
           "v": 26
+        },
+        {
+          "h": 498724,
+          "v": 26
         }
       ],
       "viewsDelta": 2,
@@ -12418,10 +12633,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1
-        },
         {
           "h": 498654,
           "v": 1
@@ -12561,6 +12772,10 @@
         {
           "h": 498722,
           "v": 9
+        },
+        {
+          "h": 498724,
+          "v": 9
         }
       ],
       "viewsDelta": 3,
@@ -12580,7 +12795,7 @@
       "channelTitle": "CORREMOL",
       "channelUrl": "https://www.youtube.com/channel/UCvG4TAs6jOhxWN7FejcNmZw",
       "channelSubscribers": 1550,
-      "views": 8,
+      "views": 9,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -12593,10 +12808,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 7
-        },
         {
           "h": 498654,
           "v": 7
@@ -12736,9 +12947,13 @@
         {
           "h": 498722,
           "v": 8
+        },
+        {
+          "h": 498724,
+          "v": 9
         }
       ],
-      "viewsDelta": 0,
+      "viewsDelta": 1,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -12771,10 +12986,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 7
-        },
-        {
           "h": 498654,
           "v": 7
         },
@@ -12913,6 +13124,10 @@
         {
           "h": 498722,
           "v": 8
+        },
+        {
+          "h": 498724,
+          "v": 8
         }
       ],
       "viewsDelta": 0,
@@ -12932,7 +13147,7 @@
       "channelTitle": "IVONETE FERNANDES COELHO DE SOUSA",
       "channelUrl": "https://www.youtube.com/channel/UC0hyqUdJ05np9RBSgZpYZkw",
       "channelSubscribers": 68,
-      "views": 11,
+      "views": 9,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -12946,10 +13161,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 5
-        },
         {
           "h": 498654,
           "v": 5
@@ -13089,9 +13300,13 @@
         {
           "h": 498722,
           "v": 11
+        },
+        {
+          "h": 498724,
+          "v": 9
         }
       ],
-      "viewsDelta": 3,
+      "viewsDelta": 1,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -13124,10 +13339,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 14
-        },
         {
           "h": 498654,
           "v": 14
@@ -13266,6 +13477,10 @@
         },
         {
           "h": 498722,
+          "v": 17
+        },
+        {
+          "h": 498724,
           "v": 17
         }
       ],
@@ -13302,10 +13517,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 2
-        },
-        {
           "h": 498654,
           "v": 2
         },
@@ -13443,6 +13654,10 @@
         },
         {
           "h": 498722,
+          "v": 3
+        },
+        {
+          "h": 498724,
           "v": 3
         }
       ],
@@ -13463,7 +13678,7 @@
       "channelTitle": "Achei Esse Bagulho",
       "channelUrl": "https://www.youtube.com/channel/UCbYSbTWHEAbzMgvnwfJKmBg",
       "channelSubscribers": 68,
-      "views": 117,
+      "views": 118,
       "likes": 0,
       "comments": 1,
       "matchedIn": [
@@ -13476,10 +13691,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 108
-        },
         {
           "h": 498654,
           "v": 111
@@ -13619,9 +13830,13 @@
         {
           "h": 498722,
           "v": 117
+        },
+        {
+          "h": 498724,
+          "v": 118
         }
       ],
-      "viewsDelta": 2,
+      "viewsDelta": 3,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -13638,7 +13853,7 @@
       "channelTitle": "Comprou Economizou",
       "channelUrl": "https://www.youtube.com/channel/UC8IUm55TqKVP13hjyzWk1OQ",
       "channelSubscribers": 1630,
-      "views": 33,
+      "views": 34,
       "likes": 2,
       "comments": 2,
       "matchedIn": [
@@ -13654,10 +13869,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 15
-        },
         {
           "h": 498654,
           "v": 16
@@ -13797,9 +14008,13 @@
         {
           "h": 498722,
           "v": 33
+        },
+        {
+          "h": 498724,
+          "v": 34
         }
       ],
-      "viewsDelta": 3,
+      "viewsDelta": 4,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -13830,10 +14045,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 9
-        },
         {
           "h": 498654,
           "v": 9
@@ -13972,6 +14183,10 @@
         },
         {
           "h": 498722,
+          "v": 13
+        },
+        {
+          "h": 498724,
           "v": 13
         }
       ],
@@ -14007,10 +14222,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 2
-        },
-        {
           "h": 498654,
           "v": 2
         },
@@ -14149,6 +14360,10 @@
         {
           "h": 498722,
           "v": 5
+        },
+        {
+          "h": 498724,
+          "v": 5
         }
       ],
       "viewsDelta": 2,
@@ -14168,7 +14383,7 @@
       "channelTitle": "Salvador Comercial",
       "channelUrl": "https://www.youtube.com/channel/UCoGVgxUT7-xVlQq5bkPC-5Q",
       "channelSubscribers": 2970,
-      "views": 65,
+      "views": 66,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -14183,10 +14398,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 46
-        },
         {
           "h": 498654,
           "v": 46
@@ -14326,9 +14537,13 @@
         {
           "h": 498722,
           "v": 65
+        },
+        {
+          "h": 498724,
+          "v": 66
         }
       ],
-      "viewsDelta": 2,
+      "viewsDelta": 3,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -14345,7 +14560,7 @@
       "channelTitle": "Suleshop",
       "channelUrl": "https://www.youtube.com/channel/UCpMnlsVYrx29uCCbhH8Flvg",
       "channelSubscribers": 15,
-      "views": 517,
+      "views": 519,
       "likes": 0,
       "comments": 1,
       "matchedIn": [
@@ -14358,10 +14573,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 507
-        },
         {
           "h": 498654,
           "v": 507
@@ -14501,9 +14712,13 @@
         {
           "h": 498722,
           "v": 517
+        },
+        {
+          "h": 498724,
+          "v": 519
         }
       ],
-      "viewsDelta": 4,
+      "viewsDelta": 6,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -14534,10 +14749,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 13
-        },
         {
           "h": 498654,
           "v": 13
@@ -14677,6 +14888,10 @@
         {
           "h": 498722,
           "v": 13
+        },
+        {
+          "h": 498724,
+          "v": 13
         }
       ],
       "viewsDelta": 0,
@@ -14696,7 +14911,7 @@
       "channelTitle": "Canal Jairo Nunes Jr",
       "channelUrl": "https://www.youtube.com/channel/UChu0OU5GLvOKD-_eMHMlKlw",
       "channelSubscribers": 19300,
-      "views": 2534,
+      "views": 2548,
       "likes": 56,
       "comments": 0,
       "matchedIn": [
@@ -14710,10 +14925,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1890
-        },
         {
           "h": 498654,
           "v": 1877
@@ -14853,9 +15064,13 @@
         {
           "h": 498722,
           "v": 2534
+        },
+        {
+          "h": 498724,
+          "v": 2548
         }
       ],
-      "viewsDelta": 82,
+      "viewsDelta": 66,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -14889,10 +15104,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 67
-        },
         {
           "h": 498654,
           "v": 67
@@ -15032,6 +15243,10 @@
         {
           "h": 498722,
           "v": 72
+        },
+        {
+          "h": 498724,
+          "v": 72
         }
       ],
       "viewsDelta": 2,
@@ -15067,10 +15282,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 6
-        },
         {
           "h": 498654,
           "v": 6
@@ -15210,6 +15421,10 @@
         {
           "h": 498722,
           "v": 14
+        },
+        {
+          "h": 498724,
+          "v": 14
         }
       ],
       "viewsDelta": 3,
@@ -15229,7 +15444,7 @@
       "channelTitle": "JK Achadinhos & Ofertas",
       "channelUrl": "https://www.youtube.com/channel/UCAeCrOjNgTvd1mCIXTFFuZw",
       "channelSubscribers": 108000,
-      "views": 1092,
+      "views": 1093,
       "likes": 6,
       "comments": null,
       "matchedIn": [
@@ -15244,10 +15459,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1042
-        },
         {
           "h": 498654,
           "v": 1042
@@ -15387,6 +15598,10 @@
         {
           "h": 498722,
           "v": 1092
+        },
+        {
+          "h": 498724,
+          "v": 1093
         }
       ],
       "viewsDelta": 16,
@@ -15423,10 +15638,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 124
-        },
         {
           "h": 498654,
           "v": 124
@@ -15566,9 +15777,13 @@
         {
           "h": 498722,
           "v": 130
+        },
+        {
+          "h": 498724,
+          "v": 130
         }
       ],
-      "viewsDelta": 3,
+      "viewsDelta": 2,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -15600,10 +15815,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 200
-        },
         {
           "h": 498654,
           "v": 201
@@ -15743,6 +15954,10 @@
         {
           "h": 498722,
           "v": 205
+        },
+        {
+          "h": 498724,
+          "v": 205
         }
       ],
       "viewsDelta": 3,
@@ -15762,7 +15977,7 @@
       "channelTitle": "Utilidadesunbox",
       "channelUrl": "https://www.youtube.com/channel/UCgHq0jnWxfYQ193pkGNzBLA",
       "channelSubscribers": 306,
-      "views": 260,
+      "views": 261,
       "likes": 4,
       "comments": 2,
       "matchedIn": [
@@ -15775,10 +15990,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 240
-        },
         {
           "h": 498654,
           "v": 241
@@ -15918,9 +16129,13 @@
         {
           "h": 498722,
           "v": 260
+        },
+        {
+          "h": 498724,
+          "v": 261
         }
       ],
-      "viewsDelta": 5,
+      "viewsDelta": 6,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -15953,10 +16168,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 385
-        },
         {
           "h": 498654,
           "v": 386
@@ -16096,9 +16307,13 @@
         {
           "h": 498722,
           "v": 410
+        },
+        {
+          "h": 498724,
+          "v": 410
         }
       ],
-      "viewsDelta": 4,
+      "viewsDelta": 2,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -16129,10 +16344,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 124
-        },
         {
           "h": 498654,
           "v": 124
@@ -16272,6 +16483,10 @@
         {
           "h": 498722,
           "v": 125
+        },
+        {
+          "h": 498724,
+          "v": 125
         }
       ],
       "viewsDelta": 0,
@@ -16307,10 +16522,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 81
-        },
         {
           "h": 498654,
           "v": 81
@@ -16450,6 +16661,10 @@
         {
           "h": 498722,
           "v": 97
+        },
+        {
+          "h": 498724,
+          "v": 97
         }
       ],
       "viewsDelta": 0,
@@ -16482,10 +16697,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 41
-        },
         {
           "h": 498654,
           "v": 43
@@ -16624,6 +16835,10 @@
         },
         {
           "h": 498722,
+          "v": 45
+        },
+        {
+          "h": 498724,
           "v": 45
         }
       ],
@@ -16660,10 +16875,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 5
-        },
-        {
           "h": 498654,
           "v": 5
         },
@@ -16801,6 +17012,10 @@
         },
         {
           "h": 498722,
+          "v": 5
+        },
+        {
+          "h": 498724,
           "v": 5
         }
       ],
@@ -16838,10 +17053,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 7
-        },
-        {
           "h": 498654,
           "v": 7
         },
@@ -16979,6 +17190,10 @@
         },
         {
           "h": 498722,
+          "v": 8
+        },
+        {
+          "h": 498724,
           "v": 8
         }
       ],
@@ -17013,10 +17228,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 31
-        },
-        {
           "h": 498654,
           "v": 31
         },
@@ -17155,6 +17366,10 @@
         {
           "h": 498722,
           "v": 33
+        },
+        {
+          "h": 498724,
+          "v": 33
         }
       ],
       "viewsDelta": 0,
@@ -17174,7 +17389,7 @@
       "channelTitle": "Enzomaquinas",
       "channelUrl": "https://www.youtube.com/channel/UCEnQc-HEUq86-6jagnrZaLw",
       "channelSubscribers": 2080,
-      "views": 222,
+      "views": 225,
       "likes": 6,
       "comments": 0,
       "matchedIn": [
@@ -17187,10 +17402,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 169
-        },
         {
           "h": 498654,
           "v": 178
@@ -17330,9 +17541,13 @@
         {
           "h": 498722,
           "v": 222
+        },
+        {
+          "h": 498724,
+          "v": 225
         }
       ],
-      "viewsDelta": 7,
+      "viewsDelta": 8,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -17363,10 +17578,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 11
-        },
         {
           "h": 498654,
           "v": 11
@@ -17506,6 +17717,10 @@
         {
           "h": 498722,
           "v": 22
+        },
+        {
+          "h": 498724,
+          "v": 22
         }
       ],
       "viewsDelta": 4,
@@ -17538,10 +17753,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 19
-        },
         {
           "h": 498654,
           "v": 19
@@ -17681,6 +17892,10 @@
         {
           "h": 498722,
           "v": 20
+        },
+        {
+          "h": 498724,
+          "v": 20
         }
       ],
       "viewsDelta": 1,
@@ -17714,10 +17929,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 330
-        },
         {
           "h": 498654,
           "v": 333
@@ -17857,9 +18068,13 @@
         {
           "h": 498722,
           "v": 356
+        },
+        {
+          "h": 498724,
+          "v": 356
         }
       ],
-      "viewsDelta": 10,
+      "viewsDelta": 9,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -17891,10 +18106,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 623
-        },
         {
           "h": 498654,
           "v": 623
@@ -18034,6 +18245,10 @@
         {
           "h": 498722,
           "v": 651
+        },
+        {
+          "h": 498724,
+          "v": 651
         }
       ],
       "viewsDelta": 2,
@@ -18066,10 +18281,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1152
-        },
         {
           "h": 498654,
           "v": 1152
@@ -18209,6 +18420,10 @@
         {
           "h": 498722,
           "v": 1157
+        },
+        {
+          "h": 498724,
+          "v": 1157
         }
       ],
       "viewsDelta": 0,
@@ -18243,10 +18458,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 270
-        },
         {
           "h": 498654,
           "v": 270
@@ -18386,9 +18597,13 @@
         {
           "h": 498722,
           "v": 310
+        },
+        {
+          "h": 498724,
+          "v": 310
         }
       ],
-      "viewsDelta": 7,
+      "viewsDelta": 6,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -18405,7 +18620,7 @@
       "channelTitle": "Opinião de Respeito - Lucasg@",
       "channelUrl": "https://www.youtube.com/channel/UCs0_gL0aDT3-gk-d2TeGjkA",
       "channelSubscribers": 1270,
-      "views": 422,
+      "views": 423,
       "likes": 1,
       "comments": 0,
       "matchedIn": [
@@ -18420,10 +18635,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 413
-        },
         {
           "h": 498654,
           "v": 413
@@ -18563,9 +18774,13 @@
         {
           "h": 498722,
           "v": 422
+        },
+        {
+          "h": 498724,
+          "v": 423
         }
       ],
-      "viewsDelta": 1,
+      "viewsDelta": 2,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -18582,7 +18797,7 @@
       "channelTitle": "JSILVAELETROCOM",
       "channelUrl": "https://www.youtube.com/channel/UCGtCg6pS5pt-O93-rPLNP8g",
       "channelSubscribers": 2090,
-      "views": 1757,
+      "views": 1758,
       "likes": 21,
       "comments": 2,
       "matchedIn": [
@@ -18595,10 +18810,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1641
-        },
         {
           "h": 498654,
           "v": 1660
@@ -18738,9 +18949,13 @@
         {
           "h": 498722,
           "v": 1757
+        },
+        {
+          "h": 498724,
+          "v": 1758
         }
       ],
-      "viewsDelta": 10,
+      "viewsDelta": 11,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -18771,10 +18986,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 2447
-        },
         {
           "h": 498654,
           "v": 2452
@@ -18914,9 +19125,13 @@
         {
           "h": 498722,
           "v": 2516
+        },
+        {
+          "h": 498724,
+          "v": 2516
         }
       ],
-      "viewsDelta": 5,
+      "viewsDelta": 3,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -18947,10 +19162,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1091
-        },
         {
           "h": 498654,
           "v": 1091
@@ -19090,6 +19301,10 @@
         {
           "h": 498722,
           "v": 1109
+        },
+        {
+          "h": 498724,
+          "v": 1109
         }
       ],
       "viewsDelta": 10,
@@ -19109,7 +19324,7 @@
       "channelTitle": "Compras Garantida",
       "channelUrl": "https://www.youtube.com/channel/UCQijraxFVKI7flXJZwjIqDg",
       "channelSubscribers": 25,
-      "views": 155,
+      "views": 158,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -19124,10 +19339,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 47
-        },
         {
           "h": 498654,
           "v": 55
@@ -19267,9 +19478,13 @@
         {
           "h": 498722,
           "v": 155
+        },
+        {
+          "h": 498724,
+          "v": 158
         }
       ],
-      "viewsDelta": 14,
+      "viewsDelta": 17,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -19301,10 +19516,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 21
-        },
         {
           "h": 498654,
           "v": 21
@@ -19444,6 +19655,10 @@
         {
           "h": 498722,
           "v": 21
+        },
+        {
+          "h": 498724,
+          "v": 21
         }
       ],
       "viewsDelta": 0,
@@ -19463,7 +19678,7 @@
       "channelTitle": "Cicampo Máquinas e Ferramentas",
       "channelUrl": "https://www.youtube.com/channel/UCOPvn65-xrCR7ugPVbs5YzQ",
       "channelSubscribers": 3410,
-      "views": 186,
+      "views": 187,
       "likes": 1,
       "comments": 0,
       "matchedIn": [
@@ -19477,10 +19692,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 143
-        },
         {
           "h": 498654,
           "v": 144
@@ -19620,9 +19831,13 @@
         {
           "h": 498722,
           "v": 186
+        },
+        {
+          "h": 498724,
+          "v": 187
         }
       ],
-      "viewsDelta": 10,
+      "viewsDelta": 11,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -19639,7 +19854,7 @@
       "channelTitle": "RICARDO DAMIAO",
       "channelUrl": "https://www.youtube.com/channel/UCg_e9mfPkRKOGpIoUNiMq3w",
       "channelSubscribers": 4,
-      "views": 42,
+      "views": 43,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -19653,10 +19868,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 31
-        },
         {
           "h": 498654,
           "v": 32
@@ -19796,9 +20007,13 @@
         {
           "h": 498722,
           "v": 42
+        },
+        {
+          "h": 498724,
+          "v": 43
         }
       ],
-      "viewsDelta": 6,
+      "viewsDelta": 7,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -19815,7 +20030,7 @@
       "channelTitle": "Salvador Comercial",
       "channelUrl": "https://www.youtube.com/channel/UCoGVgxUT7-xVlQq5bkPC-5Q",
       "channelSubscribers": 2970,
-      "views": 435,
+      "views": 436,
       "likes": 1,
       "comments": 0,
       "matchedIn": [
@@ -19830,10 +20045,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 398
-        },
         {
           "h": 498654,
           "v": 398
@@ -19973,6 +20184,10 @@
         {
           "h": 498722,
           "v": 435
+        },
+        {
+          "h": 498724,
+          "v": 436
         }
       ],
       "viewsDelta": 12,
@@ -20007,10 +20222,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 127
-        },
         {
           "h": 498654,
           "v": 128
@@ -20150,9 +20361,13 @@
         {
           "h": 498722,
           "v": 146
+        },
+        {
+          "h": 498724,
+          "v": 146
         }
       ],
-      "viewsDelta": 9,
+      "viewsDelta": 8,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -20169,7 +20384,7 @@
       "channelTitle": "Cicampo Máquinas e Ferramentas",
       "channelUrl": "https://www.youtube.com/channel/UCOPvn65-xrCR7ugPVbs5YzQ",
       "channelSubscribers": 3410,
-      "views": 188,
+      "views": 190,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -20184,10 +20399,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 175
-        },
         {
           "h": 498654,
           "v": 175
@@ -20327,9 +20538,13 @@
         {
           "h": 498722,
           "v": 188
+        },
+        {
+          "h": 498724,
+          "v": 190
         }
       ],
-      "viewsDelta": 5,
+      "viewsDelta": 7,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -20346,7 +20561,7 @@
       "channelTitle": "Monica Souza",
       "channelUrl": "https://www.youtube.com/channel/UC_Hm0_yLWoUv1hkVzhItmUg",
       "channelSubscribers": 56,
-      "views": 331,
+      "views": 332,
       "likes": 2,
       "comments": 0,
       "matchedIn": [
@@ -20360,10 +20575,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 322
-        },
         {
           "h": 498654,
           "v": 323
@@ -20503,9 +20714,13 @@
         {
           "h": 498722,
           "v": 331
+        },
+        {
+          "h": 498724,
+          "v": 332
         }
       ],
-      "viewsDelta": 2,
+      "viewsDelta": 3,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -20537,10 +20752,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 33
-        },
-        {
           "h": 498654,
           "v": 34
         },
@@ -20678,6 +20889,10 @@
         },
         {
           "h": 498722,
+          "v": 34
+        },
+        {
+          "h": 498724,
           "v": 34
         }
       ],
@@ -20711,10 +20926,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1095
-        },
         {
           "h": 498654,
           "v": 1095
@@ -20854,6 +21065,10 @@
         {
           "h": 498722,
           "v": 1101
+        },
+        {
+          "h": 498724,
+          "v": 1101
         }
       ],
       "viewsDelta": 4,
@@ -20888,10 +21103,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 6
-        },
         {
           "h": 498654,
           "v": 6
@@ -21030,6 +21241,10 @@
         },
         {
           "h": 498722,
+          "v": 8
+        },
+        {
+          "h": 498724,
           "v": 8
         }
       ],
@@ -21067,10 +21282,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 6
-        },
-        {
           "h": 498654,
           "v": 7
         },
@@ -21209,6 +21420,10 @@
         {
           "h": 498722,
           "v": 7
+        },
+        {
+          "h": 498724,
+          "v": 7
         }
       ],
       "viewsDelta": 0,
@@ -21242,10 +21457,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1006
-        },
         {
           "h": 498654,
           "v": 1006
@@ -21385,6 +21596,10 @@
         {
           "h": 498722,
           "v": 1016
+        },
+        {
+          "h": 498724,
+          "v": 1016
         }
       ],
       "viewsDelta": 6,
@@ -21418,10 +21633,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 4
-        },
         {
           "h": 498654,
           "v": 4
@@ -21560,6 +21771,10 @@
         },
         {
           "h": 498722,
+          "v": 4
+        },
+        {
+          "h": 498724,
           "v": 4
         }
       ],
@@ -21596,10 +21811,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 5
-        },
-        {
           "h": 498654,
           "v": 5
         },
@@ -21737,6 +21948,10 @@
         },
         {
           "h": 498722,
+          "v": 5
+        },
+        {
+          "h": 498724,
           "v": 5
         }
       ],
@@ -21772,10 +21987,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 35
-        },
-        {
           "h": 498654,
           "v": 35
         },
@@ -21913,6 +22124,10 @@
         },
         {
           "h": 498722,
+          "v": 35
+        },
+        {
+          "h": 498724,
           "v": 35
         }
       ],
@@ -21947,10 +22162,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 303
-        },
-        {
           "h": 498654,
           "v": 303
         },
@@ -22088,6 +22299,10 @@
         },
         {
           "h": 498722,
+          "v": 307
+        },
+        {
+          "h": 498724,
           "v": 307
         }
       ],
@@ -22122,10 +22337,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 96
-        },
-        {
           "h": 498654,
           "v": 96
         },
@@ -22263,6 +22474,10 @@
         },
         {
           "h": 498722,
+          "v": 97
+        },
+        {
+          "h": 498724,
           "v": 97
         }
       ],
@@ -22298,10 +22513,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 387
-        },
         {
           "h": 498654,
           "v": 388
@@ -22441,9 +22652,13 @@
         {
           "h": 498722,
           "v": 415
+        },
+        {
+          "h": 498724,
+          "v": 415
         }
       ],
-      "viewsDelta": 11,
+      "viewsDelta": 6,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -22476,10 +22691,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 5
-        },
         {
           "h": 498654,
           "v": 5
@@ -22618,6 +22829,10 @@
         },
         {
           "h": 498722,
+          "v": 8
+        },
+        {
+          "h": 498724,
           "v": 8
         }
       ],
@@ -22655,10 +22870,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 4
-        },
-        {
           "h": 498654,
           "v": 4
         },
@@ -22796,6 +23007,10 @@
         },
         {
           "h": 498722,
+          "v": 8
+        },
+        {
+          "h": 498724,
           "v": 8
         }
       ],
@@ -22833,10 +23048,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 8
-        },
-        {
           "h": 498654,
           "v": 8
         },
@@ -22975,6 +23186,10 @@
         {
           "h": 498722,
           "v": 8
+        },
+        {
+          "h": 498724,
+          "v": 8
         }
       ],
       "viewsDelta": 0,
@@ -22994,7 +23209,7 @@
       "channelTitle": "Ferramental",
       "channelUrl": "https://www.youtube.com/channel/UCUbTEXnFEVFiftjr0pkXUng",
       "channelSubscribers": 1600,
-      "views": 4033,
+      "views": 4053,
       "likes": 60,
       "comments": 8,
       "matchedIn": [
@@ -23008,10 +23223,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 3753
-        },
         {
           "h": 498654,
           "v": 3794
@@ -23151,9 +23362,13 @@
         {
           "h": 498722,
           "v": 4033
+        },
+        {
+          "h": 498724,
+          "v": 4053
         }
       ],
-      "viewsDelta": 86,
+      "viewsDelta": 95,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -23185,10 +23400,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 2
-        },
         {
           "h": 498654,
           "v": 2
@@ -23328,6 +23539,10 @@
         {
           "h": 498722,
           "v": 8
+        },
+        {
+          "h": 498724,
+          "v": 8
         }
       ],
       "viewsDelta": 3,
@@ -23363,10 +23578,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 10
-        },
         {
           "h": 498654,
           "v": 10
@@ -23506,9 +23717,13 @@
         {
           "h": 498722,
           "v": 13
+        },
+        {
+          "h": 498724,
+          "v": 13
         }
       ],
-      "viewsDelta": 1,
+      "viewsDelta": 0,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -23540,10 +23755,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 222
-        },
         {
           "h": 498654,
           "v": 222
@@ -23683,6 +23894,10 @@
         {
           "h": 498722,
           "v": 239
+        },
+        {
+          "h": 498724,
+          "v": 239
         }
       ],
       "viewsDelta": 5,
@@ -23718,10 +23933,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 19
-        },
         {
           "h": 498654,
           "v": 19
@@ -23861,9 +24072,13 @@
         {
           "h": 498722,
           "v": 31
+        },
+        {
+          "h": 498724,
+          "v": 31
         }
       ],
-      "viewsDelta": 4,
+      "viewsDelta": 3,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -23895,10 +24110,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 3
-        },
         {
           "h": 498654,
           "v": 3
@@ -24038,6 +24249,10 @@
         {
           "h": 498722,
           "v": 3
+        },
+        {
+          "h": 498724,
+          "v": 3
         }
       ],
       "viewsDelta": 0,
@@ -24071,10 +24286,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 14
-        },
         {
           "h": 498654,
           "v": 14
@@ -24214,9 +24425,13 @@
         {
           "h": 498722,
           "v": 20
+        },
+        {
+          "h": 498724,
+          "v": 20
         }
       ],
-      "viewsDelta": 3,
+      "viewsDelta": 2,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -24233,7 +24448,7 @@
       "channelTitle": "Peças e ferramentas",
       "channelUrl": "https://www.youtube.com/channel/UCmk_KORAllQTidJ9LKwAHZg",
       "channelSubscribers": 149,
-      "views": 57,
+      "views": 63,
       "likes": 1,
       "comments": 1,
       "matchedIn": [
@@ -24249,10 +24464,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 7
-        },
         {
           "h": 498654,
           "v": 7
@@ -24392,9 +24603,13 @@
         {
           "h": 498722,
           "v": 57
+        },
+        {
+          "h": 498724,
+          "v": 63
         }
       ],
-      "viewsDelta": 46,
+      "viewsDelta": 52,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -24426,10 +24641,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 14
-        },
         {
           "h": 498654,
           "v": 14
@@ -24569,6 +24780,10 @@
         {
           "h": 498722,
           "v": 14
+        },
+        {
+          "h": 498724,
+          "v": 14
         }
       ],
       "viewsDelta": 0,
@@ -24588,7 +24803,7 @@
       "channelTitle": "Valeu a Dica | Ricardo Bernardi",
       "channelUrl": "https://www.youtube.com/channel/UC58-HpSMzfOPDLpIJDneU4Q",
       "channelSubscribers": 210000,
-      "views": 15177,
+      "views": 15187,
       "likes": 598,
       "comments": 24,
       "matchedIn": [
@@ -24603,10 +24818,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 14202
-        },
         {
           "h": 498654,
           "v": 14275
@@ -24746,9 +24957,13 @@
         {
           "h": 498722,
           "v": 15177
+        },
+        {
+          "h": 498724,
+          "v": 15187
         }
       ],
-      "viewsDelta": 178,
+      "viewsDelta": 188,
       "viewsDeltaHours": 24,
       "priority": "alta",
       "priorityReasons": [
@@ -24782,10 +24997,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 325
-        },
         {
           "h": 498654,
           "v": 328
@@ -24925,6 +25136,10 @@
         {
           "h": 498722,
           "v": 360
+        },
+        {
+          "h": 498724,
+          "v": 360
         }
       ],
       "viewsDelta": 2,
@@ -24961,10 +25176,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 211
-        },
         {
           "h": 498654,
           "v": 211
@@ -25104,6 +25315,10 @@
         {
           "h": 498722,
           "v": 216
+        },
+        {
+          "h": 498724,
+          "v": 216
         }
       ],
       "viewsDelta": 1,
@@ -25136,10 +25351,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1193
-        },
         {
           "h": 498654,
           "v": 1198
@@ -25279,9 +25490,13 @@
         {
           "h": 498722,
           "v": 1319
+        },
+        {
+          "h": 498724,
+          "v": 1319
         }
       ],
-      "viewsDelta": 19,
+      "viewsDelta": 14,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -25314,10 +25529,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 9
-        },
         {
           "h": 498654,
           "v": 9
@@ -25456,6 +25667,10 @@
         },
         {
           "h": 498722,
+          "v": 10
+        },
+        {
+          "h": 498724,
           "v": 10
         }
       ],
@@ -25493,10 +25708,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 5
-        },
-        {
           "h": 498654,
           "v": 5
         },
@@ -25634,6 +25845,10 @@
         },
         {
           "h": 498722,
+          "v": 7
+        },
+        {
+          "h": 498724,
           "v": 7
         }
       ],
@@ -25669,10 +25884,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 2
-        },
-        {
           "h": 498654,
           "v": 2
         },
@@ -25810,6 +26021,10 @@
         },
         {
           "h": 498722,
+          "v": 2
+        },
+        {
+          "h": 498724,
           "v": 2
         }
       ],
@@ -25847,10 +26062,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 0
-        },
-        {
           "h": 498654,
           "v": 0
         },
@@ -25989,6 +26200,10 @@
         {
           "h": 498722,
           "v": 1
+        },
+        {
+          "h": 498724,
+          "v": 1
         }
       ],
       "viewsDelta": 0,
@@ -26023,10 +26238,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 207
-        },
         {
           "h": 498654,
           "v": 207
@@ -26166,6 +26377,10 @@
         {
           "h": 498722,
           "v": 215
+        },
+        {
+          "h": 498724,
+          "v": 215
         }
       ],
       "viewsDelta": 5,
@@ -26185,7 +26400,7 @@
       "channelTitle": "Jardel GM Produções",
       "channelUrl": "https://www.youtube.com/channel/UCm2dPWQazLfz80xGHjfg6fQ",
       "channelSubscribers": 39600,
-      "views": 333,
+      "views": 335,
       "likes": 10,
       "comments": 0,
       "matchedIn": [
@@ -26199,10 +26414,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 318
-        },
         {
           "h": 498654,
           "v": 318
@@ -26342,9 +26553,13 @@
         {
           "h": 498722,
           "v": 333
+        },
+        {
+          "h": 498724,
+          "v": 335
         }
       ],
-      "viewsDelta": 3,
+      "viewsDelta": 5,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -26378,10 +26593,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 175
-        },
         {
           "h": 498654,
           "v": 176
@@ -26521,6 +26732,10 @@
         {
           "h": 498722,
           "v": 188
+        },
+        {
+          "h": 498724,
+          "v": 188
         }
       ],
       "viewsDelta": 3,
@@ -26555,10 +26770,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 384
-        },
         {
           "h": 498654,
           "v": 384
@@ -26698,6 +26909,10 @@
         {
           "h": 498722,
           "v": 397
+        },
+        {
+          "h": 498724,
+          "v": 397
         }
       ],
       "viewsDelta": 3,
@@ -26717,7 +26932,7 @@
       "channelTitle": "Jardinagem Com Wellinson ",
       "channelUrl": "https://www.youtube.com/channel/UCAXinOxwPgGqcyPpSoQv7TA",
       "channelSubscribers": 68300,
-      "views": 1849,
+      "views": 1851,
       "likes": 16,
       "comments": 0,
       "matchedIn": [
@@ -26730,10 +26945,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1775
-        },
         {
           "h": 498654,
           "v": 1779
@@ -26873,9 +27084,13 @@
         {
           "h": 498722,
           "v": 1849
+        },
+        {
+          "h": 498724,
+          "v": 1851
         }
       ],
-      "viewsDelta": 18,
+      "viewsDelta": 20,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -26894,7 +27109,7 @@
       "channelTitle": "Compras Inteligentes na Shopee",
       "channelUrl": "https://www.youtube.com/channel/UCMNPEyxhzLUwz_zcOovXiww",
       "channelSubscribers": 68,
-      "views": 332,
+      "views": 336,
       "likes": 1,
       "comments": 0,
       "matchedIn": [
@@ -26908,10 +27123,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 262
-        },
         {
           "h": 498654,
           "v": 263
@@ -27051,9 +27262,13 @@
         {
           "h": 498722,
           "v": 332
+        },
+        {
+          "h": 498724,
+          "v": 336
         }
       ],
-      "viewsDelta": 29,
+      "viewsDelta": 33,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -27085,10 +27300,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 143
-        },
         {
           "h": 498654,
           "v": 143
@@ -27228,6 +27439,10 @@
         {
           "h": 498722,
           "v": 165
+        },
+        {
+          "h": 498724,
+          "v": 165
         }
       ],
       "viewsDelta": 1,
@@ -27247,7 +27462,7 @@
       "channelTitle": "Porcas Pregos e Parafusos",
       "channelUrl": "https://www.youtube.com/channel/UCnzHtyJJHbTNIMWz_2BXd3Q",
       "channelSubscribers": 260000,
-      "views": 306,
+      "views": 311,
       "likes": 10,
       "comments": 3,
       "matchedIn": [
@@ -27263,10 +27478,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 278
-        },
         {
           "h": 498654,
           "v": 278
@@ -27406,9 +27617,13 @@
         {
           "h": 498722,
           "v": 306
+        },
+        {
+          "h": 498724,
+          "v": 311
         }
       ],
-      "viewsDelta": 7,
+      "viewsDelta": 11,
       "viewsDeltaHours": 24,
       "priority": "alta",
       "priorityReasons": [
@@ -27442,10 +27657,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 95
-        },
         {
           "h": 498654,
           "v": 95
@@ -27585,6 +27796,10 @@
         {
           "h": 498722,
           "v": 101
+        },
+        {
+          "h": 498724,
+          "v": 101
         }
       ],
       "viewsDelta": 2,
@@ -27604,8 +27819,8 @@
       "channelTitle": "Novidades com Precinho",
       "channelUrl": "https://www.youtube.com/channel/UCnuFm-LSmOxAK6mo-QmXMcQ",
       "channelSubscribers": 267000,
-      "views": 193621,
-      "likes": 2700,
+      "views": 195884,
+      "likes": 2732,
       "comments": 27,
       "matchedIn": [
         "título",
@@ -27619,10 +27834,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 125284
-        },
         {
           "h": 498654,
           "v": 126832
@@ -27762,13 +27973,17 @@
         {
           "h": 498722,
           "v": 193621
+        },
+        {
+          "h": 498724,
+          "v": 195884
         }
       ],
-      "viewsDelta": 27378,
+      "viewsDelta": 27670,
       "viewsDeltaHours": 24,
       "priority": "alta",
       "priorityReasons": [
-        "+27.378 views em 24h",
+        "+27.670 views em 24h",
         "canal com 267.000 inscritos"
       ]
     },
@@ -27797,10 +28012,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 125
-        },
         {
           "h": 498654,
           "v": 125
@@ -27940,6 +28151,10 @@
         {
           "h": 498722,
           "v": 137
+        },
+        {
+          "h": 498724,
+          "v": 137
         }
       ],
       "viewsDelta": 2,
@@ -27974,10 +28189,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 111
-        },
         {
           "h": 498654,
           "v": 111
@@ -28117,6 +28328,10 @@
         {
           "h": 498722,
           "v": 132
+        },
+        {
+          "h": 498724,
+          "v": 132
         }
       ],
       "viewsDelta": 6,
@@ -28150,10 +28365,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 38
-        },
         {
           "h": 498654,
           "v": 38
@@ -28293,6 +28504,10 @@
         {
           "h": 498722,
           "v": 40
+        },
+        {
+          "h": 498724,
+          "v": 40
         }
       ],
       "viewsDelta": 2,
@@ -28329,10 +28544,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 15
-        },
-        {
           "h": 498654,
           "v": 15
         },
@@ -28470,6 +28681,10 @@
         },
         {
           "h": 498722,
+          "v": 16
+        },
+        {
+          "h": 498724,
           "v": 16
         }
       ],
@@ -28506,10 +28721,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 9
-        },
-        {
           "h": 498654,
           "v": 9
         },
@@ -28647,6 +28858,10 @@
         },
         {
           "h": 498722,
+          "v": 12
+        },
+        {
+          "h": 498724,
           "v": 12
         }
       ],
@@ -28682,10 +28897,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 18
-        },
-        {
           "h": 498654,
           "v": 18
         },
@@ -28823,6 +29034,10 @@
         },
         {
           "h": 498722,
+          "v": 19
+        },
+        {
+          "h": 498724,
           "v": 19
         }
       ],
@@ -28858,10 +29073,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 536
-        },
-        {
           "h": 498654,
           "v": 536
         },
@@ -29000,6 +29211,10 @@
         {
           "h": 498722,
           "v": 539
+        },
+        {
+          "h": 498724,
+          "v": 539
         }
       ],
       "viewsDelta": 0,
@@ -29019,7 +29234,7 @@
       "channelTitle": "DigiTec Ferramentas",
       "channelUrl": "https://www.youtube.com/channel/UCT3AV__6QX6J-982XqaGFnQ",
       "channelSubscribers": 12100,
-      "views": 1352,
+      "views": 1354,
       "likes": 44,
       "comments": 33,
       "matchedIn": [
@@ -29034,10 +29249,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 1113
-        },
         {
           "h": 498654,
           "v": 1149
@@ -29177,9 +29388,13 @@
         {
           "h": 498722,
           "v": 1352
+        },
+        {
+          "h": 498724,
+          "v": 1354
         }
       ],
-      "viewsDelta": 54,
+      "viewsDelta": 56,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -29213,10 +29428,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 44
-        },
         {
           "h": 498654,
           "v": 44
@@ -29356,6 +29567,10 @@
         {
           "h": 498722,
           "v": 47
+        },
+        {
+          "h": 498724,
+          "v": 47
         }
       ],
       "viewsDelta": 0,
@@ -29375,7 +29590,7 @@
       "channelTitle": "Enzomaquinas",
       "channelUrl": "https://www.youtube.com/channel/UCEnQc-HEUq86-6jagnrZaLw",
       "channelSubscribers": 2080,
-      "views": 137,
+      "views": 138,
       "likes": 5,
       "comments": 5,
       "matchedIn": [
@@ -29388,10 +29603,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 125
-        },
         {
           "h": 498654,
           "v": 125
@@ -29531,9 +29742,13 @@
         {
           "h": 498722,
           "v": 137
+        },
+        {
+          "h": 498724,
+          "v": 138
         }
       ],
-      "viewsDelta": 6,
+      "viewsDelta": 7,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -29563,10 +29778,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 369
-        },
         {
           "h": 498654,
           "v": 369
@@ -29706,6 +29917,10 @@
         {
           "h": 498722,
           "v": 441
+        },
+        {
+          "h": 498724,
+          "v": 441
         }
       ],
       "viewsDelta": 17,
@@ -29741,10 +29956,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1067
-        },
         {
           "h": 498654,
           "v": 1067
@@ -29884,9 +30095,13 @@
         {
           "h": 498722,
           "v": 1068
+        },
+        {
+          "h": 498724,
+          "v": 1068
         }
       ],
-      "viewsDelta": 1,
+      "viewsDelta": 0,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -29903,7 +30118,7 @@
       "channelTitle": "achadinho do Mercado livre ",
       "channelUrl": "https://www.youtube.com/channel/UC4Tsg5n-clHzn1SLDNB9ADQ",
       "channelSubscribers": 1,
-      "views": 93,
+      "views": 97,
       "likes": 1,
       "comments": 1,
       "matchedIn": [
@@ -29917,10 +30132,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 75
-        },
         {
           "h": 498654,
           "v": 75
@@ -30060,9 +30271,13 @@
         {
           "h": 498722,
           "v": 93
+        },
+        {
+          "h": 498724,
+          "v": 97
         }
       ],
-      "viewsDelta": 9,
+      "viewsDelta": 13,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -30094,10 +30309,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 46
-        },
         {
           "h": 498654,
           "v": 46
@@ -30237,6 +30448,10 @@
         {
           "h": 498722,
           "v": 74
+        },
+        {
+          "h": 498724,
+          "v": 74
         }
       ],
       "viewsDelta": 7,
@@ -30271,10 +30486,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 185
-        },
         {
           "h": 498654,
           "v": 185
@@ -30414,6 +30625,10 @@
         {
           "h": 498722,
           "v": 202
+        },
+        {
+          "h": 498724,
+          "v": 202
         }
       ],
       "viewsDelta": 4,
@@ -30446,10 +30661,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 34
-        },
         {
           "h": 498654,
           "v": 34
@@ -30589,6 +30800,10 @@
         {
           "h": 498722,
           "v": 40
+        },
+        {
+          "h": 498724,
+          "v": 40
         }
       ],
       "viewsDelta": 2,
@@ -30623,10 +30838,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 120
-        },
         {
           "h": 498654,
           "v": 120
@@ -30766,6 +30977,10 @@
         {
           "h": 498722,
           "v": 131
+        },
+        {
+          "h": 498724,
+          "v": 131
         }
       ],
       "viewsDelta": 5,
@@ -30798,10 +31013,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 2
-        },
         {
           "h": 498654,
           "v": 2
@@ -30941,6 +31152,10 @@
         {
           "h": 498722,
           "v": 6
+        },
+        {
+          "h": 498724,
+          "v": 6
         }
       ],
       "viewsDelta": 0,
@@ -30975,10 +31190,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 65
-        },
         {
           "h": 498654,
           "v": 65
@@ -31118,6 +31329,10 @@
         {
           "h": 498722,
           "v": 66
+        },
+        {
+          "h": 498724,
+          "v": 66
         }
       ],
       "viewsDelta": 1,
@@ -31151,10 +31366,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1446
-        },
         {
           "h": 498654,
           "v": 1447
@@ -31294,6 +31505,10 @@
         {
           "h": 498722,
           "v": 1463
+        },
+        {
+          "h": 498724,
+          "v": 1463
         }
       ],
       "viewsDelta": 5,
@@ -31329,10 +31544,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 420
-        },
         {
           "h": 498654,
           "v": 420
@@ -31471,6 +31682,10 @@
         },
         {
           "h": 498722,
+          "v": 423
+        },
+        {
+          "h": 498724,
           "v": 423
         }
       ],
@@ -31510,10 +31725,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 37
-        },
-        {
           "h": 498654,
           "v": 37
         },
@@ -31651,6 +31862,10 @@
         },
         {
           "h": 498722,
+          "v": 39
+        },
+        {
+          "h": 498724,
           "v": 39
         }
       ],
@@ -31687,10 +31902,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 7
-        },
-        {
           "h": 498654,
           "v": 7
         },
@@ -31829,6 +32040,10 @@
         {
           "h": 498722,
           "v": 9
+        },
+        {
+          "h": 498724,
+          "v": 9
         }
       ],
       "viewsDelta": 1,
@@ -31862,10 +32077,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 63
-        },
         {
           "h": 498654,
           "v": 63
@@ -32005,6 +32216,10 @@
         {
           "h": 498722,
           "v": 68
+        },
+        {
+          "h": 498724,
+          "v": 68
         }
       ],
       "viewsDelta": 0,
@@ -32037,10 +32252,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 3173
-        },
         {
           "h": 498654,
           "v": 3178
@@ -32180,6 +32391,10 @@
         {
           "h": 498722,
           "v": 3188
+        },
+        {
+          "h": 498724,
+          "v": 3188
         }
       ],
       "viewsDelta": 0,
@@ -32214,10 +32429,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 187
-        },
         {
           "h": 498654,
           "v": 188
@@ -32357,9 +32568,13 @@
         {
           "h": 498722,
           "v": 196
+        },
+        {
+          "h": 498724,
+          "v": 196
         }
       ],
-      "viewsDelta": 5,
+      "viewsDelta": 4,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -32376,7 +32591,7 @@
       "channelTitle": "Felder & Hofleben",
       "channelUrl": "https://www.youtube.com/channel/UCaAfSZq-p18uPRijCi3oCTw",
       "channelSubscribers": 33,
-      "views": 24,
+      "views": 25,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -32389,10 +32604,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 15
-        },
         {
           "h": 498654,
           "v": 15
@@ -32532,9 +32743,13 @@
         {
           "h": 498722,
           "v": 24
+        },
+        {
+          "h": 498724,
+          "v": 25
         }
       ],
-      "viewsDelta": 1,
+      "viewsDelta": 2,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -32551,7 +32766,7 @@
       "channelTitle": "Peças e ferramentas",
       "channelUrl": "https://www.youtube.com/channel/UCmk_KORAllQTidJ9LKwAHZg",
       "channelSubscribers": 149,
-      "views": 11,
+      "views": 12,
       "likes": 1,
       "comments": 1,
       "matchedIn": [
@@ -32567,10 +32782,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 5
-        },
         {
           "h": 498654,
           "v": 5
@@ -32710,9 +32921,13 @@
         {
           "h": 498722,
           "v": 11
+        },
+        {
+          "h": 498724,
+          "v": 12
         }
       ],
-      "viewsDelta": 0,
+      "viewsDelta": 1,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -32742,10 +32957,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 119
-        },
         {
           "h": 498654,
           "v": 122
@@ -32885,6 +33096,10 @@
         {
           "h": 498722,
           "v": 185
+        },
+        {
+          "h": 498724,
+          "v": 185
         }
       ],
       "viewsDelta": 25,
@@ -32919,10 +33134,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 97
-        },
         {
           "h": 498654,
           "v": 97
@@ -33062,6 +33273,10 @@
         {
           "h": 498722,
           "v": 97
+        },
+        {
+          "h": 498724,
+          "v": 97
         }
       ],
       "viewsDelta": 0,
@@ -33081,7 +33296,7 @@
       "channelTitle": "Ferramentas View",
       "channelUrl": "https://www.youtube.com/channel/UCytLt1tXkj4TzXMLlHIlnUg",
       "channelSubscribers": 8580,
-      "views": 498,
+      "views": 501,
       "likes": 1,
       "comments": 0,
       "matchedIn": [
@@ -33094,10 +33309,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 488
-        },
         {
           "h": 498654,
           "v": 488
@@ -33237,9 +33448,13 @@
         {
           "h": 498722,
           "v": 498
+        },
+        {
+          "h": 498724,
+          "v": 501
         }
       ],
-      "viewsDelta": 5,
+      "viewsDelta": 8,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -33256,7 +33471,7 @@
       "channelTitle": "Ferramentas View",
       "channelUrl": "https://www.youtube.com/channel/UCytLt1tXkj4TzXMLlHIlnUg",
       "channelSubscribers": 8580,
-      "views": 63,
+      "views": 64,
       "likes": 2,
       "comments": 1,
       "matchedIn": [
@@ -33269,10 +33484,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 51
-        },
         {
           "h": 498654,
           "v": 51
@@ -33412,9 +33623,13 @@
         {
           "h": 498722,
           "v": 63
+        },
+        {
+          "h": 498724,
+          "v": 64
         }
       ],
-      "viewsDelta": 5,
+      "viewsDelta": 6,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -33445,10 +33660,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 70
-        },
         {
           "h": 498654,
           "v": 70
@@ -33588,6 +33799,10 @@
         {
           "h": 498722,
           "v": 74
+        },
+        {
+          "h": 498724,
+          "v": 74
         }
       ],
       "viewsDelta": 1,
@@ -33622,10 +33837,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 295
-        },
         {
           "h": 498654,
           "v": 295
@@ -33765,6 +33976,10 @@
         {
           "h": 498722,
           "v": 303
+        },
+        {
+          "h": 498724,
+          "v": 303
         }
       ],
       "viewsDelta": 2,
@@ -33784,7 +33999,7 @@
       "channelTitle": "Salvador Comercial",
       "channelUrl": "https://www.youtube.com/channel/UCoGVgxUT7-xVlQq5bkPC-5Q",
       "channelSubscribers": 2970,
-      "views": 78,
+      "views": 79,
       "likes": 1,
       "comments": 0,
       "matchedIn": [
@@ -33799,10 +34014,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 58
-        },
         {
           "h": 498654,
           "v": 58
@@ -33942,9 +34153,13 @@
         {
           "h": 498722,
           "v": 78
+        },
+        {
+          "h": 498724,
+          "v": 79
         }
       ],
-      "viewsDelta": 3,
+      "viewsDelta": 4,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -33975,10 +34190,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 161
-        },
         {
           "h": 498654,
           "v": 161
@@ -34118,6 +34329,10 @@
         {
           "h": 498722,
           "v": 161
+        },
+        {
+          "h": 498724,
+          "v": 161
         }
       ],
       "viewsDelta": 0,
@@ -34152,10 +34367,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 696
-        },
         {
           "h": 498654,
           "v": 696
@@ -34295,9 +34506,13 @@
         {
           "h": 498722,
           "v": 722
+        },
+        {
+          "h": 498724,
+          "v": 722
         }
       ],
-      "viewsDelta": 14,
+      "viewsDelta": 13,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -34329,10 +34544,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 52
-        },
         {
           "h": 498654,
           "v": 52
@@ -34471,6 +34682,10 @@
         },
         {
           "h": 498722,
+          "v": 52
+        },
+        {
+          "h": 498724,
           "v": 52
         }
       ],
@@ -34507,10 +34722,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 97
-        },
-        {
           "h": 498654,
           "v": 97
         },
@@ -34648,6 +34859,10 @@
         },
         {
           "h": 498722,
+          "v": 107
+        },
+        {
+          "h": 498724,
           "v": 107
         }
       ],
@@ -34684,10 +34899,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 83
-        },
-        {
           "h": 498654,
           "v": 84
         },
@@ -34825,6 +35036,10 @@
         },
         {
           "h": 498722,
+          "v": 89
+        },
+        {
+          "h": 498724,
           "v": 89
         }
       ],
@@ -34860,10 +35075,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 19
-        },
-        {
           "h": 498654,
           "v": 19
         },
@@ -35001,6 +35212,10 @@
         },
         {
           "h": 498722,
+          "v": 20
+        },
+        {
+          "h": 498724,
           "v": 20
         }
       ],
@@ -35035,10 +35250,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 103
-        },
-        {
           "h": 498654,
           "v": 103
         },
@@ -35176,6 +35387,10 @@
         },
         {
           "h": 498722,
+          "v": 103
+        },
+        {
+          "h": 498724,
           "v": 103
         }
       ],
@@ -35210,10 +35425,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 3
-        },
-        {
           "h": 498654,
           "v": 3
         },
@@ -35351,6 +35562,10 @@
         },
         {
           "h": 498722,
+          "v": 3
+        },
+        {
+          "h": 498724,
           "v": 3
         }
       ],
@@ -35385,10 +35600,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 3
-        },
-        {
           "h": 498654,
           "v": 3
         },
@@ -35526,6 +35737,10 @@
         },
         {
           "h": 498722,
+          "v": 3
+        },
+        {
+          "h": 498724,
           "v": 3
         }
       ],
@@ -35560,10 +35775,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 66
-        },
-        {
           "h": 498654,
           "v": 66
         },
@@ -35701,6 +35912,10 @@
         },
         {
           "h": 498722,
+          "v": 68
+        },
+        {
+          "h": 498724,
           "v": 68
         }
       ],
@@ -35736,10 +35951,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 56
-        },
-        {
           "h": 498654,
           "v": 56
         },
@@ -35877,6 +36088,10 @@
         },
         {
           "h": 498722,
+          "v": 67
+        },
+        {
+          "h": 498724,
           "v": 67
         }
       ],
@@ -35913,10 +36128,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 246
-        },
-        {
           "h": 498654,
           "v": 246
         },
@@ -36054,6 +36265,10 @@
         },
         {
           "h": 498722,
+          "v": 246
+        },
+        {
+          "h": 498724,
           "v": 246
         }
       ],
@@ -36089,10 +36304,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 5
-        },
-        {
           "h": 498654,
           "v": 5
         },
@@ -36231,6 +36442,10 @@
         {
           "h": 498722,
           "v": 6
+        },
+        {
+          "h": 498724,
+          "v": 6
         }
       ],
       "viewsDelta": 0,
@@ -36250,9 +36465,9 @@
       "channelTitle": "Leo na Prática | Leonardo Dias",
       "channelUrl": "https://www.youtube.com/channel/UC6qk7mBDpD0_60rYFKlTHXw",
       "channelSubscribers": 16000,
-      "views": 341024,
-      "likes": 3853,
-      "comments": 250,
+      "views": 342546,
+      "likes": 3864,
+      "comments": 253,
       "matchedIn": [
         "título"
       ],
@@ -36263,10 +36478,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 282405
-        },
         {
           "h": 498654,
           "v": 283823
@@ -36406,14 +36617,18 @@
         {
           "h": 498722,
           "v": 341024
+        },
+        {
+          "h": 498724,
+          "v": 342546
         }
       ],
-      "viewsDelta": 19635,
+      "viewsDelta": 19681,
       "viewsDeltaHours": 24,
       "priority": "alta",
       "priorityReasons": [
-        "+19.635 views em 24h",
-        "250 comentários"
+        "+19.681 views em 24h",
+        "253 comentários"
       ]
     },
     {
@@ -36442,10 +36657,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 272
-        },
         {
           "h": 498654,
           "v": 272
@@ -36585,6 +36796,10 @@
         {
           "h": 498722,
           "v": 279
+        },
+        {
+          "h": 498724,
+          "v": 279
         }
       ],
       "viewsDelta": 1,
@@ -36604,7 +36819,7 @@
       "channelTitle": "SENTINELA GUIAS",
       "channelUrl": "https://www.youtube.com/channel/UCz-K50MLUqipWRzkxDgCJIQ",
       "channelSubscribers": 6270,
-      "views": 123,
+      "views": 124,
       "likes": 2,
       "comments": 1,
       "matchedIn": [
@@ -36621,10 +36836,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 99
-        },
         {
           "h": 498654,
           "v": 98
@@ -36764,9 +36975,13 @@
         {
           "h": 498722,
           "v": 123
+        },
+        {
+          "h": 498724,
+          "v": 124
         }
       ],
-      "viewsDelta": 9,
+      "viewsDelta": 6,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -36783,7 +36998,7 @@
       "channelTitle": "JARDEL OFICIAL",
       "channelUrl": "https://www.youtube.com/channel/UCFzEdbWzboHIt7fC3YDctNg",
       "channelSubscribers": 146000,
-      "views": 1192,
+      "views": 1199,
       "likes": 27,
       "comments": 0,
       "matchedIn": [
@@ -36796,10 +37011,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 1001
-        },
         {
           "h": 498654,
           "v": 1001
@@ -36939,9 +37150,13 @@
         {
           "h": 498722,
           "v": 1192
+        },
+        {
+          "h": 498724,
+          "v": 1199
         }
       ],
-      "viewsDelta": 52,
+      "viewsDelta": 43,
       "viewsDeltaHours": 24,
       "priority": "alta",
       "priorityReasons": [
@@ -36975,10 +37190,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 42
-        },
         {
           "h": 498654,
           "v": 42
@@ -37118,6 +37329,10 @@
         {
           "h": 498722,
           "v": 50
+        },
+        {
+          "h": 498724,
+          "v": 50
         }
       ],
       "viewsDelta": 2,
@@ -37151,10 +37366,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 444
-        },
         {
           "h": 498654,
           "v": 444
@@ -37294,6 +37505,10 @@
         {
           "h": 498722,
           "v": 462
+        },
+        {
+          "h": 498724,
+          "v": 462
         }
       ],
       "viewsDelta": 12,
@@ -37315,7 +37530,7 @@
       "channelTitle": "Clique e Compre Bem",
       "channelUrl": "https://www.youtube.com/channel/UClu8uMOP7YyeTV3YbNLn4rQ",
       "channelSubscribers": 4,
-      "views": 67,
+      "views": 68,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -37330,10 +37545,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 51
-        },
         {
           "h": 498654,
           "v": 51
@@ -37473,9 +37684,13 @@
         {
           "h": 498722,
           "v": 67
+        },
+        {
+          "h": 498724,
+          "v": 68
         }
       ],
-      "viewsDelta": 6,
+      "viewsDelta": 7,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -37508,10 +37723,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1446
-        },
         {
           "h": 498654,
           "v": 1447
@@ -37651,9 +37862,13 @@
         {
           "h": 498722,
           "v": 1552
+        },
+        {
+          "h": 498724,
+          "v": 1552
         }
       ],
-      "viewsDelta": 24,
+      "viewsDelta": 25,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -37683,10 +37898,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 399
-        },
         {
           "h": 498654,
           "v": 399
@@ -37825,6 +38036,10 @@
         },
         {
           "h": 498722,
+          "v": 402
+        },
+        {
+          "h": 498724,
           "v": 402
         }
       ],
@@ -37859,10 +38074,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 9
-        },
-        {
           "h": 498654,
           "v": 9
         },
@@ -38000,6 +38211,10 @@
         },
         {
           "h": 498722,
+          "v": 9
+        },
+        {
+          "h": 498724,
           "v": 9
         }
       ],
@@ -38180,7 +38395,7 @@
       "channelTitle": "INVENTALOOP",
       "channelUrl": "https://www.youtube.com/channel/UCZirVoeMXYNzuGHUrzcfmLA",
       "channelSubscribers": 5,
-      "views": 179,
+      "views": 180,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -38196,10 +38411,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 167
-        },
         {
           "h": 498654,
           "v": 167
@@ -38339,9 +38550,13 @@
         {
           "h": 498722,
           "v": 179
+        },
+        {
+          "h": 498724,
+          "v": 180
         }
       ],
-      "viewsDelta": 1,
+      "viewsDelta": 2,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -38374,10 +38589,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 306
-        },
         {
           "h": 498654,
           "v": 306
@@ -38516,6 +38727,10 @@
         },
         {
           "h": 498722,
+          "v": 309
+        },
+        {
+          "h": 498724,
           "v": 309
         }
       ],
@@ -38552,10 +38767,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 4618
-        },
-        {
           "h": 498654,
           "v": 4618
         },
@@ -38694,9 +38905,13 @@
         {
           "h": 498722,
           "v": 4620
+        },
+        {
+          "h": 498724,
+          "v": 4620
         }
       ],
-      "viewsDelta": 2,
+      "viewsDelta": 0,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -38730,10 +38945,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 189
-        },
-        {
           "h": 498654,
           "v": 189
         },
@@ -38871,6 +39082,10 @@
         },
         {
           "h": 498722,
+          "v": 194
+        },
+        {
+          "h": 498724,
           "v": 194
         }
       ],
@@ -38905,10 +39120,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 1232
-        },
-        {
           "h": 498654,
           "v": 1232
         },
@@ -39046,6 +39257,10 @@
         },
         {
           "h": 498722,
+          "v": 1232
+        },
+        {
+          "h": 498724,
           "v": 1232
         }
       ],
@@ -39080,10 +39295,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 1812
-        },
-        {
           "h": 498654,
           "v": 1812
         },
@@ -39222,6 +39433,10 @@
         {
           "h": 498722,
           "v": 1822
+        },
+        {
+          "h": 498724,
+          "v": 1822
         }
       ],
       "viewsDelta": 10,
@@ -39254,10 +39469,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1570
-        },
         {
           "h": 498654,
           "v": 1570
@@ -39397,6 +39608,10 @@
         {
           "h": 498722,
           "v": 1580
+        },
+        {
+          "h": 498724,
+          "v": 1580
         }
       ],
       "viewsDelta": 1,
@@ -39429,10 +39644,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 386
-        },
         {
           "h": 498654,
           "v": 386
@@ -39572,6 +39783,10 @@
         {
           "h": 498722,
           "v": 387
+        },
+        {
+          "h": 498724,
+          "v": 387
         }
       ],
       "viewsDelta": 0,
@@ -39591,7 +39806,7 @@
       "channelTitle": "Line Off",
       "channelUrl": "https://www.youtube.com/channel/UCJMjMoERd29dwpvOv-GDGvw",
       "channelSubscribers": 19,
-      "views": 151,
+      "views": 154,
       "likes": 6,
       "comments": 1,
       "matchedIn": [
@@ -39605,10 +39820,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 134
-        },
         {
           "h": 498654,
           "v": 134
@@ -39748,9 +39959,13 @@
         {
           "h": 498722,
           "v": 151
+        },
+        {
+          "h": 498724,
+          "v": 154
         }
       ],
-      "viewsDelta": 17,
+      "viewsDelta": 20,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -39766,8 +39981,8 @@
       "channelId": "UCorJmXkgxq2RY58hT8t-zDA",
       "channelTitle": "FUTEBOL QUE BOMBA",
       "channelUrl": "https://www.youtube.com/channel/UCorJmXkgxq2RY58hT8t-zDA",
-      "channelSubscribers": 637,
-      "views": 557,
+      "channelSubscribers": 638,
+      "views": 566,
       "likes": 0,
       "comments": 0,
       "matchedIn": [
@@ -39780,10 +39995,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 490
-        },
         {
           "h": 498654,
           "v": 490
@@ -39923,9 +40134,13 @@
         {
           "h": 498722,
           "v": 557
+        },
+        {
+          "h": 498724,
+          "v": 566
         }
       ],
-      "viewsDelta": 16,
+      "viewsDelta": 24,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -39956,10 +40171,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1322
-        },
         {
           "h": 498654,
           "v": 1322
@@ -40099,6 +40310,10 @@
         {
           "h": 498722,
           "v": 1332
+        },
+        {
+          "h": 498724,
+          "v": 1332
         }
       ],
       "viewsDelta": 7,
@@ -40132,10 +40347,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 110
-        },
         {
           "h": 498654,
           "v": 110
@@ -40275,6 +40486,10 @@
         {
           "h": 498722,
           "v": 120
+        },
+        {
+          "h": 498724,
+          "v": 120
         }
       ],
       "viewsDelta": 2,
@@ -40309,10 +40524,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 7
-        },
         {
           "h": 498654,
           "v": 7
@@ -40452,6 +40663,10 @@
         {
           "h": 498722,
           "v": 12
+        },
+        {
+          "h": 498724,
+          "v": 12
         }
       ],
       "viewsDelta": 1,
@@ -40484,10 +40699,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 32
-        },
         {
           "h": 498654,
           "v": 32
@@ -40627,6 +40838,10 @@
         {
           "h": 498722,
           "v": 35
+        },
+        {
+          "h": 498724,
+          "v": 35
         }
       ],
       "viewsDelta": 0,
@@ -40660,10 +40875,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1005
-        },
         {
           "h": 498654,
           "v": 1005
@@ -40803,6 +41014,10 @@
         {
           "h": 498722,
           "v": 1009
+        },
+        {
+          "h": 498724,
+          "v": 1009
         }
       ],
       "viewsDelta": 1,
@@ -40836,10 +41051,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 13
-        },
         {
           "h": 498654,
           "v": 13
@@ -40979,6 +41190,10 @@
         {
           "h": 498722,
           "v": 13
+        },
+        {
+          "h": 498724,
+          "v": 13
         }
       ],
       "viewsDelta": 0,
@@ -41011,10 +41226,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 782
-        },
         {
           "h": 498654,
           "v": 782
@@ -41154,6 +41365,10 @@
         {
           "h": 498722,
           "v": 806
+        },
+        {
+          "h": 498724,
+          "v": 806
         }
       ],
       "viewsDelta": 4,
@@ -41190,10 +41405,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 59
-        },
-        {
           "h": 498654,
           "v": 59
         },
@@ -41331,6 +41542,10 @@
         },
         {
           "h": 498722,
+          "v": 59
+        },
+        {
+          "h": 498724,
           "v": 59
         }
       ],
@@ -41366,10 +41581,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 254
-        },
-        {
           "h": 498654,
           "v": 254
         },
@@ -41507,6 +41718,10 @@
         },
         {
           "h": 498722,
+          "v": 259
+        },
+        {
+          "h": 498724,
           "v": 259
         }
       ],
@@ -41544,10 +41759,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 19
-        },
-        {
           "h": 498654,
           "v": 19
         },
@@ -41686,6 +41897,10 @@
         {
           "h": 498722,
           "v": 19
+        },
+        {
+          "h": 498724,
+          "v": 19
         }
       ],
       "viewsDelta": 0,
@@ -41705,7 +41920,7 @@
       "channelTitle": " Click Escolha Certa   ",
       "channelUrl": "https://www.youtube.com/channel/UCE8PlS0J2b1Ovj2VfZPjONQ",
       "channelSubscribers": 3150,
-      "views": 181,
+      "views": 182,
       "likes": 4,
       "comments": 1,
       "matchedIn": [
@@ -41720,10 +41935,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 154
-        },
         {
           "h": 498654,
           "v": 155
@@ -41863,6 +42074,10 @@
         {
           "h": 498722,
           "v": 181
+        },
+        {
+          "h": 498724,
+          "v": 182
         }
       ],
       "viewsDelta": 4,
@@ -41897,10 +42112,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 448
-        },
         {
           "h": 498654,
           "v": 448
@@ -42040,9 +42251,13 @@
         {
           "h": 498722,
           "v": 468
+        },
+        {
+          "h": 498724,
+          "v": 468
         }
       ],
-      "viewsDelta": 4,
+      "viewsDelta": 0,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -42075,10 +42290,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 332
-        },
         {
           "h": 498654,
           "v": 332
@@ -42218,9 +42429,13 @@
         {
           "h": 498722,
           "v": 364
+        },
+        {
+          "h": 498724,
+          "v": 364
         }
       ],
-      "viewsDelta": 11,
+      "viewsDelta": 10,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -42251,10 +42466,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 99
-        },
         {
           "h": 498654,
           "v": 99
@@ -42394,6 +42605,10 @@
         {
           "h": 498722,
           "v": 100
+        },
+        {
+          "h": 498724,
+          "v": 100
         }
       ],
       "viewsDelta": 0,
@@ -42413,7 +42628,7 @@
       "channelTitle": "Black FF 13#",
       "channelUrl": "https://www.youtube.com/channel/UCSdOvUX6Bn3jNKOANiDgr3g",
       "channelSubscribers": 8,
-      "views": 10,
+      "views": 11,
       "likes": 1,
       "comments": 0,
       "matchedIn": [
@@ -42426,10 +42641,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 5
-        },
         {
           "h": 498654,
           "v": 5
@@ -42569,9 +42780,13 @@
         {
           "h": 498722,
           "v": 10
+        },
+        {
+          "h": 498724,
+          "v": 11
         }
       ],
-      "viewsDelta": 0,
+      "viewsDelta": 1,
       "viewsDeltaHours": 24,
       "priority": "baixa",
       "priorityReasons": []
@@ -42603,10 +42818,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 46
-        },
         {
           "h": 498654,
           "v": 46
@@ -42745,6 +42956,10 @@
         },
         {
           "h": 498722,
+          "v": 47
+        },
+        {
+          "h": 498724,
           "v": 47
         }
       ],
@@ -42780,10 +42995,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 489
-        },
-        {
           "h": 498654,
           "v": 489
         },
@@ -42921,6 +43132,10 @@
         },
         {
           "h": 498722,
+          "v": 492
+        },
+        {
+          "h": 498724,
           "v": 492
         }
       ],
@@ -42957,10 +43172,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 10
-        },
-        {
           "h": 498654,
           "v": 10
         },
@@ -43099,6 +43310,10 @@
         {
           "h": 498722,
           "v": 10
+        },
+        {
+          "h": 498724,
+          "v": 10
         }
       ],
       "viewsDelta": 0,
@@ -43118,7 +43333,7 @@
       "channelTitle": "Matheus Mariano",
       "channelUrl": "https://www.youtube.com/channel/UCv8GRcCRA81wNm9A-duJwrQ",
       "channelSubscribers": 20800,
-      "views": 500,
+      "views": 503,
       "likes": 8,
       "comments": 0,
       "matchedIn": [
@@ -43132,10 +43347,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 468
-        },
         {
           "h": 498654,
           "v": 469
@@ -43275,9 +43486,13 @@
         {
           "h": 498722,
           "v": 500
+        },
+        {
+          "h": 498724,
+          "v": 503
         }
       ],
-      "viewsDelta": 10,
+      "viewsDelta": 13,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -43310,10 +43525,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 54
-        },
         {
           "h": 498654,
           "v": 54
@@ -43453,6 +43664,10 @@
         {
           "h": 498722,
           "v": 55
+        },
+        {
+          "h": 498724,
+          "v": 55
         }
       ],
       "viewsDelta": 0,
@@ -43472,7 +43687,7 @@
       "channelTitle": "Among Us",
       "channelUrl": "https://www.youtube.com/channel/UCfMks0kOevd-_LTF_XR0YFQ",
       "channelSubscribers": 1120,
-      "views": 1872,
+      "views": 1873,
       "likes": 21,
       "comments": 2,
       "matchedIn": [
@@ -43485,10 +43700,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1689
-        },
         {
           "h": 498654,
           "v": 1696
@@ -43628,6 +43839,10 @@
         {
           "h": 498722,
           "v": 1872
+        },
+        {
+          "h": 498724,
+          "v": 1873
         }
       ],
       "viewsDelta": 36,
@@ -43662,10 +43877,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 28
-        },
         {
           "h": 498654,
           "v": 28
@@ -43805,6 +44016,10 @@
         {
           "h": 498722,
           "v": 32
+        },
+        {
+          "h": 498724,
+          "v": 32
         }
       ],
       "viewsDelta": 0,
@@ -43837,10 +44052,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1044
-        },
         {
           "h": 498654,
           "v": 1044
@@ -43980,6 +44191,10 @@
         {
           "h": 498722,
           "v": 1046
+        },
+        {
+          "h": 498724,
+          "v": 1046
         }
       ],
       "viewsDelta": 0,
@@ -44014,10 +44229,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 170
-        },
         {
           "h": 498654,
           "v": 170
@@ -44156,6 +44367,10 @@
         },
         {
           "h": 498722,
+          "v": 170
+        },
+        {
+          "h": 498724,
           "v": 170
         }
       ],
@@ -44192,10 +44407,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 118
-        },
-        {
           "h": 498654,
           "v": 118
         },
@@ -44333,6 +44544,10 @@
         },
         {
           "h": 498722,
+          "v": 119
+        },
+        {
+          "h": 498724,
           "v": 119
         }
       ],
@@ -44367,10 +44582,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 242
-        },
-        {
           "h": 498654,
           "v": 242
         },
@@ -44508,6 +44719,10 @@
         },
         {
           "h": 498722,
+          "v": 243
+        },
+        {
+          "h": 498724,
           "v": 243
         }
       ],
@@ -44544,10 +44759,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 35
-        },
-        {
           "h": 498654,
           "v": 35
         },
@@ -44686,6 +44897,10 @@
         {
           "h": 498722,
           "v": 36
+        },
+        {
+          "h": 498724,
+          "v": 36
         }
       ],
       "viewsDelta": 1,
@@ -44720,10 +44935,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 1333
-        },
         {
           "h": 498654,
           "v": 1333
@@ -44863,6 +45074,10 @@
         {
           "h": 498722,
           "v": 1337
+        },
+        {
+          "h": 498724,
+          "v": 1337
         }
       ],
       "viewsDelta": 0,
@@ -44896,10 +45111,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 621
-        },
         {
           "h": 498654,
           "v": 622
@@ -45039,9 +45250,13 @@
         {
           "h": 498722,
           "v": 656
+        },
+        {
+          "h": 498724,
+          "v": 656
         }
       ],
-      "viewsDelta": 4,
+      "viewsDelta": 3,
       "viewsDeltaHours": 24,
       "priority": "media",
       "priorityReasons": [
@@ -45073,10 +45288,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 484
-        },
         {
           "h": 498654,
           "v": 484
@@ -45215,6 +45426,10 @@
         },
         {
           "h": 498722,
+          "v": 484
+        },
+        {
+          "h": 498724,
           "v": 484
         }
       ],
@@ -45249,10 +45464,6 @@
       "mediaProductType": "VIDEO",
       "history": [
         {
-          "h": 498652,
-          "v": 87
-        },
-        {
           "h": 498654,
           "v": 87
         },
@@ -45390,6 +45601,10 @@
         },
         {
           "h": 498722,
+          "v": 91
+        },
+        {
+          "h": 498724,
           "v": 91
         }
       ],
@@ -45426,10 +45641,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 116
-        },
-        {
           "h": 498654,
           "v": 116
         },
@@ -45567,6 +45778,10 @@
         },
         {
           "h": 498722,
+          "v": 116
+        },
+        {
+          "h": 498724,
           "v": 116
         }
       ],
@@ -45602,10 +45817,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 31
-        },
-        {
           "h": 498654,
           "v": 31
         },
@@ -45743,6 +45954,10 @@
         },
         {
           "h": 498722,
+          "v": 31
+        },
+        {
+          "h": 498724,
           "v": 31
         }
       ],
@@ -45778,10 +45993,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 0
-        },
-        {
           "h": 498654,
           "v": 0
         },
@@ -45919,6 +46130,10 @@
         },
         {
           "h": 498722,
+          "v": 0
+        },
+        {
+          "h": 498724,
           "v": 0
         }
       ],
@@ -45954,10 +46169,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 133
-        },
-        {
           "h": 498654,
           "v": 133
         },
@@ -46096,6 +46307,10 @@
         {
           "h": 498722,
           "v": 133
+        },
+        {
+          "h": 498724,
+          "v": 133
         }
       ],
       "viewsDelta": 0,
@@ -46115,7 +46330,7 @@
       "channelTitle": "Porcas Pregos e Parafusos",
       "channelUrl": "https://www.youtube.com/channel/UCnzHtyJJHbTNIMWz_2BXd3Q",
       "channelSubscribers": 260000,
-      "views": 384,
+      "views": 385,
       "likes": 4,
       "comments": 1,
       "matchedIn": [
@@ -46131,10 +46346,6 @@
       ],
       "mediaProductType": "VIDEO",
       "history": [
-        {
-          "h": 498652,
-          "v": 368
-        },
         {
           "h": 498654,
           "v": 368
@@ -46274,9 +46485,13 @@
         {
           "h": 498722,
           "v": 384
+        },
+        {
+          "h": 498724,
+          "v": 385
         }
       ],
-      "viewsDelta": 7,
+      "viewsDelta": 6,
       "viewsDeltaHours": 24,
       "priority": "alta",
       "priorityReasons": [
@@ -46310,10 +46525,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 960
-        },
         {
           "h": 498654,
           "v": 960
@@ -46453,6 +46664,10 @@
         {
           "h": 498722,
           "v": 971
+        },
+        {
+          "h": 498724,
+          "v": 971
         }
       ],
       "viewsDelta": 3,
@@ -46472,7 +46687,7 @@
       "channelTitle": "JARDEL OFICIAL",
       "channelUrl": "https://www.youtube.com/channel/UCFzEdbWzboHIt7fC3YDctNg",
       "channelSubscribers": 146000,
-      "views": 683,
+      "views": 680,
       "likes": 10,
       "comments": 0,
       "matchedIn": [
@@ -46485,10 +46700,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 581
-        },
         {
           "h": 498654,
           "v": 581
@@ -46628,9 +46839,13 @@
         {
           "h": 498722,
           "v": 683
+        },
+        {
+          "h": 498724,
+          "v": 680
         }
       ],
-      "viewsDelta": 38,
+      "viewsDelta": 35,
       "viewsDeltaHours": 24,
       "priority": "alta",
       "priorityReasons": [
@@ -46664,10 +46879,6 @@
       ],
       "mediaProductType": "REELS",
       "history": [
-        {
-          "h": 498652,
-          "v": 152
-        },
         {
           "h": 498654,
           "v": 152
@@ -46806,6 +47017,10 @@
         },
         {
           "h": 498722,
+          "v": 156
+        },
+        {
+          "h": 498724,
           "v": 156
         }
       ],
@@ -46841,10 +47056,6 @@
       "mediaProductType": "REELS",
       "history": [
         {
-          "h": 498652,
-          "v": 6
-        },
-        {
           "h": 498654,
           "v": 6
         },
@@ -46982,6 +47193,10 @@
         },
         {
           "h": 498722,
+          "v": 6
+        },
+        {
+          "h": 498724,
           "v": 6
         }
       ],
@@ -47090,7 +47305,7 @@
       "channelId": "UC8WRBW_KzutnMD_r6an5hvQ",
       "channelTitle": "CACHESTYLE ",
       "channelUrl": "https://www.youtube.com/channel/UC8WRBW_KzutnMD_r6an5hvQ",
-      "channelSubscribers": 68,
+      "channelSubscribers": 69,
       "views": 2,
       "likes": 0,
       "comments": 1,
@@ -47120,7 +47335,7 @@
       "channelTitle": "Mundo Fácil",
       "channelUrl": "https://www.youtube.com/channel/UC6lqiEE51odPD1o8mJedbAw",
       "channelSubscribers": 33600,
-      "views": 10018,
+      "views": 10012,
       "likes": 81,
       "comments": 0,
       "matchedIn": [
@@ -47140,7 +47355,7 @@
       "priority": "media",
       "priorityReasons": [
         "canal com 33.600 inscritos",
-        "10.018 views"
+        "10.012 views"
       ]
     },
     {
@@ -47184,7 +47399,7 @@
       "channelId": "UC8WRBW_KzutnMD_r6an5hvQ",
       "channelTitle": "CACHESTYLE ",
       "channelUrl": "https://www.youtube.com/channel/UC8WRBW_KzutnMD_r6an5hvQ",
-      "channelSubscribers": 68,
+      "channelSubscribers": 69,
       "views": 7,
       "likes": 1,
       "comments": 1,
@@ -47244,7 +47459,7 @@
       "channelTitle": "Uau Box!",
       "channelUrl": "https://www.youtube.com/channel/UC1x9ZMicshd-FYqzI00e8_w",
       "channelSubscribers": 90,
-      "views": 542,
+      "views": 545,
       "likes": 5,
       "comments": 1,
       "matchedIn": [
@@ -47407,37 +47622,6 @@
       "unavailable": false,
       "terms": [
         "vonder -leyen -ursula -eyewear"
-      ],
-      "mediaProductType": "REELS",
-      "viewsDelta": null,
-      "viewsDeltaHours": null,
-      "priority": "baixa",
-      "priorityReasons": []
-    },
-    {
-      "id": "kstUi7R-FWc",
-      "firstSeenAt": "2026-11-08T12:40:38Z",
-      "title": "Conheça a lavadora Vonder  facilite suas tarefas! #LavadoraDeAltaPressao #Limpeza #vonder #shopee",
-      "description": "Mais praticidade na limpeza! Conheça a lavadora Vonder LAV 1600 e facilite suas tarefas! 💛 #Vonder #LavadoraDeAltaPressao #Limpeza\n\nhttps://br.shp.ee/n1cdmib8?fromSource=copy_link&smtt=0.0.9",
-      "permalink": "https://www.youtube.com/watch?v=kstUi7R-FWc",
-      "thumbnailUrl": "https://i.ytimg.com/vi/kstUi7R-FWc/mqdefault.jpg",
-      "publishedAt": "2026-11-08T11:57:13Z",
-      "channelId": "UCaKzC04_Tr1i0ZLMSFTZUuQ",
-      "channelTitle": "achadinhos da Laura ",
-      "channelUrl": "https://www.youtube.com/channel/UCaKzC04_Tr1i0ZLMSFTZUuQ",
-      "channelSubscribers": 176,
-      "views": 1415,
-      "likes": 11,
-      "comments": 0,
-      "matchedIn": [
-        "título",
-        "descrição"
-      ],
-      "negative": [],
-      "unavailable": false,
-      "terms": [
-        "vonder -leyen -ursula -eyewear",
-        "vonder ferramentas -leyen -ursula -eyewear"
       ],
       "mediaProductType": "REELS",
       "viewsDelta": null,
