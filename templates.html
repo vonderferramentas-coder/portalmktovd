@@ -35,6 +35,10 @@
     .tpl-card:hover, .tpl-card:focus-visible { transform: translateY(-3px); box-shadow: var(--shadow-lg); outline: none }
     .tpl-card:active { transform: translateY(-1px) }
     .tpl-card-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 38%, rgba(0,0,0,.78) 100%) }
+    /* Plaquinha branca atrás do logo: as cores das marcas (laranja, azul, preto) coincidem com o fundo do card e sumiriam. */
+    .tpl-card-logo { position: absolute; left: 0; right: 0; top: 48px; display: flex; justify-content: center; pointer-events: none }
+    .tpl-card-logo span { display: flex; align-items: center; justify-content: center; width: 96px; height: 66px; padding: 9px; border-radius: 14px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.22) }
+    .tpl-card-logo img { max-width: 100%; max-height: 100%; object-fit: contain; display: block }
     .tpl-card-body { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px; display: flex; flex-direction: column; gap: 3px; color: #fff; text-align: left }
     .tpl-card-name { font: 800 16px/1.2 var(--font-display); text-shadow: 0 1px 3px rgba(0,0,0,.35) }
     .tpl-card-stats { font-size: 10.5px; font-weight: 600; opacity: .85 }
@@ -155,6 +159,8 @@
     .tpl-spec-title { margin: 0; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted) }
     .tpl-spec-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--text) }
     .tpl-practices { margin-top: 12px }
+    .tpl-practices-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; line-height: 1.5; color: var(--text) }
+    .tpl-practices p + .tpl-practices-list, .tpl-practices-list + p { margin-top: 8px }
     .tpl-practices p { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--text) }
 
     /* Desktop e Mobile são a mesma peça, então aparecem juntos dentro do dropdown - cada versão
@@ -176,7 +182,11 @@
     .tpl-format-preview, .tpl-format-info {
       box-sizing: border-box; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card);
     }
-    .tpl-format-preview { display: flex; align-items: center; justify-content: center; padding: 16px; min-height: 120px }
+    .tpl-format-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; min-height: 120px }
+    .tpl-format-preview-stage { width: 100%; display: flex; align-items: center; justify-content: center }
+    .tpl-example-img { display: block; max-width: 100%; height: auto; object-fit: cover; box-sizing: border-box; border-radius: 8px; border: 1px solid var(--border) }
+    .tpl-example-btn { padding: 5px 14px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--card); color: var(--text); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .12s, border-color .12s }
+    .tpl-example-btn:hover, .tpl-example-btn:focus-visible { background: var(--surface-muted); border-color: var(--accent); outline: none }
     /* a largura vem inline (% relativa ao maior formato do grupo, ver shapeBoxSvg em
        templates.js) - a altura é automática, derivada do viewBox, então o retângulo nunca
        distorce; max-height é só uma proteção pra formatos retrato extremos não estourarem a
@@ -189,6 +199,10 @@
     /* Margens de segurança (safeAreas em shapeBoxSvg/templates.js) - retângulo tracejado sem
        preenchimento por cima do retângulo externo, pra não competir com ele visualmente */
     .tpl-format-preview .tpl-shape-box .tpl-safe-area-rect { fill: none; stroke: var(--accent-ink); stroke-width: 2.5; stroke-dasharray: 10 8; opacity: .65 }
+    /* Zona proibida e guias de medida (blocked/guides em shapeBoxSvg/templates.js): pontilhadas, sem competir com o retângulo externo */
+    .tpl-format-preview .tpl-shape-box rect.tpl-blocked-zone { fill: var(--danger); fill-opacity: .08; stroke: var(--danger); stroke-width: 2.5; stroke-dasharray: 10 8; stroke-opacity: .8 }
+    .tpl-format-preview .tpl-shape-box .tpl-guide-line { stroke: var(--accent-ink); stroke-width: 2.5; stroke-dasharray: 10 8; opacity: .65 }
+    .tpl-format-preview .tpl-shape-box .tpl-zone-label { fill: var(--muted); font-weight: 700; font-family: inherit; stroke: none }
     .tpl-format-info { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px }
     .tpl-format-info .tpl-practices { margin-top: 0 }
     @media (max-width: 560px) { .tpl-format-grid { grid-template-columns: 1fr } .tpl-format-preview { min-height: 160px } }
