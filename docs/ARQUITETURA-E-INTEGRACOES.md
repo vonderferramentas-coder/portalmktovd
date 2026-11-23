@@ -718,6 +718,7 @@ Cada marca nova conectada à coleta automática (seguidores/posts do Instagram/F
 | Data | Alteração | Responsável |
 |---|---|---|
 | 15/09/2026 | Avaliado com dado real do Console Firebase (Uso e faturamento) se o crescimento de marcas na coleta automática está perto de esgotar a cota diária do Firestore (Spark). Uso atual: 1% escritas, 9% leituras, 0,1% exclusões - longe do limite. Nenhuma ação tomada; gatilho de reavaliação definido para a próxima marca conectada ou 50-70% de uso da cota. | Equipe de Marketing / manutenção do portal |
+| 23/11/2026 | **Consolidado: botão Baixar com menu (PDF ou JPG).** O JPG é gerado no navegador com a mesma renderização do PDF (`html2canvas`, já em `vendor/`), sem enviar nada a servidor; sem mudança de dados, acesso ou regra. **Workflow `reconstruir-historico-linkedin.yml`:** deixou de rodar sozinho no push para a `main` (agora só `workflow_dispatch`) e ganhou o campo opcional `desde` (AAAA-MM-DD) para gravar só os dias a partir de uma data; mesmos segredos e permissões. | Equipe de Marketing / manutenção do portal |
 
 
 ### Grades editáveis do Gerador de Cartazes (23/09/2026)
