@@ -11,17 +11,17 @@ name: Reconstruir histórico LinkedIn
 # Os dias reais coletados por sync-linkedin-followers.yml sempre prevalecem. Seguro rodar de novo.
 
 on:
-  # Roda sozinho (e grava) quando este arquivo entra na main, para a carga acontecer sem ninguém clicar. É seguro
-  # repetir: nunca mexe em dia que já tem LinkedIn. Para um ensaio sem gravar, rodar à mão deixando "gravar" desmarcado.
-  push:
-    branches: [main]
-    paths: ['.github/workflows/reconstruir-historico-linkedin.yml']
+  # Só à mão. "desde" limita a gravação a partir de uma data (AAAA-MM-DD); vazio = todo o período devolvido pela API.
   workflow_dispatch:
     inputs:
       gravar:
         description: 'Gravar no painel (desmarcado = só ensaio: mostra o resultado no resumo, sem gravar)'
         type: boolean
         default: false
+      desde:
+        description: 'Gravar só os dias a partir desta data (AAAA-MM-DD); vazio = tudo'
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -83,7 +83,8 @@ jobs:
 
       - name: Reconstruir o histórico
         env:
-          GRAVAR: ${{ github.event_name == 'push' || inputs.gravar }}
+          GRAVAR: ${{ inputs.gravar }}
+          DESDE: ${{ inputs.desde }}
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
         run: |
           if [ "$GRAVAR" = 'true' ]; then
@@ -149,7 +150,10 @@ jobs:
           published = current.get('published') or {'version': 2, 'history': []}
           history = {item['date']: item for item in published.get('history', []) if item.get('date')}
           added = filled = 0
+          desde = (os.environ.get('DESDE') or '').strip()
           for date, number in values.items():
+              if desde and date < desde:
+                  continue
               entry = history.get(date)
               if entry is None:
                   history[date] = {'date': date, 'followers': {'LinkedIn': number}, 'source': 'reconstruido'}

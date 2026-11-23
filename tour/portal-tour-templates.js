@@ -31,9 +31,10 @@ PortalTour.register('templates', {
       summary: 'Abrir um canal, escolher a área e ler as medidas e boas práticas.',
       steps: [
         { target: '#tplGalleryRow .tpl-card, #tplInstGalleryRow .tpl-card', click: true, done: modalOpen, title: 'Escolha um canal', text: 'Clique num card para abrir os formatos dele.' },
-        { target: '#tplCategoryGrid .tpl-category-card', when: categoriesOpen, click: true, done: formatsOpen, title: 'Escolha a área', text: 'Alguns canais têm áreas diferentes, como Loja Oficial e Ads, com medidas próprias. Clique numa delas.' },
+        { target: '#tplCategoryGrid .tpl-category-card', when: categoriesOpen, click: true, done: formatsOpen, title: 'Escolha a área', text: 'Alguns canais têm áreas diferentes, como Loja Oficial, Ads, Perfil da empresa e Banners, com medidas próprias. Canais com uma área só pulam esta etapa. Clique numa delas.' },
         { target: '#tplModuleList .tpl-module-toggle', interact: true, title: 'Formatos', text: 'Cada linha é um formato do canal, como banner principal ou logotipo. Clique para abrir ou fechar a lista de versões dele.' },
-        { target: '#tplModuleList .tpl-format-preview', title: 'Proporção real', text: 'O desenho mostra a proporção da peça. Áreas marcadas indicam onde o canal corta ou cobre a imagem: mantenha textos e logos fora delas.' },
+        { target: '#tplModuleList .tpl-format-preview', title: 'Proporção real', text: 'O desenho mostra a proporção da peça. Áreas tracejadas indicam onde o canal corta, cobre ou proíbe conteúdo: mantenha textos e logos fora delas.' },
+        { target: '#tplModuleList .tpl-example-btn', interact: true, title: 'Ver exemplo', text: 'Troca o desenho das medidas por uma arte de exemplo daquela versão. Clique de novo para voltar às medidas. Nem toda versão tem exemplo.' },
         { target: '#tplModuleList .tpl-spec-list', title: 'Medidas e peso', text: 'Tamanho mínimo em pixels, peso máximo e tipo de arquivo aceito.' },
         { target: '#tplModuleList .tpl-practices', title: 'Boas práticas', text: 'Orientações daquela versão, como o que evitar na composição.' },
         { target: '#tplModuleList .tpl-copy-btn', interact: true, title: 'Copiar informações', text: 'Copia as medidas e orientações em texto, para colar num briefing ou numa conversa com o designer.' },
@@ -48,7 +49,7 @@ PortalTour.register('templates', {
       steps: [
         { when: () => !isAdmin(), title: 'Só para administradores', text: 'Editar, duplicar e excluir cards é função de administradores. Se você precisar mudar algum card, peça a um administrador.' },
         { target: '.tpl-card-menu-btn', when: isAdmin, title: 'Menu do card', text: 'Os três pontinhos aparecem só para administradores e abrem Editar, Duplicar e Excluir.', danger: 'Editar, duplicar e excluir mudam a galeria de toda a equipe.' },
-        { target: '#tplGalleryRow .tpl-card', when: isAdmin, title: 'O que cada ação faz', text: 'Editar troca o nome e a foto de fundo do card. Duplicar cria uma cópia para ajustar. Excluir remove o card, e uma janela pede a confirmação antes.' },
+        { target: '#tplGalleryRow .tpl-card', when: isAdmin, title: 'O que cada ação faz', text: 'Editar troca o nome do card. Duplicar cria uma cópia para ajustar. Excluir remove o card, e uma janela pede a confirmação antes.' },
         { when: isAdmin, title: 'Pronto', text: 'Dentro de um canal, o lápis ao lado de cada formato edita as medidas e as boas práticas dele, também só para administradores.' }
       ]
     }

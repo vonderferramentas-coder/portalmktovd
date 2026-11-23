@@ -41,7 +41,7 @@ PortalTour.register('gerador-consolidado', {
         { target: '#squareList', title: 'Lista de produtos', text: 'Abra um produto para ajustar título, link ou foto.' },
         { target: '#pagesPreview', title: 'Prévia', text: 'As páginas do informativo do jeito que serão baixadas. Confira textos, links e fotos de cada produto.' },
         { target: '#saveConsolidado', title: 'Salvar', text: 'Guarda o informativo na biblioteca para continuar depois.', danger: 'Salvar grava o consolidado para toda a equipe.' },
-        { target: '#exportPdf', title: 'Baixar PDF', text: 'Gera o PDF do informativo. Fica ativo quando há produtos.' },
+        { target: '#exportMenu', title: 'Baixar', text: 'Abre o menu com Baixar PDF, que leva os links dos produtos, ou Baixar JPG, uma imagem do informativo sem os links. Fica ativo quando há produtos.' },
         { target: '#backToLibrary', title: 'Voltar à biblioteca', text: 'Leva de volta à lista. Se houver alteração sem salvar, a tela avisa antes de perder.' },
         { title: 'Pronto', text: 'Todo informativo precisa ser revisado por uma pessoa antes de ser enviado, principalmente links e fotos.' }
       ]

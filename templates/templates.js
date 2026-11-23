@@ -34,15 +34,24 @@
   // bg/ink = identidade visual pública de cada marketplace (usada no card e no cabeçalho do
   // modal); image = foto de capa do card, proporção 3:4 - fica vazia até a arte chegar, e o card
   // cai num gradiente com a própria cor da marca enquanto isso (ver cardBackground).
+  // logo = caminho do logo do marketplace (ex.: 'icons/marketplaces/shopee.svg'), desenhado no alto do
+  // card (ver .tpl-card-logo); vazio = card sem logo.
   const MARKETPLACES_BY_BRAND = {
     default: [
-      { id: 'mercado-livre', name: 'Mercado Livre', bg: '#FFE600', ink: '#2D3277', image: '' },
-      { id: 'shopee', name: 'Shopee', bg: '#EE4D2D', ink: '#ffffff', image: '' },
-      { id: 'magalu', name: 'Magalu', bg: '#0086FF', ink: '#ffffff', image: '' },
-      { id: 'temu', name: 'Temu', bg: '#FB7701', ink: '#ffffff', image: '' },
-      { id: 'tiktok-shop', name: 'TikTok Shop', bg: '#010101', ink: '#ffffff', image: '' }
+      { id: 'mercado-livre', name: 'Mercado Livre', bg: '#FFE600', ink: '#2D3277', image: '', logo: 'icons/marketplaces/mercado-livre.png' },
+      { id: 'shopee', name: 'Shopee', bg: '#EE4D2D', ink: '#ffffff', image: '', logo: 'icons/marketplaces/shopee.webp' },
+      { id: 'magalu', name: 'Magalu', bg: '#0086FF', ink: '#ffffff', image: '', logo: 'icons/marketplaces/magalu.webp' },
+      { id: 'temu', name: 'Temu', bg: '#FB7701', ink: '#ffffff', image: '', logo: 'icons/marketplaces/temu.png' },
+      { id: 'tiktok-shop', name: 'TikTok Shop', bg: '#010101', ink: '#ffffff', image: '', logo: 'icons/marketplaces/tiktok-shop.webp' }
     ]
   };
+  // Ferramentas Gerais: Shopee e Mercado Livre (mesmos formatos da VONDER, ver DEFAULT_MODULES, que é por canal) e o
+  // e-commerce próprio da FG, ainda sem formatos cadastrados (card travado até chegarem as especificações).
+  MARKETPLACES_BY_BRAND['ferramentas-gerais'] = [
+    MARKETPLACES_BY_BRAND.default.find(m => m.id === 'mercado-livre'),
+    MARKETPLACES_BY_BRAND.default.find(m => m.id === 'shopee'),
+    { id: 'ecommerce-fg', name: 'E-commerce FG', bg: '#005745', ink: '#ffffff', image: '', logo: 'icons/marketplaces/fg.png' }
+  ];
   // BASE_* são o ponto de partida fixo (nunca mutado); admin pode editar nome/foto (patch em
   // overrides.channels), duplicar (vira um registro completo em overrides.customChannels) ou
   // excluir (marca deleted:true nos BASE_* - não dá pra remover do array fixo; ou remove de
@@ -56,10 +65,10 @@
   // tem cor de marca real.
   const INSTITUCIONAIS_BY_BRAND = {
     default: [
-      { id: 'site-institucional', name: 'Site Institucional', bg: '#0F172A', ink: '#ffffff', image: '' },
-      { id: 'b2b', name: 'B2B', bg: '#1D4ED8', ink: '#ffffff', image: '' },
-      { id: 'intranet', name: 'Intranet', bg: '#047857', ink: '#ffffff', image: '' },
-      { id: 'reclame-aqui', name: 'Reclame AQUI', bg: '#FFC629', ink: '#1a1a1a', image: '' }
+      { id: 'site-institucional', name: 'Site Institucional', bg: '#F6BE00', ink: '#1a1a1a', image: '', logo: 'icons/marketplaces/site-institucional.svg' },
+      { id: 'b2b', name: 'B2B', bg: '#1D4ED8', ink: '#ffffff', image: '', logo: 'icons/marketplaces/b2b.svg' },
+      { id: 'intranet', name: 'Intranet', bg: '#047857', ink: '#ffffff', image: '', logo: 'icons/marketplaces/intranet.svg' },
+      { id: 'reclame-aqui', name: 'Reclame AQUI', bg: '#95C11F', ink: '#1a1a1a', image: '', logo: 'icons/marketplaces/reclame-aqui.png' }
     ]
   };
   const BASE_INSTITUCIONAIS = INSTITUCIONAIS_BY_BRAND[brandKey] || [];
@@ -69,8 +78,15 @@
   // separados. Igual pra todo marketplace, por isso não entra no mapa por marca acima.
   const CATEGORIES = [
     { id: 'loja-oficial', name: 'Loja Oficial', desc: 'Peças usadas na página oficial da marca dentro do marketplace.', icon: STORE_PATH },
-    { id: 'ads', name: 'Ads', desc: 'Peças usadas em anúncios patrocinados dentro do marketplace.', icon: ADS_PATH }
+    { id: 'ads', name: 'Ads', desc: 'Peças usadas em anúncios patrocinados dentro do marketplace.', icon: ADS_PATH },
+    { id: 'perfil', name: 'Perfil da empresa', desc: 'Capa e logo (foto de perfil) da página da marca.', icon: IMAGE_PATH },
+    { id: 'banners', name: 'Banners', desc: 'Banners da página inicial do canal.', icon: IMAGE_PATH }
   ];
+  // Cada canal mostra só as áreas que tem formatos cadastrados (Mercado Livre e Shopee: Loja Oficial e Ads;
+  // Reclame AQUI: Perfil da empresa).
+  function categoriesFor(channelId) {
+    return CATEGORIES.filter(c => (DEFAULT_MODULES[channelId] || {})[c.id]);
+  }
 
   // ---------------------------------------------------------------- conteúdo padrão dos "formatos"
   // Cada formato (Banner principal, Logotipo...) tem uma ou duas versões: Desktop+Mobile quando o
@@ -156,14 +172,157 @@
   }
   function defaultCategoriesFor() {
     const byCategory = {};
-    CATEGORIES.forEach(c => { byCategory[c.id] = defaultFormatsFor(c.id); });
+    CATEGORIES.filter(c => c.id === 'loja-oficial' || c.id === 'ads').forEach(c => { byCategory[c.id] = defaultFormatsFor(c.id); });
     return byCategory;
   }
+  // ---------------------------------------------------------------- Shopee (Lojas Oficiais)
+  // Fonte: "Guidelines - Umbrella Brands" (microsite, 03/09) e "Guidelines - Display Ads / Brand Package"
+  // (2025), da própria Shopee. Os guidelines não informam peso máximo nem extensão do banner do
+  // microsite, nem medidas de foto de perfil e foto de capa da loja: ficam fora até a Shopee passar.
+  const SHOPEE_SEM_INFO = 'Não informado no guideline';
+  // Boas práticas: cada linha que começa com "• " vira um tópico (ver practicesHtml).
+  const bullets = (...lines) => lines.map(l => '• ' + l).join('\n');
+  const SHOPEE_MICROSITE_BASE = [
+    'Fundo padrão em cinza ou na cor de preferência da marca.',
+    'Logo sempre centralizado e com boa leitura em relação ao fundo.',
+    'Equilibrar os SKUs nas laterais, para melhor balanceamento do layout.',
+    'Modelo em Photoshop fornecido pela Shopee.'
+  ];
+  const SHOPEE_MICROSITE_ESTRUTURA = [
+    'O microsite tem banner, filete com o título da seção e coleção de SKUs.',
+    'Filete: criado pela Shopee (Operações); basta enviar o título desejado, sem arte.',
+    'Disclaimer de Frete Grátis: padrão Shopee, não alterar formato, cores nem texto.'
+  ];
+  const SHOPEE_MICROSITE_MATERIAIS = '\nPara a Shopee produzir o banner, enviar:\n' + bullets(
+    'Logo: PNG ou vetor (Illustrator, EPS, PDF), com fundo transparente.',
+    'Arquivos de KV: Illustrator, PDF e/ou PSD.',
+    'SKUs: preferencialmente PNG vazado ou JPG de no mínimo 800 px de largura, com fundo claro e limpo (de preferência branco), detalhes nítidos e texto legível.'
+  );
+  const SHOPEE_DISPLAY_NOTE = bullets(
+    'Arte obrigatória nos dois formatos (PC e App), anexada na central do vendedor depois de configurar o Display Ads.',
+    'Logo "Lojas Oficiais": fixo, no canto superior esquerdo.',
+    'Tag "ANÚNCIO": fixa.',
+    'Logo da marca: acima da chamada comercial.',
+    'Chamada comercial: à direita, com até 40 caracteres, fonte Shopee de 50 pt.',
+    'Botão "Compre agora": Roboto Medium 26 pt (obrigatório).',
+    'SKUs: alta resolução, na área de 600 px à esquerda, com distâncias iguais dos lados; no máximo 4 produtos.',
+    'Fundo: sem preto, branco, laranja nem cores fluorescentes; sem 2 cores sólidas; sem muitos elementos.',
+    'Não comunicar Frete Grátis, Super Ofertas, cupom digitável nem parcelamento em 12x sem juros.',
+    'Cupom só se for aplicado automaticamente, sem citar o valor mínimo de compra.',
+    'Sem palavras em outros idiomas e sem price tag nos fins de semana.'
+  );
+  const SHOPEE_DISPLAY_APP_NOTE = '\n' + bullets('No App, os 270 px do topo ficam lisos, sem nenhuma informação (zona pontilhada no desenho): todo o conteúdo fica na parte de baixo.');
+  const SHOPEE_MODULES = {
+    'loja-oficial': [
+      {
+        id: 'banner-microsite', name: 'Banner do microsite',
+        formats: [
+          { id: 'sem-titulo', label: 'Sem título', min: '1200x540 px', peso: SHOPEE_SEM_INFO, formatos: '.png', exemplo: 'icons/templates/shopee/microsite-sem-titulo.webp', boasPraticas: bullets(...SHOPEE_MICROSITE_BASE, ...SHOPEE_MICROSITE_ESTRUTURA) + SHOPEE_MICROSITE_MATERIAIS },
+          { id: 'com-titulo', label: 'Com título', min: '1200x540 px', peso: SHOPEE_SEM_INFO, formatos: '.png', exemplo: 'icons/templates/shopee/microsite-com-titulo.webp', boasPraticas: bullets(...SHOPEE_MICROSITE_BASE, 'Título em fonte de 45 pt, com no máximo 40 caracteres.', ...SHOPEE_MICROSITE_ESTRUTURA) + SHOPEE_MICROSITE_MATERIAIS }
+        ]
+      }
+    ],
+    'ads': [
+      {
+        id: 'display-ads', name: 'Display Ads (banner da homepage)',
+        formats: [
+          { id: 'pc', label: 'PC', min: '1200x360 px', peso: '150 KB', formatos: SHOPEE_SEM_INFO, exemplo: 'icons/templates/shopee/display-pc.webp',
+            boasPraticas: SHOPEE_DISPLAY_NOTE },
+          { id: 'app', label: 'App', min: '1200x640 px', peso: '250 KB', formatos: SHOPEE_SEM_INFO, exemplo: 'icons/templates/shopee/display-app.webp',
+            blocked: [{ y: 0, h: 270, label: 'Não usar · 270 px' }],
+            boasPraticas: SHOPEE_DISPLAY_NOTE + SHOPEE_DISPLAY_APP_NOTE }
+        ]
+      }
+    ]
+  };
+
+  // ---------------------------------------------------------------- Reclame AQUI (RA Brand Page)
+  // Fonte: "Manual da Brand Page" do Reclame AQUI (24/02/2026), seções Logo da empresa e Imagem de capa.
+  // O manual não informa a resolução do logo: 400x400 px é o tamanho da arte de perfil já produzida.
+  const RA_MODULES = {
+    'perfil': [
+      {
+        id: 'imagem-de-capa', name: 'Imagem de capa',
+        formats: [
+          { id: 'desktop', label: 'Desktop', min: '1920x280 px', peso: '2 MB', formatos: '.jpg ou .png', exemplo: 'icons/templates/reclame-aqui/capa-desktop.webp',
+            boasPraticas: bullets(
+              'Use somente imagens institucionais.',
+              'Centralize o conteúdo: evite elementos importantes nas laterais, que podem ser cortados conforme o tamanho do monitor (use a área segura do template em Photoshop do Reclame AQUI).',
+              'Evite textos longos, canais de atendimento (telefone, SAC, e-mail, site, Fale Conosco) e conteúdo promocional.',
+              'Não incluir publicidade que garanta que o cliente não terá contratempos (ex.: "Compre com a gente e não tenha dor de cabeça").'
+            ) },
+          { id: 'mobile', label: 'Mobile', min: '768x105 px', peso: '2 MB', formatos: '.jpg ou .png', exemplo: 'icons/templates/reclame-aqui/capa-mobile.webp',
+            boasPraticas: bullets(
+              'Cadastre sempre a capa mobile: 72% dos acessos ao Reclame AQUI (jan. a set. de 2022, segundo o manual) vêm do celular.',
+              'Pode ser uma imagem diferente da desktop.',
+              'Mesmas regras da desktop: conteúdo centralizado (use a área segura do template mobile), só imagem institucional e sem canais de atendimento nem promoções.'
+            ) }
+        ]
+      },
+      {
+        id: 'foto-de-perfil', name: 'Foto de perfil (logo)',
+        formats: [
+          { id: 'unico', label: 'Arquivo único', min: '400x400 px', peso: '2 MB', formatos: '.jpg, .jpeg ou .png', exemplo: 'icons/templates/reclame-aqui/perfil.webp',
+            boasPraticas: bullets(
+              'A imagem aparece redonda no site: deixe o logo centralizado, com folga nas bordas.',
+              'Use o editor de logo do Reclame AQUI para escolher o melhor enquadramento antes de salvar.'
+            ) }
+        ]
+      }
+    ]
+  };
+
+  // ---------------------------------------------------------------- B2B
+  // Medidas dos arquivos do banner da home (pasta _B2B/_Sabadaço/2026/09 - Setembro). Por enquanto só o
+  // banner home, sem orientações extras e sem peso máximo definido (SHOPEE_SEM_INFO esconde a linha).
+  const B2B_MODULES = {
+    'banners': [
+      {
+        id: 'banner-home', name: 'Banner home',
+        formats: [
+          { id: 'desktop', label: 'Desktop', min: '1366x241 px', peso: SHOPEE_SEM_INFO, formatos: '.jpg', exemplo: 'icons/templates/b2b/banner-home-desktop.webp', boasPraticas: '' },
+          { id: 'mobile', label: 'Mobile', min: '1280x1728 px', peso: SHOPEE_SEM_INFO, formatos: '.jpg', exemplo: 'icons/templates/b2b/banner-home-mobile.webp', boasPraticas: '' }
+        ]
+      }
+    ]
+  };
+
+  // ---------------------------------------------------------------- E-commerce FG
+  // Fonte: briefing "Campanha Site FG" (nov/2026), enxoval de peças do site: fullbanner do carrossel (desktop e
+  // mobile) e mosaico (peças de duas larguras lado a lado no desktop). O briefing não informa peso máximo.
+  const FG_NOME_ARQUIVO = bullets('Nomear os arquivos só com hífen (-) ou sublinhado (_): qualquer outro caractere especial conflita com a VTEX e impede o upload da imagem.');
+  const FG_ECOMMERCE_MODULES = {
+    'banners': [
+      {
+        id: 'banner-home', name: 'Banner home (fullbanner)',
+        formats: [
+          { id: 'desktop', label: 'Desktop', min: '1920x500 px', peso: SHOPEE_SEM_INFO, formatos: '.jpg', exemplo: 'icons/templates/ecommerce-fg/banner-desktop.webp', boasPraticas: FG_NOME_ARQUIVO },
+          { id: 'mobile', label: 'Mobile', min: '580x570 px', peso: SHOPEE_SEM_INFO, formatos: '.jpg', exemplo: 'icons/templates/ecommerce-fg/banner-mobile.webp', boasPraticas: FG_NOME_ARQUIVO }
+        ]
+      },
+      {
+        id: 'mosaico', name: 'Mosaico',
+        formats: [
+          { id: 'desktop-estreito', label: 'Desktop - peça estreita', min: '275x430 px', peso: SHOPEE_SEM_INFO, formatos: '.jpg', exemplo: 'icons/templates/ecommerce-fg/mosaico-estreito.webp',
+            boasPraticas: bullets('No desktop, as peças de duas larguras (275 e 370 px) ficam lado a lado, alternadas.') + '\n' + FG_NOME_ARQUIVO },
+          { id: 'desktop-largo', label: 'Desktop - peça larga', min: '370x430 px', peso: SHOPEE_SEM_INFO, formatos: '.jpg', exemplo: 'icons/templates/ecommerce-fg/mosaico-largo.webp',
+            boasPraticas: bullets('No desktop, as peças de duas larguras (275 e 370 px) ficam lado a lado, alternadas.') + '\n' + FG_NOME_ARQUIVO },
+          { id: 'mobile', label: 'Mobile', min: '327x430 px', peso: SHOPEE_SEM_INFO, formatos: '.jpg', exemplo: 'icons/templates/ecommerce-fg/mosaico-mobile.webp',
+            boasPraticas: bullets('No mobile, todas as peças têm a mesma largura (327 px).') + '\n' + FG_NOME_ARQUIVO }
+        ]
+      }
+    ]
+  };
+
   // Só o Mercado Livre tem instruções levantadas até agora - os demais (inclusive os canais
   // institucionais) entram travados (cadeado no card, sem abrir modal) até alguém cadastrar as
   // medidas reais deles. Ver isChannelLocked.
   const DEFAULT_MODULES = {
-    'mercado-livre': defaultCategoriesFor()
+    'mercado-livre': defaultCategoriesFor(),
+    'shopee': SHOPEE_MODULES,
+    'reclame-aqui': RA_MODULES,
+    'b2b': B2B_MODULES,
+    'ecommerce-fg': FG_ECOMMERCE_MODULES
   };
   function isChannelLocked(channelId) {
     return !DEFAULT_MODULES[channelId];
@@ -350,13 +509,14 @@
     return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
   }
   function cardBackground(m) {
-    if (m.image) return `url('${m.image}') center/cover`;
+    // Fundo sempre na cor da marca (decisão de 19/11/2026): a foto de capa (m.image) não é mais usada no card.
     return `linear-gradient(155deg, ${m.bg}, ${shade(m.bg, -55)})`;
   }
   function channelStats(m) {
     let formatsCount = 0;
-    CATEGORIES.forEach(c => defaultsFor(m.id, c.id).forEach(mod => { formatsCount += mod.formats.length; }));
-    return `${CATEGORIES.length} áreas · ${formatsCount} formatos`;
+    const areas = categoriesFor(m.id);
+    areas.forEach(c => defaultsFor(m.id, c.id).forEach(mod => { formatsCount += mod.formats.length; }));
+    return `${areas.length} ${areas.length === 1 ? 'área' : 'áreas'} · ${formatsCount} ${formatsCount === 1 ? 'formato' : 'formatos'}`;
   }
   // Canal travado: card em tons de cinza com cadeado no lugar da seta, sem clique - ainda não
   // temos as medidas reais dele pra mostrar (ver DEFAULT_MODULES/isChannelLocked). Mesma função
@@ -385,6 +545,7 @@
         aria-label="${locked ? 'Formatos ainda não cadastrados' : 'Ver formatos de ' + escapeHtml(m.name)}"
         style="background:${cardBackground(m)}">
         <span class="tpl-card-scrim" aria-hidden="true"></span>
+        ${m.logo ? `<span class="tpl-card-logo" aria-hidden="true"><span><img src="${escapeHtml(m.logo)}" alt="" loading="lazy" draggable="false"></span></span>` : ''}
         <button type="button" class="tpl-card-menu-btn" data-channel-menu="${m.id}" hidden title="Mais ações" aria-label="Mais ações de ${escapeHtml(m.name)}">${svgIcon(MENU_DOTS_PATH, ACTION_ICON_SIZE)}</button>
         ${locked ? `<span class="tpl-card-lock" aria-hidden="true">${svgIcon(LOCK_PATH, 15)}</span>` : ''}
         <span class="tpl-card-body">
@@ -480,36 +641,7 @@
     return list.find(c => c.id === channelId) || null;
   }
 
-  // ---------------------------------------------------------------- admin: modal de editar (nome + foto)
-  function readChannelPhoto(file, cb) {
-    if (!/^image\//.test(file.type)) { alert('Envie um arquivo de imagem.'); return; }
-    if (file.size > 6 * 1024 * 1024) { alert('Imagem muito grande (máx. 6MB).'); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        // recorta pro mesmo 3:4 do card (cover, sem distorcer) antes de comprimir - assim a foto
-        // usada em cardBackground já chega pronta pro enquadramento, sem depender do CSS pra cortar.
-        const targetRatio = 3 / 4;
-        const srcRatio = img.width / img.height;
-        let sx = 0, sy = 0, sw = img.width, sh = img.height;
-        if (srcRatio > targetRatio) { sw = img.height * targetRatio; sx = (img.width - sw) / 2; }
-        else { sh = img.width / targetRatio; sy = (img.height - sh) / 2; }
-        const outW = 480, outH = Math.round(outW / targetRatio);
-        const canvas = document.createElement('canvas');
-        canvas.width = outW; canvas.height = outH;
-        canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
-        cb(canvas.toDataURL('image/jpeg', 0.85));
-      };
-      img.src = String(reader.result || '');
-    };
-    reader.readAsDataURL(file);
-  }
-  function setChannelPhotoPreview(image) {
-    const preview = document.getElementById('tplChannelEditPhotoPreview');
-    preview.innerHTML = image ? `<img src="${image}" alt="" />` : svgIcon(IMAGE_PATH, 22);
-    preview.dataset.image = image || '';
-  }
+  // ---------------------------------------------------------------- admin: modal de editar (nome)
   let editingChannel = null;
   function openChannelEditModal(channelId, group) {
     const ch = findChannelInGroup(channelId, group);
@@ -517,7 +649,6 @@
     editingChannel = { id: channelId, group, isCustom: isCustomChannel(channelId), base: ch };
     document.getElementById('tplChannelEditTitle').textContent = 'Editar ' + ch.name;
     document.getElementById('tplChannelEditName').value = ch.name;
-    setChannelPhotoPreview(ch.image);
     document.getElementById('tplChannelEditBackdrop').style.display = 'flex';
     document.getElementById('tplChannelEditName').focus();
   }
@@ -525,24 +656,17 @@
     document.getElementById('tplChannelEditBackdrop').style.display = 'none';
     editingChannel = null;
   }
-  document.getElementById('tplChannelEditPhotoInput').addEventListener('change', ev => {
-    const file = ev.target.files && ev.target.files[0];
-    ev.target.value = '';
-    if (!file) return;
-    readChannelPhoto(file, dataUrl => setChannelPhotoPreview(dataUrl));
-  });
   document.getElementById('tplChannelEditForm').addEventListener('submit', ev => {
     ev.preventDefault();
     if (!editingChannel) return;
     const name = document.getElementById('tplChannelEditName').value.trim();
     if (!name) return;
-    const image = document.getElementById('tplChannelEditPhotoPreview').dataset.image || '';
     const saveBtn = ev.target.querySelector('[type=submit]');
     saveBtn.disabled = true;
     const { id, isCustom, base } = editingChannel;
     const request = isCustom
-      ? saveCustomChannel(id, Object.assign({}, base, { name, image }))
-      : saveChannelPatch(id, { name, image });
+      ? saveCustomChannel(id, Object.assign({}, base, { name }))
+      : saveChannelPatch(id, { name });
     request.then(() => {
       closeChannelEditModal();
       renderGalleries();
@@ -570,7 +694,7 @@
     document.getElementById('tplChannelConfirmTitle').textContent = isDelete ? 'Excluir card?' : 'Duplicar card?';
     document.getElementById('tplChannelConfirmMessage').textContent = isDelete
       ? `"${ch.name}" será removido desta lista. Essa ação não pode ser desfeita.`
-      : `Será criada uma cópia de "${ch.name}" com o mesmo nome e foto - fica pendente (com cadeado) até alguém cadastrar os formatos dela.`;
+      : `Será criada uma cópia de "${ch.name}" com o mesmo nome - fica pendente (com cadeado) até alguém cadastrar os formatos dela.`;
     const okBtn = document.getElementById('tplChannelConfirmOk');
     okBtn.textContent = isDelete ? 'Excluir' : 'Duplicar';
     okBtn.classList.toggle('ghost', isDelete);
@@ -640,9 +764,19 @@
   // sombreada rente à borda de baixo, atrás das safeAreas. Nenhum dos dois é editável pelo
   // formulário de edição (ver editFormHtml) - sobrevivem a uma edição normal porque o merge de
   // overrides em moduleData() é aditivo, não substitui o formato base inteiro.
-  function shapeBoxSvg(minStr, groupMaxWidth, safeAreas, gradientHeight) {
+  // blocked (opcional) = [{ y, h, label }] - faixa de largura total onde NÃO pode haver conteúdo (ex.: os
+  // 270 px lisos do topo do Display Ads App da Shopee), desenhada pontilhada e com o texto dentro.
+  // guides (opcional) = [{ y0, y1, label }] - trechos medidos na vertical (ex.: 80 px + 263 px do Display
+  // Ads PC): linhas pontilhadas em y0 e y1 e a medida escrita à direita, no meio do trecho. Ambos em px do
+  // próprio criativo e, como safeAreas, só informativos (não editáveis pelo formulário).
+  function shapeBoxSvg(minStr, groupMaxWidth, safeAreas, gradientHeight, blocked, guides) {
     const { w, h } = parseMin(minStr);
-    const widthPct = groupMaxWidth ? Math.max(10, Math.round((w / groupMaxWidth) * 100)) : 100;
+    let widthPct = groupMaxWidth ? Math.max(10, Math.round((w / groupMaxWidth) * 100)) : 100;
+    // faixas bem baixas e largas (capas 1920x280 e 768x105) ficam minúsculas na escala do grupo: piso de 85% da largura
+    if (w / h >= 4) widthPct = Math.max(widthPct, 85);
+    // peças altas (retrato, ex.: mosaico 275x430, 370x430 e 327x430) ficam minúsculas ao lado de um banner 1920 de largura:
+    // todas ganham o mesmo fator (x3, no máximo 60%), então continuam proporcionais entre si e com a mesma altura
+    if (h > w && widthPct < 60) widthPct = Math.min(60, widthPct * 3);
     const gradientRect = gradientHeight
       ? `<rect class="tpl-gradient-zone" x="0" y="${h - gradientHeight}" width="${w}" height="${gradientHeight}"><title>Degradê automático: ${gradientHeight}px</title></rect>`
       : '';
@@ -653,7 +787,10 @@
       container = { x, y, w: area.w, h: area.h };
       return `<rect class="tpl-safe-area-rect" x="${x}" y="${y}" width="${area.w}" height="${area.h}"><title>${escapeHtml(area.label)}: ${area.w}x${area.h}px</title></rect>`;
     }).join('');
-    return `<svg class="tpl-shape-box" style="width:${widthPct}%" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect x="0" y="0" width="${w}" height="${h}" rx="${Math.max(2, Math.min(w, h) * .03)}" />${gradientRect}${safeAreaRects}</svg>`;
+    const fontSize = Math.round(w * .04);
+    const blockedRects = (blocked || []).map(z => `<rect class="tpl-blocked-zone" x="0" y="${z.y}" width="${w}" height="${z.h}"><title>${escapeHtml(z.label)}</title></rect><text class="tpl-zone-label" x="${w / 2}" y="${z.y + z.h / 2}" text-anchor="middle" dominant-baseline="middle" style="font-size:${fontSize}px">${escapeHtml(z.label)}</text>`).join('');
+    const guideLines = (guides || []).map(g => [g.y0, g.y1].map(y => `<line class="tpl-guide-line" x1="0" x2="${w}" y1="${y}" y2="${y}"/>`).join('') + `<text class="tpl-zone-label" x="${w - 14}" y="${(g.y0 + g.y1) / 2}" text-anchor="end" dominant-baseline="middle" style="font-size:${fontSize}px">${escapeHtml(g.label)}</text>`).join('');
+    return `<svg class="tpl-shape-box" style="width:${widthPct}%" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><rect x="0" y="0" width="${w}" height="${h}" rx="${Math.max(2, Math.min(w, h) * .03)}" />${gradientRect}${blockedRects}${guideLines}${safeAreaRects}</svg>`;
   }
 
   // ---------------------------------------------------------------- estado do modal
@@ -671,8 +808,22 @@
   function currentModule() { return currentModules.find(m => m.id === selectedModuleId) || null; }
 
   // ---------------------------------------------------------------- lista de formatos (dropdowns)
+  // Boas práticas: linhas que começam com "• " viram lista; as demais, parágrafo (texto antigo de uma linha só continua igual).
+  function practicesHtml(text) {
+    const out = [];
+    let items = [];
+    const flush = () => { if (items.length) { out.push(`<ul class="tpl-practices-list">${items.join('')}</ul>`); items = []; } };
+    String(text).split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
+      if (line.startsWith('• ')) items.push(`<li>${escapeHtml(line.slice(2))}</li>`);
+      else { flush(); out.push(`<p>${escapeHtml(line)}</p>`); }
+    });
+    flush();
+    return out.join('');
+  }
   function copyFormatText(m, f) {
-    let text = `${m.name} - ${f.label}\nTamanho mínimo: ${f.min}\nPeso máximo: ${f.peso}\nArquivo: ${f.formatos}`;
+    let text = `${m.name} - ${f.label}\nTamanho mínimo: ${f.min}`;
+    if (f.peso !== SHOPEE_SEM_INFO) text += `\nPeso máximo: ${f.peso}`;
+    if (f.formatos !== SHOPEE_SEM_INFO) text += `\nArquivo: ${f.formatos}`;
     if (f.boasPraticas) text += `\nBoas práticas: ${f.boasPraticas}`;
     return text;
   }
@@ -711,14 +862,17 @@
           <button type="button" class="btn-icon tpl-copy-btn" data-copy-format="${f.id}" title="Copiar informações" aria-label="Copiar informações de ${escapeHtml(f.label)}">${svgIcon(COPY_PATH, ACTION_ICON_SIZE)}</button>
         </div>
         <div class="tpl-format-grid">
-          <div class="tpl-format-preview">${shapeBoxSvg(f.min, groupMaxWidth, f.safeAreas, f.gradientHeight)}</div>
+          <div class="tpl-format-preview">
+            <div class="tpl-format-preview-stage">${shapeBoxSvg(f.min, groupMaxWidth, f.safeAreas, f.gradientHeight, f.blocked, f.guides)}</div>
+            ${f.exemplo ? `<button type="button" class="tpl-example-btn" data-example-format="${f.id}" aria-pressed="false">Ver exemplo</button>` : ''}
+          </div>
           <div class="tpl-format-info">
             <ul class="tpl-spec-list">
               <li>Tamanho mínimo: <b>${escapeHtml(f.min)}</b></li>
-              <li>Peso máximo: <b>${escapeHtml(f.peso)}</b></li>
-              <li>Arquivo: <b>${escapeHtml(f.formatos)}</b></li>
+              ${f.peso === SHOPEE_SEM_INFO ? '' : `<li>Peso máximo: <b>${escapeHtml(f.peso)}</b></li>`}
+              ${f.formatos === SHOPEE_SEM_INFO ? '' : `<li>Arquivo: <b>${escapeHtml(f.formatos)}</b></li>`}
             </ul>
-            ${f.boasPraticas ? `<div class="tpl-practices"><h5 class="tpl-spec-title">Boas práticas</h5><p>${escapeHtml(f.boasPraticas)}</p></div>` : ''}
+            ${f.boasPraticas ? `<div class="tpl-practices"><h5 class="tpl-spec-title">Boas práticas</h5>${practicesHtml(f.boasPraticas)}</div>` : ''}
           </div>
         </div>
       </div>`;
@@ -753,7 +907,33 @@
       </div>`;
   }
 
+  // "Ver exemplo": troca, no mesmo lugar, o desenho das medidas pela imagem de exemplo (f.exemplo =
+  // caminho da imagem, opcional por versão) e volta ao desenho no segundo clique.
+  function wireExampleButtons(host, m) {
+    host.querySelectorAll('.tpl-example-btn').forEach(btn => {
+      const f = m.formats.find(x => x.id === btn.dataset.exampleFormat);
+      const stage = btn.closest('.tpl-format-preview').querySelector('.tpl-format-preview-stage');
+      const shapeHtml = stage.innerHTML;
+      // o exemplo ocupa exatamente o mesmo retângulo do desenho das medidas (mesma largura relativa e mesma proporção),
+      // para um formato nunca aparecer maior que outro só por causa da imagem
+      const shape = stage.querySelector('svg');
+      const { w, h } = parseMin(f.min);
+      // faixas bem baixas e largas (capas 1920x280 e 768x105) ficam ilegíveis na escala do desenho: o exemplo delas
+      // ocupa pelo menos 85% da largura; as demais versões mantêm o tamanho do desenho
+      const shapePct = shape ? parseFloat(shape.style.width) || 100 : 100;
+      const examplePct = w / h >= 4 ? Math.max(shapePct, 85) : shapePct;
+      const boxStyle = `width:${examplePct}%;aspect-ratio:${w} / ${h}`;
+      btn.addEventListener('click', () => {
+        const showing = btn.getAttribute('aria-pressed') === 'true';
+        stage.innerHTML = showing ? shapeHtml : `<img class="tpl-example-img" style="${boxStyle}" src="${escapeHtml(f.exemplo)}" alt="Exemplo de ${escapeHtml(m.name)} - ${escapeHtml(f.label)}" loading="lazy">`;
+        btn.setAttribute('aria-pressed', showing ? 'false' : 'true');
+        btn.textContent = showing ? 'Ver exemplo' : 'Ver medidas';
+      });
+    });
+  }
+
   function wireCopyButtons(host, m) {
+    wireExampleButtons(host, m);
     host.querySelectorAll('.tpl-copy-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const f = m.formats.find(x => x.id === btn.dataset.copyFormat);
@@ -941,7 +1121,7 @@
   // ---------------------------------------------------------------- categorias (Loja Oficial / Ads)
   function renderCategoryGrid() {
     const grid = document.getElementById('tplCategoryGrid');
-    grid.innerHTML = CATEGORIES.map(c => `
+    grid.innerHTML = categoriesFor(currentChannelId).map(c => `
       <button type="button" class="tpl-category-card" data-category="${c.id}">
         <span class="tpl-category-icon">${svgIcon(c.icon, 22)}</span>
         <span class="tpl-category-name">${escapeHtml(c.name)}</span>
@@ -964,7 +1144,7 @@
   function showFormatsView() {
     document.getElementById('tplCategoryView').style.display = 'none';
     document.getElementById('tplFormatsView').style.display = '';
-    document.getElementById('tplBackBtn').style.display = '';
+    document.getElementById('tplBackBtn').style.display = categoriesFor(currentChannelId).length > 1 ? '' : 'none';
     document.getElementById('tplAddModuleBtn').style.display = '';
     const mk = allVisibleChannels().find(m => m.id === currentChannelId);
     const cat = CATEGORIES.find(c => c.id === currentCategoryId);
@@ -1001,6 +1181,8 @@
     currentCategoryId = null;
     renderCategoryGrid();
     showCategoryView();
+    const areas = categoriesFor(channelId);
+    if (areas.length === 1) openCategory(areas[0].id); // área única: abre direto os formatos
 
     modalBackdrop.style.display = 'flex';
     modalBackdrop.setAttribute('aria-hidden', 'false');
