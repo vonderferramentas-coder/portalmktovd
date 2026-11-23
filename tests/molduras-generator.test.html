@@ -5,6 +5,7 @@
 <script>
 // Roda em Chrome headless com --allow-file-access-from-files (usa fetch de arquivo local): ler document.body.dataset.result (ok | FALHA: ...).
 (async function () {
+  window.__errs = []; window.addEventListener('error', e => window.__errs.push(e.message)); window.addEventListener('unhandledrejection', e => window.__errs.push(String(e.reason && e.reason.message || e.reason)));
   try {
     const eq = (a, b, m) => { if (a !== b) throw new Error(m + ': ' + a + ' != ' + b); };
     // o teste não pode baixar arquivos de verdade (iam parar na pasta Downloads de quem roda): o clique de download é só registrado
@@ -18,7 +19,7 @@
     const main = new DOMParser().parseFromString(html, 'text/html').querySelector('main');
     main.querySelectorAll('script').forEach(s => s.remove());
     const doc2 = new DOMParser().parseFromString(html, 'text/html');
-    document.getElementById('host').innerHTML = main.outerHTML + doc2.querySelector('#mgFormat').outerHTML;
+    document.getElementById('host').innerHTML = main.outerHTML + doc2.querySelector('#mgFormat').outerHTML + doc2.querySelector('#mgLoteName').outerHTML;
     document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../molduras/molduras-generator.css">');
     await lib('molduras/molduras-generator.js');
     const $ = id => document.getElementById(id);
@@ -261,18 +262,47 @@
     await wait(500);
     const pe = $('edCanvas').getContext('2d').getImageData(300, 450, 1, 1).data;
     eq(pe[0] > 180 && pe[1] < 90 && pe[2] < 90, true, 'a página do PDF foi desenhada dentro da moldura: ' + [...pe].join());
-    // 7) trabalho salvo: decisões guardadas pelo nome do arquivo voltam ao subir o ZIP de novo (outra sessão ou outra pessoa)
-    const saved = { items: { '0456.pdf': { s: 1 }, '123.pdf': { c: 'bia souza' } } }, writes = [];
-    window.__mgWork = { readMoldurasWork: async () => JSON.parse(JSON.stringify(saved)), writeMoldurasWork: async w => { writes.push(JSON.parse(JSON.stringify(w))); } };
+    // 7) conjuntos salvos: planilha + ZIP + decisões guardados e reabertos pela lista (outra sessão ou outro login), com Firestore simulado
+    const db = { lotes: { rev: 0, itens: [] }, files: {}, work: {} };
+    window.__mgWork = {
+      currentContext: async () => ({ user: { email: 'admin@teste' } }),
+      readMoldurasLotes: async () => JSON.parse(JSON.stringify(db.lotes)),
+      writeMoldurasLotes: async (itens, rev) => { if (rev !== db.lotes.rev) return { conflict: true }; db.lotes = { rev: rev + 1, itens: JSON.parse(JSON.stringify(itens)) }; return { conflict: false, rev: rev + 1 }; },
+      writeMolduraArquivo: async (nome, blob) => { db.files[nome] = blob; },
+      readMolduraArquivo: async (nome, tipo) => new Blob([db.files[nome]], { type: tipo }),
+      readMoldurasWork: async id => JSON.parse(JSON.stringify(db.work[id] || {})),
+      writeMoldurasWork: async (id, w) => { db.work[id] = JSON.parse(JSON.stringify(w)); },
+      deleteMoldurasLote: async id => { delete db.files['lote_' + id + '_zip']; delete db.files['lote_' + id + '_sheet']; delete db.work[id]; },
+    };
     setFile('fileZip', new File([await zp.generateAsync({ type: 'blob' })], 'pdfs.zip'));
-    await until(() => /Trabalho salvo retomado/.test($('mgWorkState').textContent), 'trabalho salvo retomado');
-    eq(/Descartado/.test(rowOf('0456.pdf').querySelector('.mg-qhead').textContent), true, 'o descartado salvo volta descartado');
-    eq(/Bia, \d+ anos/.test(rowOf('123.pdf').querySelector('.mg-qhead').textContent), true, 'o filho salvo (guardado pelo nome) volta escolhido: ' + rowOf('123.pdf').querySelector('.mg-qhead').textContent);
-    await pick('0456.pdf'); $('edSkip').click(); await wait(1700);
-    const last = writes[writes.length - 1];
-    eq(!!last && !last.items['0456.pdf'] && last.items['123.pdf'] && last.items['123.pdf'].c === 'bia souza', true, 'restaurar apaga a decisão salva e mantém as outras: ' + JSON.stringify(last));
+    await wait(2500); await until(() => $('zipState').textContent === '2 desenhos', 'zip de PDFs lido de novo'); // a lista antiga também tem .pdf: espera a leitura nova terminar
+    eq($('mgLoteSave').disabled, false, 'com planilha e ZIP carregados dá para salvar o conjunto');
+    $('mgLoteSave').click(); await wait(100);
+    eq($('mgLoteName').style.display, 'flex', 'pede o nome do conjunto');
+    $('lnInput').value = 'Natal lote 1'; $('lnSave').click();
+    await until(() => /Conjunto salvo/.test($('mgLoteState').textContent), 'conjunto salvo');
+    eq(db.lotes.itens.length === 1 && db.lotes.itens[0].title === 'Natal lote 1' && db.lotes.itens[0].drawings === 2 && Object.keys(db.files).length === 2, true, 'lista e arquivos gravados: ' + JSON.stringify(db.lotes.itens));
+    eq(/Natal lote 1/.test($('mgLoteList').textContent) && $('mgLoteSave').disabled, true, 'a lista mostra o conjunto e o botão salvar trava');
+    const loteId = db.lotes.itens[0].id;
+    await pick('0456.pdf');
+    eq(document.querySelector('.mg-qrow.is-sel strong').textContent, '0456.pdf', 'pick selecionou 0456 (antes do descartar) ' + window.__errs.join('|') + ' rows=' + [...document.querySelectorAll('.mg-qrow')].map(r => r.className.replace('mg-qrow ', '') + ':' + r.textContent.slice(0, 20)).join('|'));
+    $('edSkip').click(); await wait(1700);
+    eq(!!db.work[loteId] && !!db.work[loteId].items['0456.pdf'] && db.work[loteId].items['0456.pdf'].s === 1, true, 'a decisão fica salva no conjunto: ' + JSON.stringify(db.work[loteId]) + ' sel=' + (document.querySelector('.mg-qrow.is-sel strong') || {}).textContent + ' rows=' + [...document.querySelectorAll('.mg-qrow')].map(r => r.textContent.slice(0, 40)).join('|'));
+    // outro login: sobe outro ZIP (sai do conjunto) e reabre o conjunto pela lista
+    const zj = new JSZip(); zj.file('456.png', await canvasBlob(300, 400, x => { x.fillStyle = '#dc2626'; x.fillRect(0, 0, 300, 400); }));
+    setFile('fileZip', new File([await zj.generateAsync({ type: 'blob' })], 'outro.zip'));
+    await until(() => /456\.png/.test($('mgResultList').textContent), 'outro zip lido');
+    eq($('mgWorkClear').hidden, true, 'fora de um conjunto não há ajustes salvos para apagar');
+    document.querySelector('#mgLoteList .mg-lote button').click();
+    await until(() => /Conjunto aberto/.test($('mgLoteState').textContent), 'conjunto reaberto');
+    eq(/Descartado/.test(rowOf('0456.pdf').querySelector('.mg-qhead').textContent) && /123\.pdf/.test($('mgResultList').textContent), true, 'o conjunto volta com as decisões salvas');
+    // excluir
+    window.confirm = () => true;
+    document.querySelector('#mgLoteList .mg-lote .danger').click();
+    await until(() => /Conjunto excluído/.test($('mgLoteState').textContent), 'conjunto excluído');
+    eq(db.lotes.itens.length === 0 && Object.keys(db.files).length === 0 && !db.work[loteId], true, 'excluir apaga lista, arquivos e decisões');
     document.body.dataset.result = 'ok';
-  } catch (e) { document.body.dataset.result = 'FALHA: ' + e.message; }
+  } catch (e) { document.body.dataset.result = 'FALHA: ' + e.message + ' @ ' + String(e.stack).split(String.fromCharCode(10)).slice(1, 3).join(' / '); }
   document.getElementById('log').textContent = document.body.dataset.result + '\n' + document.getElementById('mgExportState').textContent; // visível também em captura de tela
 })();
 </script>

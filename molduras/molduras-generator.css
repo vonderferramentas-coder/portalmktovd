@@ -59,6 +59,14 @@
 .mg-empty[data-kind="retrato"]:not([hidden]) { aspect-ratio: 3 / 4; width: 280px }
 .mg-empty[data-kind="paisagem"]:not([hidden]) { aspect-ratio: 16 / 9; width: min(100%, 480px) }
 
+.mg-lotes { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px }
+.mg-lotes h3 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text) }
+.mg-lote-list { display: flex; flex-direction: column; gap: 4px; max-height: 232px; overflow-y: auto }
+.mg-lote { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card) }
+.mg-lote.is-open { border-color: var(--accent-ink); background: var(--accent-weak) }
+.mg-lote-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0 }
+.mg-lote-info strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.mg-lote-info small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .mg-uploads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px }
 .mg-drop { display: flex; flex-direction: column; gap: 4px; padding: 20px; border: 1px dashed var(--border-strong); border-radius: var(--radius-md); background: var(--surface-muted); cursor: pointer; transition: border-color .12s, background-color .12s }
 .mg-drop:hover, .mg-drop:focus-within { border-color: var(--accent-ink); background: var(--accent-weak) }

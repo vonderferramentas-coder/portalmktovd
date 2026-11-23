@@ -3,7 +3,7 @@
  * Fluxo: molduras PNG (retrato e paisagem, salvas no Firebase) + planilha dos filhos + ZIP de desenhos (nome do arquivo = matrícula)
  * -> cada desenho entra no miolo transparente da moldura certa, com o texto "Nome, idade, filho(a) de Colaborador" num canto.
  * Planilha e desenhos têm dados de crianças (LGPD): são lidos só no navegador e nunca enviados a servidor.
- * Única exceção, autorizada pelo Grupo OVD: as decisões da etapa 3 (filho escolhido pelo nome, textos editados) ficam em `molduras/work` no Firestore.
+ * Única exceção, autorizada pelo Grupo OVD: os "conjuntos salvos" (planilha, ZIP e decisões da etapa 3) ficam no Firestore (`molduras/lote_*`, `work_*`, `lotes`), só para admin.
  * Só as molduras e a configuração do texto ficam no Firebase (coleção molduras, ver firestore.rules).
  */
 (function () {
@@ -49,9 +49,11 @@
     sheetInfo: '',
     filter: 'all',      // lista de desenhos: 'all' | 'pending'
     items: [],          // desenhos do ZIP: { id, file, key, key0, entry, choice, skip, over, view }; over = texto editado à mão, view = zoom/posição/giro
-    work: {},           // trabalho salvo no Firestore, por nome de arquivo: { k, c (nome do filho), o, v, s }
+    work: {},           // decisões do conjunto aberto, por nome de arquivo: { k, c (nome do filho), o, v, s }
     cfgOk: false,
-    workOk: false       // só salva depois de ler o que já estava salvo (senão apagaria o trabalho de outra pessoa)
+    loteId: null,       // conjunto salvo aberto (as decisões só são gravadas quando há um)
+    files: { sheet: null, zip: null }, // arquivos carregados, para salvar o conjunto
+    lotes: { rev: 0, itens: [] }
   };
 
   // ---------- utilitários ----------
@@ -314,7 +316,8 @@
   }
 
   // ---------- planilha ----------
-  async function readSheet(file) {
+  async function readSheet(file, fromLote) {
+    if (!fromLote) { state.files.sheet = file; unlinkLote(); }
     const st = $('sheetState');
     try {
       await PortalShell.loadScript('vendor/xlsx.full.min.js');
@@ -352,10 +355,8 @@
   }
 
   // ---------- ZIP de desenhos ----------
-  // ---------- trabalho salvo (continuar depois ou por outra pessoa) ----------
-  let workP;
-  const ensureWork = () => workP || (workP = fbw().then(m => m.readMoldurasWork()).then(v => { state.work = v.items || {}; state.workOk = true; $('mgWorkState').textContent = ''; })
-    .catch(() => { workP = null; $('mgWorkState').textContent = 'Não foi possível carregar o trabalho salvo; as alterações não serão salvas'; }));
+  // ---------- conjuntos salvos (continuar depois ou por outra pessoa) ----------
+  function unlinkLote() { if (state.loteId) { writeWorkNow(); state.loteId = null; state.work = {}; $('mgWorkState').textContent = ''; renderLotes(); summary(); } } // subir arquivo novo é outro conjunto
   // devolve a decisão guardada de um desenho (ou null se ele está como veio do ZIP)
   const workOf = item => {
     const kids = (state.index && state.index.get(item.key)) || [], kid = item.choice != null ? kids[item.choice] : null;
@@ -376,11 +377,89 @@
     resolveKids();
     if (n) $('mgWorkState').textContent = 'Trabalho salvo retomado em ' + n + (n === 1 ? ' desenho' : ' desenhos');
   }
-  const saveWork = debounce(() => {
-    if (!state.workOk || !state.items.length) return;
+  const writeWorkNow = () => {
+    const id = state.loteId; // capturado agora: um novo upload pode desvincular o conjunto antes de a gravação rodar
+    if (!id || !state.items.length) return Promise.resolve();
     state.items.forEach(it => { const e = workOf(it); if (e) state.work[it.file] = e; else delete state.work[it.file]; });
-    fbw().then(m => m.writeMoldurasWork({ items: state.work })).then(() => { $('mgWorkState').textContent = 'Trabalho salvo'; }).catch(() => { $('mgWorkState').textContent = 'Não foi possível salvar o trabalho'; });
-  }, 1200);
+    const snapshot = JSON.parse(JSON.stringify(state.work)); // cópia agora: state.work é zerado se o conjunto for desvinculado
+    return fbw().then(m => m.writeMoldurasWork(id, { items: snapshot })).then(() => { $('mgWorkState').textContent = 'Trabalho salvo'; }).catch(() => { $('mgWorkState').textContent = 'Não foi possível salvar o trabalho'; });
+  };
+  const saveWork = debounce(writeWorkNow, 1200);
+  const lotesAdd = (entry, remove) => { // lista compartilhada: relê e tenta de novo uma vez se outra pessoa alterou antes
+    const tryOnce = async cur => { const itens = [...(entry ? [entry] : []), ...cur.itens.filter(l => l.id !== (entry || remove).id)].sort((a, b) => b.updatedAt - a.updatedAt); const m = await fbw(); const r = await m.writeMoldurasLotes(itens, cur.rev); return r.conflict ? null : { rev: r.rev, itens }; };
+    return fbw().then(async m => { let r = await tryOnce(state.lotes); if (!r) r = await tryOnce(await m.readMoldurasLotes()); if (!r) throw new Error('A lista foi alterada por outra pessoa. Tente de novo.'); state.lotes = r; renderLotes(); });
+  };
+  const fmtBytes = n => n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+  function renderLotes() {
+    const list = $('mgLoteList'); list.replaceChildren();
+    if (!state.lotes.itens.length) { const p = document.createElement('p'); p.className = 'mg-meta'; p.textContent = 'Nenhum conjunto salvo ainda'; list.append(p); }
+    state.lotes.itens.forEach(l => {
+      const row = document.createElement('div'), info = document.createElement('div'), t = document.createElement('strong'), m = document.createElement('small'), open = document.createElement('button'), del = document.createElement('button');
+      row.className = 'mg-lote' + (l.id === state.loteId ? ' is-open' : ''); info.className = 'mg-lote-info';
+      t.textContent = l.title; m.textContent = new Date(l.updatedAt).toLocaleString('pt-BR') + ' · ' + l.drawings + ' desenhos · ' + fmtBytes(l.bytes) + (l.by ? ' · ' + l.by : '');
+      open.type = del.type = 'button'; open.className = 'btn ghost small'; del.className = 'btn ghost danger small'; open.textContent = l.id === state.loteId ? 'Aberto' : 'Abrir'; open.disabled = l.id === state.loteId; del.textContent = 'Excluir';
+      open.onclick = () => openLote(l); del.onclick = () => deleteLote(l);
+      info.append(t, m); row.append(info, open, del); list.append(row);
+    });
+    $('mgLoteSave').disabled = !!state.loteId || !state.files.sheet || !state.files.zip || !state.items.length || !state.index;
+  }
+  async function loadLotes() {
+    try { state.lotes = await (await fbw()).readMoldurasLotes(); } catch (_) { $('mgLoteState').textContent = 'Não foi possível carregar os conjuntos salvos'; }
+    renderLotes();
+  }
+  const askLoteName = () => new Promise(ok => {
+    const modal = $('mgLoteName'), input = $('lnInput');
+    const done = v => { modal.style.display = ''; modal.setAttribute('aria-hidden', 'true'); $('lnSave').onclick = $('lnCancel').onclick = $('lnClose').onclick = null; ok(v); };
+    input.value = (state.files.zip && state.files.zip.name.replace(/\.zip$/i, '')) || '';
+    modal.style.display = 'flex'; modal.setAttribute('aria-hidden', 'false'); input.focus(); input.select();
+    $('lnSave').onclick = () => input.value.trim() ? done(input.value.trim()) : input.focus();
+    $('lnCancel').onclick = $('lnClose').onclick = () => done('');
+    input.onkeydown = e => { if (e.key === 'Enter') $('lnSave').click(); };
+  });
+  let loteBusy = false; // uma operação de conjunto por vez (salvar, abrir, excluir)
+  async function saveLote() {
+    const { sheet, zip } = state.files; if (!sheet || !zip || state.loteId || loteBusy) return;
+    loteBusy = true;
+    try { await saveLoteNow(sheet, zip); } finally { loteBusy = false; }
+  }
+  async function saveLoteNow(sheet, zip) {
+    if (zip.size > 150 * 1048576) { $('mgLoteState').textContent = 'ZIP grande demais para salvar (máximo de 150 MB)'; return; }
+    const title = await askLoteName(); if (!title) return;
+    const btn = $('mgLoteSave'), st = $('mgLoteState'), id = crypto.randomUUID(); btn.disabled = true;
+    try {
+      const m = await fbw();
+      await m.writeMolduraArquivo('lote_' + id + '_sheet', sheet);
+      await m.writeMolduraArquivo('lote_' + id + '_zip', zip, (a, b) => { st.textContent = 'Salvando o ZIP: ' + a + ' de ' + b; });
+      const now = Date.now(), by = ((await m.currentContext()).user || {}).email || '';
+      state.loteId = id; state.work = {}; await writeWorkNow();
+      await lotesAdd({ id, title, createdAt: now, updatedAt: now, drawings: state.items.length, bytes: sheet.size + zip.size, sheetName: sheet.name, zipName: zip.name, by });
+      st.textContent = 'Conjunto salvo'; summary();
+    } catch (e) { state.loteId = null; st.textContent = 'Não foi possível salvar o conjunto: ' + (e.message || e); renderLotes(); fbw().then(m => m.deleteMoldurasLote(id)).catch(() => {}); } // não deixa pedaços órfãos no Firestore
+  }
+  async function openLote(l) {
+    if (loteBusy) return; loteBusy = true;
+    const st = $('mgLoteState');
+    try {
+      const m = await fbw(); st.textContent = 'Abrindo o conjunto';
+      const [sheet, zip, work] = await Promise.all([m.readMolduraArquivo('lote_' + l.id + '_sheet', 'application/octet-stream'), m.readMolduraArquivo('lote_' + l.id + '_zip', 'application/zip', (a, b) => { st.textContent = 'Baixando o ZIP: ' + a + ' de ' + b; }), m.readMoldurasWork(l.id)]);
+      state.work = work.items || {}; state.loteId = l.id;
+      state.files = { sheet: new File([sheet], l.sheetName || 'planilha.xlsx'), zip: new File([zip], l.zipName || 'desenhos.zip') };
+      state.items = []; state.index = null; ed.item = null;
+      await readSheet(state.files.sheet, true); await readZip(state.files.zip, true);
+      $('mgWorkState').textContent = ''; st.textContent = 'Conjunto aberto: ' + l.title; renderLotes(); summary();
+    } catch (e) { state.loteId = null; st.textContent = 'Não foi possível abrir o conjunto: ' + (e.message || e); renderLotes(); }
+    finally { loteBusy = false; }
+  }
+  async function deleteLote(l) {
+    if (loteBusy || !confirm('Excluir "' + l.title + '"? A planilha, o ZIP e os ajustes salvos serão apagados para todos os administradores.')) return;
+    loteBusy = true;
+    try {
+      await (await fbw()).deleteMoldurasLote(l.id); await lotesAdd(null, l); // arquivos primeiro: se falhar no meio, o conjunto continua na lista para excluir de novo
+      if (state.loteId === l.id) { state.loteId = null; state.work = {}; }
+      $('mgLoteState').textContent = 'Conjunto excluído'; renderLotes(); summary();
+    } catch (e) { $('mgLoteState').textContent = 'Não foi possível excluir: ' + (e.message || e); }
+    finally { loteBusy = false; }
+  }
   // PDFs do ZIP (só a primeira página vale: a segunda é o verso do desenho, sem conteúdo): lidos com pdf.js, copiado em vendor/pdfjs/ e carregado só no primeiro PDF
   let pdfjsReady;
   const ensurePdfjs = () => pdfjsReady || (pdfjsReady = PortalShell.loadScript('vendor/pdfjs/pdf.min.js').then(() => {
@@ -398,7 +477,8 @@
       return await new Promise(ok => c.toBlob(ok, 'image/jpeg', .92));
     } finally { doc.destroy(); }
   }
-  async function readZip(file) {
+  async function readZip(file, fromLote) {
+    if (!fromLote) { state.files.zip = file; unlinkLote(); }
     const st = $('zipState');
     try {
       await PortalShell.loadScript('vendor/jszip.min.js');
@@ -415,7 +495,6 @@
         try { (await openPdf(entry)).destroy(); } catch (_) { unreadable.push(name); continue; } // confere que o PDF abre
         items.push({ id: items.length, file: name, key, key0: key, entry, page: 1, choice: null, skip: false });
       }
-      await ensureWork();
       state.items = items; ed.item = null; applyWork();
       st.textContent = (items.length ? items.length + ' desenhos' : 'Nenhuma imagem ou PDF encontrado no ZIP') + (unreadable.length ? '. ' + unreadable.length + ' PDF(s) não puderam ser lidos: ' + unreadable.slice(0, 3).join(', ') + (unreadable.length > 3 ? '…' : '') : '');
       refreshAll();
@@ -449,7 +528,7 @@
     const ready = !!(state.index && state.items.length);
     const sts = state.items.map(item => ({ item, st: statusOf(item) }));
     const pending = ready ? sts.filter(x => x.st.s === 'choose' || x.st.s === 'missing') : [], oks = ready ? sts.filter(x => x.st.s === 'ok') : [];
-    $('mgExportRow').hidden = !ready; $('mgWorkClear').hidden = !ready;
+    $('mgExportRow').hidden = !ready; $('mgWorkClear').hidden = !ready || !state.loteId; $('mgLoteSave').disabled = !!state.loteId || !state.files.sheet || !state.files.zip || !ready;
     $('mgResultCount').textContent = ready ? sts.length + ' desenhos, ' + oks.length + ' prontos' + (pending.length ? ', ' + pending.length + (pending.length === 1 ? ' pendente' : ' pendentes') : '') : '';
     $('mgExport').disabled = !oks.length || !!pending.length;
     $('mgFilterPending').textContent = 'Pendentes (' + pending.length + ')';
@@ -605,11 +684,12 @@
     const keep = ed.open; flushCommit(); it.key = k; it.choice = null; it.over = null; ed.item = null; refreshAll(); ed.open = keep; selectItem(it, true); saveWork();
   });
   $('edSkip').addEventListener('click', () => { const it = ed.item; if (!it) return; it.skip = !it.skip; $('edSkip').textContent = it.skip ? 'Restaurar desenho' : 'Descartar desenho'; refreshAll(); saveWork(); });
+  $('mgLoteSave').addEventListener('click', saveLote);
   $('mgWorkClear').addEventListener('click', () => { // apaga as decisões salvas (de todos os desenhos) e volta ao que veio do ZIP e da planilha
-    if (!confirm('Apagar todos os ajustes salvos (filhos escolhidos, textos, zoom, giro e descartados)? Isso vale para todos os administradores.')) return;
+    if (!state.loteId || !confirm('Apagar todos os ajustes salvos deste conjunto (filhos escolhidos, textos, zoom, giro e descartados)? Isso vale para todos os administradores.')) return;
     state.items.forEach(it => { it.key = it.key0; it.choice = null; it.wKid = null; it.over = null; it.view = null; it.skip = false; });
     state.work = {}; ed.item = null; refreshAll();
-    fbw().then(m => m.writeMoldurasWork({ items: {} })).then(() => { $('mgWorkState').textContent = 'Ajustes salvos apagados'; }).catch(() => { $('mgWorkState').textContent = 'Não foi possível apagar o trabalho salvo'; });
+    fbw().then(m => m.writeMoldurasWork(state.loteId, { items: {} })).then(() => { $('mgWorkState').textContent = 'Ajustes salvos apagados'; }).catch(() => { $('mgWorkState').textContent = 'Não foi possível apagar o trabalho salvo'; });
   });
   $('mgResultList').addEventListener('click', e => {
     const b = e.target.closest('.mg-qhead, .mg-qedit'), r = b && b.closest('.mg-qrow'); if (!r) return;
@@ -628,6 +708,7 @@
   $('fmRetry').addEventListener('click', () => { const k = fmKind; closeFormat(); $('file' + (k === 'retrato' ? 'Retrato' : 'Paisagem')).click(); });
   fmModal.addEventListener('mousedown', e => { if (e.target === fmModal) closeFormat(); });
   PortalShell.wireModalA11y(fmModal, closeFormat);
+  PortalShell.wireModalA11y($('mgLoteName'), () => $('lnCancel').click()); // Esc e Tab dentro do modal; o clique fora não fecha (evita perder o nome digitado)
 
   // ---------- exportar ----------
   async function exportAll() {
@@ -739,6 +820,6 @@
       $('mgFramesState').textContent = wrong.length ? 'A moldura salva em ' + wrong.join(' e ') + ' tem o formato trocado e foi ignorada: envie de novo' : have.length ? 'Molduras salvas: ' + have.join(' e ') : 'Nenhuma moldura salva';
       $('mgFrames').open = have.length < enabledKinds().length; // configuração pronta: recolhe e deixa o fluxo do dia a dia em foco
     } catch (e) { $('mgFramesState').textContent = 'Não foi possível carregar as molduras salvas'; }
-    applyFormats();
+    applyFormats(); loadLotes();
   })();
 })();

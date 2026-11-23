@@ -180,6 +180,12 @@
       <section class="mg-panel" aria-labelledby="mgDataTitle">
         <div class="mg-panel-head">
           <h2 id="mgDataTitle"><span class="mg-step">2</span>Planilha e desenhos</h2>
+          <div class="mg-head-meta"><span class="mg-meta" id="mgLoteState" role="status"></span><button class="btn small" id="mgLoteSave" type="button" disabled>Salvar conjunto</button></div>
+        </div>
+        <div class="mg-lotes" id="mgLotes">
+          <h3>Conjuntos salvos</h3>
+          <p class="mg-meta">Planilha e ZIP guardados para continuar depois ou em outro login de administrador.</p>
+          <div class="mg-lote-list" id="mgLoteList" aria-live="polite"></div>
         </div>
         <div class="mg-uploads">
           <label class="mg-drop" for="fileSheet">
@@ -249,6 +255,16 @@
         <div><p id="fmText"></p><p class="mg-meta" id="fmDetail"></p></div>
       </div>
       <div class="modal-footer"><button class="btn ghost" id="fmCancel" type="button">Cancelar</button><button class="btn" id="fmRetry" type="button">Carregar nova imagem</button></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="mgLoteName" aria-hidden="true">
+    <div class="modal mg-modal mg-modal-sm" role="dialog" aria-modal="true" aria-labelledby="lnTitle">
+      <div class="modal-header"><h2 id="lnTitle">Salvar conjunto</h2><button class="modal-close" id="lnClose" type="button" aria-label="Fechar">×</button></div>
+      <div class="modal-body">
+        <p class="mg-meta">Escolha um nome para encontrar esta planilha e este ZIP depois, inclusive em outro login de administrador.</p>
+        <label class="mg-field" for="lnInput">Nome do conjunto<input id="lnInput" type="text" maxlength="100" autocomplete="off"></label>
+      </div>
+      <div class="modal-footer"><button class="btn ghost" id="lnCancel" type="button">Cancelar</button><button class="btn" id="lnSave" type="button">Salvar conjunto</button></div>
     </div>
   </div>
   <script src="portal-shell.js"></script>
