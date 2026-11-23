@@ -636,12 +636,12 @@
     });
     // Texto dos extremos: escolhe o lado da linha vertical e a altura onde a caixa não cruza a linha da série
     // (ponytail: testa só a série da própria rede e 3 alturas por lado; se nada livre, cai embaixo à direita)
-    const chartW = el('bars').clientWidth || 1000, LABEL_H = 44;
+    const chartW = el('bars').clientWidth || 1000, LABEL_H = 48;
     const drops = plotted.flatMap(network => Object.entries(extremes[network.name] || {}).map(([index, kind]) => {
       const x = scaleX(index) / 10, y = scaleY(plotValue(network, index)), st = stats[network.name][index];
       if (!Number.isFinite(y)) return '';
       const name = plotted.length > 1 ? `${network.name} · ` : '';
-      const labelW = Math.max(name.length + 17, 17) * 5.8 + 6, px = x / 100 * chartW;
+      const labelW = Math.max(name.length + 17, 17) * 5.8 + 14, px = x / 100 * chartW;
       const path = buckets.map((_, i) => [scaleX(i) / 1000 * chartW, scaleY(plotValue(network, i))]).filter(pt => Number.isFinite(pt[1]));
       const yAt = at => { for (let i = 1; i < path.length; i++) if (at <= path[i][0]) { const [x0, y0] = path[i - 1], [x1, y1] = path[i]; return x1 === x0 ? y1 : y0 + (y1 - y0) * (at - x0) / (x1 - x0); } return path.length ? path[path.length - 1][1] : 0; };
       const crosses = (x0, x1, top) => {
