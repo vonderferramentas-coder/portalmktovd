@@ -556,6 +556,8 @@
         { href:'consolidado-generator.html', label:'Gerador de Consolidado', short:'Consolidado', brands:['grupo-ovd'], icon:'<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM15 15h2v2h-2zM18 14h2v4h-2zM14 19h4v1h-4z"/>' },
         { href:'barcode-generator.html', label:'Código de Barras', short:'Código de Barras', icon:'<path d="M4 5v14M8 5v14M12 5v14M15 5v14M20 5v14"/><path d="M6 5v14" stroke-width="3"/><path d="M17.5 5v14" stroke-width="3"/>' },
         { href:'qr-code-generator.html', label:'Gerador de QR Codes', short:'QR Codes e Links', icon:'<path d="M10 13a5 5 0 007.07 0l3-3a5 5 0 00-7.07-7.07l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.07 0l-3 3a5 5 0 007.07 7.07l1.7-1.7"/>' },
+        // defaultHidden + brands: só admin e só no Grupo OVD (a página também exige data-auth-role="admin"), por enquanto
+        { href:'molduras-generator.html', label:'Gerador de Molduras', short:'Molduras', brands:['grupo-ovd'], defaultHidden:true, icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><rect x="7.5" y="7.5" width="9" height="9" rx="1"/>' },
         { href:'business-card-generator.html', label:'Gerador de Cartões', short:'Cartões', icon:'<rect x="2.5" y="5" width="19" height="14" rx="2"/><circle cx="8" cy="10.5" r="1.8"/><path d="M5.2 15.6c.5-1.4 1.5-2 2.8-2s2.3.6 2.8 2"/><path d="M14 9.5h5M14 12.5h4M14 15.5h3"/>' }
       ] },
       { href:'templates.html', label:'Templates', icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' }

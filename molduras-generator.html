@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gerador de Molduras</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap">
+  <link rel="stylesheet" href="molduras/molduras-generator.css">
+  <link rel="stylesheet" href="auth.css">
+  <script>document.documentElement.classList.add('auth-pending');</script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="auth-guard.js"></script>
+</head>
+
+<body data-auth-role="admin">
+  <div class="portal-shell">
+    <aside class="portal-sidebar" id="portalSidebar"></aside>
+    <main class="portal-main mg-page">
+      <header class="page-header">
+        <div>
+          <span class="page-kicker">Produção gráfica</span>
+          <h1>Gerador de Molduras</h1>
+          <p class="page-subtitle">Coloque o desenho de cada criança dentro da moldura, com o nome, a idade e o colaborador.</p>
+        </div>
+        <div class="page-header-actions" data-tour-slot></div>
+      </header>
+
+      <details class="mg-panel mg-setup" id="mgFrames" open>
+        <summary class="mg-panel-head">
+          <h2 id="mgFramesTitle"><span class="mg-step">1</span>Moldura e texto</h2>
+          <span class="mg-meta" id="mgFramesState">Carregando</span>
+          <svg class="mg-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <p class="mg-lead">Configure uma vez. Moldura, posição do texto e atalhos ficam salvos para os próximos usos.</p>
+        <div class="mg-field mg-formats"><span id="mgFormatsLabel">Formatos que vou usar</span>
+          <div class="mg-seg" id="mgFormats" role="group" aria-labelledby="mgFormatsLabel">
+            <button type="button" data-formats="paisagem" aria-pressed="false">Somente paisagem</button>
+            <button type="button" data-formats="retrato" aria-pressed="false">Somente retrato</button>
+            <button type="button" data-formats="ambos" aria-pressed="true">Ambos</button>
+          </div>
+        </div>
+        <div class="mg-frames">
+          <div class="mg-frame-slot" data-kind="paisagem">
+            <div class="mg-thumb" id="thumbPaisagem"><span>Vazio</span></div>
+            <div class="mg-frame-info"><strong>Paisagem</strong><small>PNG horizontal, com o miolo transparente</small></div>
+            <label class="btn ghost small" for="filePaisagem">Enviar<input id="filePaisagem" type="file" accept="image/png" hidden></label>
+          </div>
+          <div class="mg-frame-slot" data-kind="retrato">
+            <div class="mg-thumb" id="thumbRetrato"><span>Vazio</span></div>
+            <div class="mg-frame-info"><strong>Retrato</strong><small>PNG vertical, com o miolo transparente</small></div>
+            <label class="btn ghost small" for="fileRetrato">Enviar<input id="fileRetrato" type="file" accept="image/png" hidden></label>
+          </div>
+        </div>
+
+        <div class="mg-studio">
+          <div class="mg-stage">
+            <div class="mg-stage-bar">
+              <div class="mg-seg" id="mgKind" role="group" aria-label="Moldura a ajustar">
+                <button type="button" data-kind="paisagem" aria-pressed="true">Paisagem</button>
+                <button type="button" data-kind="retrato" aria-pressed="false">Retrato</button>
+              </div>
+              <span class="mg-meta">Clique ou arraste na prévia para posicionar o texto</span>
+            </div>
+            <div class="mg-preview" id="mgPreviewBox">
+              <canvas id="mgPreview" aria-label="Prévia da moldura. Clique ou arraste para posicionar o texto"></canvas>
+              <p class="mg-empty" id="mgPreviewEmpty">Envie a moldura para ver a prévia</p>
+            </div>
+          </div>
+
+          <div class="mg-controls">
+            <div class="mg-field"><span id="mgSlotsLabel">Posição do texto</span>
+              <p class="mg-meta">Retrato e paisagem têm posições separadas. Escolha a posição (SE, SD, IE, ID ou P de personalizada) e use a engrenagem para ajustar</p>
+            </div>
+            <div id="mgSlotsWrap">
+            <div class="mg-mini" id="mgSlots" role="group" aria-labelledby="mgSlotsLabel">
+              <div class="mg-slot" data-pos="tl">
+                <button type="button" class="mg-slot-cfg" data-cfg="tl" aria-label="Configurar superior esquerdo" title="Configurar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button type="button" class="mg-slot-pick" data-slot="tl" aria-pressed="false" aria-label="Usar o texto em superior esquerdo" title="Superior esquerdo">SE</button>
+              </div>
+              <div class="mg-slot" data-pos="tr">
+                <button type="button" class="mg-slot-cfg" data-cfg="tr" aria-label="Configurar superior direito" title="Configurar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button type="button" class="mg-slot-pick" data-slot="tr" aria-pressed="false" aria-label="Usar o texto em superior direito" title="Superior direito">SD</button>
+              </div>
+              <div class="mg-slot" data-pos="bl">
+                <button type="button" class="mg-slot-cfg" data-cfg="bl" aria-label="Configurar inferior esquerdo" title="Configurar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button type="button" class="mg-slot-pick" data-slot="bl" aria-pressed="false" aria-label="Usar o texto em inferior esquerdo" title="Inferior esquerdo">IE</button>
+              </div>
+              <div class="mg-slot" data-pos="br">
+                <button type="button" class="mg-slot-cfg" data-cfg="br" aria-label="Configurar inferior direito" title="Configurar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button type="button" class="mg-slot-pick" data-slot="br" aria-pressed="false" aria-label="Usar o texto em inferior direito" title="Inferior direito">ID</button>
+              </div>
+              <div class="mg-slot" data-pos="c">
+                <button type="button" class="mg-slot-cfg" data-cfg="c" aria-label="Configurar personalizado" title="Configurar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button type="button" class="mg-slot-pick" data-slot="c" aria-pressed="false" aria-label="Usar o texto em personalizado" title="Personalizado">P</button>
+              </div>
+            </div>
+
+            <div class="mg-extra" id="mgExtra"><button type="button" class="mg-add" id="mgAddSlot">+ Novo local</button></div>
+            <p class="mg-meta mg-legend">Cheio: posição padrão. Claro: em uso agora</p>
+            </div>
+
+            <div class="mg-cfg-wrap" id="mgCfgWrap" inert>
+              <div class="mg-cfg-clip">
+                <div class="mg-cfg" id="mgCfg" role="group" aria-labelledby="mgCfgTitle">
+                  <h3 id="mgCfgTitle">Configurar</h3>
+                  <section class="mg-sec" id="mgSecName" aria-labelledby="mgSecNameT" hidden>
+                    <h4 id="mgSecNameT">Nome do local</h4>
+                    <input id="mgName" type="text" maxlength="12" autocomplete="off" aria-labelledby="mgSecNameT">
+                  </section>
+                  <section class="mg-sec" aria-labelledby="mgSecAlign">
+                    <h4 id="mgSecAlign">Alinhamento do texto</h4>
+                    <div class="mg-seg" id="mgAlign" role="group" aria-labelledby="mgSecAlign">
+                      <button type="button" data-align="left" aria-pressed="true">Esquerda</button>
+                      <button type="button" data-align="center" aria-pressed="false">Centro</button>
+                      <button type="button" data-align="right" aria-pressed="false">Direita</button>
+                    </div>
+                  </section>
+                  <section class="mg-sec" aria-labelledby="mgSecPos">
+                    <h4 id="mgSecPos">Posicionamento</h4>
+                    <div class="mg-field">
+                      <div class="mg-field-row"><label for="mgX">Horizontal</label><span class="mg-num"><input id="mgXNum" type="number" min="0" max="100" step="0.1" inputmode="decimal" aria-label="Horizontal em porcentagem">%</span></div>
+                      <input id="mgX" type="range" min="0" max="100" step="0.1">
+                    </div>
+                    <div class="mg-field">
+                      <div class="mg-field-row"><label for="mgY">Vertical</label><span class="mg-num"><input id="mgYNum" type="number" min="0" max="100" step="0.1" inputmode="decimal" aria-label="Vertical em porcentagem">%</span></div>
+                      <input id="mgY" type="range" min="0" max="100" step="0.1">
+                    </div>
+                  </section>
+                  <section class="mg-sec" aria-labelledby="mgSecTxt">
+                    <h4 id="mgSecTxt">Fonte e tamanho</h4>
+                    <label class="mg-field" for="mgFont"><span>Fonte</span>
+                      <select id="mgFont">
+                        <option value="Montserrat">Montserrat</option>
+                        <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
+                        <option value="Urbanist">Urbanist</option>
+                        <option value="Space Grotesk">Space Grotesk</option>
+                        <option value="Arial">Arial</option>
+                      </select>
+                    </label>
+                    <label class="mg-field" for="mgSize"><span>Tamanho <output id="mgSizeOut"></output></span>
+                      <input id="mgSize" type="range" min="2" max="8" step="0.1">
+                    </label>
+                  </section>
+                  <section class="mg-sec" aria-labelledby="mgSecCor">
+                    <h4 id="mgSecCor">Cores</h4>
+                    <div class="mg-pair">
+                      <label class="mg-field mg-color" for="mgAccent"><input id="mgAccent" type="color" value="#fdb913"><span>Nome e idade</span></label>
+                      <label class="mg-field mg-color" for="mgColor"><input id="mgColor" type="color" value="#ffffff"><span>Resto do texto</span></label>
+                      <label class="mg-field mg-color" for="mgTag"><input id="mgTag" type="color" value="#07483c"><span>Tag</span></label>
+                    </div>
+                  </section>
+                  <section class="mg-sec" aria-labelledby="mgSecFit">
+                    <h4 id="mgSecFit">Desenho no miolo</h4>
+                    <select id="mgFit" aria-labelledby="mgSecFit">
+                      <option value="contain">Inteiro, sem cortar</option>
+                      <option value="cover">Preencher, cortando as sobras</option>
+                    </select>
+                  </section>
+                  <section class="mg-sec" aria-labelledby="mgSecDef">
+                    <h4 id="mgSecDef">Padrão</h4>
+                    <label class="mg-check"><input type="checkbox" id="mgDefault">Usar como posição padrão</label>
+                    <p class="mg-meta" id="mgDefaultHint"></p>
+                  </section>
+                  <div class="mg-cfg-foot">
+                    <button class="btn ghost danger" id="mgCfgDelete" type="button" hidden>Remover local</button>
+                    <button class="btn ghost" id="mgCfgCancel" type="button">Cancelar</button>
+                    <button class="btn" id="mgCfgSave" type="button">Salvar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn ghost small mg-copy" id="mgCopy" type="button">Copiar ajustes para a outra moldura</button>
+          </div>
+        </div>
+      </details>
+
+      <section class="mg-panel" aria-labelledby="mgDataTitle">
+        <div class="mg-panel-head">
+          <h2 id="mgDataTitle"><span class="mg-step">2</span>Planilha e desenhos</h2>
+        </div>
+        <div class="mg-uploads">
+          <label class="mg-drop" for="fileSheet">
+            <input id="fileSheet" type="file" accept=".xlsx,.xls,.csv" hidden>
+            <strong>Planilha dos filhos</strong>
+            <small>Matrícula, colaborador, criança e data de nascimento</small>
+            <span class="mg-meta" id="sheetState">Nenhuma planilha</span>
+          </label>
+          <label class="mg-drop" for="fileZip">
+            <input id="fileZip" type="file" accept=".zip" hidden>
+            <strong>ZIP com os desenhos</strong>
+            <small>Imagens ou PDFs; o nome de cada arquivo é a matrícula do colaborador</small>
+            <span class="mg-meta" id="zipState">Nenhum ZIP</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="mg-panel" id="mgResult" aria-labelledby="mgResultTitle">
+        <div class="mg-panel-head">
+          <h2 id="mgResultTitle"><span class="mg-step">3</span>Desenhos</h2>
+          <div class="mg-head-meta"><span class="mg-meta" id="mgResultCount"></span><span class="mg-meta" id="mgWorkState" role="status"></span><button class="btn ghost danger small" id="mgWorkClear" type="button" hidden>Apagar ajustes salvos</button></div>
+        </div>
+        <p class="mg-empty-state" id="mgEmpty"></p>
+        <div class="mg-work" id="mgWork" hidden>
+          <aside class="mg-queue" aria-label="Lista de desenhos">
+            <div class="mg-seg" id="mgFilter" role="group" aria-label="Filtrar desenhos">
+              <button type="button" data-filter="all" aria-pressed="true">Todos</button>
+              <button type="button" data-filter="pending" aria-pressed="false" id="mgFilterPending">Pendentes</button>
+            </div>
+            <div class="mg-queue-list" id="mgResultList" role="list" aria-label="Desenhos"></div>
+          </aside>
+          <div class="mg-detail">
+            <p class="mg-empty-state" id="mgDetailEmpty">Selecione um desenho na lista para ver como ele está ficando</p>
+            <div class="mg-ed" id="mgEd" hidden>
+              <div class="mg-ed-stage">
+                <canvas id="edCanvas" aria-label="Prévia do desenho na moldura"></canvas>
+                <p class="mg-meta" id="edHint">Arraste o desenho para mover e use a roda do mouse ou o zoom para ampliar</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="mgEdHold" hidden><div class="mg-ed-fields" id="mgEdFields">
+          <div class="mg-field"><label for="edKey">Matrícula</label>
+            <div class="mg-inline"><input id="edKey" type="text" autocomplete="off"><button class="btn ghost small" id="edKeyGo" type="button">Buscar</button></div></div>
+          <label class="mg-field" for="edKid" id="edKidWrap">Filho da planilha<select id="edKid"></select></label>
+          <div class="mg-field"><label for="edNome">Nome da criança</label><input id="edNome" type="text" autocomplete="off"><div class="mg-chips" id="edNomeChips" aria-label="Palavras do nome da criança"></div></div>
+          <label class="mg-field" for="edIdade">Idade<input id="edIdade" type="text" autocomplete="off"></label>
+          <div class="mg-field"><label for="edColab">Nome do colaborador</label><input id="edColab" type="text" autocomplete="off"><div class="mg-chips" id="edColabChips" aria-label="Palavras do nome do colaborador"></div></div>
+          <label class="mg-field" for="edZoom">Zoom do desenho <output id="edZoomOut"></output><input id="edZoom" type="range" min="100" max="400" step="5"></label>
+          <div class="mg-inline"><button class="btn ghost small" id="edRotL" type="button" title="Girar 90° para a esquerda" aria-label="Girar 90° para a esquerda"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V3m0 5h5M3.5 8A9 9 0 1 1 3 13"/></svg>Girar</button><button class="btn ghost small" id="edRotR" type="button" title="Girar 90° para a direita" aria-label="Girar 90° para a direita">Girar<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8V3m0 5h-5m5.5 0A9 9 0 1 0 21 13"/></svg></button></div>
+          <div class="mg-inline"><button class="btn ghost small" id="edReset" type="button">Redefinir posição, zoom e giro</button><button class="btn ghost danger small" id="edSkip" type="button">Descartar desenho</button></div>
+        </div></div>
+        <div class="mg-export" id="mgExportRow" hidden>
+          <label class="mg-check"><input type="checkbox" id="outPng" checked>PNG</label>
+          <label class="mg-check"><input type="checkbox" id="outPdf" checked>PDF</label>
+          <button class="btn" id="mgExport" type="button">Baixar ZIP</button>
+          <span class="mg-meta" id="mgExportState"></span>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="modal-backdrop" id="mgFormat" aria-hidden="true">
+    <div class="modal mg-modal mg-modal-sm" role="dialog" aria-modal="true" aria-labelledby="fmTitle" aria-describedby="fmText">
+      <div class="modal-header"><h2 id="fmTitle">Moldura em formato incorreto</h2><button class="modal-close" id="fmClose" type="button" aria-label="Fechar">×</button></div>
+      <div class="modal-body mg-alert-body">
+        <span class="mg-alert-ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg></span>
+        <div><p id="fmText"></p><p class="mg-meta" id="fmDetail"></p></div>
+      </div>
+      <div class="modal-footer"><button class="btn ghost" id="fmCancel" type="button">Cancelar</button><button class="btn" id="fmRetry" type="button">Carregar nova imagem</button></div>
+    </div>
+  </div>
+  <script src="portal-shell.js"></script>
+  <script src="molduras/molduras-generator.js"></script>
+  <script src="tour/portal-tour.js"></script>
+  <script src="tour/portal-tour-molduras.js"></script>
+</body>
+
+</html>

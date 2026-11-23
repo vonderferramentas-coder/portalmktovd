@@ -443,6 +443,49 @@ export async function deleteBrandLogo(id) {
   await deleteDoc(doc(db, 'brandLogos', String(id)));
 }
 
+// Gerador de Molduras (só Admin, ver firestore.rules): a moldura PNG vira texto base64 e é gravada em pedaços de
+// ~700 mil caracteres (limite de 1 MB por documento): `<tipo>_0`, `<tipo>_1`... Texto e posição ficam em `cfg`.
+const MOLDURA_PARTE = 700000;
+export async function readMoldurasCfg() {
+  await currentContext();
+  const snapshot = await getDoc(doc(db, 'molduras', 'cfg'));
+  return snapshot.exists() ? snapshot.data().v || {} : {};
+}
+export async function writeMoldurasCfg(cfg) {
+  await currentContext();
+  await setDoc(doc(db, 'molduras', 'cfg'), { v: cfg, updatedAt: serverTimestamp() });
+}
+// Trabalho em andamento da etapa 3 (compartilhado entre admins): decisões por desenho, indexadas pelo nome do arquivo do ZIP.
+// Inclui nomes de crianças e colaboradores (uso autorizado pelo Grupo OVD); a planilha e os desenhos em si nunca saem do navegador.
+export async function readMoldurasWork() {
+  await currentContext();
+  const snapshot = await getDoc(doc(db, 'molduras', 'work'));
+  return snapshot.exists() ? snapshot.data().v || {} : {};
+}
+export async function writeMoldurasWork(work) {
+  const context = await currentContext();
+  await setDoc(doc(db, 'molduras', 'work'), { v: work, updatedAt: serverTimestamp(), updatedBy: (context.user && context.user.email) || '' });
+}
+// kind = 'retrato' | 'paisagem'; devolve o data URL salvo ou '' se ainda não existe.
+export async function readMoldura(kind) {
+  await currentContext();
+  const first = await getDoc(doc(db, 'molduras', kind + '_0'));
+  if (!first.exists()) return '';
+  const total = Number(first.data().n || 1), parts = [first.data().data];
+  const rest = await Promise.all(Array.from({ length: total - 1 }, (_, i) => getDoc(doc(db, 'molduras', kind + '_' + (i + 1)))));
+  rest.forEach(snapshot => parts.push(snapshot.exists() ? snapshot.data().data : ''));
+  return parts.join('');
+}
+export async function writeMoldura(kind, dataUrl) {
+  await currentContext();
+  const old = await getDoc(doc(db, 'molduras', kind + '_0'));
+  const total = Math.ceil(dataUrl.length / MOLDURA_PARTE);
+  const batch = writeBatch(db);
+  for (let i = 0; i < total; i++) batch.set(doc(db, 'molduras', kind + '_' + i), { n: total, i, data: dataUrl.slice(i * MOLDURA_PARTE, (i + 1) * MOLDURA_PARTE) });
+  for (let i = total; old.exists() && i < Number(old.data().n || 0); i++) batch.delete(doc(db, 'molduras', kind + '_' + i));
+  await batch.commit();
+}
+
 // Total de bytes de fotos (gravado pela limpeza diária, só Admin SDK); { photoBytes: 0 } enquanto a limpeza não rodou.
 export async function readArtStats() {
   await currentContext();

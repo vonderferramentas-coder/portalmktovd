@@ -133,6 +133,11 @@ service cloud.firestore {
       allow delete: if brandEditor();
     }
 
+    // Gerador de Molduras (tela só do Admin): molduras PNG em pedaços de texto (`retrato_0`, `paisagem_1`...) e a configuração do texto (`cfg`).
+    match /molduras/{docId} {
+      allow read, write: if admin();
+    }
+
     match /portalStore/{recordId} {
       allow read: if activeUser();
       allow write: if activeUser() && (admin() || (recordId == 'brand-library-v1' && brandEditor()) || (!isControlDoc(recordId) && !isCollectedDataDoc(recordId)));

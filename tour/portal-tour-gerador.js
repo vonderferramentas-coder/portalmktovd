@@ -19,6 +19,7 @@ PortalTour.register('gerador', {
         { target: '.gen-card[href="cartaz-generator.html"]', title: 'Cartazes', text: 'Transforma a planilha de produtos em cartazes A4 e A3 para imprimir.' },
         { target: '.gen-card[href="consolidado-generator.html"]', title: 'Consolidado', text: 'Monta o informativo mensal de lançamentos e baixa em PDF.' },
         { target: '.gen-card[href="business-card-generator.html"]', title: 'Cartão de visitas', text: 'Gera os cartões da equipe, prontos para a gráfica, a partir de uma planilha ou na mão.' },
+        { target: '.gen-card[href="molduras-generator.html"]', when: () => !document.getElementById('genMolduras').hidden, title: 'Molduras', text: 'Coloca o desenho de cada criança numa moldura, com o nome, a idade e o colaborador. Por enquanto só administradores veem.' },
         { target: '.gen-card[href="qr-code-generator.html"]', title: 'QR Codes e links', text: 'Cria QR Codes e links que contam quantas pessoas acessaram.' },
         { target: '.gen-card[href="barcode-generator.html"]', title: 'Código de barras', text: 'Gera imagens de código de barras em PNG ou WMF a partir dos números.' },
         { target: '#tourHelpBtn', title: 'Pronto', text: 'Dentro de cada gerador há o botão "Como usar" com o passo a passo daquela ferramenta.' }

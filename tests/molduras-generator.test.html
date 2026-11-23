@@ -1,0 +1,278 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste do Gerador de Molduras</title>
+<body data-result="running"><div id="host"></div><pre id="log"></pre></body>
+<script>
+// Roda em Chrome headless com --allow-file-access-from-files (usa fetch de arquivo local): ler document.body.dataset.result (ok | FALHA: ...).
+(async function () {
+  try {
+    const eq = (a, b, m) => { if (a !== b) throw new Error(m + ': ' + a + ' != ' + b); };
+    // o teste não pode baixar arquivos de verdade (iam parar na pasta Downloads de quem roda): o clique de download é só registrado
+    const downloads = [], realClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () { if (this.download) downloads.push(this.download); else realClick.call(this); };
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    const until = async (fn, m) => { for (let i = 0; i < 100; i++) { if (fn()) return; await wait(50); } throw new Error('tempo esgotado: ' + m); };
+    const lib = src => new Promise((ok, fail) => { const s = document.createElement('script'); s.src = '../' + src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); });
+    window.PortalShell = { loadScript: lib, wireModalA11y(b) { if (!b.querySelector('[role="dialog"]')) throw new Error('modal sem role=dialog (o portal-shell exige)'); } };
+    const html = await (await fetch('../molduras-generator.html')).text();
+    const main = new DOMParser().parseFromString(html, 'text/html').querySelector('main');
+    main.querySelectorAll('script').forEach(s => s.remove());
+    const doc2 = new DOMParser().parseFromString(html, 'text/html');
+    document.getElementById('host').innerHTML = main.outerHTML + doc2.querySelector('#mgFormat').outerHTML;
+    document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../molduras/molduras-generator.css">');
+    await lib('molduras/molduras-generator.js');
+    const $ = id => document.getElementById(id);
+    const setFile = (id, file) => { const dt = new DataTransfer(); dt.items.add(file); $(id).files = dt.files; $(id).dispatchEvent(new Event('change')); };
+    const canvasBlob = (w, h, paint, type) => { const c = document.createElement('canvas'); c.width = w; c.height = h; paint(c.getContext('2d'), w, h); return new Promise(ok => c.toBlob(ok, type || 'image/png')); };
+
+    // 0) formato trocado é recusado: retrato (vertical) no campo Paisagem e paisagem (horizontal) no campo Retrato
+    const tall = await canvasBlob(300, 400, (x, w, h) => { x.fillStyle = '#000'; x.fillRect(0, 0, w, h); x.clearRect(50, 50, 200, 300); });
+    const wide = await canvasBlob(400, 300, (x, w, h) => { x.fillStyle = '#000'; x.fillRect(0, 0, w, h); x.clearRect(50, 50, 300, 200); });
+    const fm = $('mgFormat');
+    setFile('filePaisagem', new File([tall], 'errada.png', { type: 'image/png' }));
+    await until(() => fm.style.display === 'flex', 'modal de formato incorreto');
+    eq(/aceita só PNG horizontal/.test($('fmText').textContent), true, 'modal explica o formato do campo: ' + $('fmText').textContent);
+    eq(/300 × 400 pixels e é vertical.*campo Retrato/.test($('fmDetail').textContent), true, 'modal detalha a imagem enviada: ' + $('fmDetail').textContent);
+    $('fmClose').click(); eq(fm.style.display, '', 'X fecha o modal');
+    setFile('fileRetrato', new File([wide], 'errada.png', { type: 'image/png' }));
+    await until(() => fm.style.display === 'flex', 'modal da paisagem em Retrato');
+    eq(/aceita só PNG vertical/.test($('fmText').textContent), true, 'modal do campo Retrato');
+    $('fmCancel').click(); eq(fm.style.display, '', 'Cancelar fecha o modal');
+    eq(document.querySelector('#thumbPaisagem img') === null && document.querySelector('#thumbRetrato img') === null, true, 'nenhuma moldura errada foi aceita');
+    eq(document.querySelector('#mgKind button').dataset.kind, 'paisagem', 'Paisagem vem primeiro');
+    eq(document.querySelector('#mgSlots').dataset.kind, 'paisagem', 'mini moldura começa em paisagem');
+
+    eq(/Envie a planilha e o ZIP/.test($('mgEmpty').textContent), true, 'etapa 3 já começa explicando o que fazer');
+
+    // 1) moldura retrato 600x800: azul com miolo transparente (50,150,500x600)
+    const frame = await canvasBlob(600, 800, (x, w, h) => { x.fillStyle = '#1d4ed8'; x.fillRect(0, 0, w, h); x.clearRect(50, 150, 500, 600); });
+    setFile('fileRetrato', new File([frame], 'retrato.png', { type: 'image/png' }));
+    await until(() => !$('mgPreview').hidden && $('mgPreview').width > 0, 'prévia da moldura');
+    eq(getComputedStyle($('mgPreviewEmpty')).display, 'none', 'aviso de moldura ausente some quando há moldura (sem prévia duplicada)');
+    const p = $('mgPreview'), px = (x, y) => { const s = p.width / 600; return [...p.getContext('2d').getImageData(Math.round(x * s), Math.round(y * s), 1, 1).data]; };
+    await until(() => px(300, 450)[3] === 255, 'prévia desenhada');
+    eq(px(300, 450).join(), '233,233,231,255', 'miolo detectado e preenchido com o cinza da prévia');
+    eq(px(10, 500).join(), '29,78,216,255', 'a moldura fica por cima');
+    // texto no canto superior esquerdo (branco) e depois inferior direito
+    const has = (x0, y0, x1, y1) => { const s = p.width / 600, d = p.getContext('2d').getImageData(Math.round(x0 * s), Math.round(y0 * s), Math.round((x1 - x0) * s), Math.round((y1 - y0) * s)).data; for (let i = 0; i < d.length; i += 4) if (d[i] > 240 && d[i + 1] > 240 && d[i + 2] > 240) return true; return false; };
+    eq(has(0, 660, 600, 800), true, 'tag embaixo (padrão: inferior esquerdo)');
+    eq(has(0, 0, 600, 140), false, 'nada no topo no padrão');
+    document.querySelector('#mgSlots [data-slot="tl"]').click(); await wait(400);
+    eq(has(0, 0, 600, 140), true, 'tag no topo (superior esquerdo)');
+    eq(has(0, 660, 600, 800), false, 'nada embaixo no canto superior');
+    document.querySelector('#mgSlots [data-slot="br"]').click(); await wait(400);
+    eq(has(0, 660, 600, 800), true, 'texto embaixo (canto inferior direito)');
+    eq(has(0, 0, 600, 140), false, 'nada no topo no canto inferior');
+    // 5ª posição (personalizada): o menu Configurar mostra o rascunho ao vivo; Cancelar descarta, Salvar mantém
+    const setCenter = async () => {
+      document.querySelector('#mgSlots [data-cfg="c"]').click(); await wait(100);
+      eq($('mgCfgWrap').classList.contains('is-open'), true, 'menu Configurar aberto');
+      $('mgAlign').querySelector('[data-align="center"]').click();
+      $('mgX').value = '50'; $('mgX').dispatchEvent(new Event('input')); $('mgY').value = '50'; $('mgY').dispatchEvent(new Event('input')); await wait(400);
+    };
+    await setCenter();
+    eq(has(0, 380, 600, 520), true, 'rascunho aparece na prévia (centro)');
+    // porcentagem digitada: acompanha o slider, limita a 0-100
+    $('mgXNum').focus(); $('mgXNum').value = '25.5'; $('mgXNum').dispatchEvent(new Event('input'));
+    eq($('mgX').value, '25.5', 'número digitado move o slider');
+    eq($('mgXNum').value, '25.5', 'campo não é reescrito enquanto se digita');
+    $('mgXNum').value = '150'; $('mgXNum').dispatchEvent(new Event('input')); $('mgXNum').dispatchEvent(new Event('change'));
+    eq($('mgX').value, '100', 'acima de 100 limita em 100'); eq($('mgXNum').value, '100.0', 'campo mostra o valor limitado ao sair');
+    $('mgXNum').value = '50'; $('mgXNum').dispatchEvent(new Event('input')); $('mgXNum').blur(); await wait(400);
+    $('mgCfgCancel').click(); await wait(400);
+    eq($('mgCfgWrap').classList.contains('is-open'), false, 'menu fechado ao cancelar');
+    eq(has(0, 380, 600, 520), false, 'cancelar descartou o rascunho');
+    eq(has(0, 660, 600, 800), true, 'segue no canto inferior direito');
+    await setCenter(); $('mgCfgSave').click(); await wait(400);
+    eq($('mgCfgWrap').classList.contains('is-open'), false, 'menu fechado ao salvar');
+    eq(has(0, 380, 600, 520), true, 'salvar deixou o texto no centro');
+    document.querySelector('#mgSlots [data-slot="tl"]').click(); await wait(300);
+    eq(has(0, 380, 600, 520), false, 'posição superior esquerda tira o texto do centro');
+    document.querySelector('#mgSlots [data-slot="c"]').click(); await wait(300);
+    eq(has(0, 380, 600, 520), true, 'a posição personalizada guardou o ajuste');
+
+    // padrão: marcar o canto inferior esquerdo como padrão muda a cor dele; o superior esquerdo deixa de ser o padrão
+    const slotEl = key => document.querySelector('#mgSlotsWrap [data-pos="' + key + '"]');
+    eq(slotEl('bl').classList.contains('is-default'), true, 'inferior esquerdo começa como padrão');
+    slotEl('br').querySelector('[data-cfg]').click(); await wait(100);
+    $('mgDefault').click(); $('mgCfgSave').click(); await wait(200);
+    eq(slotEl('br').classList.contains('is-default') && !slotEl('bl').classList.contains('is-default'), true, 'o novo padrão fica destacado e o anterior perde o destaque');
+    // vários locais personalizados: criar, nomear, usar e remover
+    $('mgAddSlot').click(); await wait(100);
+    eq($('mgSecName').hidden, false, 'novo local pede um nome');
+    $('mgName').value = 'Rodape'; $('mgName').dispatchEvent(new Event('input'));
+    $('mgX').value = '10'; $('mgX').dispatchEvent(new Event('input')); $('mgCfgSave').click(); await wait(200);
+    eq(document.querySelectorAll('#mgExtra .mg-slot').length, 1, 'um local extra criado');
+    $('mgAddSlot').click(); await wait(100); $('mgCfgCancel').click(); await wait(100);
+    eq(document.querySelectorAll('#mgExtra .mg-slot').length, 1, 'cancelar não cria local');
+    $('mgAddSlot').click(); await wait(100); $('mgCfgSave').click(); await wait(200);
+    eq(document.querySelectorAll('#mgExtra .mg-slot').length, 2, 'segundo local extra criado');
+    eq(document.querySelector('#mgExtra .mg-slot-pick').textContent, 'Rodape', 'o extra mostra o nome dado');
+    document.querySelector('#mgExtra [data-cfg]').click(); await wait(100); $('mgCfgDelete').click(); await wait(200);
+    eq(document.querySelectorAll('#mgExtra .mg-slot').length, 1, 'remover tira o local');
+
+    // formatos em uso: somente retrato esconde a paisagem; ambos devolve
+    const fmtBtn = f => document.querySelector('#mgFormats [data-formats="' + f + '"]');
+    fmtBtn('retrato').click(); await wait(200);
+    eq(document.querySelector('.mg-frame-slot[data-kind="paisagem"]').hidden, true, 'somente retrato esconde o envio da paisagem');
+    eq($('mgKind').hidden, true, 'com um formato só, some o seletor Retrato/Paisagem');
+    eq(document.querySelector('#mgSlots').dataset.kind, 'retrato', 'a tela passa para o formato ligado');
+    fmtBtn('paisagem').click(); await wait(200);
+    eq(document.querySelector('.mg-frame-slot[data-kind="retrato"]').hidden, true, 'somente paisagem esconde o envio do retrato');
+    fmtBtn('ambos').click(); await wait(200);
+    eq(document.querySelector('.mg-frame-slot[data-kind="paisagem"]').hidden || document.querySelector('.mg-frame-slot[data-kind="retrato"]').hidden, false, 'ambos mostra os dois');
+    document.querySelector('#mgKind [data-kind="retrato"]').click(); await wait(200);
+
+    // 2) planilha CSV
+    const csv = 'Matrícula,Nome do colaborador,Nome da criança,Data de nascimento\n123,MARIA DA SILVA,ana souza,15/03/2018\n123,MARIA DA SILVA,bia souza,01/02/2024\n0456,JOAO PEREIRA,pedro lima,2015-05-10\n';
+    setFile('fileSheet', new File([csv], 'filhos.csv', { type: 'text/csv' }));
+    await until(() => /filhos de/.test($('sheetState').textContent), 'planilha');
+    eq($('sheetState').textContent, '3 filhos de 2 colaboradores', 'contagem da planilha');
+    eq(/Falta enviar o ZIP/.test($('mgEmpty').textContent), true, 'só com a planilha, a etapa 3 explica que falta o ZIP: ' + $('mgEmpty').textContent);
+    eq($('mgExportRow').hidden, true, 'sem desenhos não há botão de baixar');
+
+    // 3) ZIP: 123 (paisagem, 2 filhos), 456 (retrato, zeros à esquerda), 999 (fora da planilha) + lixo do macOS
+    await lib('vendor/jszip.min.js');
+    const z = new JSZip();
+    z.file('123.jpg', await canvasBlob(400, 300, x => { x.fillStyle = '#16a34a'; x.fillRect(0, 0, 400, 300); }));
+    z.file('desenhos/456 (2).png', await canvasBlob(300, 400, x => { x.fillStyle = '#dc2626'; x.fillRect(0, 0, 300, 400); }));
+    z.file('999.png', await canvasBlob(300, 400, x => { x.fillStyle = '#000'; x.fillRect(0, 0, 300, 400); }));
+    z.file('__MACOSX/._123.jpg', 'x'); z.file('leia-me.txt', 'x');
+    setFile('fileZip', new File([await z.generateAsync({ type: 'blob' })], 'desenhos.zip'));
+    await until(() => /desenhos$/.test($('zipState').textContent), 'zip');
+    eq($('zipState').textContent, '3 desenhos', 'só imagens, sem lixo');
+    const rowOf = file => [...document.querySelectorAll('#mgResultList .mg-qrow')].find(r => r.querySelector('.mg-qhead').textContent.includes(file));
+    const pick = async file => { rowOf(file).querySelector('.mg-qhead').click(); await wait(150); };
+    eq(document.querySelectorAll('#mgResultList .mg-qrow').length, 3, 'a lista lateral mostra os 3 desenhos');
+    eq(/Escolher o filho/.test(rowOf('123.jpg').querySelector('.mg-qhead').textContent) && /Matrícula não encontrada/.test(rowOf('999.png').querySelector('.mg-qhead').textContent), true, 'pendências marcadas na própria lista');
+    eq(document.querySelector('#mgResultList .mg-qrow.is-sel .mg-qhead strong').textContent, '123.jpg', 'o primeiro pendente já abre na lista');
+    eq(document.querySelector('#mgResultList .mg-qrow.is-sel #edNome') !== null, true, 'os campos de edição ficam dentro da linha selecionada');
+    eq(document.querySelector('#mgResultList .mg-qrow:not(.is-sel) #edNome'), null, 'as outras linhas não têm campos');
+    const selRow = () => document.querySelector('#mgResultList .mg-qrow.is-sel');
+    eq(selRow().classList.contains('is-open'), false, 'selecionar a linha não abre a edição');
+    selRow().querySelector('.mg-qedit').click(); await wait(100);
+    eq(selRow().classList.contains('is-open') && selRow().querySelector('.mg-qedit').getAttribute('aria-expanded') === 'true' && !selRow().querySelector('.mg-qcollapse').inert, true, 'o lápis abre a edição');
+    selRow().querySelector('.mg-qedit').click(); await wait(100);
+    eq(selRow().classList.contains('is-open'), false, 'o lápis de novo fecha');
+    selRow().querySelector('.mg-qedit').click(); await wait(100);
+    selRow().querySelector('.mg-qhead').click(); await wait(100);
+    eq(selRow().classList.contains('is-open'), false, 'clicar de novo no topo da linha aberta fecha');
+    selRow().querySelector('.mg-qedit').click(); await wait(100);
+    rowOf('999.png').querySelector('.mg-qhead').click(); await wait(150);
+    eq(selRow().classList.contains('is-open'), false, 'trocar de desenho fecha a edição');
+    rowOf('123.jpg').querySelector('.mg-qedit').click(); await wait(150);
+    eq(selRow().querySelector('.mg-qhead strong').textContent === '123.jpg' && selRow().classList.contains('is-open'), true, 'o lápis de outra linha seleciona e abre');
+    eq($('edKid').options.length, 3, 'placeholder + 2 filhos');
+    eq($('mgFilterPending').textContent, 'Pendentes (2)', 'contador de pendentes no filtro');
+    eq($('mgExport').disabled, true, 'exportar travado com pendência');
+    // filtro Pendentes
+    document.querySelector('#mgFilter [data-filter="pending"]').click();
+    eq(document.querySelectorAll('#mgResultList .mg-qrow').length, 2, 'filtro mostra só os 2 pendentes');
+    document.querySelector('#mgFilter [data-filter="all"]').click();
+
+    // 4) escolher o filho no painel ao lado e descartar a matrícula desconhecida
+    $('edKid').value = '1'; $('edKid').dispatchEvent(new Event('change')); await wait(450);
+    await pick('999.png'); $('edSkip').click(); await wait(100);
+    const txt = [...document.querySelectorAll('#mgResultList .mg-qhead')].map(h => h.textContent).join(' | ');
+    eq(/Bia, 2 anos, filho\(a\) de Maria da Silva/.test(txt), true, 'texto do filho escolhido: ' + txt);
+    eq(/Pedro, \d+ anos, filho\(a\) de Joao Pereira/.test(txt), true, 'matrícula 0456 casou com 456: ' + txt);
+    eq(/Descartado/.test(rowOf('999.png').querySelector('.mg-qhead').textContent), true, 'descartado aparece na lista');
+    eq($('mgExport').disabled, false, 'exportar liberado');
+
+    // 4c) editar ao lado: escolher palavras dos nomes e trocar o filho (vale na hora, sem botão Salvar)
+    await pick('123.jpg');
+    eq($('edNome').value, 'Bia', 'nome do filho escolhido');
+    eq($('edKid').options.length, 2, 'dois filhos para trocar');
+    $('edKid').value = '0'; $('edKid').dispatchEvent(new Event('change'));
+    eq($('edNome').value, 'Ana', 'trocar o filho preenche o nome');
+    const chip = (box, w) => [...$(box).querySelectorAll('button')].find(b => b.textContent === w);
+    chip('edNomeChips', 'Souza').click();
+    eq($('edNome').value, 'Ana Souza', 'palavra do nome da criança ligada');
+    chip('edColabChips', 'Silva').click();
+    eq($('edColab').value, 'Maria da', 'palavra do colaborador desligada (nome reduzido)');
+    chip('edColabChips', 'da').click();
+    eq($('edColab').value, 'Maria', 'outra palavra desligada');
+    chip('edColabChips', 'da').click(); chip('edColabChips', 'Silva').click();
+    eq($('edColab').value, 'Maria da Silva', 'palavras religadas na ordem original');
+    chip('edColabChips', 'Silva').click();
+    await wait(450);
+    eq(/Ana Souza, \d+ anos, filho\(a\) de Maria da/.test(rowOf('123.jpg').querySelector('.mg-qhead').textContent) && /Editado/.test(rowOf('123.jpg').querySelector('.mg-qhead').textContent), true, 'a lista mostra o texto editado na hora: ' + rowOf('123.jpg').querySelector('.mg-qhead').textContent);
+
+    // 4d) zoom e fundo branco no miolo (desenho 300x400 em miolo 500x600 da moldura 600x800)
+    await pick('456');
+    await until(() => !$('edCanvas').hidden && $('edCanvas').width > 0, 'prévia ao lado');
+    await wait(300);
+    const ep = (x, y) => [...$('edCanvas').getContext('2d').getImageData(x, y, 1, 1).data].join();
+    eq(ep(300, 450), '220,38,38,255', 'desenho no centro do miolo');
+    eq(ep(60, 300), '255,255,255,255', 'sobra do miolo fica branca');
+    eq($('edZoom').disabled, true, 'zoom desabilitado sem duplo clique');
+    $('edCanvas').dispatchEvent(new WheelEvent('wheel', { deltaY: -3000, cancelable: true })); await wait(50);
+    eq($('edZoomOut').textContent, '100%', 'a roda não dá zoom sem duplo clique');
+    $('edCanvas').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); await wait(100);
+    eq($('edZoom').disabled, false, 'duplo clique habilita o zoom');
+    $('edZoom').value = '400'; $('edZoom').dispatchEvent(new Event('input'));
+    eq($('edZoomOut').textContent, '400%', 'zoom mostrado');
+    await wait(300);
+    eq(ep(60, 300), '220,38,38,255', 'com zoom o desenho ocupa o miolo todo');
+    $('edReset').click(); await wait(300);
+    eq(ep(60, 300), '255,255,255,255', 'reset volta ao zoom 100%');
+    // giro de 90° com os dois formatos ligados: o desenho 300x400 vira paisagem e passa a pedir a moldura paisagem (que não existe aqui)
+    $('edRotR').click(); await wait(300);
+    eq($('edCanvas').hidden && /Falta a moldura em paisagem/.test($('edHint').textContent), true, 'girado 90°: troca para o formato paisagem: ' + $('edHint').textContent);
+    $('edRotL').click(); await wait(300);
+    eq(!$('edCanvas').hidden && ep(300, 450) === '220,38,38,255', true, 'girado de volta: retorna à moldura retrato');
+    $('edRotL').click(); $('edRotL').click(); $('edRotL').click(); await wait(300);
+    eq($('edCanvas').hidden, true, '3 giros à esquerda = 270°: também é paisagem');
+    $('edReset').click(); await wait(300);
+    eq(!$('edCanvas').hidden && ep(60, 300) === '255,255,255,255', true, 'redefinir também desfaz o giro');
+    $('edCanvas').dispatchEvent(new WheelEvent('wheel', { deltaY: 5000, cancelable: true })); await wait(100);
+    eq($('edZoomOut').textContent, '100%', 'a roda não passa de 100% para baixo (sem zoom negativo)');
+    $('edZoom').value = '400'; $('edZoom').dispatchEvent(new Event('input')); await wait(450);
+    eq(/Editado/.test(rowOf('456').querySelector('.mg-qhead').textContent), true, 'zoom marca o desenho como editado');
+    await pick('123.jpg'); await pick('456');
+    eq($('edZoomOut').textContent, '400%', 'ao voltar ao desenho o zoom continua guardado');
+
+    // 5) exportar: a 123 é paisagem e não há moldura paisagem -> avisa; a 456 sai
+    $('mgExport').click();
+    await until(() => /gerados/.test($('mgExportState').textContent), 'exportação');
+    eq($('mgExportState').textContent, '1 gerados, 1 não gerados (veja nao-gerados.txt no ZIP)', 'relatório da exportação');
+    eq(downloads.join(), 'molduras.zip', 'a exportação pediu o download do ZIP (sem baixar de verdade)');
+    // mesma moldura para todos: com só o retrato em uso, o desenho horizontal (123) também sai na moldura retrato
+    fmtBtn('retrato').click(); await wait(200);
+    $('mgExport').click();
+    await until(() => /^2 gerados/.test($('mgExportState').textContent), 'exportação com um formato só');
+    eq($('mgExportState').textContent, '2 gerados', 'com um formato só a moldura vale para todos os desenhos');
+    fmtBtn('ambos').click(); await wait(200);
+
+    // 6) ZIP com PDFs: só a 1ª página de cada PDF vale (a 2ª é o verso), lido com pdf.js
+    await lib('vendor/jspdf.umd.min.js');
+    const pageJpg = color => canvasBlob(300, 400, x => { x.fillStyle = color; x.fillRect(0, 0, 300, 400); }, 'image/jpeg').then(b => new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(b); }));
+    const mkPdf = async colors => { const pdf = new window.jspdf.jsPDF({ unit: 'px', format: [300, 400], orientation: 'p', hotfixes: ['px_scaling'] }); for (let i = 0; i < colors.length; i++) { if (i) pdf.addPage([300, 400], 'p'); pdf.addImage(await pageJpg(colors[i]), 'JPEG', 0, 0, 300, 400); } return pdf.output('blob'); };
+    const zp = new JSZip(); zp.file('0456.pdf', await mkPdf(['#dc2626'])); zp.file('123.pdf', await mkPdf(['#16a34a', '#2563eb']));
+    setFile('fileZip', new File([await zp.generateAsync({ type: 'blob' })], 'pdfs.zip'));
+    await until(() => /\.pdf/.test($('mgResultList').textContent), 'zip de PDFs lido');
+    eq($('zipState').textContent, '2 desenhos', 'o PDF de 2 páginas conta 1 desenho: ' + $('zipState').textContent);
+    const rowsPdf = [...document.querySelectorAll('#mgResultList .mg-qrow')].map(r => r.textContent);
+    eq(rowsPdf.some(t => /123\.pdf/.test(t)) && !rowsPdf.some(t => /página/.test(t)), true, 'verso não vira desenho: ' + rowsPdf.join(' | ').slice(0, 200));
+    await pick('123.pdf'); await wait(600);
+    eq(/primeiro filho da planilha/.test($('edHint').textContent), true, 'sem filho escolhido a prévia mostra a tag com o primeiro da planilha: ' + $('edHint').textContent);
+    await pick('0456.pdf');
+    await until(() => !$('edCanvas').hidden && $('edCanvas').width > 0, 'preview com a página do PDF');
+    await wait(500);
+    const pe = $('edCanvas').getContext('2d').getImageData(300, 450, 1, 1).data;
+    eq(pe[0] > 180 && pe[1] < 90 && pe[2] < 90, true, 'a página do PDF foi desenhada dentro da moldura: ' + [...pe].join());
+    // 7) trabalho salvo: decisões guardadas pelo nome do arquivo voltam ao subir o ZIP de novo (outra sessão ou outra pessoa)
+    const saved = { items: { '0456.pdf': { s: 1 }, '123.pdf': { c: 'bia souza' } } }, writes = [];
+    window.__mgWork = { readMoldurasWork: async () => JSON.parse(JSON.stringify(saved)), writeMoldurasWork: async w => { writes.push(JSON.parse(JSON.stringify(w))); } };
+    setFile('fileZip', new File([await zp.generateAsync({ type: 'blob' })], 'pdfs.zip'));
+    await until(() => /Trabalho salvo retomado/.test($('mgWorkState').textContent), 'trabalho salvo retomado');
+    eq(/Descartado/.test(rowOf('0456.pdf').querySelector('.mg-qhead').textContent), true, 'o descartado salvo volta descartado');
+    eq(/Bia, \d+ anos/.test(rowOf('123.pdf').querySelector('.mg-qhead').textContent), true, 'o filho salvo (guardado pelo nome) volta escolhido: ' + rowOf('123.pdf').querySelector('.mg-qhead').textContent);
+    await pick('0456.pdf'); $('edSkip').click(); await wait(1700);
+    const last = writes[writes.length - 1];
+    eq(!!last && !last.items['0456.pdf'] && last.items['123.pdf'] && last.items['123.pdf'].c === 'bia souza', true, 'restaurar apaga a decisão salva e mantém as outras: ' + JSON.stringify(last));
+    document.body.dataset.result = 'ok';
+  } catch (e) { document.body.dataset.result = 'FALHA: ' + e.message; }
+  document.getElementById('log').textContent = document.body.dataset.result + '\n' + document.getElementById('mgExportState').textContent; // visível também em captura de tela
+})();
+</script>
