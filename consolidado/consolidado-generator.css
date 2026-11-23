@@ -1774,18 +1774,18 @@
     height: 26px
 }
 
-/* "Baixar PDF": a cor de destaque do Grupo OVD é um cinza claro (portal-shell.js) e o botão parecia desativado; aqui ele fica neutro escuro nos dois temas */
-#exportPdf {
+/* "Baixar": a cor de destaque do Grupo OVD é um cinza claro (portal-shell.js) e o botão parecia desativado; aqui ele fica neutro escuro nos dois temas */
+#exportMenu {
     background: var(--text);
     color: var(--card)
 }
 
-#exportPdf:hover {
+#exportMenu:hover {
     background: var(--text);
     opacity: .85
 }
 
-#exportPdf:disabled {
+#exportMenu:disabled {
     opacity: .4
 }
 
@@ -2191,3 +2191,14 @@
     justify-content: flex-end;
     margin-bottom: 8px
 }
+/* Baixar: botão único com menu (PDF ou JPG) */
+.export-menu { position: relative }
+.export-menu > .btn { display: inline-flex; align-items: center; gap: 8px }
+.export-chev { transition: transform .12s }
+.export-menu > .btn[aria-expanded="true"] .export-chev { transform: rotate(180deg) }
+.export-menu-list { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; display: flex; flex-direction: column; gap: 2px; min-width: 176px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); box-shadow: var(--shadow-md); visibility: hidden; opacity: 0; transform: translateY(-4px); transition: opacity .12s, transform .12s, visibility 0s linear .12s }
+.export-menu-list.is-open { visibility: visible; opacity: 1; transform: none; transition-delay: 0s }
+.export-menu-list button { display: flex; align-items: center; width: 100%; height: 32px; padding: 0 12px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text); font: 500 14px var(--font-ui); text-align: left; cursor: pointer; transition: background-color .12s }
+.export-menu-list button:hover, .export-menu-list button:focus-visible { background: var(--surface-muted) }
+.export-menu-list button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px }
+@media (prefers-reduced-motion: reduce) { .export-chev, .export-menu-list { transition: none } }

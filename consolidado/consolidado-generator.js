@@ -297,7 +297,7 @@
     if (details) { details.open = true; details.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); const title = details.querySelector('[data-title]'); title.focus(); title.select(); }
   }
   function renderAll() {
-    $('workspace').hidden = !state.items.length; $('itemCount').textContent = state.items.length; $('exportPdf').disabled = !state.items.length; $('saveConsolidado').disabled = !state.items.length; $('restoreOriginal').hidden = !state.original;
+    $('workspace').hidden = !state.items.length; $('itemCount').textContent = state.items.length; $('exportMenu').disabled = !state.items.length; $('saveConsolidado').disabled = !state.items.length; $('restoreOriginal').hidden = !state.original;
     renderSource(); renderSettings(); renderPreview();
   }
 
@@ -405,29 +405,38 @@
   function waitForImages(page) { return Promise.all([...page.querySelectorAll('img')].map(image => image.complete ? Promise.resolve() : new Promise(resolve => { image.addEventListener('load', resolve, { once: true }); image.addEventListener('error', resolve, { once: true }); setTimeout(resolve, 12000); }))); }
   // Página de trabalho = 28,2222 x 52 cm do InDesign; 1 px CSS = 1 pt do PDF (os tamanhos de fonte no CSS são em px = pt reais)
   const PAGE_W = 800; // largura do InDesign (28,2222 cm); a altura acompanha o conteúdo (informativo de e-mail, sem paginação)
-  // Avisos antes de baixar o PDF: produtos sem link ou sem foto (a foto é conferida na prévia já carregada)
-  async function exportWarnings(page) {
+  // Avisos antes de baixar o PDF ou o JPG: produtos sem foto (a foto é conferida na prévia já carregada) e, só no PDF, sem link
+  async function exportWarnings(page, kind) {
     const brief = list => list.slice(0, 5).map(item => '“' + item.title.slice(0, 40) + '”').join(', ') + (list.length > 5 ? ' e mais ' + (list.length - 5) : '');
     const noPhoto = state.items.filter(item => { const card = page.querySelector('.consolidado-card[data-item-id="' + item.id + '"]'), img = card && card.querySelector('.consolidado-photo img'); return !img || img.style.display === 'none'; });
-    const lines = []; const noLink = noLinkItems();
+    const lines = []; const noLink = kind === 'pdf' ? noLinkItems() : [];
     if (noLink.length) lines.push(noLink.length + ' produto(s) sem link: ' + brief(noLink));
     if (noPhoto.length) lines.push(noPhoto.length + ' produto(s) sem foto: ' + brief(noPhoto));
-    return !lines.length || ask({ title: 'Atenção antes de baixar o PDF', text: 'Encontrei pendências neste consolidado:', items: lines, ok: 'Baixar mesmo assim', cancel: 'Voltar e corrigir' });
+    return !lines.length || ask({ title: 'Atenção antes de baixar o ' + (kind === 'pdf' ? 'PDF' : 'JPG'), text: 'Encontrei pendências neste consolidado:', items: lines, ok: 'Baixar mesmo assim', cancel: 'Voltar e corrigir' });
   }
-  async function exportPdf() {
-    const button = $('exportPdf'), label = button.innerHTML; button.disabled = true; button.textContent = 'Gerando…';
+  // Mesma renderização para os dois formatos: PDF (com os links dos produtos) ou JPG (uma imagem por página, sem links)
+  async function exportFile(kind) {
+    const isPdf = kind === 'pdf', button = $('exportMenu'), label = button.innerHTML;
+    button.disabled = true; button.textContent = 'Gerando…';
     try {
-      await Promise.all(['vendor/html2canvas.min.js', 'vendor/jspdf.umd.min.js'].map(PortalShell.loadScript)); /* só baixam no primeiro PDF */
-      const pages = [...$('pagesPreview').querySelectorAll('.consolidado-page')]; const { jsPDF } = window.jspdf; let pdf; await waitForImages(pages[0]); if (!(await exportWarnings(pages[0]))) return;
+      await Promise.all(['vendor/html2canvas.min.js'].concat(isPdf ? ['vendor/jspdf.umd.min.js'] : []).map(PortalShell.loadScript)); /* só baixam no primeiro uso */
+      const pages = [...$('pagesPreview').querySelectorAll('.consolidado-page')]; let pdf; await waitForImages(pages[0]); if (!(await exportWarnings(pages[0], kind))) return;
+      const safe = ($('consolidadoTitle').value || generatedTitle()).replace(/[\\/:*?"<>|]/g, '-');
       for (let index = 0; index < pages.length; index++) {
         const page = pages[index]; await waitForImages(page); const height = page.offsetHeight, scale = Math.max(1, Math.min(3, 16000 / height)); /* 3x = 2400 px de largura; limita a altura do canvas (máx. do navegador ~16000 px) em informativos muito longos */ const canvas = await html2canvas(page, { scale, useCORS: true, backgroundColor: '#f6be00', logging: false, onclone: clonedDoc => ConsolidadoExport.bakeImages(page, clonedDoc.querySelector('.consolidado-page'), scale) });
+        if (!isPdf) { // ponytail: com várias páginas baixa um arquivo por página; o navegador pode pedir permissão para múltiplos downloads
+          const blob = await new Promise(ok => canvas.toBlob(ok, 'image/jpeg', .93)); if (!blob) throw new Error('Não foi possível gerar o JPG.');
+          const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = safe + (pages.length > 1 ? ' - página ' + (index + 1) : '') + '.jpg'; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(link.href), 30000);
+          continue;
+        }
+        const { jsPDF } = window.jspdf;
         if (!pdf) pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: [PAGE_W, height], compress: true }); else pdf.addPage([PAGE_W, height], 'portrait');
         pdf.addImage(canvas.toDataURL('image/jpeg', .93), 'JPEG', 0, 0, PAGE_W, height, undefined, 'FAST');
         const pageRect = page.getBoundingClientRect(); page.querySelectorAll('.consolidado-card[data-link]').forEach(card => { const url = validLink(card.dataset.link); if (!url) return; const rect = card.getBoundingClientRect(); pdf.link(rect.left - pageRect.left, rect.top - pageRect.top, rect.width, rect.height, { url }); });
       }
-      const safe = ($('consolidadoTitle').value || generatedTitle()).replace(/[\\/:*?"<>|]/g, '-'); pdf.save(safe + '.pdf'); toast('PDF gerado com os links dos produtos.');
-    } catch (error) { toast(error.message || 'Não foi possível gerar o PDF.'); }
-    finally { button.disabled = false; button.innerHTML = label; }
+      if (isPdf) { pdf.save(safe + '.pdf'); toast('PDF gerado com os links dos produtos.'); } else toast('JPG gerado. A imagem não leva os links dos produtos.');
+    } catch (error) { toast(error.message || 'Não foi possível gerar o ' + (isPdf ? 'PDF' : 'JPG') + '.'); }
+    finally { button.disabled = !state.items.length; button.innerHTML = label; if (!document.activeElement || document.activeElement === document.body) button.focus(); }
   }
 
   document.addEventListener('pointerdown', event => { if (!event.target.closest('.consolidado-photo')) document.querySelectorAll('.consolidado-photo.photo-editing').forEach(photo => photo.classList.remove('photo-editing')); });
@@ -438,7 +447,13 @@
   $('newConsolidado').onclick = () => { resetEditor(); showEditor(); };
   $('addProduct').onclick = addProduct; $('startBlank').onclick = addProduct;
   $('backToLibrary').onclick = async () => { if (state.dirty && !(await ask({ title: 'Sair sem salvar?', text: 'As alterações deste consolidado ainda não foram salvas.', ok: 'Sair sem salvar', cancel: 'Continuar editando', danger: true }))) return; showLibrary(); };
-  $('saveConsolidado').onclick = saveCurrent; $('exportPdf').onclick = exportPdf;
+  $('saveConsolidado').onclick = saveCurrent; // menu Baixar: abre e fecha com o botão, clique fora ou Esc; cada item gera o arquivo do formato
+  const exportMenu = $('exportMenu'), exportList = $('exportMenuList');
+  const setExportMenu = open => { exportList.classList.toggle('is-open', open); exportList.inert = !open; exportMenu.setAttribute('aria-expanded', String(open)); };
+  exportMenu.onclick = () => { const open = !exportList.classList.contains('is-open'); setExportMenu(open); if (open) exportList.querySelector('button').focus(); };
+  document.addEventListener('click', event => { if (!event.target.closest('#exportMenuWrap')) setExportMenu(false); });
+  exportList.addEventListener('keydown', event => { if (event.key === 'Escape') { setExportMenu(false); exportMenu.focus(); } });
+  $('exportPdf').onclick = () => { setExportMenu(false); exportFile('pdf'); }; $('exportJpg').onclick = () => { setExportMenu(false); exportFile('jpg'); };
   // Trocar planilha/aba/mês substitui os produtos: pede confirmação se já houver edições ou se for um consolidado salvo
   const confirmDiscard = async () => !state.items.length || !(state.edited || state.id) || ask({ title: 'Substituir os produtos?', text: 'Trocar a planilha ou a aba substitui os produtos atuais e descarta as edições feitas.', ok: 'Substituir', danger: true });
   async function loadSheetFile(file) {
