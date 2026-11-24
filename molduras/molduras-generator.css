@@ -1,5 +1,5 @@
 /* Gerador de Molduras (molduras-generator.html). Usa só os tokens do portal (styles.css), grade de 4px. */
-.mg-page { max-width: 1120px; margin: auto; padding-bottom: 48px }
+.mg-page { max-width: 1120px; margin: 0 auto; padding-bottom: 48px } /* margin: auto também centrava na vertical: o cabeçalho descia e subia conforme as etapas abriam */
 .mg-panel { margin-top: 24px; padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--card) }
 .mg-panel[hidden] { display: none }
 .mg-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px }
@@ -17,7 +17,11 @@
 .mg-setup { interpolate-size: allow-keywords }
 .mg-setup::details-content { block-size: 0; overflow: hidden; transition: block-size .25s ease, content-visibility .25s allow-discrete }
 .mg-setup[open]::details-content { block-size: auto }
-.mg-lead { margin: 16px 0 0; color: var(--muted); font-size: 14px }
+.mg-setup > summary + * { margin-top: 16px }
+.mg-lead { margin: 0; color: var(--muted); font-size: 14px }
+.mg-lead + * { margin-top: 12px }
+.mg-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 12px }
+.mg-export .mg-head-meta { margin-left: auto }
 
 .mg-field.mg-formats { margin-top: 16px; max-width: 480px }
 .mg-frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 16px }
@@ -59,19 +63,27 @@
 .mg-empty[data-kind="retrato"]:not([hidden]) { aspect-ratio: 3 / 4; width: 280px }
 .mg-empty[data-kind="paisagem"]:not([hidden]) { aspect-ratio: 16 / 9; width: min(100%, 480px) }
 
-.mg-lotes { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px }
-.mg-lotes h3 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text) }
 .mg-lote-list { display: flex; flex-direction: column; gap: 4px; max-height: 232px; overflow-y: auto }
 .mg-lote { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card) }
 .mg-lote.is-open { border-color: var(--accent-ink); background: var(--accent-weak) }
 .mg-lote-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0 }
 .mg-lote-info strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .mg-lote-info small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.mg-uploads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px }
-.mg-drop { display: flex; flex-direction: column; gap: 4px; padding: 20px; border: 1px dashed var(--border-strong); border-radius: var(--radius-md); background: var(--surface-muted); cursor: pointer; transition: border-color .12s, background-color .12s }
+.mg-lead strong { display: block; color: var(--text); font-weight: 600 }
+.mg-drop-ic { margin: 0 auto; color: var(--muted) }
+.mg-drop:has(.mg-file:not([hidden])) .mg-drop-ic { display: none }
+.mg-drop { display: flex; align-items: center; min-height: 96px; padding: 20px; border: 1px dashed var(--border-strong); border-radius: var(--radius-md); background: var(--surface-muted); cursor: pointer; transition: border-color .12s, background-color .12s }
 .mg-drop:hover, .mg-drop:focus-within { border-color: var(--accent-ink); background: var(--accent-weak) }
-.mg-drop small { color: var(--muted); font-size: 12px }
-.mg-drop .mg-meta { margin-top: 8px; color: var(--text) }
+.mg-file { display: flex; align-items: center; gap: 12px }
+.mg-file[hidden] { display: none }
+.mg-file-ic { position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 48px; height: 48px } /* mesma caixa para a folha (40x48) e a pasta (48x40): os dois cards ficam com a mesma altura */
+.mg-file-x { position: absolute; top: -8px; right: -8px; display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--card); color: var(--muted); cursor: pointer; transition: color .12s, border-color .12s }
+.mg-file-x:hover, .mg-file-x:focus-visible { color: var(--danger, #dc2626); border-color: currentColor }
+.mg-steps-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; margin-top: 24px }
+.mg-steps-pair:has(#mgSheet[open]):has(#mgZip[open]) { align-items: stretch } /* os dois abertos: mesma altura, mesmo se o texto quebrar */
+.mg-steps-pair > .mg-panel { margin-top: 0; min-width: 0 }
+@media (max-width: 900px) { .mg-steps-pair { grid-template-columns: minmax(0, 1fr) } }
+.mg-file-name { font-size: 14px; font-weight: 600; overflow-wrap: anywhere }
 
 
 .mg-export { display: flex; align-items: center; gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border) }
@@ -81,6 +93,17 @@
 .mg-ed { display: block }
 .mg-ed-stage { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-muted) }
 .mg-ed-stage canvas { max-width: 100%; max-height: calc(100vh - 220px); background: #fff; box-shadow: var(--shadow-md); cursor: default; touch-action: none }
+.mg-ed-cv { position: relative; display: flex; max-width: 100% }
+.mg-magnify { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--card); color: var(--text); cursor: pointer; transition: border-color .12s, color .12s }
+.mg-magnify:hover, .mg-magnify:focus-visible { border-color: var(--accent-ink); color: var(--accent-ink) }
+#edCanvas[hidden] + .mg-magnify { display: none }
+.mg-verso { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0 }
+.mg-verso[hidden] { display: none }
+.mg-ed-stage .mg-verso canvas { max-height: 240px; cursor: zoom-in }
+.mg-ed-stage .mg-verso canvas:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px }
+.mg-modal-verso { width: min(96vw, 1000px); max-width: none }
+.mg-verso-body { display: flex; justify-content: center; overflow: auto }
+.mg-verso-body canvas { max-width: 100%; max-height: calc(100vh - 160px); background: #fff; box-shadow: var(--shadow-md) }
 .mg-ed-stage canvas.is-adjust { cursor: grab; outline: 2px solid var(--accent-ink) }
 .mg-ed-stage canvas.is-drag { cursor: grabbing }
 .mg-ed-fields { display: flex; flex-direction: column; gap: 16px }
@@ -90,9 +113,15 @@
 .mg-chips button[aria-pressed="true"] { border-color: var(--accent-ink); background: var(--accent-weak); color: var(--accent-ink) }
 .mg-badge { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 6px; background: var(--surface-muted); color: var(--muted); font-size: 12px; font-weight: 600 }
 .mg-badge.is-warn { background: var(--danger-bg); color: var(--danger) }
+.mg-badge.is-attn { background: #F6BE00; color: #1a1a1a } /* amarelo fixo em todas as marcas e temas (var(--accent) muda com a marca), texto escuro */
+.mg-ac { display: flex; flex-wrap: wrap; gap: 8px }
+.mg-ac:empty { display: none }
+.mg-ac .mg-badge { margin-left: 0 }
+.mg-ac button + button { margin-left: 12px }
+.mg-ac button { margin-left: 8px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer }
 @media (max-width: 860px) {
   .mg-ed { grid-template-columns: 1fr }
-  .mg-frames, .mg-uploads, .mg-text { grid-template-columns: 1fr }
+  .mg-frames, .mg-text { grid-template-columns: 1fr }
 }
 @media (prefers-reduced-motion: reduce) { .mg-seg button, .mg-preset button, .mg-drop { transition: none } }
 @media (max-width: 900px) { .mg-studio { grid-template-columns: minmax(0, 1fr) } .mg-stage { position: static } }

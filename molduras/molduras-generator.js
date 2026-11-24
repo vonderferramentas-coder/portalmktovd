@@ -47,7 +47,7 @@
     formats: 'ambos',   // formatos em uso: 'paisagem' | 'retrato' | 'ambos'
     index: null,        // Map matrícula -> filhos [{ colab, nome, nasc }]
     sheetInfo: '',
-    filter: 'all',      // lista de desenhos: 'all' | 'pending'
+    filter: 'all',      // lista de desenhos: 'all' | 'pending' | 'review'
     items: [],          // desenhos do ZIP: { id, file, key, key0, entry, choice, skip, over, view }; over = texto editado à mão, view = zoom/posição/giro
     work: {},           // decisões do conjunto aberto, por nome de arquivo: { k, c (nome do filho), o, v, s }
     cfgOk: false,
@@ -63,7 +63,24 @@
   const PARTICLES = new Set(['da', 'de', 'do', 'das', 'dos', 'e']);
   const titleCase = s => String(s).trim().toLowerCase().split(/\s+/).filter(Boolean)
     .map((w, i) => (i && PARTICLES.has(w)) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-  const keyOf = v => { const t = String(v == null ? '' : v).trim().replace(/\.0+$/, '').toUpperCase(); return /^\d+$/.test(t) ? t.replace(/^0+(?=\d)/, '') : t; };
+  // "FG90104" e "90104" são a mesma matrícula
+  const keyOf = v => { const t = String(v == null ? '' : v).trim().replace(/\.0+$/, '').toUpperCase().replace(/^FG[\s_-]*(?=\d)/, ''); return /^\d+$/.test(t) ? t.replace(/^0+(?=\d)/, '') : t; };
+  // revisor de acentos: só aponta (nunca corrige sozinho) nomes que provavelmente perderam o acento, ex.: Joao -> João.
+  // ponytail: lista local de nomes e sobrenomes comuns + regras de terminação (-ao, -oes, -aes); sem dicionário completo nem IA.
+  // Nome escrito certo sem acento (Mario, Marcio) também é apontado: a tag é só um aviso, não trava nada. Evolução: lista de "manter assim" por desenho.
+  const ACENTUADOS = ('João José Antônio Antônia Jéssica Letícia Patrícia Fabrícia Fabrício Júlia Júlio Lúcia Lúcio Márcia Márcio Mário Sílvia Sílvio Cláudia Cláudio Cíntia Cássia Cássio Valéria Valério Vitória Vinícius Rogério Sérgio André Andréia Andréa Amélia Ângela Ângelo Bárbara Bráulio Cecília Célia Célio César Cléber Dâmaris Débora Denílson Érica Érika Fábio Fátima Fernão Flávia Flávio Gílson Geórgia Hélio Hélder Heloísa Inês Ítalo Jacó Jônatas Josué Juçara Kátia Lázaro Léa Lêda Leônidas Lídia Lívia Luíza Luís Maurício Mônica Nádia Nélson Noêmia Pâmela Pérola Raíssa Rúbia Rúbens Simão Tâmara Teófilo Tomé Vânia Verônica Zélia Gonçalves Conceição Araújo Assunção Ávila Benício Brandão Cândido Estêvão Guimarães Magalhães Mendonça Moisés Nóbrega Paixão Simões Sebastião Salomão Esteves Ferrão Leão Mourão Alcântara Amâncio Aníbal Atílio Cézar Fidélis Galvão Lourenço Marçal Sá').split(' ');
+  const ACENTO_MAP = new Map(ACENTUADOS.map(n => [norm(n), n]));
+  const SEM_ACENTO = new Set(['moraes', 'praes', 'baraes', 'chaves']); // sobrenomes que terminam em -aes/-oes mas se escrevem assim
+  const ACENTO_FIM = { ao: 'ão', oes: 'ões', aes: 'ães' };
+  const acentoDe = w => { // devolve a palavra com acento, ou null se não há suspeita
+    const n = norm(w); if (n !== w.toLowerCase()) return null; // já tem acento ou ç: a pessoa já cuidou
+    let s = ACENTO_MAP.get(n);
+    if (!s && n.length >= 5 && !SEM_ACENTO.has(n)) { const m = n.match(/(ao|oes|aes)$/); if (m) s = n.slice(0, -m[1].length) + ACENTO_FIM[m[1]]; }
+    if (!s) return null;
+    s = s.toLowerCase();
+    return w === w.toUpperCase() && w.length > 1 ? s.toUpperCase() : w[0] === w[0].toUpperCase() ? s[0].toUpperCase() + s.slice(1) : s;
+  };
+  const acentosEm = text => { const seen = new Set(); return String(text).split(/\s+/).filter(Boolean).map(w => ({ de: w, para: acentoDe(w) })).filter(a => a.para && !seen.has(a.de) && seen.add(a.de)); };
   const download = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
   const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
   const fb = () => import('../firebase-client.js');
@@ -360,7 +377,7 @@
   // devolve a decisão guardada de um desenho (ou null se ele está como veio do ZIP)
   const workOf = item => {
     const kids = (state.index && state.index.get(item.key)) || [], kid = item.choice != null ? kids[item.choice] : null;
-    const e = { k: item.key !== item.key0 ? item.key : undefined, c: kid ? kid.nome : item.wKid || undefined, o: item.over || undefined, v: item.view || undefined, s: item.skip ? 1 : undefined };
+    const e = { k: item.key !== item.key0 ? item.key : undefined, c: kid ? kid.nome : item.wKid || undefined, o: item.over || undefined, v: item.view || undefined, s: item.skip ? 1 : undefined, a: item.keep && item.keep.length ? item.keep : undefined };
     Object.keys(e).forEach(k => e[k] === undefined && delete e[k]);
     return Object.keys(e).length ? e : null;
   };
@@ -372,7 +389,7 @@
     let n = 0;
     state.items.forEach(it => {
       const e = state.work[it.file]; if (!e) return; n++;
-      if (e.k) it.key = e.k; if (e.o) it.over = e.o; if (e.v) it.view = e.v; if (e.s) it.skip = true; if (e.c) it.wKid = e.c;
+      if (e.k) it.key = e.k; if (e.o) it.over = e.o; if (e.v) it.view = e.v; if (e.s) it.skip = true; if (e.c) it.wKid = e.c; if (e.a) it.keep = e.a;
     });
     resolveKids();
     if (n) $('mgWorkState').textContent = 'Trabalho salvo retomado em ' + n + (n === 1 ? ' desenho' : ' desenhos');
@@ -402,10 +419,10 @@
       info.append(t, m); row.append(info, open, del); list.append(row);
     });
     $('mgLoteSave').disabled = !!state.loteId || !state.files.sheet || !state.files.zip || !state.items.length || !state.index;
+    const n = state.lotes.itens.length; $('mgLotesState').textContent = n ? n + (n === 1 ? ' trabalho salvo' : ' trabalhos salvos') : 'Nenhum trabalho salvo';
   }
   async function loadLotes() {
-    try { state.lotes = await (await fbw()).readMoldurasLotes(); } catch (_) { $('mgLoteState').textContent = 'Não foi possível carregar os conjuntos salvos'; }
-    renderLotes();
+    try { state.lotes = await (await fbw()).readMoldurasLotes(); } catch (_) { $('mgLoteState').textContent = 'Não foi possível carregar os conjuntos salvos'; }    renderLotes();
   }
   const askLoteName = () => new Promise(ok => {
     const modal = $('mgLoteName'), input = $('lnInput');
@@ -489,7 +506,7 @@
       });
       const items = [], unreadable = [];
       for (let i = 0; i < entries.length; i++) {
-        const entry = entries[i], name = entry.name.split('/').pop(), stem = name.replace(/\.[^.]+$/, ''), m = stem.match(/^\s*(\d+)/), key = keyOf(m ? m[1] : stem);
+        const entry = entries[i], name = entry.name.split('/').pop(), stem = name.replace(/\.[^.]+$/, ''), m = stem.match(/^\s*(?:FG[\s_-]*)?(\d+)/i), key = keyOf(m ? m[1] : stem);
         if (!PDF_EXT.test(name)) { items.push({ id: items.length, file: name, key, key0: key, entry, choice: null, skip: false }); continue; }
         st.textContent = 'Lendo PDF ' + (i + 1) + ' de ' + entries.length;
         try { (await openPdf(entry)).destroy(); } catch (_) { unreadable.push(name); continue; } // confere que o PDF abre
@@ -516,7 +533,9 @@
 
   const STATUS_LABEL = { ok: 'Pronto', choose: 'Escolher o filho', missing: 'Matrícula não encontrada', skip: 'Descartado' };
   const textOf = (item, st) => { const r = st.rec; return r ? r.nome + (r.idade ? ', ' + r.idade : '') + ', filho(a) de ' + r.colab : 'Matrícula ' + item.key; };
-  const badgeOf = (item, st) => { const warn = st.s === 'choose' || st.s === 'missing'; return warn || st.s === 'skip' ? '<span class="mg-badge' + (warn ? ' is-warn' : '') + '">' + STATUS_LABEL[st.s] + '</span>' : (item.over || item.view ? '<span class="mg-badge">Editado</span>' : ''); };
+  const acList = (item, st) => st.s === 'ok' && st.rec ? acentosEm(st.rec.nome + ' ' + st.rec.colab).filter(a => !(item.keep || []).includes(a.de)) : []; // item.keep: palavras que a pessoa mandou manter como estão
+  const acBadge = (item, st) => { const l = acList(item, st); return l.length ? '<span class="mg-badge is-attn" title="' + esc(l.map(a => a.de + ' → ' + a.para).join(', ')) + '">Revisar acentos</span>' : ''; };
+  const badgeOf = (item, st) => { const warn = st.s === 'choose' || st.s === 'missing'; return (warn || st.s === 'skip' ? '<span class="mg-badge' + (warn ? ' is-warn' : '') + '">' + STATUS_LABEL[st.s] + '</span>' : (item.over || item.view ? '<span class="mg-badge">Editado</span>' : '')) + acBadge(item, st); };
   const headOf = (item, st) => '<span class="mg-qdot" aria-hidden="true"></span><span class="mg-qmain"><strong>' + esc(item.file) + '</strong><small>' + esc(textOf(item, st)) + '</small></span>' + badgeOf(item, st);
   const PEN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
   const rowClass = (item, st) => 'mg-qrow is-' + st.s + (item === ed.item ? ' is-sel' + (ed.open ? ' is-open' : '') : '');
@@ -528,27 +547,35 @@
     const ready = !!(state.index && state.items.length);
     const sts = state.items.map(item => ({ item, st: statusOf(item) }));
     const pending = ready ? sts.filter(x => x.st.s === 'choose' || x.st.s === 'missing') : [], oks = ready ? sts.filter(x => x.st.s === 'ok') : [];
+    [['sheetFile', state.index && state.files.sheet], ['zipFile', state.items.length && state.files.zip]].forEach(([id, f]) => { // ícone e nome do arquivo lido
+      $(id).hidden = !f; if (f) $(id).querySelector('.mg-file-name').textContent = f.name;
+    });
     $('mgExportRow').hidden = !ready; $('mgWorkClear').hidden = !ready || !state.loteId; $('mgLoteSave').disabled = !!state.loteId || !state.files.sheet || !state.files.zip || !ready;
     $('mgResultCount').textContent = ready ? sts.length + ' desenhos, ' + oks.length + ' prontos' + (pending.length ? ', ' + pending.length + (pending.length === 1 ? ' pendente' : ' pendentes') : '') : '';
     $('mgExport').disabled = !oks.length || !!pending.length;
     $('mgFilterPending').textContent = 'Pendentes (' + pending.length + ')';
-    return { ready, sts, pending };
+    const review = ready ? sts.filter(x => acList(x.item, x.st).length) : []; // nomes que podem ter perdido o acento
+    $('mgFilterReview').textContent = 'Revisão (' + review.length + ')';
+    return { ready, sts, pending, review };
   }
   // os campos de edição são um só elemento que mora na linha selecionada; antes de refazer a lista ele sai para um depósito para não ser destruído
   const attachFields = () => { const row = document.querySelector('#mgResultList .mg-qrow.is-sel'); if (row) row.querySelector('.mg-qinner').appendChild($('mgEdFields')); };
+  let wasReady = false;
   function refreshAll() {
-    const { ready, sts, pending } = summary();
+    const { ready, sts, pending, review } = summary();
     $('mgEmpty').hidden = ready; $('mgWork').hidden = !ready;
+    if (ready && !wasReady) $('mgResult').open = true; // planilha e ZIP prontos: abre a conferência
+    wasReady = ready;
     if (!ready) { // os desenhos vêm do ZIP: sem ele (ou sem a planilha) não há o que conferir
       const noSheet = !state.index, noZip = !state.items.length;
-      $('mgEmpty').textContent = noSheet && noZip ? 'Envie a planilha e o ZIP com os desenhos na etapa 2. Cada desenho aparece aqui, um a um, para você conferir e editar.'
-        : noZip ? 'A planilha já foi lida. Falta enviar o ZIP com os desenhos na etapa 2: eles aparecem aqui, um a um, para você conferir e editar.'
-        : 'Os desenhos já foram lidos. Falta enviar a planilha na etapa 2 para cruzar as matrículas.';
+      $('mgEmpty').textContent = noSheet && noZip ? 'Envie a planilha na etapa 3 e o ZIP com os desenhos na etapa 4. Cada desenho aparece aqui, um a um, para você conferir e editar.'
+        : noZip ? 'A planilha já foi lida. Falta enviar o ZIP com os desenhos na etapa 4: eles aparecem aqui, um a um, para você conferir e editar.'
+        : 'Os desenhos já foram lidos. Falta enviar a planilha na etapa 3 para cruzar as matrículas.';
       ed.item = null; return;
     }
     document.querySelectorAll('#mgFilter button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.filter === state.filter)));
     $('mgEdHold').appendChild($('mgEdFields'));
-    $('mgResultList').innerHTML = (state.filter === 'pending' ? pending : sts).map(rowOf).join('') || '<p class="mg-empty-state">Nenhum desenho pendente</p>';
+    $('mgResultList').innerHTML = (state.filter === 'pending' ? pending : state.filter === 'review' ? review : sts).map(rowOf).join('') || '<p class="mg-empty-state">' + (state.filter === 'review' ? 'Nenhum desenho para revisar' : 'Nenhum desenho pendente') + '</p>';
     attachFields();
     if (!ed.item || !state.items.includes(ed.item)) selectItem((pending[0] || sts[0]).item); // abre o primeiro pendente (ou o primeiro desenho)
   }
@@ -578,6 +605,27 @@
   }
   bindChips($('edNomeChips'), () => ed.nomeFull, $('edNome'));
   bindChips($('edColabChips'), () => ed.colabFull, $('edColab'));
+  // tags amarelas de possível falta de acento, com Corrigir (troca a palavra no campo e nos botões de palavras) e Manter (a palavra está certa: sai da revisão)
+  let acKey = '';
+  function renderAcentos() {
+    const keep = ed.item.keep || [], ok = a => !keep.includes(a.de), nome = acentosEm($('edNome').value).filter(ok), colab = acentosEm($('edColab').value).filter(ok), key = JSON.stringify([nome, colab]);
+    if (key === acKey) return; acKey = key;
+    [['edNomeAc', nome, 'nome'], ['edColabAc', colab, 'colab']].forEach(([id, list, f]) => {
+      $(id).innerHTML = list.map(a => '<span class="mg-badge is-attn">Possível acento: ' + esc(a.de) + ' → ' + esc(a.para) + '<button type="button" data-act="fix" data-f="' + f + '" data-de="' + esc(a.de) + '" data-para="' + esc(a.para) + '">Corrigir</button><button type="button" data-act="keep" data-de="' + esc(a.de) + '">Manter</button></span>').join('');
+    });
+  }
+  ['edNomeAc', 'edColabAc'].forEach(id => $(id).addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || !ed.item) return;
+    if (b.dataset.act === 'keep') (ed.item.keep || (ed.item.keep = [])).push(b.dataset.de);
+    else {
+      const isN = b.dataset.f === 'nome', input = $(isN ? 'edNome' : 'edColab'), fix = s => s.split(/\s+/).map(w => w === b.dataset.de ? b.dataset.para : w).join(' ');
+      input.value = fix(input.value);
+      if (isN) ed.nomeFull = fix(ed.nomeFull); else ed.colabFull = fix(ed.colabFull);
+      renderChips($(isN ? 'edNomeChips' : 'edColabChips'), isN ? ed.nomeFull : ed.colabFull, input);
+    }
+    drawEditor(); commit(); // grava já: a tag some da linha e o contador do filtro Revisão atualiza
+    if (state.filter === 'review') refreshAll(); // no filtro Revisão a linha sai da lista
+  }));
   $('edIdade').addEventListener('input', () => { drawEditor(); scheduleCommit(); });
 
   // grava o que está nos campos no desenho (adiado 250 ms para juntar teclas e arrastos; trocar de desenho grava antes)
@@ -601,12 +649,49 @@
     ed.nomeFull = titleCase(kids[i].nome); ed.colabFull = titleCase(kids[i].colab);
     $('edNome').value = r.nome; $('edIdade').value = r.idade; $('edColab').value = r.colab;
   }
+  // verso: 2ª página do mesmo PDF, só para reconhecer a criança pelo nome escrito à mão; não entra na moldura nem na exportação
+  let versoSeq = 0, versoItem = null, versoSrc = null;
+  const versoModal = $('mgVerso');
+  // pinta o verso girado como o desenho principal (ed.view.r, em quartos de volta) na miniatura e, se aberto, no modal
+  function syncVerso() {
+    if (!versoSrc) return;
+    const r = (ed.view.r || 0) % 4, w = versoSrc.width, h = versoSrc.height;
+    [$('edVerso'), $('vmCanvas')].forEach(c => {
+      c.width = r % 2 ? h : w; c.height = r % 2 ? w : h;
+      const x = c.getContext('2d'); x.translate(c.width / 2, c.height / 2); x.rotate(r * Math.PI / 2); x.drawImage(versoSrc, -w / 2, -h / 2);
+    });
+  }
+  const closeVerso = () => { versoModal.style.display = ''; versoModal.setAttribute('aria-hidden', 'true'); };
+  const openVerso = () => { versoModal.style.display = 'flex'; versoModal.setAttribute('aria-hidden', 'false'); $('vmClose').focus(); };
+  $('edVerso').addEventListener('click', openVerso);
+  $('edVerso').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openVerso(); } });
+  $('vmClose').addEventListener('click', closeVerso);
+  versoModal.addEventListener('mousedown', e => { if (e.target === versoModal) closeVerso(); });
+  PortalShell.wireModalA11y(versoModal, closeVerso);
+  async function drawVerso(item) {
+    if (item === versoItem) return;
+    const box = $('edVersoBox'), seq = ++versoSeq; box.hidden = true; versoItem = versoSrc = null; closeVerso();
+    if (!item.page) return;
+    try {
+      const doc = await openPdf(item.entry);
+      try {
+        if (doc.numPages < 2) return;
+        const page = await doc.getPage(2), v0 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: Math.min(3, 1600 / Math.max(v0.width, v0.height)) });
+        const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        if (seq !== versoSeq) return; // o usuário já trocou de desenho
+        versoItem = item; versoSrc = c; box.hidden = false; syncVerso();
+      } finally { doc.destroy(); }
+    } catch (_) { /* o verso é só ajuda visual: sem ele, segue sem avisar */ }
+  }
   async function selectItem(item, keep) {
-    flushCommit();
+    flushCommit(); drawVerso(item);
     if (!keep) { ed.open = false; ed.adjust = false; }
     if (ed.bitmap) ed.bitmap.close();
     const st = statusOf(item), kids = st.kids || [];
     ed.item = item; ed.view = { ...(item.view || DEFAULT_VIEW) }; ed.view.z = Math.max(1, ed.view.z); ed.fail = false; ed.bitmap = null; ed.frame = null;
+    syncVerso();
     $('mgEd').hidden = false; $('mgDetailEmpty').hidden = true;
     $('edKey').value = item.key;
     $('edKidWrap').hidden = !kids.length;
@@ -634,7 +719,25 @@
   }
   const edRec = () => ({ nome: $('edNome').value.trim(), idade: $('edIdade').value.trim(), colab: $('edColab').value.trim() });
   function syncZoom() { $('edZoom').value = Math.round(ed.view.z * 100); $('edZoomOut').textContent = Math.round(ed.view.z * 100) + '%'; }
+  function edRecord() { // texto que vai na peça agora
+    const r = edRec(), kids = (state.index && state.index.get(ed.item.key)) || [], provisional = !(r.nome && r.colab) && ed.kidIdx == null && kids.length > 1;
+    return { provisional, rec: r.nome && r.colab ? r : provisional ? recOf(kids[0]) : null }; // sem filho escolhido, a prévia usa o primeiro da planilha só para mostrar a tag
+  }
+  // lupa no canto da prévia: a peça (com moldura) ampliada num modal
+  const zoomModal = $('mgZoom');
+  const closeZoom = () => { zoomModal.style.display = ''; zoomModal.setAttribute('aria-hidden', 'true'); };
+  $('edMagnify').addEventListener('click', async () => {
+    if (!ed.item || !ed.bitmap || !ed.frame) return;
+    await fontsReady(ed.kind); if (!ed.item || !ed.frame) return;
+    const out = compose(ed.frame, effCfg(ed.kind), ed.bitmap, edRecord().rec, Math.min(1, 1800 / Math.max(ed.frame.w, ed.frame.h)), ed.view), c = $('zmCanvas');
+    c.width = out.width; c.height = out.height; c.getContext('2d').drawImage(out, 0, 0);
+    zoomModal.style.display = 'flex'; zoomModal.setAttribute('aria-hidden', 'false'); $('zmClose').focus();
+  });
+  $('zmClose').addEventListener('click', closeZoom);
+  zoomModal.addEventListener('mousedown', e => { if (e.target === zoomModal) closeZoom(); });
+  PortalShell.wireModalA11y(zoomModal, closeZoom);
   function drawEditor() { // adia o desenho para juntar vários eventos seguidos (arrastar, digitar)
+    if (ed.item) renderAcentos();
     if (!ed.item || ed.timer) return;
     ed.timer = setTimeout(async () => {
       ed.timer = 0; if (!ed.item) return;
@@ -642,8 +745,7 @@
       if (!ed.bitmap || !ed.frame) { c.hidden = true; hint.textContent = ed.fail ? 'Não foi possível abrir esta imagem' : ed.bitmap ? 'Falta a moldura em ' + ed.kind + '. Envie-a na etapa 1' : 'Carregando'; return; }
       c.hidden = false; await fontsReady(ed.kind);
       if (!ed.item) return;
-      const r = edRec(), kids = (state.index && state.index.get(ed.item.key)) || [], provisional = !(r.nome && r.colab) && ed.kidIdx == null && kids.length > 1;
-      const rec = r.nome && r.colab ? r : provisional ? recOf(kids[0]) : null; // sem filho escolhido, a prévia usa o primeiro da planilha só para mostrar a tag
+      const { rec, provisional } = edRecord();
       hint.textContent = provisional ? 'Prévia com o primeiro filho da planilha. Escolha o filho certo ao lado para confirmar' : rec ? (ed.adjust ? 'Arraste para mover, use a roda do mouse ou o zoom para ampliar. Duplo clique no desenho para travar' : 'Duplo clique no desenho para ajustar o zoom e a posição') : 'Matrícula fora da planilha: corrija a matrícula ou preencha o nome e o colaborador ao lado';
       const out = compose(ed.frame, effCfg(ed.kind), ed.bitmap, rec, Math.min(1, 800 / Math.max(ed.frame.w, ed.frame.h)), ed.view);
       c.width = out.width; c.height = out.height; c.getContext('2d').drawImage(out, 0, 0);
@@ -666,12 +768,12 @@
   });
   const endDrag = e => { if (ed.drag) scheduleCommit(); ed.drag = null; e.target.classList.remove('is-drag'); };
   $('edCanvas').addEventListener('pointerup', endDrag); $('edCanvas').addEventListener('pointercancel', endDrag);
-  $('edReset').addEventListener('click', () => { ed.view = { ...DEFAULT_VIEW }; if (ed.bitmap) { ed.kind = kindFor(ed.bitmap, 0); ed.frame = frameOf(ed.kind); } syncZoom(); drawEditor(); scheduleCommit(); });
+  $('edReset').addEventListener('click', () => { ed.view = { ...DEFAULT_VIEW }; if (ed.bitmap) { ed.kind = kindFor(ed.bitmap, 0); ed.frame = frameOf(ed.kind); } syncZoom(); syncVerso(); drawEditor(); scheduleCommit(); });
   const rotate = d => { // gira 90°; com os dois formatos ligados o desenho passa para a moldura do outro formato
     if (!ed.item) return;
     ed.view.r = ((ed.view.r || 0) + d + 4) % 4; ed.view.x = ed.view.y = 0;
     if (ed.bitmap) { ed.kind = kindFor(ed.bitmap, ed.view.r); ed.frame = frameOf(ed.kind); }
-    drawEditor(); scheduleCommit();
+    syncVerso(); drawEditor(); scheduleCommit();
   };
   $('edRotL').addEventListener('click', () => rotate(-1)); $('edRotR').addEventListener('click', () => rotate(1));
   $('edKid').addEventListener('change', e => {
@@ -685,9 +787,16 @@
   });
   $('edSkip').addEventListener('click', () => { const it = ed.item; if (!it) return; it.skip = !it.skip; $('edSkip').textContent = it.skip ? 'Restaurar desenho' : 'Descartar desenho'; refreshAll(); saveWork(); });
   $('mgLoteSave').addEventListener('click', saveLote);
+  document.querySelectorAll('.mg-file-x').forEach(b => b.addEventListener('click', e => { // x no ícone: tira o arquivo para enviar outro
+    e.preventDefault(); e.stopPropagation();
+    unlinkLote(); $('mgLoteState').textContent = '';
+    if (b.dataset.clear === 'sheet') { state.files.sheet = null; state.index = null; $('fileSheet').value = ''; $('sheetState').textContent = 'Nenhuma planilha'; }
+    else { state.files.zip = null; state.items = []; $('fileZip').value = ''; $('zipState').textContent = 'Nenhum ZIP'; }
+    ed.item = null; refreshAll();
+  }));
   $('mgWorkClear').addEventListener('click', () => { // apaga as decisões salvas (de todos os desenhos) e volta ao que veio do ZIP e da planilha
     if (!state.loteId || !confirm('Apagar todos os ajustes salvos deste conjunto (filhos escolhidos, textos, zoom, giro e descartados)? Isso vale para todos os administradores.')) return;
-    state.items.forEach(it => { it.key = it.key0; it.choice = null; it.wKid = null; it.over = null; it.view = null; it.skip = false; });
+    state.items.forEach(it => { it.key = it.key0; it.choice = null; it.wKid = null; it.over = null; it.view = null; it.skip = false; it.keep = null; });
     state.work = {}; ed.item = null; refreshAll();
     fbw().then(m => m.writeMoldurasWork(state.loteId, { items: {} })).then(() => { $('mgWorkState').textContent = 'Ajustes salvos apagados'; }).catch(() => { $('mgWorkState').textContent = 'Não foi possível apagar o trabalho salvo'; });
   });
@@ -695,8 +804,13 @@
     const b = e.target.closest('.mg-qhead, .mg-qedit'), r = b && b.closest('.mg-qrow'); if (!r) return;
     const it = state.items.find(x => x.id === +r.dataset.id); if (!it) return;
     const same = it === ed.item; if (!same) selectItem(it);
-    if (b.classList.contains('mg-qedit')) { ed.open = same ? !ed.open : true; markSel(); } // o lápis abre ou fecha a edição
+    if (b.classList.contains('mg-qedit') || e.target.closest('.mg-badge.is-warn, .mg-badge.is-attn')) { ed.open = same ? !ed.open : true; markSel(); } // o lápis e as etiquetas vermelha e amarela abrem ou fecham a edição
     else if (same && ed.open) { ed.open = false; markSel(); } // clicar de novo no topo da linha aberta fecha
+  });
+  $('mgResultList').addEventListener('dblclick', e => { // duplo clique na linha abre a edição, como o lápis
+    const h = e.target.closest('.mg-qhead'), r = h && h.closest('.mg-qrow'), it = r && state.items.find(x => x.id === +r.dataset.id); if (!it) return;
+    if (it !== ed.item) selectItem(it);
+    ed.open = true; markSel();
   });
   $('mgResultList').addEventListener('keydown', e => { // setas sobem e descem na lista
     if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || !e.target.closest('.mg-qhead')) return;
@@ -818,7 +932,6 @@
       for (const k of KINDS) { const url = await m.readMoldura(k); if (url) { try { await setFrame(k, url); } catch (e) { if (!e.format) throw e; wrong.push(k); } } }
       const have = enabledKinds().filter(k => state.frames[k]);
       $('mgFramesState').textContent = wrong.length ? 'A moldura salva em ' + wrong.join(' e ') + ' tem o formato trocado e foi ignorada: envie de novo' : have.length ? 'Molduras salvas: ' + have.join(' e ') : 'Nenhuma moldura salva';
-      $('mgFrames').open = have.length < enabledKinds().length; // configuração pronta: recolhe e deixa o fluxo do dia a dia em foco
     } catch (e) { $('mgFramesState').textContent = 'Não foi possível carregar as molduras salvas'; }
     applyFormats(); loadLotes();
   })();

@@ -19,7 +19,7 @@
     const main = new DOMParser().parseFromString(html, 'text/html').querySelector('main');
     main.querySelectorAll('script').forEach(s => s.remove());
     const doc2 = new DOMParser().parseFromString(html, 'text/html');
-    document.getElementById('host').innerHTML = main.outerHTML + doc2.querySelector('#mgFormat').outerHTML + doc2.querySelector('#mgLoteName').outerHTML;
+    document.getElementById('host').innerHTML = main.outerHTML + doc2.querySelector('#mgFormat').outerHTML + doc2.querySelector('#mgLoteName').outerHTML + doc2.querySelector('#mgVerso').outerHTML + doc2.querySelector('#mgZoom').outerHTML;
     document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="../styles.css"><link rel="stylesheet" href="../molduras/molduras-generator.css">');
     await lib('molduras/molduras-generator.js');
     const $ = id => document.getElementById(id);
@@ -43,7 +43,7 @@
     eq(document.querySelector('#mgKind button').dataset.kind, 'paisagem', 'Paisagem vem primeiro');
     eq(document.querySelector('#mgSlots').dataset.kind, 'paisagem', 'mini moldura começa em paisagem');
 
-    eq(/Envie a planilha e o ZIP/.test($('mgEmpty').textContent), true, 'etapa 3 já começa explicando o que fazer');
+    eq(/Envie a planilha na etapa 3 e o ZIP/.test($('mgEmpty').textContent), true, 'a conferência já começa explicando o que fazer');
 
     // 1) moldura retrato 600x800: azul com miolo transparente (50,150,500x600)
     const frame = await canvasBlob(600, 800, (x, w, h) => { x.fillStyle = '#1d4ed8'; x.fillRect(0, 0, w, h); x.clearRect(50, 150, 500, 600); });
@@ -131,12 +131,17 @@
     eq($('sheetState').textContent, '3 filhos de 2 colaboradores', 'contagem da planilha');
     eq(/Falta enviar o ZIP/.test($('mgEmpty').textContent), true, 'só com a planilha, a etapa 3 explica que falta o ZIP: ' + $('mgEmpty').textContent);
     eq($('mgExportRow').hidden, true, 'sem desenhos não há botão de baixar');
+    eq($('sheetFile').hidden, false, 'planilha lida mostra o ícone do arquivo');
+    document.querySelector('[data-clear="sheet"]').click(); await wait(50);
+    eq($('sheetFile').hidden && $('sheetState').textContent === 'Nenhuma planilha', true, 'o x remove a planilha');
+    setFile('fileSheet', new File([csv], 'filhos.csv', { type: 'text/csv' })); // mesmo arquivo de novo
+    await until(() => /filhos de/.test($('sheetState').textContent), 'planilha reenviada');
 
     // 3) ZIP: 123 (paisagem, 2 filhos), 456 (retrato, zeros à esquerda), 999 (fora da planilha) + lixo do macOS
     await lib('vendor/jszip.min.js');
     const z = new JSZip();
     z.file('123.jpg', await canvasBlob(400, 300, x => { x.fillStyle = '#16a34a'; x.fillRect(0, 0, 400, 300); }));
-    z.file('desenhos/456 (2).png', await canvasBlob(300, 400, x => { x.fillStyle = '#dc2626'; x.fillRect(0, 0, 300, 400); }));
+    z.file('desenhos/FG456 (2).png', await canvasBlob(300, 400, x => { x.fillStyle = '#dc2626'; x.fillRect(0, 0, 300, 400); }));
     z.file('999.png', await canvasBlob(300, 400, x => { x.fillStyle = '#000'; x.fillRect(0, 0, 300, 400); }));
     z.file('__MACOSX/._123.jpg', 'x'); z.file('leia-me.txt', 'x');
     setFile('fileZip', new File([await z.generateAsync({ type: 'blob' })], 'desenhos.zip'));
@@ -155,6 +160,10 @@
     eq(selRow().classList.contains('is-open') && selRow().querySelector('.mg-qedit').getAttribute('aria-expanded') === 'true' && !selRow().querySelector('.mg-qcollapse').inert, true, 'o lápis abre a edição');
     selRow().querySelector('.mg-qedit').click(); await wait(100);
     eq(selRow().classList.contains('is-open'), false, 'o lápis de novo fecha');
+    selRow().querySelector('.mg-qhead').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); await wait(100);
+    eq(selRow().classList.contains('is-open'), true, 'duplo clique na linha abre a edição');
+    selRow().querySelector('.mg-qedit').click(); await wait(100);
+    const tag = selRow().querySelector('.mg-badge.is-warn'); if (tag) { tag.click(); await wait(100); eq(selRow().classList.contains('is-open'), true, 'a etiqueta vermelha abre a edição'); selRow().querySelector('.mg-qedit').click(); await wait(100); }
     selRow().querySelector('.mg-qedit').click(); await wait(100);
     selRow().querySelector('.mg-qhead').click(); await wait(100);
     eq(selRow().classList.contains('is-open'), false, 'clicar de novo no topo da linha aberta fecha');
@@ -232,6 +241,26 @@
     eq(/Editado/.test(rowOf('456').querySelector('.mg-qhead').textContent), true, 'zoom marca o desenho como editado');
     await pick('123.jpg'); await pick('456');
     eq($('edZoomOut').textContent, '400%', 'ao voltar ao desenho o zoom continua guardado');
+    for (let i = 0; i < 30 && $('mgZoom').style.display !== 'flex'; i++) { $('edMagnify').click(); await wait(150); } // a lupa ignora o clique enquanto a imagem do desenho ainda carrega
+    eq($('mgZoom').style.display, 'flex', 'lupa abre a peça ampliada');
+    eq($('zmCanvas').width >= $('edCanvas').width && $('zmCanvas').width > 0, true, 'a ampliação tem ao menos o tamanho da prévia');
+    $('zmClose').click(); eq($('mgZoom').style.display, '', 'o x fecha a ampliação');
+    eq(/Revisar acentos/.test(rowOf('456').querySelector('.mg-qhead').textContent), true, 'JOAO sem acento ganha a tag amarela na lista');
+    eq($('mgFilterReview').textContent, 'Revisão (1)', 'o filtro Revisão conta os desenhos com tag amarela: ' + $('mgFilterReview').textContent);
+    $('mgFilterReview').click(); await wait(100);
+    eq(document.querySelectorAll('#mgResultList .mg-qrow').length, 1, 'o filtro Revisão mostra só o desenho com tag amarela');
+    $('mgFilter').querySelector('[data-filter="all"]').click(); await wait(100);
+    selRow().classList.contains('is-open') && selRow().querySelector('.mg-qedit').click(); await wait(100); // garante a linha fechada
+    rowOf('456').querySelector('.mg-badge.is-attn').click(); await wait(100);
+    eq(rowOf('456').classList.contains('is-open'), true, 'a etiqueta amarela abre a edição');
+    const fixBtn = document.querySelector('#edColabAc button'); eq(!!fixBtn && /Joao → João/.test(fixBtn.parentElement.textContent), true, 'o editor sugere Joao → João');
+    fixBtn.click(); await wait(500);
+    eq($('edColab').value, 'João Pereira', 'Corrigir troca a palavra no campo');
+    eq(/Revisar acentos/.test(rowOf('456').querySelector('.mg-qhead').textContent), false, 'corrigido, a tag some');
+    $('edColab').value = 'Joao Pereira'; $('edColab').dispatchEvent(new Event('input')); await wait(400); // volta a palavra sem acento
+    const keepBtn = document.querySelector('#edColabAc button[data-act="keep"]'); eq(!!keepBtn, true, 'a tag volta com Corrigir e Manter');
+    keepBtn.click(); await wait(300);
+    eq(/Revisar acentos/.test(rowOf('456').querySelector('.mg-qhead').textContent) || $('mgFilterReview').textContent !== 'Revisão (0)', false, 'Manter tira a palavra da revisão: ' + $('mgFilterReview').textContent);
 
     // 5) exportar: a 123 é paisagem e não há moldura paisagem -> avisa; a 456 sai
     $('mgExport').click();
@@ -257,7 +286,11 @@
     eq(rowsPdf.some(t => /123\.pdf/.test(t)) && !rowsPdf.some(t => /página/.test(t)), true, 'verso não vira desenho: ' + rowsPdf.join(' | ').slice(0, 200));
     await pick('123.pdf'); await wait(600);
     eq(/primeiro filho da planilha/.test($('edHint').textContent), true, 'sem filho escolhido a prévia mostra a tag com o primeiro da planilha: ' + $('edHint').textContent);
+    await until(() => !$('edVersoBox').hidden, 'verso do PDF de 2 páginas');
+    const vp = $('edVerso').getContext('2d').getImageData(10, 10, 1, 1).data;
+    eq(vp[2] > 200 && vp[0] < 100, true, 'o verso mostra a 2ª página (azul): ' + [...vp]);
     await pick('0456.pdf');
+    eq($('edVersoBox').hidden, true, 'PDF de 1 página não mostra verso');
     await until(() => !$('edCanvas').hidden && $('edCanvas').width > 0, 'preview com a página do PDF');
     await wait(500);
     const pe = $('edCanvas').getContext('2d').getImageData(300, 450, 1, 1).data;
