@@ -66,6 +66,7 @@ Padrão do Gerador de Consolidado, reaproveitado no Gerador de Cartazes, em Data
 - Soltar não pode disparar o clique do elemento (engolir o próximo clique).
 - Todo arrastar tem alternativa por teclado: **Alt+↑/↓** e itens no menu ⋮.
 - Toda reordenação entra no desfazer (Ctrl+Z).
+- **Reordenar grupos** (marcas na lista de páginas do Gerador de Cartazes): arrasta o cabeçalho do grupo, com os itens abertos recolhidos; o menu da lista traz "Mover para cima/baixo" e a volta à ordem original (a da planilha) ou A–Z. Quem rola no arrasto é a lista, não o painel.
 
 ## 5. Ícones e controles pequenos
 
@@ -75,6 +76,8 @@ Padrão do Gerador de Consolidado, reaproveitado no Gerador de Cartazes, em Data
 
 - **Painéis de configuração** (referência: "Configurações do cartaz", `.cfg-*` em `cartaz/generator.css`): seções numeradas (01, 02…), cada uma um dropdown fechado por padrão (`.cfg-sec`, animação do §1), com **prévia ao vivo** ao lado quando houver resultado visual; ligar/desligar por **switch** (`.cfg-switch`, amarelo ligado); escolha entre poucas opções por **segmentado** (`.cfg-seg`); cor em quadradinho ao lado do campo; texto de ajuda pequeno e cinza abaixo do título; aviso em `--cg-accent`.
 
+- **Menu no card da prévia** (Gerador de Cartazes): botão ⋮ no canto superior direito, visível ao passar o mouse, no foco do teclado e sempre em telas de toque; some na impressão e na exportação. Se o canto tiver um aviso, o botão desce.
+- **Logo de marca** (Gerador de Cartazes): o tamanho automático é equilibrado por área (`CartazCards.logoSize`). Duplo clique, Enter ou Espaço abre o ajuste (moldura tracejada em todos os boxes da marca); roda do mouse ou + / − de 50% a 200% dentro do box, 0 volta ao automático, Esc ou clique fora encerra. Entra no Ctrl+Z.
 - **Alertas na lista lateral** (Gerador de Cartazes): triângulo vermelho (`.bc-cut`, `#ef6b5b`) no item que tem problema, ao lado do menu ⋯; clicar abre o modal que resolve. Ação reversível ganha um botão circular amarelo (`.bc-undo`, `#F6BE00`) com a seta de desfazer, só na lista, nunca na prévia da folha.
 - **Modal de decisão** (`<dialog class="cg-dialog">`): título, texto curto com a contagem do problema e dois botões — o que não muda nada ("Tratar na planilha") e o que aplica (`.save-grid`, amarelo). Fechar no × não altera nada. A ação aplicada entra no Ctrl+Z.
 - **Foto ao lado do QR** (cards Live Shop, comuns e destaque): a foto é uma caixa que cresce e encolhe com o zoom (roda do mouse, 0,5x a 2x, depois de duplo clique); o corpo do card é centralizado, então o QR cede espaço sozinho e o conjunto continua no meio. Arrastar a foto ou usar ← → (Shift = passo maior) afasta foto e QR em sentidos opostos até a borda do corpo; a posição fica na grade salva. Com os lados trocados (segurar e arrastar) o sentido se inverte. Foto em edição nunca dispara a troca de lados.

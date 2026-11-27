@@ -33,7 +33,7 @@ PortalTour.register('gerador-qr', {
       summary: 'Do link de destino até baixar a imagem e salvar na biblioteca.',
       steps: [
         { target: '#openGenerator', click: true, when: () => !inForm(), done: genMenuOpen, title: 'Gerar QR Code', text: 'Clique em "Gerar QR Code" para ver as opções.' },
-        { target: '#genMenu [data-gen="manual"]', click: true, when: () => !inForm(), done: inForm, title: 'Manual', text: 'Clique em "Manual" para abrir o formulário. "Importar" cria vários de uma vez a partir de uma planilha. Nada vai ser salvo neste tutorial.' },
+        { target: '#genMenu [data-gen="manual"]', click: true, when: () => !inForm(), done: inForm, title: 'Manual', text: 'Clique em "Manual" para abrir o formulário. "Importar" cria vários de uma vez a partir de uma planilha: cada arquivo sai como ordem, nome, marca e divisão, usando as colunas "Nome na tela" e "Marca". A coluna "Nome do arquivo", se preenchida, troca o nome do item. Nada vai ser salvo neste tutorial.' },
         { target: '#qrName', interact: true, title: 'Nome do QR Code', text: 'Um nome para você achar depois na biblioteca. Exemplo: "Vagas terminal sul".' },
         { target: '#link', interact: true, title: 'Link de destino', text: 'Para onde o QR Code leva quem escanear. Cole um link completo, começando por https://. A prévia se atualiza sozinha.' },
         { target: '#color', interact: true, title: 'Cor principal', text: 'A cor do QR Code. Mantenha escuro sobre fundo claro: cor clara demais dificulta a leitura no celular.' },

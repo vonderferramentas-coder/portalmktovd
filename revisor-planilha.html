@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Revisor de Planilha</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="revisor-planilha/revisor-planilha.css">
+  <link rel="stylesheet" href="auth.css">
+  <script>document.documentElement.classList.add('auth-pending');</script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="auth-guard.js"></script>
+</head>
+
+<body>
+  <div class="portal-shell">
+    <aside class="portal-sidebar" id="portalSidebar"></aside>
+    <main class="portal-main rp-page">
+      <header class="page-header">
+        <div>
+          <span class="page-kicker">Diagramação</span>
+          <h1>Revisor de Planilha</h1>
+          <p class="page-subtitle">Suba a planilha do catálogo e veja, em português simples, o que mudou entre o valor de antes e o de depois. Produtos com a mesma mudança ficam juntos.</p>
+        </div>
+      </header>
+
+      <label class="rp-drop" id="rpDrop" for="rpFile">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+        <strong>Escolher a planilha .xlsx</strong>
+        <span>ou arraste o arquivo para cá. Ele é lido no seu navegador e não é enviado a nenhum servidor.</span>
+        <input id="rpFile" type="file" accept=".xlsx">
+      </label>
+      <p class="rp-meta" id="rpStatus" role="status"></p>
+      <p class="rp-error" id="rpError" role="alert" hidden></p>
+
+      <section class="rp-work" id="rpWork" hidden>
+        <div class="rp-cols">
+          <label>Código do produto<select id="rpId"></select></label>
+          <label>Produto (descrição)<select id="rpProd"></select></label>
+          <label>Coluna dos atributos<select id="rpCtx"></select></label>
+          <label>Ver só o atributo<select id="rpAttr"></select></label>
+          <label>Coluna do valor antigo<select id="rpOld"></select></label>
+          <label>Coluna do valor novo<select id="rpNew"></select></label>
+        </div>
+        <div class="rp-toolbar">
+          <input type="search" id="rpSearch" placeholder="Buscar uma mudança, ex.: Acrescentou" aria-label="Buscar uma mudança">
+          <label class="rp-check"><input type="checkbox" id="rpSplit"> Separar também por atributo</label>
+          <button class="btn ghost small" id="rpOpenAll" type="button">Abrir todos</button>
+          <button class="btn ghost small" id="rpCloseAll" type="button">Fechar todos</button>
+          <button class="btn" id="rpExport" type="button">Exportar .xlsx</button>
+        </div>
+        <p class="rp-meta" id="rpStats"></p>
+        <p class="rp-legend">Cada <strong>faixa cinza</strong> é um tipo de mudança e o número diz quantos produtos tiveram essa mesma mudança. Clique na faixa para ver os produtos. Em cada linha, <mark class="rp-del">vermelho riscado</mark> é o que saiu do valor antigo e <mark class="rp-ins">verde</mark> é o que entrou no valor novo; a coluna Diferença diz isso em uma frase.</p>
+        <div class="rp-head" aria-hidden="true"><span>Código</span><span>Produto</span><span>Valor antigo</span><span>Valor novo</span><span>Diferença</span></div>
+        <div class="rp-list" id="rpList" tabindex="0" aria-label="Linhas agrupadas pela diferença">
+          <div class="rp-spacer" id="rpSpacer"><div class="rp-win" id="rpWin"></div></div>
+        </div>
+        <p class="rp-empty" id="rpEmpty" hidden>Nenhum grupo encontrado para essa busca.</p>
+      </section>
+    </main>
+  </div>
+  <script src="portal-shell.js"></script>
+  <script src="revisor-planilha/revisor-planilha.js"></script>
+</body>
+
+</html>

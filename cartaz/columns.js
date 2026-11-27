@@ -18,7 +18,8 @@
     cols.ovd = pick(k => /cod|sku/.test(k) && !/barra|principal|fg|gtin/.test(k) && !OLD.test(k), k => /ovd/.test(k) && !/produto/.test(k))
       || pick(k => /ovd/.test(k));
     cols.productCode = pick(k => /ovd.*produto|produto.*ovd/.test(k));
-    cols.title = pick(k => /titulo|nome|descri|produto/.test(k) && !/cod|varia/.test(k), k => /titulo/.test(k));
+    // "Descrição" só vira título se não houver outra coluna de nome: senão ela fica livre para a tabela Descrição do Live Shop (cols.desc)
+    cols.title = pick(k => (/titulo/.test(k) || (/nome|produto/.test(k) && !/ovd|foto|imagem|linha|tipo|marca|link|url|categoria|grupo|familia/.test(k))) && !/cod|varia|descri/.test(k), k => /titulo/.test(k)) || pick(k => /descri/.test(k) && !/cod|varia/.test(k));
     cols.brand = pick(k => /marca/.test(k));
     cols.fg = pick(k => /cod/.test(k) && /fg/.test(k));
     cols.price = pick(k => /preco|valor/.test(k));

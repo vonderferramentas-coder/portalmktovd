@@ -1967,10 +1967,10 @@ button:disabled {
     z-index: 6;
     left: auto;
     right: 50px;
-    top: 30px;
+    top: 24px;
     bottom: auto;
-    width: 250px;
-    height: 95px;
+    width: 300px;
+    height: 124px; /* a grade começa em 165 px */
     margin-left: 0;
     pointer-events: none;
 }
@@ -1989,9 +1989,9 @@ button:disabled {
 }
 .sheet.a3::after {
     right: 56px;
-    top: 36px;
-    width: 365px;
-    height: 120px;
+    top: 30px;
+    width: 440px;
+    height: 180px; /* a grade começa em 245 px */
     margin-left: 0;
 }
 .sheet.a3,
@@ -2228,6 +2228,13 @@ button:disabled {
 .cfg-preview .cfg-hint { margin: 0; }
 .cfg-pv { --u: 1; position: relative; display: grid; grid-template-columns: repeat(2, var(--pw, 177px)); gap: 8px; justify-content: center; padding: 26px 10px 14px; border-radius: 8px; background: #003e55; pointer-events: none; overflow: hidden; }
 .cfg-pv .card.lb, .cfg-pv .lb-logobox, .cfg-pv .lb-ph-box { height: var(--ph, 187px); }
+.cfg-pv .lb-band { --cw: var(--pw, 177px); margin-top: 4px; }
+.cfg-pv.card-bands { --bh: 44px; }
+/* logos de marca na prévia: dois cliques abrem o ajuste de tamanho */
+#preview [data-logo] { pointer-events: auto; cursor: pointer; user-select: none; }
+#preview [data-logo].logo-editing { outline: 2px dashed #0c8794; outline-offset: -2px; cursor: ns-resize; }
+#preview [data-logo]:focus-visible { outline: 2px solid #0c8794; outline-offset: 2px; }
+@media print { #preview [data-logo].logo-editing, #preview [data-logo]:focus-visible { outline: 0; } }
 .cfg-pv .lb-ph-box { box-sizing: border-box; border: 1.5px dashed rgba(255,255,255,.35); border-radius: 12px; }
 .cfg-pv-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; height: 74px; overflow: hidden; }
 .cfg-pv-head div { display: grid; font: 900 12px/1 Swiss721, "Arial Narrow", Arial, sans-serif; min-width: 0; }
@@ -2376,12 +2383,13 @@ button:disabled {
 .sheet-label { margin: 14px 0 4px; color: #52636c; font: 700 12px/1 Arial, sans-serif; letter-spacing: .04em; text-transform: uppercase; }
 .lb-strip { position: absolute; z-index: 5; left: 0; right: 0; top: 0; height: calc(14px * var(--u)); }
 .card.lb h3 { font-size: calc(11.5px * var(--u)); }
-.card.lb .lb-table { font-size: calc(var(--tb, 7px) * var(--u)); line-height: 1.15; } /* --tb: fonte base da tabela (config tableSize) */
+.card.lb .lb-table { font-size: calc(var(--tb, 7px) * var(--u) * var(--tf, 1)); line-height: 1.15; } /* --tb: fonte base da tabela (config tableSize) */
 .card.lb .lb-qty { font-size: calc(6.6px * var(--u)); }
-.card.lb .lb-qr { width: calc(54px * var(--u) * var(--qk, 1)); aspect-ratio: 1; flex: none; cursor: pointer; }
+.card.lb.qty-top { --qb: 1.15; } /* quantidade mínima fora da coluna do QR: QR e botão ocupam o espaço liberado */
+.card.lb .lb-qr { width: var(--qw, calc(54px * var(--u) * var(--qk, 1) * var(--qb, 1))); aspect-ratio: 1; flex: none; cursor: pointer; }
 .card.lb .lb-qr .qr-svg { display: block; width: 100%; height: 100%; }
 .card.lb .lb-qr-missing { display: grid; place-items: center; padding: 4px; box-sizing: border-box; border: 1px dashed #9aa2a6; color: #687780; font: 600 calc(7px * var(--u))/1.2 Arial, sans-serif; text-align: center; }
-.card.lb .lb-btn { box-sizing: border-box; width: 100%; display: grid; place-items: center; text-align: center; padding: calc(1px * var(--u)) 2px calc(.5px * var(--u)); border: 1px solid #000; border-radius: 4px; text-align: center; font: 700 calc(6px * var(--u))/1.1 Arial, sans-serif; letter-spacing: -.02em; cursor: pointer; }
+.card.lb .lb-btn { box-sizing: border-box; width: 100%; display: grid; place-items: center; text-align: center; padding: calc(1px * var(--u)) 2px calc(.5px * var(--u)); border: 1px solid #000; border-radius: 4px; text-align: center; font: 700 calc(6px * var(--u) * max(1, var(--qb, 1) * var(--qk, 1)))/1.1 Arial, sans-serif; letter-spacing: -.02em; cursor: pointer; }
 .card.lb .ean { max-height: calc(34px * var(--u)); }
 .card.lb.flip .lb-left { order: 2; }
 .card.lb.lb-dragging { cursor: grabbing; user-select: none; }
@@ -2414,7 +2422,7 @@ button:disabled {
 .card.lb:not(.wide) .lb-body:has(> .lb-left):has(> .lb-right) > .lb-left { flex: 0 1 calc(50% - 3px); min-width: min-content; }
 .card.lb:not(.wide) .lb-body:has(> .lb-left):has(> .lb-right) > .lb-right { flex: 0 0 calc((50% - 3px) * var(--pk, 1)); }
 .card.lb.wide .lb-left, .card.lb.wide .lb-right { align-self: center; height: 100%; justify-content: center; }
-.card.lb .lb-tables { display: flex; gap: 6px; flex: none; width: 100%; }
+.card.lb .lb-tables { display: flex; align-items: flex-start; gap: 6px; flex: none; width: 100%; }
 .card.lb .lb-tables .lb-table { flex: 1; width: auto; min-width: 0; }
 .brand-caret { margin-left: auto; padding: 0 4px; cursor: pointer; color: var(--cg-muted); }
 .brand-cards { display: grid; gap: 6px; margin: 0 0 8px; font-size: 12px; }
@@ -2454,6 +2462,10 @@ button:disabled {
 /* arrastar com cartão fantasma (mesmo visual do Gerador de Consolidado) */
 .brand-card-row.drag-placeholder { border: 1.5px dashed var(--cg-accent); background: var(--cg-accent-weak); }
 .brand-card-row.drag-placeholder > * { visibility: hidden; }
+/* marcas arrastáveis na lista: mesmo lugar tracejado e cartão fantasma dos produtos */
+.brand-block.drag-placeholder { border: 1.5px dashed var(--cg-accent); border-radius: 8px; background: var(--cg-accent-weak); }
+.brand-block.drag-placeholder > * { visibility: hidden; }
+.brand-block.drag-ghost { position: fixed; z-index: 2000; margin: 0; pointer-events: none; opacity: .94; filter: drop-shadow(0 8px 16px rgba(0,0,0,.2)); will-change: transform; }
 .brand-card-row.drag-ghost { position: fixed; z-index: 2000; margin: 0; pointer-events: none; background: var(--cg-card); color: var(--cg-ink); box-shadow: 0 10px 30px rgba(0,0,0,.25); opacity: .94; will-change: transform; }
 
 /* cursores pela função da área: mão de arraste no cabeçalho do cardzinho, dedo só na seta que abre/fecha */
@@ -2462,6 +2474,12 @@ button:disabled {
 .pages .bc-open, .pages .bc-field span { color: var(--cg-ink); }
 .pages .bc-field span { color: var(--cg-muted); }
 .pages .bc-open .t { color: var(--cg-ink); }
+
+/* atalhos para as folhas de uma marca que continua em mais de uma (seções) */
+.pages .brand-sheets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 8px; }
+.pages .brand-sheets button { display: grid; gap: 2px; width: auto; margin: 0; padding: 8px 12px; border: 1px solid var(--cg-line); border-radius: 8px; background: var(--cg-btn-bg); color: var(--cg-ink); font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
+.pages .brand-sheets button:hover { border-color: var(--cg-accent); background: var(--cg-accent-weak); }
+.pages .brand-sheets small { color: var(--cg-muted); font-size: 11px; font-weight: 400; }
 
 /* menu "⋮" do cardzinho (mesmo visual do menu do Gerador de Consolidado) */
 .pages .bc-kebab { display: grid; place-items: center; flex: none; width: 24px; height: 24px; margin: 0; padding: 0 !important; border: 0; border-radius: 6px; background: transparent; color: var(--cg-muted); cursor: pointer; }
@@ -2539,7 +2557,7 @@ button:disabled {
 /* QR/código de barras no canto inferior direito do card (posição do código de barras na Feira): tabela à esquerda, código à direita */
 .card.lb .lb-foot { display: flex; align-items: flex-end; gap: 6px; flex: none; }
 .card.lb .lb-foot .lb-table, .card.lb .lb-foot .lb-tables { flex: 1; width: auto; min-width: 0; }
-.card.lb .lb-foot .lb-qr { width: calc(40px * var(--u)); }
+.card.lb .lb-foot .lb-qr { width: var(--qw, calc(40px * var(--u))); }
 /* código de barras na mesma proporção da Feira (142 × 54 num card de ~340 px = 42% da largura) */
 .card.lb .ean { aspect-ratio: 142 / 54; max-height: none; }
 /* no rodapé o código de barras é maior (a foto cede espaço); com descrição + código a tabela ocupa a largura toda e o código vai para a linha de baixo, à direita */
@@ -2551,3 +2569,38 @@ button:disabled {
 .cg-groupby { display: grid; gap: 4px; margin-top: 12px; font-size: 13px; }
 .cg-groupby[hidden] { display: none; }
 .cg-groupby select { min-height: 36px; padding: 0 8px; border: 1px solid var(--cg-line); border-radius: 8px; background: var(--cg-btn-bg); color: inherit; font: inherit; }
+
+/* Marcas como seções (Live Shop, paginação "Por marca"): faixa com a logo da marca antes dos cards dela. --bh = altura da faixa curta (a linha dos cards divide o resto). */
+.sheet.lb-sheet.has-bands { --bh: 52px; --bgap: 20px; } /* --bgap: respiro acima da faixa, entre a marca anterior e a próxima */
+.sheet.lb-sheet.a3.has-bands { --bh: 60px; --bgap: 24px; }
+.sheet.lb-sheet.cfg-grid.has-bands { grid-template-rows: var(--rowt); }
+/* faixa em cada card: uma linha de faixa por linha de cards, por isso mais baixa e com menos respiro */
+.sheet.lb-sheet.has-bands.card-bands { --bh: 44px; --bgap: 8px; }
+.sheet.lb-sheet.a3.has-bands.card-bands { --bh: 52px; --bgap: 12px; }
+.lb-band { align-self: end; height: var(--bh, 52px); display: grid; place-items: center; min-width: 0; min-height: 0; padding: 0 10px; box-sizing: border-box; border-radius: 12px; background: #fff; overflow: hidden; }
+.lb-band img { display: block; max-width: 70%; max-height: calc(var(--bh, 52px) - 12px); object-fit: contain; }
+.lb-band span { font: 800 16px/1.15 Arial, sans-serif; color: #18242d; text-align: center; text-transform: uppercase; overflow-wrap: anywhere; }
+
+/* Quantidade mínima acima da tabela (config qtyPos = table): uma linha, alinhada à direita, maior que a da coluna do QR */
+.card.lb .lb-qtyrow { margin: 0; flex: none; text-align: right; font: 600 calc(8px * var(--u))/1.2 Arial, sans-serif; color: #111; padding: calc(2px * var(--u)) 0; white-space: nowrap; }
+.card.lb .lb-qtyrow b { font-weight: 800; }
+
+/* Linha incompleta equilibrada: os boxes dividem a largura livre da linha (--rt = colunas ocupadas na linha, --rs = as deste box, --rb = as anteriores) */
+.card.lb.fit, .lb-band.fit { --rg: 8px; justify-self: start; width: calc((100% - (var(--rn) - 1) * var(--rg)) * var(--rs) / var(--rt)); margin-left: calc((100% - (var(--rn) - 1) * var(--rg)) * var(--rb) / var(--rt) + var(--ri) * var(--rg)); }
+.sheet.a3 .card.lb.fit, .sheet.a3 .lb-band.fit { --rg: 10px; }
+
+/* menu "⋮" no próprio card da prévia: aparece ao passar o mouse ou ao focar pelo teclado; não sai na impressão nem na exportação */
+.card.lb .lb-menu { display: none; }
+#preview .card.lb .lb-menu { position: absolute; z-index: 6; top: 4px; right: 4px; display: grid; place-items: center; width: 28px; height: 28px; margin: 0; padding: 0; border: 1px solid #d5dadd; border-radius: 8px; background: #fff; color: #18242d; opacity: 0; cursor: pointer; transition: opacity .12s, background-color .12s; }
+#preview .card.lb .cutwarn:not([hidden]) ~ .lb-menu { top: 24px; } /* não cobre o aviso de linhas fora do cartão, que usa o mesmo canto */
+#preview .card.lb:hover .lb-menu, #preview .card.lb .lb-menu:focus-visible { opacity: 1; }
+#preview .card.lb .lb-menu:hover { background: #f1f3f4; }
+@media (hover: none) { #preview .card.lb .lb-menu { opacity: 1; } }
+@media print { #preview .card.lb .lb-menu { display: none; } }
+
+/* escolha das linhas incompletas na marca selecionada (lista de páginas) */
+.pages .row-fill { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 0 0 8px; }
+.pages .row-fill span { grid-column: 1 / -1; color: var(--cg-muted); font-size: 12px; }
+.pages .row-fill button { width: auto; margin: 0; padding: 8px; border: 1px solid var(--cg-line); border-radius: 8px; background: var(--cg-btn-bg); color: var(--cg-ink); font-size: 12px; font-weight: 600; cursor: pointer; }
+.pages .row-fill button:hover { background: var(--cg-accent-weak); }
+.pages .row-fill button[aria-pressed="true"] { border-color: var(--cg-accent); background: var(--cg-accent-weak); }

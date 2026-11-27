@@ -443,6 +443,111 @@ export async function deleteBrandLogo(id) {
   await deleteDoc(doc(db, 'brandLogos', String(id)));
 }
 
+// Gerador de Molduras (só Admin, ver firestore.rules): a moldura PNG vira texto base64 e é gravada em pedaços de
+// ~700 mil caracteres (limite de 1 MB por documento): `<tipo>_0`, `<tipo>_1`... Texto e posição ficam em `cfg`.
+const MOLDURA_PARTE = 700000;
+export async function readMoldurasCfg() {
+  await currentContext();
+  const snapshot = await getDoc(doc(db, 'molduras', 'cfg'));
+  return snapshot.exists() ? snapshot.data().v || {} : {};
+}
+export async function writeMoldurasCfg(cfg) {
+  await currentContext();
+  await setDoc(doc(db, 'molduras', 'cfg'), { v: cfg, updatedAt: serverTimestamp() });
+}
+// Conjuntos salvos do Gerador de Molduras (só Admin, mesma regra da coleção): planilha + ZIP dos desenhos + decisões da etapa 3.
+// Contém dados de crianças (uso autorizado pelo Grupo OVD). Os arquivos são cortados em pedaços de texto base64, como as molduras,
+// mas em lotes de gravação pequenos (um commit do Firestore aceita ~10 MB). A lista segue o padrão da vendedores de avaliacoesGoogle:
+// transação que confere a revisão lida e devolve { conflict: true } sem sobrescrever.
+const ARQUIVO_BYTES = 525000; // 525000 bytes = 700000 caracteres base64 (múltiplo de 3, sem sobra no meio)
+const ARQUIVO_POR_LOTE = 6;
+const blobBase64 = blob => new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = () => fail(r.error); r.readAsDataURL(blob); });
+// nome = prefixo dos documentos (`lote_<id>_zip` -> `lote_<id>_zip_0`, `_1`...). onProgress(feitos, total) opcional.
+export async function writeMolduraArquivo(nome, blob, onProgress) {
+  await currentContext();
+  const total = Math.max(1, Math.ceil(blob.size / ARQUIVO_BYTES));
+  for (let ini = 0; ini < total; ini += ARQUIVO_POR_LOTE) {
+    const batch = writeBatch(db);
+    for (let i = ini; i < Math.min(total, ini + ARQUIVO_POR_LOTE); i++) batch.set(doc(db, 'molduras', nome + '_' + i), { n: total, i, data: await blobBase64(blob.slice(i * ARQUIVO_BYTES, (i + 1) * ARQUIVO_BYTES)) });
+    await batch.commit();
+    if (onProgress) onProgress(Math.min(total, ini + ARQUIVO_POR_LOTE), total);
+  }
+}
+export async function readMolduraArquivo(nome, tipo, onProgress) {
+  await currentContext();
+  const first = await getDoc(doc(db, 'molduras', nome + '_0'));
+  if (!first.exists()) throw new Error('Arquivo salvo não encontrado');
+  const total = Number(first.data().n || 1), parts = [first.data().data];
+  for (let ini = 1; ini < total; ini += 20) {
+    const rest = await Promise.all(Array.from({ length: Math.min(20, total - ini) }, (_, k) => getDoc(doc(db, 'molduras', nome + '_' + (ini + k)))));
+    rest.forEach(snapshot => { if (!snapshot.exists()) throw new Error('Arquivo salvo incompleto'); parts.push(snapshot.data().data); });
+    if (onProgress) onProgress(parts.length, total);
+  }
+  return new Blob(parts.map(b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0))), { type: tipo });
+}
+export async function deleteMolduraArquivo(nome) {
+  await currentContext();
+  const first = await getDoc(doc(db, 'molduras', nome + '_0'));
+  const total = first.exists() ? Number(first.data().n || 1) : 0;
+  for (let ini = 0; ini < total; ini += 400) {
+    const batch = writeBatch(db);
+    for (let i = ini; i < Math.min(total, ini + 400); i++) batch.delete(doc(db, 'molduras', nome + '_' + i));
+    await batch.commit();
+  }
+}
+export async function readMoldurasLotes() {
+  await currentContext();
+  const snapshot = await getDoc(doc(db, 'molduras', 'lotes'));
+  const v = snapshot.exists() ? snapshot.data().v || {} : {};
+  return { rev: Number(v.rev || 0), itens: Array.isArray(v.itens) ? v.itens : [] };
+}
+export async function writeMoldurasLotes(itens, revEsperada) {
+  await currentContext();
+  const reference = doc(db, 'molduras', 'lotes');
+  return runTransaction(db, async transaction => {
+    const atual = await transaction.get(reference);
+    const rev = atual.exists() ? Number((atual.data().v || {}).rev || 0) : 0;
+    if (rev !== Number(revEsperada || 0)) return { conflict: true };
+    transaction.set(reference, { v: { rev: rev + 1, itens }, updatedAt: serverTimestamp() });
+    return { conflict: false, rev: rev + 1 };
+  });
+}
+// Decisões da etapa 3 de um conjunto (por nome de arquivo do ZIP).
+export async function readMoldurasWork(id) {
+  await currentContext();
+  const snapshot = await getDoc(doc(db, 'molduras', 'work_' + id));
+  return snapshot.exists() ? snapshot.data().v || {} : {};
+}
+export async function writeMoldurasWork(id, work) {
+  await currentContext();
+  await setDoc(doc(db, 'molduras', 'work_' + id), { v: work, updatedAt: serverTimestamp() });
+}
+// Apaga o conjunto inteiro: planilha, ZIP e decisões (a entrada da lista é tirada por writeMoldurasLotes).
+export async function deleteMoldurasLote(id) {
+  await deleteMolduraArquivo('lote_' + id + '_zip');
+  await deleteMolduraArquivo('lote_' + id + '_sheet');
+  await deleteDoc(doc(db, 'molduras', 'work_' + id));
+}
+// kind = 'retrato' | 'paisagem'; devolve o data URL salvo ou '' se ainda não existe.
+export async function readMoldura(kind) {
+  await currentContext();
+  const first = await getDoc(doc(db, 'molduras', kind + '_0'));
+  if (!first.exists()) return '';
+  const total = Number(first.data().n || 1), parts = [first.data().data];
+  const rest = await Promise.all(Array.from({ length: total - 1 }, (_, i) => getDoc(doc(db, 'molduras', kind + '_' + (i + 1)))));
+  rest.forEach(snapshot => parts.push(snapshot.exists() ? snapshot.data().data : ''));
+  return parts.join('');
+}
+export async function writeMoldura(kind, dataUrl) {
+  await currentContext();
+  const old = await getDoc(doc(db, 'molduras', kind + '_0'));
+  const total = Math.ceil(dataUrl.length / MOLDURA_PARTE);
+  const batch = writeBatch(db);
+  for (let i = 0; i < total; i++) batch.set(doc(db, 'molduras', kind + '_' + i), { n: total, i, data: dataUrl.slice(i * MOLDURA_PARTE, (i + 1) * MOLDURA_PARTE) });
+  for (let i = total; old.exists() && i < Number(old.data().n || 0); i++) batch.delete(doc(db, 'molduras', kind + '_' + i));
+  await batch.commit();
+}
+
 // Total de bytes de fotos (gravado pela limpeza diária, só Admin SDK); { photoBytes: 0 } enquanto a limpeza não rodou.
 export async function readArtStats() {
   await currentContext();
