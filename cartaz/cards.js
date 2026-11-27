@@ -5,7 +5,7 @@
   const norm = text => String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const lines = item => item.rows || item.group.rows;
   const minQty = item => item.minQty ?? item.group.minQty ?? '';
-  const plainTitle = item => item.titleHtml ? t(new DOMParser().parseFromString(item.titleHtml, 'text/html').body.textContent) : (item.title || t(item.group.title));
+  const plainTitle = item => item.titleHtml ? t(new DOMParser().parseFromString(item.titleHtml.replace(/<br\s*\/?>/gi, '\n'), 'text/html').body.textContent.replace(/\s*\n\s*/g, ' ') /* a quebra de linha (e os espaços em volta) vale um espaço */) : (item.title || t(item.group.title));
 
   /* Produtos de TODAS as marcas cujo título, códigos ou nome da marca contêm o texto (sem maiúsculas/acentos). `id` = "página:posição" na lista de páginas. */
   function search(pages, text) {

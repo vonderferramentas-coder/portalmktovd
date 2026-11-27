@@ -1,6 +1,6 @@
 // Gerador de Cartazes: lógica da página cartaz-generator.html (carregado no fim do <body>).
 (() => {
-    const NOLOGO_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 18 5-5 3 3 2-2 4 4"/></svg>'; const LINK_ICON = '<svg class="link-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>'; const $ = x => document.getElementById(x), S = { undo: [], sort: { key: 'az', dir: 1 }, filter: 'all', menu: false, menuSection: '', linking: false, linkSel: [], pages: [], page: 0, brand: '', printFormat: '', codes: {}, brandLogos: {}, brandFill: {}, brandOrder: [], sheetOrder: [], logoZoom: {}, logoEdit: '', brandAssets: [] }; let savedGrids = [], savedGridsVersion = 0, currentGridId = null, currentGridVersion = 0, currentGridCreatedAt = 0, sourceName = ''; const GRID_INDEX_KEY = 'cartaz-grid-index-v1', GRID_KEY = 'cartaz-grid-v1-'; const n = x => String(x ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ''), t = x => String(x ?? '').trim(), e = x => t(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); function toast(x) { $('toast').textContent = x; $('toast').hidden = false; clearTimeout(S.timer); S.timer = setTimeout(() => $('toast').hidden = true, 3500) } function map(files, to, label) { [...files].forEach(f => to[f.name.replace(/\.[^.]+$/, '')] = f); $(label).textContent = Object.keys(to).length + ' arquivo(s) identificado(s)'; draw() } function logoCandidates(brand) { return S.brandAssets.filter(asset => CartazColumns.logoMatches(brand, asset.name)); }
+    const NOLOGO_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 18 5-5 3 3 2-2 4 4"/></svg>'; const LINK_ICON = '<svg class="link-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>'; const $ = x => document.getElementById(x), S = { undo: [], sort: { key: 'az', dir: 1 }, filter: 'all', menu: false, menuSection: '', linking: false, linkSel: [], pages: [], page: 0, brand: '', printFormat: '', codes: {}, brandLogos: {}, brandFill: {}, brandOrder: [], sheetOrder: [], logoZoom: {}, logoEdit: '', brandAssets: [] }; let savedGrids = [], savedGridsVersion = 0, currentGridId = null, currentGridVersion = 0, currentGridCreatedAt = 0, sourceName = ''; const GRID_INDEX_KEY = 'cartaz-grid-index-v1', GRID_KEY = 'cartaz-grid-v1-'; const n = x => String(x ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ''), t = x => String(x ?? '').trim(), e = x => t(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); function toast(x) { $('toast').textContent = x; $('toast').hidden = false; clearTimeout(S.timer); S.timer = setTimeout(() => $('toast').hidden = true, 3500) } function map(files, to, label) { [...files].forEach(f => to[f.name.replace(/\.[^.]+$/, '')] = f); $(label).textContent = Object.keys(to).length + ' arquivo(s) identificado(s)'; draw() } function logoCandidates(brand) { let light = asset => /(?<!fundo[ _])branc|negativ|fundo[ _]escuro/i.test(asset.name); return S.brandAssets.filter(asset => CartazColumns.logoMatches(brand, asset.name) || asset.file === S.brandLogos?.[brand] /* escolha já salva continua valendo */).sort((a, b) => light(a) - light(b)) /* o box é claro: logo branca só se for a única */; }
     /* post-editor-assets/brands/*.svg (os SVGs crus) fica fora do Git (~250 MB, ver .gitignore) e nunca existiu
        no HML/produção publicados - só no disco de quem editou localmente. post-editor.js já resolve isso desde
        sempre carregando post-editor-assets/brands-js/<nome>.js, um "wrapper" leve e versionado que registra a
@@ -1646,7 +1646,8 @@
        concordância, unidades de medida). Duas formas de trabalhar: o modal lista tudo (corrigir uma a uma ou tudo que for automático)
        e a barra de revisão leva de observação em observação, rolando até o título do card e fazendo o campo brilhar. */
     let validatorState = [], review = null; // review: { index } enquanto a barra de revisão está aberta
-    function cardText(item) { return item.title || title(item.group).toUpperCase(); }
+    /* o MESMO título que o cartaz mostra: no Live Shop sem a marca no fim; na Feira, "TÍTULO, MARCA" em maiúsculas */
+    function cardText(item) { return S.config.layout === 'liveshop' ? CartazCards.plainTitle(item) : item.title || title(item.group).toUpperCase(); }
     function validatorFindings() {
         let out = [];
         S.pages.forEach((page, pi) => page.items.forEach((item, ii) => {
@@ -1712,9 +1713,10 @@
         flashTitle(f.pi, f.ii);
     }
     function flashTitle(pi, ii) {
-        let h3 = document.querySelector('.card[data-page="' + pi + '"][data-idx="' + ii + '"] h3');
+        let h3 = $('preview').querySelector('.card[data-page="' + pi + '"][data-idx="' + ii + '"] h3'); /* só na prévia das folhas: a amostra das configurações tem um card com os mesmos índices */
         if (!h3) return;
-        h3.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        let card = h3.closest('.card'), bar = $('validatorBar'), under = bar.hidden ? 0 : bar.offsetHeight + 32; /* a barra da revisão cobre o pé da tela: o card para acima dela */
+        card.style.scrollMarginBottom = under + 'px'; card.style.scrollMarginTop = '16px'; card.scrollIntoView({ block: card.offsetHeight + under > innerHeight ? 'start' : 'center', inline: 'nearest', behavior: 'smooth' });
         h3.classList.remove('cg-flash'); void h3.offsetWidth; h3.classList.add('cg-flash'); clearTimeout(flashTitle.timer); flashTitle.timer = setTimeout(() => h3.classList.remove('cg-flash'), 3600);
     }
     // depois de Corrigir a barra fica na mesma observação, mostrando o resultado; quem decide seguir é o botão Avançar

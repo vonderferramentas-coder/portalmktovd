@@ -80,6 +80,16 @@ try {
   eq(apply('AGUA', '<b>AGUA</b>', accent), { title: 'ÁGUA', titleHtml: '<b>ÁGUA</b>' }, 'mantém <b>');
   eq(apply('AGUA', undefined, accent), { title: 'ÁGUA', titleHtml: undefined }, 'sem formatação');
 
+  // a correção chega ao título mostrado mesmo com negrito no meio, quebra de linha ou &
+  eq(apply('DISCO 115MM', 'DISCO <b>115</b>MM', { find: '115MM', replace: '115 mm' }).titleHtml, 'DISCO <b>115</b> mm', 'atravessa o negrito mudando só o que difere');
+  eq(apply('PORTA FERRAMENTAS GRANDE', 'PORTA &nbsp;<br> FERRAMENTAS <i>GRANDE</i>', { find: 'PORTA FERRAMENTAS', replace: 'PORTA-FERRAMENTAS' }).titleHtml, 'PORTA-FERRAMENTAS <i>GRANDE</i>', 'espaços em volta da quebra');
+  eq(apply('DISCO 115 MM FINO', 'DISCO 115<br><br>MM FINO', { find: '115 MM', replace: '115 mm' }).titleHtml, 'DISCO 115<br><br>mm FINO', 'a quebra que não muda fica no lugar');
+  eq(apply('TUBOS PLÁSTICO', 'TUBOS <b>PLÁSTICO</b>', { find: 'TUBOS PLÁSTICO', replace: 'TUBOS PLÁSTICOS' }).titleHtml, 'TUBOS <b>PLÁSTICOS</b>', 'letra nova entra no negrito');
+  eq(apply('DISCO 115\nMM', 'DISCO 115<br>MM', { find: '115\nMM', replace: '115 mm' }).titleHtml, 'DISCO 115<br>mm', 'quebra como \n (Editor de artes)');
+  eq(apply('AGUA AGUA', 'AGUA<br><i>AGUA</i>', { find: 'AGUA', replace: 'ÁGUA' }).titleHtml, 'ÁGUA<br><i>ÁGUA</i>', 'todas as ocorrências, mantendo a quebra');
+  eq(apply('P&D AGUA', '<b>P&amp;D</b> AGUA', { find: 'P&D', replace: 'P & D' }).titleHtml, '<b>P &amp; D</b> AGUA', '& no trecho');
+  eq(apply('PARA DRYWALL', 'PARA<br>DRYWALL', check('PARA DRYWALL')[0]).titleHtml, 'PARA<br><i>DRYWALL</i>', 'itálico depois da quebra');
+
   // titleHtml que vem de fora (grade compartilhada) só pode sair com <b>/<i>/<u>
   const { clean } = CartazTitleFormat;
   eq(clean('<b>ok</b> <i>x</i>'), '<b>ok</b> <i>x</i>', 'formatação permitida se mantém');
