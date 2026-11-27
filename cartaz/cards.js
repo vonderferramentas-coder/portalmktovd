@@ -11,7 +11,17 @@
   function search(pages, text) {
     const q = norm(t(text)); if (!q) return [];
     return pages.flatMap((page, pi) => page.items.map((item, ii) => ({ page, item, id: pi + ':' + ii })))
-      .filter(({ page, item }) => norm(plainTitle(item) + ' ' + lines(item).map(row => row.code).join(' ') + ' ' + page.brand).includes(q));
+      .filter(({ page, item }) => norm(plainTitle(item) + ' ' + lines(item).map(row => row.code).join(' ') + ' ' + brandOf(page, item)).includes(q));
+  }
+  /* Marca de um produto: nas folhas em seções (várias marcas) vem do próprio produto; nas demais, da folha. */
+  const brandOf = (page, item) => page.sectioned ? global.CartazPagination.groupBrand(item.group) : page.brand;
+
+  /* Códigos editados à mão no layout da Feira (item.linesOverride) viram as linhas do produto, para não se perderem na conversão para o Live Shop. */
+  function adoptOverride(item) {
+    if (!item.linesOverride || item.rows) return;
+    const codes = [...new DOMParser().parseFromString(item.linesOverride.html, 'text/html').querySelectorAll('.cd')].map(el => t(el.textContent)).filter(Boolean);
+    const source = item.group.rows, key = value => String(value).replace(/\s/g, '');
+    if (codes.length) item.rows = codes.map((code, i) => ({ desc: (source.find(row => key(row.code) === key(code)) || (codes.length === source.length ? source[i] : {})).desc || '', code }));
   }
 
   /* Nova lista com `item` trocado de lugar com o vizinho (step = -1 sobe, +1 desce); null nos extremos. */
@@ -48,5 +58,5 @@
     return { empty: page.empty, item: best };
   }
 
-  global.CartazCards = { t, norm, lines, minQty, plainTitle, search, move, sameOrder, distribute, setField, addRow, removeRow, emptyHint };
+  global.CartazCards = { t, norm, lines, minQty, plainTitle, brandOf, adoptOverride, search, move, sameOrder, distribute, setField, addRow, removeRow, emptyHint };
 })(window);

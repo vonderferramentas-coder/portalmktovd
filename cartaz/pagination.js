@@ -6,7 +6,7 @@
 
   /* Configuração do cartaz (por template): produtos e colunas por folha. O padrão é o layout da Feira (6 boxes em 2 colunas no A4,
      9 em 3 no A3). Com `a3Auto`, o A3 acompanha o A4: capacidade x1,5 (arredondada para baixo) e colunas x1,25 (arredondadas). */
-  const DEFAULT_CONFIG = { capA4: 6, colsA4: 2, a3Auto: true, capA3: 9, colsA3: 3, paginateBy: 'brand', sheetFormats: 'both', layout: 'feira', logoBox: false, headerMode: 'compact', headerCorner: 'tl', footerLogo: true, codeType: 'barcode', showTitle: true, showPhoto: true, showCodeBox: true, showDesc: true, showCode: true, showQty: true, tableStyle: 'table', codePos: 'left', titleAlign: 'center', button: true, buttonText: 'CLIQUE AQUI E COMPRE AGORA!', buttonColor: '#F6BE00', divisions: [], showStrip: true, titleSize: 11.5, tableSize: 7, cardOutline: false, cardOutlineColor: '#000000', cardOutlineWidth: .75, divisionColors: {}, legalEnabled: false, legalText: '', attentionTitle: 'ATENÇÃO', attentionTitleOn: true, attentionTextOn: true, attentionColor: '#ffffff', attentionText: 'Para acessar as condições especiais, é indispensável estar logado com o seu perfil em nossa Plataforma B2B.' };
+  const DEFAULT_CONFIG = { capA4: 6, colsA4: 2, a3Auto: true, capA3: 9, colsA3: 3, paginateBy: 'brand', brandMode: 'footer', boxShape: 'rect', qtyPos: 'qr', sheetFormats: 'both', layout: 'feira', logoBox: false, headerMode: 'compact', headerCorner: 'tl', footerLogo: true, codeType: 'barcode', showTitle: true, showPhoto: true, showCodeBox: true, showDesc: true, showCode: true, showQty: true, tableStyle: 'table', codePos: 'left', titleAlign: 'center', button: true, buttonText: 'CLIQUE AQUI E COMPRE AGORA!', buttonColor: '#F6BE00', divisions: [], showStrip: true, titleSize: 11.5, tableSize: 7, cardOutline: false, cardOutlineColor: '#000000', cardOutlineWidth: .75, divisionColors: {}, legalEnabled: false, legalText: '', attentionTitle: 'ATENÇÃO', attentionTitleOn: true, attentionTextOn: true, attentionColor: '#ffffff', attentionText: 'Para acessar as condições especiais, é indispensável estar logado com o seu perfil em nossa Plataforma B2B.' };
   let current = { ...DEFAULT_CONFIG };
   function resolve(config) {
     let c = { ...DEFAULT_CONFIG, ...config };
@@ -17,18 +17,37 @@
   }
   const setConfig = config => { current = resolve(config); return current; };
 
+  /* Divide os produtos em folhas de tamanho parecido (o padrão por marca). */
+  function evenChunks(items, capacity) {
+    const total = Math.ceil(items.length / capacity), base = Math.floor(items.length / total), extra = items.length % total; let start = 0;
+    return Array.from({ length: total }, (_, i) => items.slice(start, start += base + (i < extra ? 1 : 0)));
+  }
+  /* Modo "marcas como seções": o primeiro produto de cada marca abre uma faixa (linha inteira da grade, com a logo). As marcas se encadeiam nas folhas. */
+  const sectionStarts = items => { const starts = new Set(); let prev; items.forEach(group => { const brand = groupBrand(group); if (brand !== prev) starts.add(group); prev = brand; }); return starts; };
+  /* Enche as folhas na ordem simulando as células da grade: o primeiro produto de cada marca começa numa linha nova (a faixa é uma linha extra e curta acima dele,
+     fora da conta de produtos por folha). `taken` = célula do header compacto. ponytail: ignora os destaques (2 colunas); se a folha faltar espaço, placeLive acrescenta linha. */
+  function sectionChunks(items, starts, total, cols, taken) {
+    const out = []; let cur = [], cell = 0;
+    for (const group of items) for (;;) {
+      let at = cell; if (starts.has(group) && at % cols) at += cols - at % cols; if (at === taken) at++;
+      if (at < total || !cur.length) { cell = at + 1; cur.push(group); break; }
+      out.push(cur); cur = []; cell = 0;
+    }
+    if (cur.length) out.push(cur); return out;
+  }
+
   /* Distribui os produtos de UMA marca (ou de várias vinculadas, `members`) em páginas, pela configuração atual (setConfig).
      Com o padrão da Feira: até 6 = 1 folha A4; 7 a 9 = 1 folha A3; 10 a 12 = A4 em duas; acima de 12 = A3. `prev` devolve título e foto já editados de cada
      produto quando as páginas são redistribuídas (vincular/desvincular). */
   function paginate(brandName, brandItems, members, prev) {
     let out = [];
-    let cfg = current, count0 = brandItems.length, format = cfg.sheetFormats === 'a4' ? 'A4' : cfg.sheetFormats === 'a3' ? 'A3' : count0 <= cfg.capA4 ? 'A4' : count0 <= cfg.capA3 ? 'A3' : count0 <= 2 * cfg.capA4 ? 'A4' : 'A3' /* sheetFormats: só A4, só A3 ou os dois (a regra automática) */, capacity = format === 'A4' ? cfg.capA4 : cfg.capA3, columns = format === 'A4' ? cfg.colsA4 : cfg.colsA3, live = cfg.layout === 'liveshop', header = live && cfg.logoBox ? (cfg.headerMode === 'full' ? 'full' : cfg.headerMode === 'custom' ? 'custom' : 'compact') : 'none', offset = header === 'compact' ? 1 : 0 /* header compacto: o box ocupa 1 célula da grade (canto em headerCorner); completo e personalizado (imagem): ficam acima da grade, como na Feira */, standard = !live && columns === (format === 'A4' ? 2 : 3) /* centralizar/parear a última linha só existe na grade da Feira */, total = Math.ceil(brandItems.length / capacity), base = Math.floor(brandItems.length / total), extra = brandItems.length % total, start = 0;
+    let cfg = current, sections = cfg.layout === 'liveshop' && cfg.paginateBy === 'brand' && cfg.brandMode === 'sections' /* marcas viram seções (faixa com a logo) em vez de cards no rodapé */, starts = sections ? sectionStarts(brandItems) : new Set(), count0 = brandItems.length + Math.ceil(starts.size * (cfg.colsA4 - 1) / 2) /* cada marca nova começa numa linha nova: em média sobra meia linha vazia */, format = cfg.sheetFormats === 'a4' ? 'A4' : cfg.sheetFormats === 'a3' ? 'A3' : count0 <= cfg.capA4 ? 'A4' : count0 <= cfg.capA3 ? 'A3' : count0 <= 2 * cfg.capA4 ? 'A4' : 'A3' /* sheetFormats: só A4, só A3 ou os dois (a regra automática) */, capacity = format === 'A4' ? cfg.capA4 : cfg.capA3, columns = format === 'A4' ? cfg.colsA4 : cfg.colsA3, live = cfg.layout === 'liveshop', header = live && cfg.logoBox ? (cfg.headerMode === 'full' ? 'full' : cfg.headerMode === 'custom' ? 'custom' : 'compact') : 'none', offset = header === 'compact' ? 1 : 0 /* header compacto: o box ocupa 1 célula da grade (canto em headerCorner); completo e personalizado (imagem): ficam acima da grade, como na Feira */, standard = !live && columns === (format === 'A4' ? 2 : 3) /* centralizar/parear a última linha só existe na grade da Feira */, chunks = sections ? sectionChunks(brandItems, starts, (capacity + offset), columns, header === 'compact' ? headerCell({ cols: columns, corner: cfg.headerCorner }, Math.ceil((capacity + offset) / columns)) : -1) : evenChunks(brandItems, capacity), total = chunks.length;
     for (let pageIndex = 0; pageIndex < total; pageIndex++) {
-      let count = base + (pageIndex < extra ? 1 : 0), pageGroups = brandItems.slice(start, start += count), remainder = pageGroups.length % columns, lastRowIndex = Math.floor((pageGroups.length - 1) / columns), lastRowGroups = pageGroups.filter((group, index) => Math.floor(index / columns) === lastRowIndex), codeExtra = group => group.rows.length > 20 ? Math.min(150, Math.ceil((group.rows.length - 20) / 2) * 16 + 8) : 0, pairedExtraHeight = standard && format === 'A4' && pageGroups.length <= 4 && lastRowGroups.length === 2 ? Math.max(...lastRowGroups.map(codeExtra)) : 0;
-      out.push({ name: brandName + ' · ' + format + ' · pág ' + (pageIndex + 1) + '/' + total, brand: brandName, ...(members ? { brands: members } : {}), format, capacity, cols: columns, rows: Math.ceil((capacity + offset) / columns), ...(live ? { layout: 'liveshop', logoBox: !!offset, header, corner: cfg.headerCorner || 'tl', footerLogo: cfg.footerLogo !== false } : {}), items: pageGroups.map((group, index) => {
+      let pageGroups = chunks[pageIndex], remainder = pageGroups.length % columns, lastRowIndex = Math.floor((pageGroups.length - 1) / columns), lastRowGroups = pageGroups.filter((group, index) => Math.floor(index / columns) === lastRowIndex), codeExtra = group => group.rows.length > 20 ? Math.min(150, Math.ceil((group.rows.length - 20) / 2) * 16 + 8) : 0, pairedExtraHeight = standard && format === 'A4' && pageGroups.length <= 4 && lastRowGroups.length === 2 ? Math.max(...lastRowGroups.map(codeExtra)) : 0;
+      out.push({ name: brandName + ' · ' + format + ' · pág ' + (pageIndex + 1) + '/' + total, brand: brandName, ...(members ? { brands: members } : {}), ...(sections ? { sectioned: true } : {}), format, capacity, cols: columns, rows: Math.ceil((capacity + offset) / columns), ...(live ? { layout: 'liveshop', logoBox: !!offset, header, corner: cfg.headerCorner || 'tl', footerLogo: !sections && cfg.footerLogo !== false } : {}), items: pageGroups.map((group, index) => {
         let lastRow = Math.floor(index / columns) === lastRowIndex, col = index % columns, center = standard && format === 'A4' && lastRow && remainder === 1, pair = standard && format === 'A3' && lastRow && remainder === 2;
         if (standard && format === 'A3' && lastRow && remainder === 1) col = 1;
-        let extraHeight = center && pageGroups.length <= 3 ? codeExtra(group) : (lastRow ? pairedExtraHeight : 0); return { group, col: offset ? (index + offset) % columns : col, gridRow: Math.floor((index + offset) / columns), size: 1, center, pair, extraHeight };
+        let extraHeight = center && pageGroups.length <= 3 ? codeExtra(group) : (lastRow ? pairedExtraHeight : 0); return { group, col: offset ? (index + offset) % columns : col, gridRow: Math.floor((index + offset) / columns), size: 1, center, pair, extraHeight, ...(starts.has(group) ? { band: groupBrand(group) } : {}) };
       }) });
     }
     if (prev) out.forEach(page => page.items.forEach(item => { let old = prev.get(item.group); if (old) { if (old.title) { item.title = old.title; if (old.titleHtml) item.titleHtml = old.titleHtml; } if (old.photo) item.photo = old.photo; if (old.wide) item.wide = true; if (old.liveCenter) item.liveCenter = true; if (old.photoSrc) item.photoSrc = old.photoSrc; if (old.rows) item.rows = old.rows; if (old.minQty !== undefined) item.minQty = old.minQty; if (old.links) item.links = old.links; if (old.showButton === false) item.showButton = false; if (old.flip) item.flip = true; if (old.linesOverride) item.linesOverride = old.linesOverride; } }));
@@ -46,24 +65,26 @@
     if (page.layout !== 'liveshop') return;
     const cols = page.cols, base = page.baseRows || (page.baseRows = page.rows), isWide = item => item.wide && cols >= 2;
     for (let rows = base; ; rows++) {
-      const total = rows * cols, taken = page.logoBox ? headerCell(page, rows) : -1, queue = page.items.slice(), spots = [];
+      const total = rows * cols, taken = page.logoBox ? headerCell(page, rows) : -1, queue = page.items.slice(), spots = [], bands = [];
       const free = (c, span) => c % cols + span <= cols && c + span <= total && !(taken >= c && taken < c + span);
       let cell = 0;
       const put = (item, span) => { spots.push([item, cell, span]); cell += span; };
       while (queue.length && cell < total) {
         const item = queue.shift(), span = isWide(item) ? 2 : 1;
+        if (item.band) { if (cell % cols) cell += cols - cell % cols; bands.push({ vrow: cell / cols, brand: item.band }); } /* início de seção: o produto começa numa linha nova e a faixa vira uma linha EXTRA, curta, antes dela (não gasta células da grade) */
         while (cell < total && !free(cell, 1)) cell++;
-        if (span === 2) while (cell < total && !free(cell, 2)) { const next = queue.findIndex(entry => !isWide(entry)); if (next >= 0 && free(cell, 1)) put(queue.splice(next, 1)[0], 1); else cell++; }
+        if (span === 2) while (cell < total && !free(cell, 2)) { const stop = queue.findIndex(entry => entry.band) /* o vão só é preenchido com produto da mesma marca */, next = queue.findIndex(entry => !isWide(entry)); if (next >= 0 && (stop < 0 || next < stop) && free(cell, 1)) put(queue.splice(next, 1)[0], 1); else cell++; }
         if (cell >= total) { queue.unshift(item); break; }
         put(item, span);
       }
       if (queue.length) continue; /* faltou espaço: tenta com mais uma linha */
-      spots.forEach(([item, at, span]) => { item.col = at % cols; item.gridRow = Math.floor(at / cols); item.size = 1; item.span = span; });
+      const realRow = vrow => vrow + bands.filter(band => band.vrow <= vrow).length; /* linha da grade = linha dos cards + faixas acima dela */
+      spots.forEach(([item, at, span]) => { item.col = at % cols; item.gridRow = realRow(Math.floor(at / cols)); item.size = 1; item.span = span; });
       /* item.alone: único box da linha (e a célula do header compacto não está nela): só ele pode ser centralizado (item.liveCenter) */
       const perRow = {}; page.items.forEach(item => perRow[item.gridRow] = (perRow[item.gridRow] || 0) + item.span);
-      page.items.forEach(item => item.alone = cols > 1 && item.span === 1 && perRow[item.gridRow] === 1 && !(taken >= 0 && Math.floor(taken / cols) === item.gridRow));
+      page.items.forEach(item => item.alone = cols > 1 && item.span === 1 && perRow[item.gridRow] === 1 && !(taken >= 0 && realRow(Math.floor(taken / cols)) === item.gridRow));
       page.items.forEach(item => { if (!item.alone) delete item.liveCenter; }); /* deixou de estar sozinho na linha: perde a centralização (não volta sozinha depois) */
-      page.rows = rows;
+      page.rows = rows + bands.length; page.bands = bands.map((band, i) => ({ row: band.vrow + i, brand: band.brand }));
       page.empty = total - ((page.logoBox ? 1 : 0) + page.items.reduce((sum, item) => sum + item.span, 0)); /* células sem box na folha */
       return;
     }
@@ -112,5 +133,5 @@
     return { pages: next, key: brandKey };
   }
 
-  window.CartazPagination = { paginate, groupBrand, link, unlink, insertItem, twoCodeColumns, setConfig, resolve, placeLive, DEFAULT_CONFIG };
+  window.CartazPagination = { paginate, sectionStarts, groupBrand, link, unlink, insertItem, twoCodeColumns, setConfig, resolve, placeLive, DEFAULT_CONFIG };
 })();

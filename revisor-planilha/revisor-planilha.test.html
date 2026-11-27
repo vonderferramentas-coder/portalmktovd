@@ -1,0 +1,26 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste do Revisor de Planilha</title>
+<body data-result="running"><pre id="log"></pre></body>
+<script src="revisor-planilha.js"></script>
+<script>
+// Abre em qualquer navegador: document.body.dataset.result vira "ok" ou "FALHA: ...".
+try {
+  const { diff, diffText } = RevisorPlanilha;
+  const eq = (a, b) => { if (a !== b) throw new Error(JSON.stringify(a) + ' != ' + JSON.stringify(b)); };
+  eq(diff('12V Ni-Cd', '12 V Ni-Cd').key, 'Trocou "12V" por "12 V"');
+  eq(diff('Material (tipo/composição)', 'Material (tipo/composição) (tipo/composição)').key, 'Acrescentou "(tipo/composição)"');
+  eq(diff('Cor do rebolo', 'Cor').key, 'Tirou "do rebolo"');
+  eq(diff('rosca  em', 'rosca em').key, 'Mudou só os espaços');
+  eq(diff('Aço', 'aço').key, 'Mudou só maiúscula/minúscula');
+  eq(diff('composicao', 'composição').key, 'Mudou só a acentuação');
+  eq(diffText('igual', 'igual'), 'Sem mudança');
+  eq(diffText('10,00', '12,50'), 'Trocou "10,00" por "12,50" (subiu 2,5)');
+  eq(diffText('1.500', '1.200'), 'Trocou "1.500" por "1.200" (caiu 300)');
+  eq(diff('Chave  de fenda', 'Chave de  fenda').key, 'Mudou só os espaços');
+  eq(diffText(10.5, 12.5), 'Trocou "10.5" por "12.5" (subiu 2)'); // célula numérica
+  eq(diffText('1.5', '2.0'), 'Trocou "1.5" por "2.0" (subiu 0,5)'); // ponto decimal em texto
+  document.body.dataset.result = 'ok';
+} catch (e) { document.body.dataset.result = 'FALHA: ' + e.message; }
+document.getElementById('log').textContent = document.body.dataset.result;
+</script>

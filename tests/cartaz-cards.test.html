@@ -58,6 +58,12 @@ try {
   eq(C.removeRow(it, 2), true, 'remove a linha nova'); eq(C.removeRow(it, 0), true, 'remove outra'); eq(C.removeRow(it, 0), false, 'a última linha não sai'); eq(C.lines(it).length, 1, 'sobra 1 linha');
   eq(group.rows.length, 2, 'adicionar/remover não mexe no grupo');
 
+  // seções: a busca acha a marca pelo produto, não pelo nome da sequência
+  eq(C.search([{ brand: 'TODAS AS MARCAS', sectioned: true, items: [{ group: makeGroups(1, 'OSTEN')[0] }] }], 'osten').length, 1, 'busca por marca em seções');
+  // código removido/corrigido no layout da Feira sobrevive à conversão
+  let old = { group: makeGroups(1, 'X')[0], linesOverride: { html: '<span class="cd">6001010000</span><span class="cd">99 99</span>' } };
+  C.adoptOverride(old); eq(old.rows, [{ desc: 'Desc 1', code: '6001010000' }, { desc: 'Outra', code: '99 99' }], 'códigos editados viram linhas');
+
   // espaço vazio: 4 colunas, logo + 5 produtos em folha de 7 + logo = 2 vazios; o último vira destaque para preencher
   setConfig({ capA4: 7, colsA4: 4, layout: 'liveshop', logoBox: true });
   let sparse = build(5)[0]; eq(sparse.empty, 2, 'espaços vazios na folha');

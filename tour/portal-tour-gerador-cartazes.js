@@ -62,7 +62,7 @@ PortalTour.register('gerador-cartazes', {
       summary: 'Revisar as páginas, corrigir produtos e gerar o PDF ou a impressão.',
       steps: [
         { when: () => !hasWork(), title: 'Importe uma planilha primeiro', text: 'Este passeio mostra a área de trabalho, que só aparece depois de importar a planilha (ou abrir uma planilha salva). Faça isso e refaça o passeio.' },
-        { target: '#work .pages', title: 'Lista de páginas', text: 'Cada página A4 ou A3 que será impressa, agrupada por marca. Clique numa página para ver na prévia.' },
+        { target: '#work .pages', title: 'Lista de páginas', text: 'Cada página A4 ou A3 que será impressa, agrupada por marca. Clique numa página para ver na prévia. Com marcas em seções, quando a marca continua em outra folha aparecem atalhos para ir a cada uma.' },
         { target: '#pagesMenuBtn', title: 'Opções da lista', text: 'Ações sobre as páginas, como dividir uma marca em mais de uma página.' },
         { target: '#linkBar', title: 'Marcas vinculadas', text: 'Quando duas marcas dividem a mesma folha, ficam vinculadas aqui.' },
         { target: '#list', title: 'Produtos da página', text: 'Os cartões da página. Arraste para mudar a ordem. O menu de três pontinhos de cada produto tem Editar, Destaque, Substituir foto e Excluir produto.', danger: 'Excluir produto tira o item da página.' },

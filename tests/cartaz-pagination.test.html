@@ -141,6 +141,19 @@ try {
   CartazPagination.setConfig({ capA4: 19, colsA4: 4, layout: 'liveshop', logoBox: true });
   lw.items.forEach(i => delete i.wide); CartazPagination.placeLive(lw);
   eq(lw.rows, rows0, 'sem destaque, a folha volta ao nº de linhas original');
+  // Marcas como seções: faixa (linha inteira) antes da 1ª folha de cada marca, só onde a marca começa; marcas dividem a folha
+  CartazPagination.setConfig({ capA4: 16, colsA4: 4, layout: 'liveshop', logoBox: false, sheetFormats: 'a4', paginateBy: 'brand', brandMode: 'sections' });
+  let sec = paginate('TODAS', [...groups(3, 'A'), ...groups(3, 'B'), ...groups(8, 'C')]);
+  eq(sec.map(p => p.items.length + ':' + p.bands.map(b => b.row) + ':' + p.rows), ['14:0,2,4:7'], 'as 3 marcas cabem numa folha: faixas são linhas extras e a marca seguinte começa logo abaixo');
+  eq(sec.flatMap(p => p.items).filter(i => i.band).map(i => i.band), ['A', 'B', 'C'], 'uma faixa por marca, só onde ela começa');
+    eq(sec.every(p => p.footerLogo === false), true, 'seções: sem rodapé de logos');
+  eq(sec.flatMap(p => p.items).length, 14, 'nenhum produto se perde');
+  CartazPagination.setConfig({ capA4: 15, colsA4: 4, layout: 'liveshop', logoBox: true, headerMode: 'compact', sheetFormats: 'a4', paginateBy: 'brand', brandMode: 'sections' });
+  let hdr = paginate('TODAS', groups(3, 'A'))[0]; eq([hdr.bands[0].row, hdr.items[0].gridRow, hdr.rows], [0, 1, 5], 'header compacto: faixa acima, box do header e cards na linha seguinte');
+  // destaque que não cabe na linha: o vão não é preenchido com produto da marca seguinte
+  CartazPagination.setConfig({ capA4: 16, colsA4: 4, layout: 'liveshop', logoBox: false, sheetFormats: 'a4', paginateBy: 'brand', brandMode: 'sections' });
+  let gap = paginate('TODAS', [...groups(4, 'A'), ...groups(2, 'B')])[0]; gap.items[3].wide = true; CartazPagination.placeLive(gap);
+  eq(gap.items.slice(4).every(i => i.gridRow > gap.bands[1].row), true, 'produto da marca B fica abaixo da faixa da B');
   CartazPagination.setConfig(CartazPagination.DEFAULT_CONFIG);
   eq(paginate('X', groups(6))[0].layout, undefined, 'Feira não ganha layout liveshop');
 

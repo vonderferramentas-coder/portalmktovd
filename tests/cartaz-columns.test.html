@@ -40,6 +40,9 @@ try {
   const links = CartazColumns.detect(['CÓDIGO OVD', 'CÓDIGO FG', 'NOME DO TÍTULO', 'LINK OSTEN', 'LINK DISMATAL', 'LINK VONDER', 'QUANTIDADE MÍNIMA'], []);
   eq([links.links, links.link, links.barcode], [{ osten: 'LINK OSTEN', dismatal: 'LINK DISMATAL', vonder: 'LINK VONDER' }, undefined, undefined], 'um link por divisão, sem coluna de barras');
 
+  // "Linha/Foto/OVD Produto" não roubam o título da coluna de descrição
+  eq(run(['Código', 'OVD Produto', 'Linha de Produto', 'Foto do produto', 'Descrição do Produto'], []).title, 'Descrição do Produto', 'colunas com "produto" que não são nome');
+
   // Linha pintada = produto principal: cor RGB e de tema contam; branco e sem preenchimento, não
   const solid = fgColor => ({ patternType: 'solid', fgColor });
   const sheet = { '!ref': 'A1:B5', A1: { v: 'Código comercial' }, B1: { v: 'Modelo' }, A2: { v: 1, s: solid({ rgb: 'BDD7EE' }) }, A3: { v: 2 }, A4: { v: 3, s: solid({ theme: 4, tint: .8 }) }, A5: { v: 4, s: solid({ rgb: 'FFFFFFFF' }) } };
