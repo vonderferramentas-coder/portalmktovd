@@ -30,12 +30,14 @@
     const next = items.slice(); [next[from], next[to]] = [next[to], next[from]]; return next;
   }
 
-  const sameOrder = (pages, items) => { const before = pages.flatMap(page => page.items); return items.length === before.length && items.every((item, i) => item === before[i]); };
+  /* `items` = produtos de UMA marca na nova ordem. Nas folhas em seções elas também têm produtos de outras marcas, que ficam onde estão. */
+  const sameOrder = (pages, items) => { const mine = new Set(items), before = pages.flatMap(page => page.items).filter(item => mine.has(item)); return items.length === before.length && items.every((item, i) => item === before[i]); };
 
-  /* Distribui `items` (nova ordem da marca) pelas folhas dela mantendo a quantidade de cada folha, e reposiciona cada folha. */
+  /* Distribui `items` pelas posições que a marca já ocupa (cada folha mantém a quantidade) e reposiciona cada folha. */
   function distribute(pages, items) {
-    const counts = pages.map(page => page.items.length); let pos = 0;
-    pages.forEach((page, i) => { page.items = items.slice(pos, pos += counts[i]); global.CartazPagination.placeLive(page); });
+    const mine = new Set(items), queue = items.slice(), head = items.find(item => item.band);
+    if (head) { const { band, bandTotal } = head; items.forEach(item => { delete item.band; delete item.bandTotal; }); Object.assign(items[0], { band, bandTotal }); } /* seções: a faixa da marca acompanha o 1º produto */
+    pages.forEach(page => { page.items = page.items.map(item => mine.has(item) ? queue.shift() : item); global.CartazPagination.placeLive(page); });
   }
 
   /* Edição no próprio item (o grupo é compartilhado com a fonte de dados e com as outras folhas). kind: t título, q quantidade mínima, d descrição, c código. */
@@ -49,14 +51,26 @@
   function removeRow(item, rowIndex) { const rows = ownRows(item); if (rows.length < 2) return false; rows.splice(rowIndex, 1); return true; }
 
   /* Folha Live Shop com células vazias (page.empty, calculado em CartazPagination.placeLive): sugere como destaque o produto com mais linhas na tabela
-     (o destaque divide os códigos em duas tabelas, então é o que mais ganha); em empate, o que está mais ao fim da folha. */
-  function emptyHint(page) {
-    if (!page.empty || page.cols < 2) return null;
-    const candidates = page.items.filter(item => !item.wide); if (!candidates.length) return null;
+     (o destaque divide os códigos em duas tabelas, então é o que mais ganha); em empate, o que está mais ao fim da folha. Nas folhas em seções, `brand`
+     limita a contagem e a sugestão às linhas daquela marca. Linhas equilibradas (item.fit) não têm sobra. */
+  function emptyHint(page, brand) {
+    const gaps = (page.gaps || []).filter(gap => !gap.balanced && (!brand || (gap.brands || [gap.brand]).includes(brand)));
+    const empty = page.sectioned ? gaps.reduce((sum, gap) => sum + gap.free, 0) : page.empty;
+    if (!empty || page.cols < 2) return null;
+    const rows = page.sectioned && new Set(gaps.map(gap => gap.row));
+    const candidates = page.items.filter(item => !item.wide && !item.fit && (!rows || (rows.has(item.gridRow) && (!brand || brandOf(page, item) === brand)))); if (!candidates.length) return null;
     const pos = item => item.gridRow * page.cols + item.col;
     const best = candidates.reduce((a, b) => (lines(b).length > lines(a).length || (lines(b).length === lines(a).length && pos(b) > pos(a)) ? b : a));
-    return { empty: page.empty, item: best };
+    return { empty, item: best };
   }
 
-  global.CartazCards = { t, norm, lines, minQty, plainTitle, brandOf, adoptOverride, search, move, sameOrder, distribute, setField, addRow, removeRow, emptyHint };
+  /* Tamanho da logo no box da marca: por ÁREA, não por "caber": a logo larga fica mais baixa e a alta usa toda a altura, com peso visual parecido. `fill` = parte da altura do box usada
+     pela logo alta; `zoom` = ajuste manual da marca, limitado ao box (capped). */
+  function logoSize(ratio, boxW, boxH, fill, zoom) {
+    const full = boxH * fill; let h = Math.min(full, Math.sqrt(2 * full * full / ratio)), w = h * ratio;
+    if (w > boxW * .75) { w = boxW * .75; h = w / ratio; }
+    const scale = Math.min(zoom, (boxW - 20) / w, (boxH - 4) / h) /* 20 = recuo lateral dos boxes */;
+    return { w: w * scale, h: h * scale, capped: scale < zoom };
+  }
+  global.CartazCards = { logoSize, t, norm, lines, minQty, plainTitle, brandOf, adoptOverride, search, move, sameOrder, distribute, setField, addRow, removeRow, emptyHint };
 })(window);

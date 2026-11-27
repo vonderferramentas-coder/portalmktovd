@@ -64,6 +64,23 @@ try {
   let old = { group: makeGroups(1, 'X')[0], linesOverride: { html: '<span class="cd">6001010000</span><span class="cd">99 99</span>' } };
   C.adoptOverride(old); eq(old.rows, [{ desc: 'Desc 1', code: '6001010000' }, { desc: 'Outra', code: '99 99' }], 'códigos editados viram linhas');
 
+  // seções: a sobra e a sugestão são só das linhas da marca
+  setConfig({ capA4: 9, colsA4: 3, layout: 'liveshop', logoBox: false, sheetFormats: 'a4', brandMode: 'sections' });
+  let shared = paginate('TODAS', [...makeGroups(2, 'A'), ...makeGroups(1, 'B')])[0];
+  eq([C.emptyHint(shared, 'A').empty, C.emptyHint(shared, 'B').empty, C.emptyHint(shared).empty], [1, 2, 3], 'sobra por marca');
+  eq(C.emptyHint(shared, 'B').item.group.rows[0].brand, 'B', 'sugestão da própria marca');
+
+  // seções: reordenar os produtos de uma marca não mexe nas outras e leva a faixa para o novo 1º produto
+  let mixedSheet = paginate('TODAS', [...makeGroups(3, 'A'), ...makeGroups(2, 'B')]), mineA = mixedSheet.flatMap(p => p.items).slice(0, 3), swapped = [mineA[2], mineA[0], mineA[1]];
+  eq([C.sameOrder(mixedSheet, mineA), C.sameOrder(mixedSheet, swapped)], [true, false], 'mesma ordem só da marca');
+  C.distribute(mixedSheet, swapped);
+  eq(mixedSheet.flatMap(p => p.items).map(i => i.group.rows[0].brand + ':' + C.plainTitle(i).slice(-1) + (i.band ? '*' : '')), ['A:3*', 'A:1', 'A:2', 'B:1*', 'B:2'], 'nova ordem e faixa no 1º');
+
+  // logos: a larga fica mais baixa, a quadrada usa a altura toda e o zoom para no limite do box
+  const size = (ratio, zoom = 1) => { const s = C.logoSize(ratio, 240, 50, .8, zoom); return [Math.round(s.w), Math.round(s.h), s.capped]; };
+  eq([size(1), size(2), size(6)], [[40, 40, false], [80, 40, false], [139, 23, false]], 'equilíbrio por área');
+  eq(size(20), [180, 9, false], 'muito larga: limitada a 75% da largura');
+  eq([size(1, 1.1), size(1, 2), size(1, .5)], [[44, 44, false], [46, 46, true], [20, 20, false]], 'zoom manual');
   // espaço vazio: 4 colunas, logo + 5 produtos em folha de 7 + logo = 2 vazios; o último vira destaque para preencher
   setConfig({ capA4: 7, colsA4: 4, layout: 'liveshop', logoBox: true });
   let sparse = build(5)[0]; eq(sparse.empty, 2, 'espaços vazios na folha');

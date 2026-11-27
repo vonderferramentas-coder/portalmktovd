@@ -154,7 +154,68 @@ try {
   CartazPagination.setConfig({ capA4: 16, colsA4: 4, layout: 'liveshop', logoBox: false, sheetFormats: 'a4', paginateBy: 'brand', brandMode: 'sections' });
   let gap = paginate('TODAS', [...groups(4, 'A'), ...groups(2, 'B')])[0]; gap.items[3].wide = true; CartazPagination.placeLive(gap);
   eq(gap.items.slice(4).every(i => i.gridRow > gap.bands[1].row), true, 'produto da marca B fica abaixo da faixa da B');
+  // Linhas incompletas: "equilibrar" divide a largura; a escolha da marca vence a do template; quadrados ignoram
+  const rowsCfg = { capA4: 9, colsA4: 3, layout: 'liveshop', logoBox: false, sheetFormats: 'a4', paginateBy: 'brand', brandMode: 'sections' };
+  const fitOf = page => page.items.map(i => i.fit ? i.fit.units : null);
+  CartazPagination.setConfig({ ...rowsCfg, rowFill: 'balance' });
+  let bal = paginate('TODAS', [...groups(2, 'A'), ...groups(4, 'B')])[0];
+  eq([fitOf(bal), bal.empty], [[1.5, 1.5, null, null, null, 3], 0], '2 cards dividem a linha; o que sobra sozinho ocupa a linha inteira');
+  eq(bal.gaps.map(g => g.brand + ':' + g.free + ':' + g.balanced), ['A:1:true', 'B:2:true'], 'linhas incompletas por marca');
+  CartazPagination.setFillSource(() => ({ B: 'equal' })); CartazPagination.placeLive(bal);
+  eq([fitOf(bal), bal.empty], [[1.5, 1.5, null, null, null, null], 2], 'a marca B escolheu cards iguais');
+  CartazPagination.setConfig(rowsCfg); CartazPagination.setFillSource(() => ({ A: 'balance' })); CartazPagination.placeLive(bal);
+  eq(fitOf(bal), [1.5, 1.5, null, null, null, null], 'só a marca A equilibra');
+  CartazPagination.setConfig({ ...rowsCfg, rowFill: 'balance', boxShape: 'square' }); CartazPagination.placeLive(bal);
+  eq(fitOf(bal).filter(Boolean).length, 0, 'quadrados não esticam');
+  CartazPagination.setFillSource(() => ({}));
+  CartazPagination.setConfig({ ...rowsCfg, rowFill: 'balance', brandMode: 'footer', logoBox: true, headerMode: 'compact', headerCorner: 'tl' });
+  let boxed = paginate('A', groups(1, 'A'))[0];
+  eq([boxed.items[0].fit.box, boxed.items[0].fit.units], ['left', 2], 'ao lado do header compacto, ocupa só as colunas livres');
   CartazPagination.setConfig(CartazPagination.DEFAULT_CONFIG);
+  // Faixa do tamanho dos cards: marcas que cabem inteiras ficam lado a lado
+  const narrow = { capA4: 9, colsA4: 3, layout: 'liveshop', logoBox: false, sheetFormats: 'a4', paginateBy: 'brand', brandMode: 'sections', bandWidth: 'cards' };
+  const bandsOf = page => page.bands.map(b => b.brand + ':' + b.row + ':' + (b.span ? b.col + '+' + b.span : 'linha'));
+  CartazPagination.setFillSource(() => ({})); CartazPagination.setConfig(narrow);
+  let side = paginate('TODAS', [...groups(2, 'A'), ...groups(1, 'B'), ...groups(2, 'C'), ...groups(2, 'D'), ...groups(1, 'E')])[0];
+  eq(bandsOf(side), ['A:0:0+2', 'B:0:2+1', 'C:2:0+2', 'D:4:0+2', 'E:4:2+1'], 'B entra ao lado de A; D não cabe ao lado de C e desce');
+  eq([side.items.map(i => i.gridRow), side.rows], [[1, 1, 1, 3, 3, 5, 5, 5], 6], 'linhas de cards e de faixas');
+  eq(side.gaps.map(g => g.brand + ':' + g.free), ['C:1'], 'só a linha de C sobra');
+  side.items[0].wide = true; CartazPagination.placeLive(side);
+  eq(bandsOf(side).slice(0, 2), ['A:0:0+3', 'B:2:0+1'], 'destaque: a faixa acompanha a nova largura e a vizinha desce');
+  let large = paginate('TODAS', [...groups(5, 'N'), ...groups(1, 'V')])[0];
+  eq(bandsOf(large), ['N:0:linha', 'V:3:0+1'], 'marca com mais cards que colunas usa a linha toda e não divide a sobra');
+  CartazPagination.setFillSource(() => ({ A: 'balance' }));
+  eq(bandsOf(paginate('TODAS', [...groups(2, 'A'), ...groups(1, 'B')])[0]), ['A:0:linha', 'B:2:0+1'], 'marca equilibrada fica com a linha');
+  CartazPagination.setFillSource(() => ({}));
+  eq(paginate('TODAS', [...groups(2, 'A'), ...groups(1, 'B'), ...groups(3, 'C'), ...groups(3, 'D'), ...groups(1, 'E')]).map(p => p.items.length), [9, 1], 'lado a lado cabem mais marcas por folha');
+  CartazPagination.setConfig(CartazPagination.DEFAULT_CONFIG);
+  // Faixa em cada card: as marcas seguem sem quebrar linha e cada box leva a sua
+  CartazPagination.setConfig({ ...narrow, bandWidth: 'card' });
+  let each = paginate('TODAS', [...groups(2, 'A'), ...groups(2, 'C')])[0];
+  eq(bandsOf(each), ['A:0:0+1', 'A:0:1+1', 'C:0:2+1', 'C:2:0+1'], 'uma faixa por card, marca continua na linha de baixo');
+  eq([each.items.map(i => i.gridRow), each.rows], [[1, 1, 1, 3], 5], 'cada linha de cards tem a sua linha de faixas');
+  each.items[0].wide = true; CartazPagination.placeLive(each);
+  eq(bandsOf(each)[0], 'A:0:0+2', 'destaque: a faixa acompanha o card');
+  eq(paginate('TODAS', [...groups(2, 'A'), ...groups(2, 'B'), ...groups(2, 'C'), ...groups(3, 'D')]).map(p => p.items.length), [9], 'sem quebra de linha entre marcas, a folha enche');
+  CartazPagination.setFillSource(() => ({ A: 'balance' }));
+  each = paginate('TODAS', [...groups(2, 'A'), ...groups(1, 'B')])[0];
+  eq([each.items.map(i => i.gridRow), each.bands.map(b => !!b.fit), each.bands[0].fit === each.items[0].fit], [[1, 1, 3], [true, true, false], true], 'equilibrada: linha própria e faixas do mesmo tamanho dos boxes');
+  CartazPagination.setFillSource(() => ({}));
+  // marca que continua no topo da folha seguinte não impede a próxima de entrar ao lado
+  eq(paginate('TODAS', [...groups(10, 'A'), ...groups(2, 'B')])[1].items.map(i => i.gridRow + ':' + i.col), ['1:0', '1:1', '1:2'], 'continuação divide a linha');
+  // header compacto na frente: a marca que quebra de linha não recebe vizinha no meio dos boxes dela
+  CartazPagination.setConfig({ ...narrow, capA4: 11, colsA4: 4, logoBox: true, headerMode: 'compact', headerCorner: 'tl' });
+  let wrapped = paginate('TODAS', [...groups(4, 'A'), ...groups(2, 'B')])[0];
+  eq([wrapped.bands.map(b => b.brand + ':' + b.row), wrapped.items.map(i => i.gridRow)], [['A:0', 'B:3'], [1, 1, 1, 2, 4, 4]], 'faixa de B depois de todos os boxes de A');
+  // marca maior que as colunas não entra ao lado, mesmo quando só um pedaço dela cabe na folha
+  CartazPagination.setConfig({ ...narrow, capA4: 10, colsA4: 4 });
+  let split = paginate('TODAS', [...groups(4, 'X'), ...groups(2, 'A'), ...groups(6, 'B')])[0];
+  eq(split.items.slice(6).map(i => i.gridRow + ':' + i.col), ['5:0', '5:1'], 'B começa numa linha nova');
+  CartazPagination.setConfig(CartazPagination.DEFAULT_CONFIG);
+  // repaginar (reordenar marcas, vincular) preserva o A+/A- do título e o "Consulte códigos"
+  let kept = groups(2, 'K'), prevMap = new Map([[kept[0], { titleScale: 1.2, consult: { before: null } }]]);
+  let again = paginate('K', kept, null, prevMap)[0].items[0];
+  eq([again.titleScale, again.consult], [1.2, { before: null }], 'edições preservadas');
   eq(paginate('X', groups(6))[0].layout, undefined, 'Feira não ganha layout liveshop');
 
   document.body.dataset.result = 'pass';
