@@ -335,7 +335,7 @@
   // ---------- planilha ----------
   async function readSheet(file, fromLote) {
     if (!fromLote) { state.files.sheet = file; unlinkLote(); }
-    const st = $('sheetState');
+    const st = $('sheetState'); reading++; renderLotes();
     try {
       await PortalShell.loadScript('vendor/xlsx.full.min.js');
       const buf = await file.arrayBuffer();
@@ -365,43 +365,62 @@
         index.get(key).push({ colab: String(r[col.colab] || '').trim(), nome, nasc: parseDate(r[col.nasc]) });
         kids++;
       });
-      state.index = index; resolveKids();
+      unbindKids(); state.index = index; resolveKids();
       st.textContent = kids + ' filhos de ' + index.size + ' colaboradores';
       ed.item = null; refreshAll();
-    } catch (e) { state.index = null; st.textContent = e.message; refreshAll(); }
+    } catch (e) { unbindKids(); state.index = null; ed.item = null; st.textContent = e.message; refreshAll(); }
+    finally { reading--; renderLotes(); }
   }
 
   // ---------- ZIP de desenhos ----------
   // ---------- conjuntos salvos (continuar depois ou por outra pessoa) ----------
-  function unlinkLote() { if (state.loteId) { writeWorkNow(); state.loteId = null; state.work = {}; $('mgWorkState').textContent = ''; renderLotes(); summary(); } } // subir arquivo novo é outro conjunto
+  let saving = null, reading = 0, dirty = false, writing = Promise.resolve(true); // conjunto sendo salvo; arquivos sendo lidos; ajuste desta tela ainda não gravado
+  const decisions = () => { const work = {}; state.items.forEach(it => { const e = workOf(it); if (e) work[it.file] = e; }); return { work, drawings: state.items.length }; };
+  const clean = () => { dirty = false; writing = Promise.resolve(true); }; // nada pendente: ao trocar ou limpar o conjunto
+  function unlinkLote() { // subir arquivo novo é outro conjunto (chamar ANTES de mexer nos desenhos ou na planilha lida)
+    flushCommit();
+    if (saving && !saving.kept) saving.kept = decisions(); // o conjunto que está sendo salvo fica com as decisões dos arquivos que estão saindo
+    if (state.loteId) { writeWorkNow(); state.loteId = null; state.work = {}; clean(); $('mgWorkState').textContent = ''; renderLotes(); summary(); }
+  }
   // devolve a decisão guardada de um desenho (ou null se ele está como veio do ZIP)
   const workOf = item => {
     const kids = (state.index && state.index.get(item.key)) || [], kid = item.choice != null ? kids[item.choice] : null;
-    const e = { k: item.key !== item.key0 ? item.key : undefined, c: kid ? kid.nome : item.wKid || undefined, o: item.over || undefined, v: item.view || undefined, s: item.skip ? 1 : undefined, a: item.keep && item.keep.length ? item.keep : undefined };
+    const e = { k: item.key !== item.key0 ? item.key : undefined, c: kid ? kid.nome : item.wKid || undefined, n: kid ? JSON.stringify(kid.nasc) : item.wKid ? item.wNasc : undefined, o: item.over || undefined, v: item.view || undefined, s: item.skip ? 1 : undefined, a: item.keep && item.keep.length ? item.keep : undefined };
     Object.keys(e).forEach(k => e[k] === undefined && delete e[k]);
     return Object.keys(e).length ? e : null;
   };
+  function unbindKids() { // antes de trocar a planilha: a escolha volta a ser o nome do filho (a posição muda de uma planilha para outra)
+    flushCommit();
+    state.items.forEach(it => { if (it.choice == null) return; const kid = state.index && (state.index.get(it.key) || [])[it.choice]; if (kid) { it.wKid = kid.nome; it.wNasc = JSON.stringify(kid.nasc); } it.choice = null; });
+  }
   function resolveKids() { // o filho salvo é guardado pelo nome; vira posição quando a planilha chega
     if (!state.index) return;
-    state.items.forEach(it => { if (it.wKid == null) return; const i = ((state.index.get(it.key)) || []).findIndex(k => k.nome === it.wKid); if (i >= 0) { it.choice = i; it.wKid = null; } });
+    const loose = name => norm(name).replace(/\s+/g, ' '); // planilha corrigida (acento, maiúscula, espaço duplo) continua sendo o mesmo filho
+    state.items.forEach(it => {
+      if (it.wKid == null) return;
+      const kids = state.index.get(it.key) || [], exact = kids.filter(k => k.nome === it.wKid), found = exact.length ? exact : kids.filter(k => loose(k.nome) === loose(it.wKid)), kid = found.find(k => JSON.stringify(k.nasc) === it.wNasc) /* homônimos: desempata pelo nascimento */ || found[0];
+      if (kid) { it.choice = kids.indexOf(kid); it.wKid = null; delete it.wNasc; }
+    });
   }
   function applyWork() {
     let n = 0;
     state.items.forEach(it => {
       const e = state.work[it.file]; if (!e) return; n++;
-      if (e.k) it.key = e.k; if (e.o) it.over = e.o; if (e.v) it.view = e.v; if (e.s) it.skip = true; if (e.c) it.wKid = e.c; if (e.a) it.keep = e.a;
+      if (e.k) it.key = e.k; if (e.o) it.over = e.o; if (e.v) it.view = e.v; if (e.s) it.skip = true; if (e.c) it.wKid = e.c; if (e.n) it.wNasc = e.n; if (e.a) it.keep = e.a;
     });
     resolveKids();
     if (n) $('mgWorkState').textContent = 'Trabalho salvo retomado em ' + n + (n === 1 ? ' desenho' : ' desenhos');
   }
-  const writeWorkNow = () => {
+  const writeWorkNow = force => { // devolve (promessa) se o trabalho está gravado; sem ajuste pendente não regrava, para não apagar o que outra pessoa salvou
     const id = state.loteId; // capturado agora: um novo upload pode desvincular o conjunto antes de a gravação rodar
-    if (!id || !state.items.length) return Promise.resolve();
+    if (!id || !state.items.length) return Promise.resolve(true);
+    if (!dirty && !force) return writing;
+    dirty = false;
     state.items.forEach(it => { const e = workOf(it); if (e) state.work[it.file] = e; else delete state.work[it.file]; });
     const snapshot = JSON.parse(JSON.stringify(state.work)); // cópia agora: state.work é zerado se o conjunto for desvinculado
-    return fbw().then(m => m.writeMoldurasWork(id, { items: snapshot })).then(() => { $('mgWorkState').textContent = 'Trabalho salvo'; }).catch(() => { $('mgWorkState').textContent = 'Não foi possível salvar o trabalho'; });
+    return writing = fbw().then(m => m.writeMoldurasWork(id, { items: snapshot })).then(() => { $('mgWorkState').textContent = 'Trabalho salvo'; return true; }).catch(() => { if (state.loteId === id) dirty = true; $('mgWorkState').textContent = 'Não foi possível salvar o trabalho'; return false; });
   };
-  const saveWork = debounce(writeWorkNow, 1200);
+  const saveLater = debounce(() => writeWorkNow(), 1200), saveWork = () => { dirty = true; saveLater(); };
   const lotesAdd = (entry, remove) => { // lista compartilhada: relê e tenta de novo uma vez se outra pessoa alterou antes
     const tryOnce = async cur => { const itens = [...(entry ? [entry] : []), ...cur.itens.filter(l => l.id !== (entry || remove).id)].sort((a, b) => b.updatedAt - a.updatedAt); const m = await fbw(); const r = await m.writeMoldurasLotes(itens, cur.rev); return r.conflict ? null : { rev: r.rev, itens }; };
     return fbw().then(async m => { let r = await tryOnce(state.lotes); if (!r) r = await tryOnce(await m.readMoldurasLotes()); if (!r) throw new Error('A lista foi alterada por outra pessoa. Tente de novo.'); state.lotes = r; renderLotes(); });
@@ -418,7 +437,7 @@
       open.onclick = () => openLote(l); del.onclick = () => deleteLote(l);
       info.append(t, m); row.append(info, open, del); list.append(row);
     });
-    $('mgLoteSave').disabled = !!state.loteId || !state.files.sheet || !state.files.zip || !state.items.length || !state.index;
+    $('mgLoteSave').disabled = !!state.loteId || reading > 0 || !state.files.sheet || !state.files.zip || !state.items.length || !state.index;
     const n = state.lotes.itens.length; $('mgLotesState').textContent = n ? n + (n === 1 ? ' trabalho salvo' : ' trabalhos salvos') : 'Nenhum trabalho salvo';
   }
   async function loadLotes() {
@@ -435,7 +454,7 @@
   });
   let loteBusy = false; // uma operação de conjunto por vez (salvar, abrir, excluir)
   async function saveLote() {
-    const { sheet, zip } = state.files; if (!sheet || !zip || state.loteId || loteBusy) return;
+    const { sheet, zip } = state.files; if (!sheet || !zip || state.loteId || loteBusy || reading) return;
     loteBusy = true;
     try { await saveLoteNow(sheet, zip); } finally { loteBusy = false; }
   }
@@ -443,28 +462,40 @@
     if (zip.size > 150 * 1048576) { $('mgLoteState').textContent = 'ZIP grande demais para salvar (máximo de 150 MB)'; return; }
     const title = await askLoteName(); if (!title) return;
     const btn = $('mgLoteSave'), st = $('mgLoteState'), id = crypto.randomUUID(); btn.disabled = true;
+    saving = { kept: null }; // se outros arquivos forem enviados durante o salvamento, unlinkLote guarda aqui as decisões destes
+    const same = () => state.files.sheet === sheet && state.files.zip === zip;
     try {
       const m = await fbw();
       await m.writeMolduraArquivo('lote_' + id + '_sheet', sheet);
       await m.writeMolduraArquivo('lote_' + id + '_zip', zip, (a, b) => { st.textContent = 'Salvando o ZIP: ' + a + ' de ' + b; });
       const now = Date.now(), by = ((await m.currentContext()).user || {}).email || '';
-      state.loteId = id; state.work = {}; await writeWorkNow();
-      await lotesAdd({ id, title, createdAt: now, updatedAt: now, drawings: state.items.length, bytes: sheet.size + zip.size, sheetName: sheet.name, zipName: zip.name, by });
-      st.textContent = 'Conjunto salvo'; summary();
-    } catch (e) { state.loteId = null; st.textContent = 'Não foi possível salvar o conjunto: ' + (e.message || e); renderLotes(); fbw().then(m => m.deleteMoldurasLote(id)).catch(() => {}); } // não deixa pedaços órfãos no Firestore
+      const linked = same(), drawings = linked ? state.items.length : saving.kept.drawings;
+      if (linked) { state.loteId = id; state.work = {}; if (!await writeWorkNow(true)) throw new Error('as decisões não foram gravadas'); } else await m.writeMoldurasWork(id, { items: saving.kept.work });
+      await lotesAdd({ id, title, createdAt: now, updatedAt: now, drawings, bytes: sheet.size + zip.size, sheetName: sheet.name, zipName: zip.name, by });
+      st.textContent = state.loteId === id ? 'Conjunto salvo' : 'Conjunto salvo sem os arquivos enviados depois'; summary(); renderLotes();
+    } catch (e) { if (state.loteId === id) { state.loteId = null; state.work = {}; clean(); } st.textContent = 'Não foi possível salvar o conjunto: ' + (e.message || e); renderLotes(); fbw().then(m => m.deleteMoldurasLote(id)).catch(() => {}); } // não deixa pedaços órfãos no Firestore
+    finally { saving = null; }
   }
   async function openLote(l) {
+    const st = $('mgLoteState'); if (reading) { st.textContent = 'Aguarde a leitura dos arquivos para abrir outro conjunto'; return; }
     if (loteBusy) return; loteBusy = true;
-    const st = $('mgLoteState');
+    let replaced = false;
     try {
+      const keepCurrent = async () => { // repete enquanto houver ajuste novo; sem rede o Firestore não responde, por isso o prazo
+        do {
+          flushCommit(); if (dirty && state.loteId) st.textContent = 'Salvando os ajustes';
+          if (!await Promise.race([writeWorkNow(), new Promise(ok => setTimeout(ok, 20000, false))])) throw new Error('os ajustes do conjunto aberto não foram salvos');
+        } while (state.loteId && state.items.length && (dirty || commitTimer));
+      };
+      await keepCurrent();
       const m = await fbw(); st.textContent = 'Abrindo o conjunto';
       const [sheet, zip, work] = await Promise.all([m.readMolduraArquivo('lote_' + l.id + '_sheet', 'application/octet-stream'), m.readMolduraArquivo('lote_' + l.id + '_zip', 'application/zip', (a, b) => { st.textContent = 'Baixando o ZIP: ' + a + ' de ' + b; }), m.readMoldurasWork(l.id)]);
-      state.work = work.items || {}; state.loteId = l.id;
+      await keepCurrent(); /* o que mudou durante o download */ replaced = true; clean(); state.work = work.items || {}; state.loteId = l.id;
       state.files = { sheet: new File([sheet], l.sheetName || 'planilha.xlsx'), zip: new File([zip], l.zipName || 'desenhos.zip') };
       state.items = []; state.index = null; ed.item = null;
       await readSheet(state.files.sheet, true); await readZip(state.files.zip, true);
       $('mgWorkState').textContent = ''; st.textContent = 'Conjunto aberto: ' + l.title; renderLotes(); summary();
-    } catch (e) { state.loteId = null; st.textContent = 'Não foi possível abrir o conjunto: ' + (e.message || e); renderLotes(); }
+    } catch (e) { if (replaced) { state.loteId = null; state.work = {}; } st.textContent = 'Não foi possível abrir o conjunto: ' + (e.message || e); renderLotes(); }
     finally { loteBusy = false; }
   }
   async function deleteLote(l) {
@@ -496,7 +527,7 @@
   }
   async function readZip(file, fromLote) {
     if (!fromLote) { state.files.zip = file; unlinkLote(); }
-    const st = $('zipState');
+    const st = $('zipState'); reading++; renderLotes();
     try {
       await PortalShell.loadScript('vendor/jszip.min.js');
       const zip = await JSZip.loadAsync(file);
@@ -516,6 +547,7 @@
       st.textContent = (items.length ? items.length + ' desenhos' : 'Nenhuma imagem ou PDF encontrado no ZIP') + (unreadable.length ? '. ' + unreadable.length + ' PDF(s) não puderam ser lidos: ' + unreadable.slice(0, 3).join(', ') + (unreadable.length > 3 ? '…' : '') : '');
       refreshAll();
     } catch (e) { state.items = []; st.textContent = 'Não foi possível ler o ZIP: ' + e.message; refreshAll(); }
+    finally { reading--; renderLotes(); }
   }
   const blobOf = item => item.page ? renderPdfPage(item) : item.entry.async('blob').then(b => new Blob([b], { type: /\.png$/i.test(item.file) ? 'image/png' : /\.webp$/i.test(item.file) ? 'image/webp' : 'image/jpeg' }));
   const bitmapOf = async item => createImageBitmap(await blobOf(item), { imageOrientation: 'from-image' });
@@ -526,6 +558,7 @@
     if (item.skip) return { s: 'skip', kids };
     if (item.over) return { s: 'ok', kids, kid: item.choice != null ? kids[item.choice] : kids.length === 1 ? kids[0] : null, rec: item.over }; // texto editado à mão
     if (!kids.length) return { s: 'missing', kids };
+    if (item.wKid && item.choice == null) return { s: 'choose', kids }; // o filho escolhido não está nesta planilha: não assume o que sobrou
     if (kids.length === 1) return { s: 'ok', kids, kid: kids[0], rec: recOf(kids[0]) };
     if (item.choice == null) return { s: 'choose', kids };
     return { s: 'ok', kids, kid: kids[item.choice], rec: recOf(kids[item.choice]) };
@@ -550,7 +583,7 @@
     [['sheetFile', state.index && state.files.sheet], ['zipFile', state.items.length && state.files.zip]].forEach(([id, f]) => { // ícone e nome do arquivo lido
       $(id).hidden = !f; if (f) $(id).querySelector('.mg-file-name').textContent = f.name;
     });
-    $('mgExportRow').hidden = !ready; $('mgWorkClear').hidden = !ready || !state.loteId; $('mgLoteSave').disabled = !!state.loteId || !state.files.sheet || !state.files.zip || !ready;
+    $('mgExportRow').hidden = !ready; $('mgWorkClear').hidden = !ready || !state.loteId; $('mgLoteSave').disabled = !!state.loteId || reading > 0 || !state.files.sheet || !state.files.zip || !ready;
     $('mgResultCount').textContent = ready ? sts.length + ' desenhos, ' + oks.length + ' prontos' + (pending.length ? ', ' + pending.length + (pending.length === 1 ? ' pendente' : ' pendentes') : '') : '';
     $('mgExport').disabled = !oks.length || !!pending.length;
     $('mgFilterPending').textContent = 'Pendentes (' + pending.length + ')';
@@ -635,7 +668,7 @@
   function commit() {
     const it = ed.item; if (!it) return;
     const kids = (state.index && state.index.get(it.key)) || [], cur = edRec(), kid = ed.kidIdx != null ? kids[ed.kidIdx] : null, base = kid ? recOf(kid) : null;
-    it.choice = ed.kidIdx;
+    if (it.wKid == null) it.choice = ed.kidIdx; // filho lembrado que não está nesta planilha: só uma escolha explícita o substitui
     it.over = base && cur.nome === base.nome && cur.idade === base.idade && cur.colab === base.colab ? null : (cur.nome && cur.colab ? cur : null); // só guarda texto editado se for diferente da planilha
     it.view = (ed.view.z !== 1 || ed.view.x || ed.view.y || ed.view.r) ? { ...ed.view } : null;
     patchRow(it); summary(); saveWork();
@@ -695,7 +728,7 @@
     $('mgEd').hidden = false; $('mgDetailEmpty').hidden = true;
     $('edKey').value = item.key;
     $('edKidWrap').hidden = !kids.length;
-    const idx = item.choice != null ? item.choice : kids.length === 1 ? 0 : null;
+    const idx = item.choice != null ? item.choice : kids.length === 1 && !item.wKid ? 0 : null;
     $('edKid').innerHTML = (idx == null ? '<option value="">Escolher o filho</option>' : '') + kids.map((k, i) => '<option value="' + i + '">' + esc(titleCase(k.nome)) + (ageText(k.nasc) ? ', ' + esc(ageText(k.nasc)) : '') + '</option>').join('');
     loadKid(idx); $('edKid').value = idx == null ? '' : idx;
     if (item.over) { $('edNome').value = item.over.nome; $('edIdade').value = item.over.idade; $('edColab').value = item.over.colab; }
@@ -777,27 +810,27 @@
   };
   $('edRotL').addEventListener('click', () => rotate(-1)); $('edRotR').addEventListener('click', () => rotate(1));
   $('edKid').addEventListener('change', e => {
-    const i = e.target.value === '' ? null : +e.target.value;
+    const i = e.target.value === '' ? null : +e.target.value; if (ed.item) { ed.item.wKid = null; delete ed.item.wNasc; }
     if (i == null) { ed.kidIdx = null; ed.nomeFull = ed.colabFull = ''; $('edNome').value = $('edIdade').value = $('edColab').value = ''; } else loadKid(i);
     renderChips($('edNomeChips'), ed.nomeFull, $('edNome')); renderChips($('edColabChips'), ed.colabFull, $('edColab')); drawEditor(); scheduleCommit();
   });
   $('edKeyGo').addEventListener('click', () => { // corrige a matrícula do arquivo e cruza de novo com a planilha
     const it = ed.item, k = keyOf($('edKey').value); if (!it || !k) return;
-    const keep = ed.open; flushCommit(); it.key = k; it.choice = null; it.over = null; ed.item = null; refreshAll(); ed.open = keep; selectItem(it, true); saveWork();
+    const keep = ed.open; flushCommit(); it.key = k; it.choice = null; it.wKid = null; it.over = null; ed.item = null; refreshAll(); ed.open = keep; selectItem(it, true); saveWork();
   });
   $('edSkip').addEventListener('click', () => { const it = ed.item; if (!it) return; it.skip = !it.skip; $('edSkip').textContent = it.skip ? 'Restaurar desenho' : 'Descartar desenho'; refreshAll(); saveWork(); });
   $('mgLoteSave').addEventListener('click', saveLote);
   document.querySelectorAll('.mg-file-x').forEach(b => b.addEventListener('click', e => { // x no ícone: tira o arquivo para enviar outro
     e.preventDefault(); e.stopPropagation();
     unlinkLote(); $('mgLoteState').textContent = '';
-    if (b.dataset.clear === 'sheet') { state.files.sheet = null; state.index = null; $('fileSheet').value = ''; $('sheetState').textContent = 'Nenhuma planilha'; }
+    if (b.dataset.clear === 'sheet') { unbindKids(); state.files.sheet = null; state.index = null; $('fileSheet').value = ''; $('sheetState').textContent = 'Nenhuma planilha'; }
     else { state.files.zip = null; state.items = []; $('fileZip').value = ''; $('zipState').textContent = 'Nenhum ZIP'; }
     ed.item = null; refreshAll();
   }));
   $('mgWorkClear').addEventListener('click', () => { // apaga as decisões salvas (de todos os desenhos) e volta ao que veio do ZIP e da planilha
     if (!state.loteId || !confirm('Apagar todos os ajustes salvos deste conjunto (filhos escolhidos, textos, zoom, giro e descartados)? Isso vale para todos os administradores.')) return;
     state.items.forEach(it => { it.key = it.key0; it.choice = null; it.wKid = null; it.over = null; it.view = null; it.skip = false; it.keep = null; });
-    state.work = {}; ed.item = null; refreshAll();
+    state.work = {}; clean(); ed.item = null; refreshAll();
     fbw().then(m => m.writeMoldurasWork(state.loteId, { items: {} })).then(() => { $('mgWorkState').textContent = 'Ajustes salvos apagados'; }).catch(() => { $('mgWorkState').textContent = 'Não foi possível apagar o trabalho salvo'; });
   });
   $('mgResultList').addEventListener('click', e => {

@@ -12,7 +12,7 @@
     const downloads = [], realClick = HTMLAnchorElement.prototype.click;
     HTMLAnchorElement.prototype.click = function () { if (this.download) downloads.push(this.download); else realClick.call(this); };
     const wait = ms => new Promise(r => setTimeout(r, ms));
-    const until = async (fn, m) => { for (let i = 0; i < 100; i++) { if (fn()) return; await wait(50); } throw new Error('tempo esgotado: ' + m); };
+    const until = async (fn, m) => { for (let i = 0; i < 4000; i++ /* o tempo virtual do Chrome corre na frente do processamento de imagem */) { if (fn()) return; await wait(50); } throw new Error('tempo esgotado: ' + m); };
     const lib = src => new Promise((ok, fail) => { const s = document.createElement('script'); s.src = '../' + src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); });
     window.PortalShell = { loadScript: lib, wireModalA11y(b) { if (!b.querySelector('[role="dialog"]')) throw new Error('modal sem role=dialog (o portal-shell exige)'); } };
     const html = await (await fetch('../molduras-generator.html')).text();
@@ -241,7 +241,7 @@
     eq(/Editado/.test(rowOf('456').querySelector('.mg-qhead').textContent), true, 'zoom marca o desenho como editado');
     await pick('123.jpg'); await pick('456');
     eq($('edZoomOut').textContent, '400%', 'ao voltar ao desenho o zoom continua guardado');
-    for (let i = 0; i < 30 && $('mgZoom').style.display !== 'flex'; i++) { $('edMagnify').click(); await wait(150); } // a lupa ignora o clique enquanto a imagem do desenho ainda carrega
+    for (let i = 0; i < 4000 && $('mgZoom').style.display !== 'flex'; i++) { $('edMagnify').click(); await wait(150); } // a lupa ignora o clique enquanto a imagem do desenho ainda carrega
     eq($('mgZoom').style.display, 'flex', 'lupa abre a peça ampliada');
     eq($('zmCanvas').width >= $('edCanvas').width && $('zmCanvas').width > 0, true, 'a ampliação tem ao menos o tamanho da prévia');
     $('zmClose').click(); eq($('mgZoom').style.display, '', 'o x fecha a ampliação');
@@ -262,6 +262,27 @@
     keepBtn.click(); await wait(300);
     eq(/Revisar acentos/.test(rowOf('456').querySelector('.mg-qhead').textContent) || $('mgFilterReview').textContent !== 'Revisão (0)', false, 'Manter tira a palavra da revisão: ' + $('mgFilterReview').textContent);
 
+    // 4e) trocar a planilha com os filhos em outra ordem mantém o filho escolhido (pelo nome, não pela posição)
+    await pick('123.jpg'); $('edKid').value = '1'; $('edKid').dispatchEvent(new Event('change')); await wait(450);
+    const chosen = rowOf('123.jpg').querySelector('.mg-qhead small').textContent, lines = csv.trim().split('\n');
+    const sheetWith = async (list, kids) => { setFile('fileSheet', new File([list.join('\n')], 'outra.csv', { type: 'text/csv' })); await until(() => $('sheetState').textContent.startsWith(kids + ' filhos'), 'planilha com ' + kids + ' filhos'); };
+    await sheetWith([lines[0], lines[2], lines[1], lines[3], '777,OUTRA PESSOA,carla,01/01/2020'], 4);
+    eq(rowOf('123.jpg').querySelector('.mg-qhead small').textContent, chosen, 'planilha reordenada mantém o filho');
+    await sheetWith(lines.filter(line => !/bia souza/.test(line)), 2);
+    eq(/Escolher o filho/.test(rowOf('123.jpg').querySelector('.mg-qhead').textContent), true, 'filho escolhido sumiu: pede confirmação em vez de assumir o outro');
+    await sheetWith(lines, 3);
+    eq(rowOf('123.jpg').querySelector('.mg-qhead small').textContent, chosen, 'o filho escolhido volta quando reaparece na planilha');
+    document.querySelector('.mg-file-x[data-clear="sheet"]').click(); await wait(200);
+    await sheetWith(lines.map(line => line.replace('bia souza', 'BÍA  SOUZA')), 3);
+    eq(/B[ií]a, 2 anos/i.test(rowOf('123.jpg').querySelector('.mg-qhead small').textContent), true, 'tirar a planilha e enviar a corrigida mantém o filho');
+    await sheetWith([...lines, '888,X Y,zeca,01/01/2020'], 4); await sheetWith(lines, 3);
+    // homônimos: a escolha continua na mesma data de nascimento
+    const twins = [lines[0], '123,MARIA DA SILVA,ana souza,15/03/2018', '123,MARIA DA SILVA,ana souza,01/02/2024', lines[3]];
+    await sheetWith([...twins, '999999,X Y,zeca,01/01/2020'], 4); await pick('123.jpg'); $('edKid').value = '1'; $('edKid').dispatchEvent(new Event('change')); await wait(450);
+    const young = rowOf('123.jpg').querySelector('.mg-qhead small').textContent; await sheetWith(twins, 3);
+    eq(rowOf('123.jpg').querySelector('.mg-qhead small').textContent, young, 'homônimo mantém a data escolhida');
+    await sheetWith([...lines, '999999,X Y,zeca,01/01/2020'], 4); await sheetWith(lines, 3); await pick('123.jpg');
+    $('edKid').value = '0'; $('edKid').dispatchEvent(new Event('change')); await wait(450);
     // 5) exportar: a 123 é paisagem e não há moldura paisagem -> avisa; a 456 sai
     $('mgExport').click();
     await until(() => /gerados/.test($('mgExportState').textContent), 'exportação');
@@ -285,7 +306,7 @@
     const rowsPdf = [...document.querySelectorAll('#mgResultList .mg-qrow')].map(r => r.textContent);
     eq(rowsPdf.some(t => /123\.pdf/.test(t)) && !rowsPdf.some(t => /página/.test(t)), true, 'verso não vira desenho: ' + rowsPdf.join(' | ').slice(0, 200));
     await pick('123.pdf'); await wait(600);
-    eq(/primeiro filho da planilha/.test($('edHint').textContent), true, 'sem filho escolhido a prévia mostra a tag com o primeiro da planilha: ' + $('edHint').textContent);
+    await until(() => /primeiro filho da planilha/.test($('edHint').textContent), 'sem filho escolhido a prévia mostra a tag com o primeiro da planilha');
     await until(() => !$('edVersoBox').hidden, 'verso do PDF de 2 páginas');
     const vp = $('edVerso').getContext('2d').getImageData(10, 10, 1, 1).data;
     eq(vp[2] > 200 && vp[0] < 100, true, 'o verso mostra a 2ª página (azul): ' + [...vp]);
@@ -293,8 +314,8 @@
     eq($('edVersoBox').hidden, true, 'PDF de 1 página não mostra verso');
     await until(() => !$('edCanvas').hidden && $('edCanvas').width > 0, 'preview com a página do PDF');
     await wait(500);
-    const pe = $('edCanvas').getContext('2d').getImageData(300, 450, 1, 1).data;
-    eq(pe[0] > 180 && pe[1] < 90 && pe[2] < 90, true, 'a página do PDF foi desenhada dentro da moldura: ' + [...pe].join());
+    const pe = () => $('edCanvas').getContext('2d').getImageData(300, 450, 1, 1).data; // espera o desenho certo: o anterior pode ainda estar na tela
+    await until(() => pe()[0] > 180 && pe()[1] < 90 && pe()[2] < 90, 'a página do PDF foi desenhada dentro da moldura');
     // 7) conjuntos salvos: planilha + ZIP + decisões guardados e reabertos pela lista (outra sessão ou outro login), com Firestore simulado
     const db = { lotes: { rev: 0, itens: [] }, files: {}, work: {} };
     window.__mgWork = {
@@ -334,6 +355,37 @@
     document.querySelector('#mgLoteList .mg-lote .danger').click();
     await until(() => /Conjunto excluído/.test($('mgLoteState').textContent), 'conjunto excluído');
     eq(db.lotes.itens.length === 0 && Object.keys(db.files).length === 0 && !db.work[loteId], true, 'excluir apaga lista, arquivos e decisões');
+    // 8) arquivo enviado durante o salvamento não entra no conjunto
+    let release; const gate = new Promise(ok => release = ok), realWrite = window.__mgWork.writeMolduraArquivo, realRead = window.__mgWork.readMolduraArquivo;
+    const save = async name => { await until(() => !$('mgLoteSave').disabled, 'botão salvar liberado'); $('mgLoteSave').click(); await wait(100); $('lnInput').value = name; $('lnSave').click(); await wait(200); };
+    window.__mgWork.writeMolduraArquivo = async (nome, blob) => { await gate; db.files[nome] = blob; };
+    await save('Lote A');
+    await pick('123.pdf'); $('edSkip').click(); await wait(100); // decisão tomada durante o salvamento
+    const one = new JSZip(); one.file('456.png', await canvasBlob(300, 400, x => { x.fillStyle = '#16a34a'; x.fillRect(0, 0, 300, 400); }));
+    setFile('fileZip', new File([await one.generateAsync({ type: 'blob' })], 'durante.zip'));
+    await until(() => $('zipState').textContent === '1 desenhos', 'zip enviado durante o salvamento'); release();
+    await until(() => /Conjunto salvo/.test($('mgLoteState').textContent), 'conjunto A salvo');
+    eq(/sem os arquivos enviados depois/.test($('mgLoteState').textContent) && db.lotes.itens[0].drawings === 2 && $('mgWorkClear').hidden, true, 'o conjunto fica com os arquivos de antes: ' + JSON.stringify(db.lotes.itens));
+    eq((db.work[db.lotes.itens[0].id].items['123.pdf'] || {}).s, 1, 'a decisão tomada durante o salvamento vai junto: ' + JSON.stringify(db.work));
+    // 9) falha ao abrir outro conjunto não desliga o que está aberto
+    window.__mgWork.writeMolduraArquivo = realWrite; await save('Lote B'); await until(() => $('mgLoteState').textContent === 'Conjunto salvo', 'conjunto B salvo');
+    window.__mgWork.readMolduraArquivo = async () => { throw new Error('sem rede'); };
+    [...document.querySelectorAll('#mgLoteList .mg-lote button')].find(button => button.textContent === 'Abrir').click();
+    await until(() => /Não foi possível abrir/.test($('mgLoteState').textContent), 'falha ao abrir');
+    const openRow = document.querySelector('#mgLoteList .mg-lote.is-open');
+    eq(!!openRow && /Lote B/.test(openRow.textContent), true, 'o conjunto B continua aberto');
+    window.__mgWork.readMolduraArquivo = realRead;
+    // 10) sem ajuste pendente, sair de um conjunto não regrava o trabalho (outra pessoa pode ter mexido nele)
+    const openOther = () => [...document.querySelectorAll('#mgLoteList .mg-lote button')].find(button => button.textContent === 'Abrir').click();
+    const idB = db.lotes.itens.find(l => l.title === 'Lote B').id; await wait(1700); db.work[idB] = { items: { 'outra-pessoa.png': { s: 1 } } };
+    openOther(); await until(() => $('mgLoteState').textContent === 'Conjunto aberto: Lote A', 'abriu o lote A');
+    eq(!!db.work[idB].items['outra-pessoa.png'], true, 'o trabalho do lote B não foi sobrescrito: ' + JSON.stringify(db.work[idB]));
+    // 11) se o ajuste pendente não grava, o outro conjunto não abre
+    const realWork = window.__mgWork.writeMoldurasWork; window.__mgWork.writeMoldurasWork = async () => { throw new Error('sem rede'); };
+    await pick('123.pdf'); $('edSkip').click(); await wait(100); openOther();
+    await until(() => /não foram salvos/.test($('mgLoteState').textContent), 'abertura recusada: ' + $('mgLoteState').textContent);
+    eq(/Lote A/.test(document.querySelector('#mgLoteList .mg-lote.is-open').textContent), true, 'o lote A continua aberto');
+    window.__mgWork.writeMoldurasWork = realWork;
     document.body.dataset.result = 'ok';
   } catch (e) { document.body.dataset.result = 'FALHA: ' + e.message + ' @ ' + String(e.stack).split(String.fromCharCode(10)).slice(1, 3).join(' / '); }
   document.getElementById('log').textContent = document.body.dataset.result + '\n' + document.getElementById('mgExportState').textContent; // visível também em captura de tela

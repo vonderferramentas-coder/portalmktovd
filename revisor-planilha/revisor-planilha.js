@@ -48,7 +48,7 @@
   }
 
   if (!$('rpDrop')) return; // carregado pelo teste, sem a página
-  let header = [], rows = [], fileName = '', sel = { id: 0, prod: -1, ctx: -1, old: -1, nw: -1 };
+  let header = [], rows = [], fileName = '', pendingName = '', sel = { id: 0, prod: -1, ctx: -1, old: -1, nw: -1 };
   let inc = 0, keys = [], groups = [], open = new Set(), flat = [];
   const worker = new Worker(new URL('revisor-planilha-worker.js', SRC));
   const say = (t, err) => { $('rpError').hidden = !err; if (err) $('rpStatus').textContent = ''; (err ? $('rpError') : $('rpStatus')).textContent = t; };
@@ -60,7 +60,7 @@
   function loadFile(file) {
     if (!file) return;
     if (!/\.xlsx$/i.test(file.name)) return say('Envie um arquivo .xlsx.', true);
-    fileName = file.name; $('rpError').hidden = true;
+    pendingName = file.name; $('rpError').hidden = true;
     $('rpDrop').classList.add('is-loading'); say('Lendo a planilha. Arquivos grandes levam cerca de um minuto, não feche a página.');
     file.arrayBuffer().then(buffer => worker.postMessage({ op: 'read', buffer }, [buffer])).catch(e => fail(e.message));
   }
@@ -69,8 +69,9 @@
     const m = ev.data; idle();
     if (m.error) return fail(m.error);
     if (m.op === 'read') {
+      fileName = pendingName;
       header = m.header.map((h, i) => String(h).trim() || 'Coluna ' + colName(i)); rows = m.rows;
-      if (!rows.length) return say('A planilha não tem linhas de dados.', true);
+      if (!rows.length) { groups = []; flat = []; open = new Set(); $('rpWork').hidden = true; $('rpDrop').querySelector('strong').textContent = fileName; /* o resultado da planilha anterior não vale mais */ return say('A planilha não tem linhas de dados.', true); }
       const find = re => header.findIndex(h => re.test(norm(h)));
       sel = { id: Math.max(0, find(/codigo|sku|^id$/)), prod: find(/descri|produto/), ctx: find(/atributo/), old: find(/antigo/), nw: find(/novo/) };
       if (sel.nw === sel.old) sel.nw = -1;
