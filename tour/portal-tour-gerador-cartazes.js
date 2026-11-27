@@ -33,7 +33,7 @@ PortalTour.register('gerador-cartazes', {
       title: 'Importar a planilha',
       summary: 'Preparar o Excel, importar e entender o resumo.',
       steps: [
-        { target: '.cg-tip-btn[aria-label="Como preparar a planilha"]', interact: true, title: 'Como preparar a planilha', text: 'Passe o mouse ou clique no "i" para ler quais colunas o Excel precisa ter. Uma linha por produto.' },
+        { target: '.cg-tip-btn[aria-label="Como preparar a planilha"]', interact: true, title: 'Como preparar a planilha', text: 'Passe o mouse ou clique no "i" para ler quais colunas o Excel precisa ter. Uma linha por produto. No layout Live Shop, sem divisão marcada nas configurações, as colunas LINK OSTEN, LINK DISMATAL e LINK VONDER definem as divisões, e as folhas saem uma vez para cada uma.' },
         { target: 'label.upload', title: 'Selecionar planilha', text: 'Clique aqui e escolha o arquivo .xlsx ou .xls. Ele precisa estar tratado, no formato descrito no "i" ao lado. Neste tutorial nada é importado.' },
         { target: '#groupBy', title: 'Agrupar por', text: 'Aparece depois de ler a planilha. Escolha a coluna que define o card: linhas seguidas com o mesmo valor (ou com a célula vazia, como numa mesclagem) entram no mesmo card. Em Automático vale o código de barras ou o título.' },
         { target: '#manualItemBtn', title: 'Adicionar item na mão', text: 'Falta um produto na planilha? Adicione aqui, sem precisar mexer no Excel.' },

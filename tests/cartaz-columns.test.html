@@ -53,6 +53,21 @@ try {
   const fg = CartazColumns.fgMap([{ code: '33.56.380.000', codeFG: 1086108 }, { code: '74.36.010.015' }, { code: '62.40.020.000', codeFG: '1101264' }]);
   eq([fg.get('3356380000'), fg.get('7436010015'), fg.get('6240020000'), fg.size], ['1086108', undefined, '1101264', 2], 'mapa OVD -> FG');
 
+  // logo: não pega a de outra marca só porque o nome começa igual
+  const { logoMatches, linkedDivisions } = CartazColumns, pick = (brand, names) => names.filter(name => logoMatches(brand, name));
+  eq(pick('GEDORE RED', ['GE', 'GEDORE RED', 'GEDORE_RED', 'Gedore', 'Gerdau']), ['GEDORE RED', 'GEDORE_RED', 'Gedore'], 'GE não é GEDORE');
+  eq(pick('LOCTITE', ['Loctite', 'Loctite_consumo', 'Loc']), ['Loctite', 'Loctite_consumo'], 'variações da própria marca');
+  eq([pick('WD-40', ['WD40']), pick('TEKBOND', ['Tek Bond']), pick('VONDER KIDS', ['VONDER', 'VONDER_KIDS_PB']), pick('GE', ['GE'])], [['WD40'], ['Tek Bond'], ['VONDER', 'VONDER_KIDS_PB'], ['GE']], 'casos que já funcionavam');
+  eq(pick('SUPER TIGRE', ['Supermax', 'Super_azul', 'Tigre']), [], 'só a primeira palavra em comum não basta');
+  eq([pick('Santa Luzia', ['Santa Clara']), pick('Max', ['Maxeb']), pick('Star', ['Starrett'])], [[], [], []], 'pedaço de palavra não vale');
+  eq([pick('GE', ['GE', 'Gedore', 'genebre']), pick('3M', ['3m', '3M_branco']), pick('FG', ['FG_HORIZONTAL_semfundo'])], [['GE'], ['3m', '3M_branco'], ['FG_HORIZONTAL_semfundo']], 'siglas e suas variações');
+  eq([pick('FAMASTIL', ['FamastilFerramentas', 'Famastil1']), pick('STARRETT', ['StarrettM1']), pick('CASCOLA', ['Cascola_Cascorez'])], [['FamastilFerramentas', 'Famastil1'], ['StarrettM1'], ['Cascola_Cascorez']], 'variações coladas');
+  eq(CartazColumns.detect(['CÓDIGO', 'NOME', 'URL FOTO VONDER', 'LINK OSTEN', 'LINK DA IMAGEM'], []).links, { osten: 'LINK OSTEN' }, 'coluna de foto não é link');
+  eq(CartazColumns.detect(['CÓDIGO', 'ITEM', 'URL FOTO'], [{ 'CÓDIGO': '1000000001', ITEM: 'Alicate universal', 'URL FOTO': 'https://exemplo.invalid/foto-muito-comprida.jpg' }]).title, 'ITEM', 'endereço de foto não vira título');
+  // divisões que a planilha traz em colunas de link
+  eq(linkedDivisions([{ divLinks: { dismatal: 'u' } }, {}, { divLinks: { osten: 'u' } }], ['osten', 'dismatal', 'vonder']), ['osten', 'dismatal'], 'divisões com link');
+  eq(linkedDivisions([{}, { divLinks: {} }], ['osten']), [], 'sem coluna de link');
+
   document.body.dataset.result = 'pass';
   document.body.textContent = 'PASS: colunas por cabeçalho e por conteúdo, colunas do Live Shop, linha pintada e mapa OVD -> FG';
 } catch (error) {
