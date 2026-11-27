@@ -141,4 +141,6 @@
 .qrg-amodal{width:calc(100% - 32px);max-width:460px}
 .qrg-amodal .modal-body{display:grid;gap:14px}
 .qrg-amodal .qrg-info-lead{margin:0}
+.qrg-amodal label{margin-bottom:-6px;font-size:14px;font-weight:700}
+.qrg-amodal [hidden]{display:none}
 .qrg-amodal .modal-footer{display:flex;justify-content:flex-end;gap:10px;padding:14px 18px;border-top:1px solid var(--border)}

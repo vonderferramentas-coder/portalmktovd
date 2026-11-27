@@ -1,0 +1,45 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Teste dos nomes de arquivo dos QR Codes em lote</title>
+<body data-result="running">RUNNING</body>
+<script src="../qrcode/qr-file-names.js"></script>
+<script>
+// Roda em Chrome headless: chrome --headless=new --dump-dom file:///.../tests/qr-file-names.test.html
+try {
+  const eq = (a, b, label) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(label + '\n  esperado: ' + JSON.stringify(b) + '\n  obtido:   ' + JSON.stringify(a)); };
+  const valid = value => /^https?:\/\//.test(value || ''), u = 'https://x.test/';
+  const table = [
+    ['Nome do arquivo', 'Marca', 'Nome na tela', 'OSTEN LINK QR CODES', 'DISMATAL LINK QR CODES'],
+    ['', '3M', 'Fitas isolantes, 3M', u + 1, u + 2],
+    ['', '3M', '', '', ''], // variação sem link: não conta na ordem
+    ['', 'WD-40', 'Lubrificantes multiuso, WD-40', u + 3, u + 4],
+    ['', 'GEDORE RED', 'Alicate de pressão, 10", GEDORE RED', '', u + 5],
+    ['', 'STARRETT', 'Disco de corte 115 mm x 1 mm, DAC115, STARRETT', u + 6, ''],
+    ['Lubrificante WD-40 spray', 'WD-40', 'Lubrificantes, WD-40', u + 7, ''],
+    ['Cadastro B2B', '', '', u + 8, ''],
+    ['', 'NORTON', '', u + 9, ''],
+    ['', '', '', u + 10, '']
+  ];
+  const result = QrFileNames.items(table, valid);
+  eq(result.map(item => item.file), [
+    '1-fitas-isolantes-3M-osten', '2-lubrificantes-multiuso-WD40-osten', '4-disco-corte-STARRETT-osten',
+    '5-lubrificante-spray-WD40-osten', '6-cadastro-b2b-osten', '7-NORTON-osten', '8-qr-osten',
+    '1-fitas-isolantes-3M-dismatal', '2-lubrificantes-multiuso-WD40-dismatal', '3-alicate-pressao-GEDORE-RED-dismatal'
+  ], 'ordem-nome-marca-divisão');
+  eq([result[0].folder, result[0].col, result[0].url], ['osten', 'OSTEN LINK QR CODES', u + 1], 'pasta, coluna e link');
+  // planilha só com links: sem divisão no título, a pasta usa o título da coluna
+  eq(QrFileNames.items([['Link'], [u]], valid).map(item => item.folder + '/' + item.file), ['link/1-qr'], 'só links');
+
+  const names = ['Trena 7,5 m, STANLEY', 'Serra tico-tico', 'Moto-esmeril de bancada', 'Flap-discs,NORTON', 'Marteletes perfuradores/rompedores SDS'];
+  eq(QrFileNames.items([['Nome na tela', 'Link']].concat(names.map(name => [name, u])), valid).map(item => item.file),
+    ['1-trena-7-5', '2-serra-tico-tico', '3-moto-esmeril-bancada', '4-flap-discs', '5-marteletes-perfuradores'], 'decimal, hífen e barra');
+  eq(['Nome na tela', 'MARCA', 'Nome do arquivo', 'Link'].map(QrFileNames.isNameColumn), [true, true, true, false], 'colunas de nome');
+  eq(QrFileNames.fileSafe(' 1 Fita isolante 3M: dismatal '), '1-Fita-isolante-3M-dismatal', 'nome editado');
+
+  document.body.dataset.result = 'pass';
+  document.body.textContent = 'PASS: nomes dos arquivos dos QR Codes em lote';
+} catch (error) {
+  document.body.dataset.result = 'fail';
+  document.body.textContent = 'FAIL: ' + error.message;
+}
+</script>
