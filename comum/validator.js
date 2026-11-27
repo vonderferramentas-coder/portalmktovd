@@ -194,17 +194,56 @@
 
   const escapeHtml = value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+  // Troca `find` nos textos do HTML (nunca nas tags), mesmo atravessando um negrito ou itálico. Como em CartazCards.plainTitle,
+  // a quebra de linha e os espaços em volta valem um espaço. Só muda o que difere entre os dois: o resto fica onde está, com a formatação.
+  function swapHtml(html, find, replace) {
+    const body = new DOMParser().parseFromString(html, 'text/html').body, walker = body.ownerDocument.createTreeWalker(body);
+    const texts = new Map(), map = []; // map[i]: pedaços do HTML que formam o caractere i, cada um [<br>] ou [texto, posição]
+    let text = '', broke = false;
+    for (let node; (node = walker.nextNode());) {
+      if (node.nodeName === 'BR') {
+        const joined = [[node]];
+        while (/\s$/.test(text)) { joined.push(...map.pop()); text = text.slice(0, -1); }
+        map.push(joined); text += ' '; broke = true;
+      } else if (node.nodeType === 3) {
+        const chars = node.data.split(''); texts.set(node, chars);
+        chars.forEach((char, i) => {
+          if (broke && /\s/.test(char)) { map[map.length - 1].push([node, i]); return; }
+          broke = false; map.push([[node, i]]); text += char;
+        });
+      }
+    }
+    const flat = value => value.replace(/\s*\n\s*/g, ' '); // o Editor de artes entrega a quebra como \n
+    find = flat(find); replace = flat(replace);
+    const max = Math.min(find.length, replace.length);
+    let head = 0, tail = 0;
+    while (head < max && find[head] === replace[head]) head++;
+    while (tail < max - head && find[find.length - 1 - tail] === replace[replace.length - 1 - tail]) tail++;
+    const added = replace.slice(head, replace.length - tail);
+    for (let at = text.indexOf(find); find && at >= 0; at = text.indexOf(find, at + find.length)) {
+      const gone = map.slice(at + head, at + find.length - tail).flat();
+      gone.forEach(([node, i]) => { if (i !== undefined) texts.get(node)[i] = ''; });
+      if (added) { // no lugar do que saiu; sem nada saindo, junto do caractere anterior (ou antes do primeiro)
+        const after = !gone.length && head > 0, [node, i] = gone.find(piece => piece.length > 1) || gone[0] || map[after ? at + head - 1 : at][0];
+        if (i === undefined) node[after ? 'after' : 'before'](added);
+        else texts.get(node)[i] = after ? texts.get(node)[i] + added : added + texts.get(node)[i];
+      }
+      gone.forEach(([node, i]) => { if (i === undefined) node.remove(); });
+    }
+    texts.forEach((chars, node) => { node.data = chars.join(''); });
+    return body.innerHTML;
+  }
+
   // Aplica uma observação ao título: { title, titleHtml } (titleHtml só existe quando o título já tinha formatação)
   function apply(title, titleHtml, issue) {
     if (issue.italic) {
-      const base = titleHtml || escapeHtml(title), pattern = new RegExp(`(^|[^${LETTER}>])(${issue.italic})(?![${LETTER}<])`, 'i');
+      const base = titleHtml || escapeHtml(title), pattern = new RegExp(`(^|<br>|[^${LETTER}>])(${issue.italic})(?![${LETTER}]|<(?!br))`, 'i');
       const html = pattern.test(base) ? base.replace(pattern, '$1<i>$2</i>') : base;
       return { title, titleHtml: html === escapeHtml(title) ? undefined : html };
     }
     if (issue.replace == null) return { title, titleHtml };
     const swap = value => value.split(issue.find).join(issue.replace);
-    const next = swap(title), html = titleHtml && titleHtml.includes(issue.find) ? swap(titleHtml) : titleHtml;
-    return { title: next, titleHtml: html };
+    return { title: swap(title), titleHtml: titleHtml && swapHtml(titleHtml, issue.find, issue.replace) };
   }
 
   // Identifica a observação no estado exato do título. Se o texto mudar, uma confirmação antiga não a esconde.

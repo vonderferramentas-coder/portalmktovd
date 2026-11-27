@@ -25,6 +25,9 @@ try {
   eq(C.search(mixed, 'acao').map(hit => hit.page.brand).filter((v, i, a) => a.indexOf(v) === i), ['Ação Ferramentas'], 'busca ignora acento e maiúscula na marca');
   eq(C.search(mixed, '   '), [], 'busca vazia');
 
+  eq(C.plainTitle({ titleHtml: 'LIXA <br><b>FLAP</b>' }), 'LIXA FLAP', 'quebra de linha separa as palavras');
+  eq(C.plainTitle({ titleHtml: 'LIXA&nbsp;<br><br> FLAP' }), 'LIXA FLAP', 'linhas em branco valem um espaço só');
+
   // mover: troca com o vizinho e devolve null nos extremos
   eq(titles(C.move(items, items[2], -1)).slice(0, 3), ['Produto 1', 'Produto 3', 'Produto 2'], 'mover para cima');
   eq(titles(C.move(items, items[2], 1)).slice(2, 4), ['Produto 4', 'Produto 3'], 'mover para baixo');
